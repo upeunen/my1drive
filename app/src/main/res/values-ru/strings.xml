@@ -1,0 +1,157 @@
+<resources>
+    <string name="app_name">My1Drive</string>
+    <string name="tab_photos">Фото</string>
+    <string name="tab_archive">Архив</string>
+    <string name="tab_settings">Настройки</string>
+    
+    <string name="title_settings">Настройки</string>
+    <string name="storage_stats">Статистика хранилища</string>
+    <string name="on_phone">На телефоне:</string>
+    <string name="in_archive">В архиве на OTG:</string>
+    <string name="thumbnail_cache">Кэш миниатюр:</string>
+    <string name="room_db_wal">База Room WAL:</string>
+    <string name="status_active">АКТИВЕН</string>
+    <string name="files_count">%1$d файлов</string>
+    
+    <string name="otg_archive_folder">Папка архивации OTG</string>
+    <string name="drive_not_selected">Накопитель не выбран</string>
+    <string name="change_otg_folder">Изменить папку OTG</string>
+    <string name="select_otg_folder">Выбрать папку OTG</string>
+    <string name="safe_eject">Безопасное извлечение</string>
+    <string name="quick_actions">Быстрые действия</string>
+    <string name="clear_thumb_cache">Очистить кэш миниатюр</string>
+    
+    <string name="empty_category">Нет медиафайлов в этой категории</string>
+    <string name="selected_count">Выбрано: %1$d</string>
+    <string name="archive_on_otg">Архивировать на OTG</string>
+    <string name="btn_ok">ОК</string>
+    <string name="btn_cancel">Отмена</string>
+    <string name="btn_close">Закрыть</string>
+    <string name="error_title">Ошибка</string>
+    
+    <string name="archiving_title">Резервное копирование на OTG…</string>
+    <string name="archiving_title_count">Резервное копирование на OTG (%1$d из %2$d)…</string>
+    <string name="archiving_file">Файл: %1$s</string>
+    
+    <string name="otg_select_title">Выбор OTG накопителя</string>
+    <string name="otg_select_guide">Для безопасной архивации необходимо дать доступ к корневой папке флешки через стандартный системный проводник Android.</string>
+    <string name="otg_guide_step1">Подключите USB-накопитель через OTG-переходник.</string>
+    <string name="otg_guide_step2">В открывшемся системном меню выберите накопитель.</string>
+    <string name="otg_guide_step3">Нажмите синюю кнопку \'Использовать эту папку\' или \'Разрешить доступ\' внизу экрана.</string>
+    <string name="otg_guide_step4">Подтвердите запрос прав системы во всплывающем окне.</string>
+    <string name="btn_go_to_select">Перейти к выбору</string>
+    
+    <string name="file_info_title">Информация о файле</string>
+    <string name="info_name">Имя: %1$s</string>
+    <string name="info_type">Тип: %1$s</string>
+    <string name="info_size">Размер: %1$s</string>
+    <string name="info_status">Статус: %1$s</string>
+    <string name="status_on_device">На устройстве</string>
+    <string name="status_archived">В архиве на OTG</string>
+    <string name="info_sha256">SHA-256 Hash:</string>
+    <string name="info_otg_path">SAF Путь на OTG:</string>
+    
+    <string name="permission_required_toast">Необходимы разрешения для доступа к медиафайлам</string>
+    <string name="grant_permission_btn">Предоставить разрешения</string>
+    <string name="otg_folder_selected_toast">OTG папка успешно выбрана!</string>
+    <string name="otg_folder_error_toast">Ошибка доступа к папке: %1$s</string>
+    <string name="eject_success_toast">OTG накопитель безопасно извлечен в приложении. Теперь вы можете физически отключить устройство.</string>
+    
+    <!-- Progress messages -->
+    <string name="progress_preparing">Подготовка…</string>
+    <string name="progress_sha256">Вычисление контрольной суммы (SHA-256)…</string>
+    <string name="progress_copying">Копирование на OTG накопитель…</string>
+    <string name="progress_copying_percent">Копирование… (%1$d%%)</string>
+    <string name="progress_verifying">Верификация целостности (SHA-256)…</string>
+    <string name="progress_thumbnail">Создание локального кэша миниатюры…</string>
+    <string name="progress_deleting">Удаление исходного файла…</string>
+    
+    <!-- Error messages -->
+    <string name="error_sha256_failed">Не удалось вычислить SHA-256 исходного файла</string>
+    <string name="error_otg_access_failed">Не удалось получить доступ к папке OTG</string>
+    <string name="error_otg_create_failed">Не удалось создать файл на OTG</string>
+    <string name="error_otg_write_failed">Не удалось открыть поток для записи на OTG</string>
+    <string name="error_verification_failed">Ошибка верификации! Хэш-суммы не совпадают.</string>
+    <string name="error_delete_failed">Не удалось удалить локальный файл после копирования</string>
+    <string name="error_no_delete_permission">Нет разрешения на удаление файла: %1$s</string>
+    <string name="error_delete_completion_failed">Не удалось завершить удаление: %1$s</string>
+    <string name="error_archive_item_failed">Ошибка архивации %1$s: %2$s</string>
+    
+    <!-- Restore (Разархивирование) -->
+    <string name="restore_from_otg">Восстановить с OTG</string>
+    <string name="restoring_title">Восстановление с OTG…</string>
+    <string name="restoring_title_count">Восстановление с OTG (%1$d из %2$d)…</string>
+    <string name="restoring_file">Файл: %1$s</string>
+    <string name="restore_progress_preparing">Подготовка к восстановлению…</string>
+    <string name="restore_progress_reading">Чтение с OTG…</string>
+    <string name="restore_progress_writing">Запись на устройство…</string>
+    <string name="restore_progress_verifying">Проверка целостности (SHA-256)…</string>
+    <string name="restore_success_title">Восстановление завершено</string>
+    <string name="restore_success_msg">Все выбранные файлы восстановлены на устройство.</string>
+    <string name="restore_error_title">Ошибка восстановления</string>
+    <string name="restore_ask_title">Куда восстановить?</string>
+    <string name="restore_ask_original">В исходную папку: %1$s</string>
+    <string name="restore_ask_choose">Выбрать другую папку…</string>
+    <string name="restore_need_folder_msg">Исходный путь неизвестен. Пожалуйста, выберите папку для восстановления.</string>
+    <!-- Настройки: переключатель -->
+    <string name="setting_ask_restore_path">Спрашивать куда разархивировать</string>
+    <string name="setting_ask_restore_path_desc">Вкл: всегда спрашивать — в исходную папку или выбрать другую. Выкл: автоматически восстанавливать в исходный путь (если неизвестен — спросить).</string>
+
+    <!-- Статус накопителя -->
+    <string name="drive_unknown_connected">🔴 Архив не найден на этом носителе</string>
+    <string name="drive_known_disconnected">🔴 OTG накопитель отключён</string>
+    <string name="drive_known_connected">🟢 Накопитель архива подключён</string>
+    <!-- Автосинхронизация -->
+    <string name="auto_sync_missing_title">Файлы исчезли из архива!</string>
+    <string name="auto_sync_missing_msg">Следующие файлы больше не найдены на OTG накопителе:
+
+%1$s
+
+Записи остаются в базе данных. Подключите нужный накопитель для восстановления доступа.</string>
+    <string name="auto_sync_added_toast">Автосинх: добавлено файлов: %1$d</string>
+
+    <!-- Date groups -->
+    <string name="date_today">Сегодня</string>
+    <string name="date_yesterday">Вчера</string>
+
+    <!-- Photo Access and Security -->
+    <string name="title_photo_access">Доступ к фото</string>
+    <string name="photo_access_partial_desc">У приложения есть доступ только к выбранным фотографиям и видео. Вы можете изменить список доступных файлов.</string>
+    <string name="photo_access_warning_desc">Предоставлен частичный доступ. Система Android может блокировать копирование для невыбранных или облачных фото. Рекомендуется разрешить полный доступ в настройках.</string>
+    <string name="btn_manage_photos">Выбрать больше фото</string>
+    <string name="error_media_access_denied">Доступ к файлу запрещен. Если он сохранен в облачном резервном копировании (например, Google Фото), сначала скачайте его на устройство или убедитесь, что у приложения есть разрешения.</string>
+    <string name="partial_access_banner_title">⚠️ Ограниченный доступ</string>
+    <string name="partial_access_banner_desc">У приложения доступ только к выбранным фото. Некоторые файлы могут быть недоступны для архивирования.</string>
+    <string name="btn_grant_full_access">Предоставить полный доступ</string>
+    <string name="btn_open_settings">Открыть настройки</string>
+
+    <!-- Обнаружение нового архива -->
+    <string name="new_archive_found_title">Найден новый архив</string>
+    <string name="new_archive_found_msg">На подключённом носителе обнаружен другой архив. Переключиться на этот архив?</string>
+    <string name="btn_connect_to_archive">Подключить архив</string>
+
+    <!-- Заглушки превью -->
+    <string name="preview_on_disk">Превью на диске</string>
+    <string name="preview_cached">Превью (кэш)</string>
+
+    <!-- Расширенный диалог информации -->
+    <string name="info_original_folder">Исходная папка:</string>
+    <string name="info_preview_path">Кэш превью:</string>
+    <string name="info_archive_id">ID архива:</string>
+    <string name="info_location">Расположение:</string>
+    <string name="info_location_device">📱 На устройстве</string>
+    <string name="info_location_otg">💾 В архиве (OTG диск)</string>
+    <string name="info_location_otg_disconnected">💾 В архиве (диск отключён)</string>
+
+    <!-- Удаление -->
+    <string name="btn_delete_file">Удалить с устройства</string>
+    <string name="btn_delete_otg">Удалить из архива</string>
+    <string name="delete_confirm_title">Удалить файл?</string>
+    <string name="delete_confirm_msg">Вы уверены, что хотите удалить \"%1$s\"? Это действие нельзя отменить.</string>
+    <string name="delete_archived_warning">Оригинал на OTG-носителе останется. Будет удалена только запись из базы данных.</string>
+    <string name="preview_not_deletable">Превью нельзя удалить отдельно</string>
+
+    <!-- Синхронизация -->
+    <string name="sync_archive_title">Синхронизация архива</string>
+    <string name="sync_archive_progress">Синхронизация…</string>
+</resources>

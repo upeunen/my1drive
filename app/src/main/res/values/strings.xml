@@ -1,0 +1,157 @@
+<resources>
+    <string name="app_name">My1Drive</string>
+    <string name="tab_photos">Photos</string>
+    <string name="tab_archive">Archive</string>
+    <string name="tab_settings">Settings</string>
+    
+    <string name="title_settings">Settings</string>
+    <string name="storage_stats">Storage Statistics</string>
+    <string name="on_phone">On Phone:</string>
+    <string name="in_archive">In Archive on OTG:</string>
+    <string name="thumbnail_cache">Thumbnail Cache:</string>
+    <string name="room_db_wal">Room Database WAL:</string>
+    <string name="status_active">ACTIVE</string>
+    <string name="files_count">%1$d files</string>
+    
+    <string name="otg_archive_folder">OTG Archive Folder</string>
+    <string name="drive_not_selected">Drive not selected</string>
+    <string name="change_otg_folder">Change OTG Folder</string>
+    <string name="select_otg_folder">Select OTG Folder</string>
+    <string name="safe_eject">Safe Eject</string>
+    <string name="quick_actions">Quick Actions</string>
+    <string name="clear_thumb_cache">Clear Thumbnail Cache</string>
+    
+    <string name="empty_category">No media files in this category</string>
+    <string name="selected_count">Selected: %1$d</string>
+    <string name="archive_on_otg">Archive to OTG</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_close">Close</string>
+    <string name="error_title">Error</string>
+    
+    <string name="archiving_title">Backing up to OTG…</string>
+    <string name="archiving_title_count">Backing up to OTG (%1$d of %2$d)…</string>
+    <string name="archiving_file">File: %1$s</string>
+    
+    <string name="otg_select_title">USB OTG Drive Selection</string>
+    <string name="otg_select_guide">For secure archiving, you must grant access to the root folder of the USB drive using the system file picker.</string>
+    <string name="otg_guide_step1">Connect the USB drive using an OTG adapter.</string>
+    <string name="otg_guide_step2">In the system file picker, select your USB drive.</string>
+    <string name="otg_guide_step3">Click \"Use this folder\" or \"Allow access\" at the bottom of the screen.</string>
+    <string name="otg_guide_step4">Confirm the permission request in the pop-up window.</string>
+    <string name="btn_go_to_select">Go to selection</string>
+    
+    <string name="file_info_title">File Information</string>
+    <string name="info_name">Name: %1$s</string>
+    <string name="info_type">Type: %1$s</string>
+    <string name="info_size">Size: %1$s</string>
+    <string name="info_status">Status: %1$s</string>
+    <string name="status_on_device">On Device</string>
+    <string name="status_archived">In OTG Archive</string>
+    <string name="info_sha256">SHA-256 Hash:</string>
+    <string name="info_otg_path">SAF Path on OTG:</string>
+    
+    <string name="permission_required_toast">Permissions are required to access media files</string>
+    <string name="grant_permission_btn">Grant Permissions</string>
+    <string name="otg_folder_selected_toast">OTG folder successfully selected!</string>
+    <string name="otg_folder_error_toast">Error accessing folder: %1$s</string>
+    <string name="eject_success_toast">OTG drive successfully ejected in the app. You can now physically disconnect the device.</string>
+    
+    <!-- Progress messages -->
+    <string name="progress_preparing">Preparing…</string>
+    <string name="progress_sha256">Calculating SHA-256 checksum…</string>
+    <string name="progress_copying">Copying to OTG drive…</string>
+    <string name="progress_copying_percent">Copying… (%1$d%%)</string>
+    <string name="progress_verifying">Verifying integrity (SHA-256)…</string>
+    <string name="progress_thumbnail">Creating local thumbnail cache…</string>
+    <string name="progress_deleting">Deleting original file…</string>
+    
+    <!-- Error messages -->
+    <string name="error_sha256_failed">Failed to calculate SHA-256 of the source file</string>
+    <string name="error_otg_access_failed">Failed to access the OTG folder</string>
+    <string name="error_otg_create_failed">Failed to create file on the OTG drive</string>
+    <string name="error_otg_write_failed">Failed to open stream for writing to the OTG drive</string>
+    <string name="error_verification_failed">Verification error! Checksums do not match.</string>
+    <string name="error_delete_failed">Failed to delete local file after copying</string>
+    <string name="error_no_delete_permission">No permission to delete file: %1$s</string>
+    <string name="error_delete_completion_failed">Failed to complete deletion: %1$s</string>
+    <string name="error_archive_item_failed">Archiving error for %1$s: %2$s</string>
+    
+    <!-- Restore (Unarchive) -->
+    <string name="restore_from_otg">Restore from OTG</string>
+    <string name="restoring_title">Restoring from OTG…</string>
+    <string name="restoring_title_count">Restoring from OTG (%1$d of %2$d)…</string>
+    <string name="restoring_file">File: %1$s</string>
+    <string name="restore_progress_preparing">Preparing restore…</string>
+    <string name="restore_progress_reading">Reading from OTG…</string>
+    <string name="restore_progress_writing">Writing to device…</string>
+    <string name="restore_progress_verifying">Verifying (SHA-256)…</string>
+    <string name="restore_success_title">Restoration complete</string>
+    <string name="restore_success_msg">All selected files have been restored to the device.</string>
+    <string name="restore_error_title">Restore error</string>
+    <string name="restore_ask_title">Restore destination</string>
+    <string name="restore_ask_original">Restore to original folder: %1$s</string>
+    <string name="restore_ask_choose">Choose another folder…</string>
+    <string name="restore_need_folder_msg">The original save path is unknown. Please select the folder to restore to.</string>
+    <!-- Settings: ask restore path toggle -->
+    <string name="setting_ask_restore_path">Ask where to restore</string>
+    <string name="setting_ask_restore_path_desc">When ON: always ask whether to restore to the original folder or choose another. When OFF: automatically restore to original path (or ask if unknown).</string>
+
+    <!-- Drive status -->
+    <string name="drive_unknown_connected">🔴 Archive not found on this drive</string>
+    <string name="drive_known_disconnected">🔴 OTG drive disconnected</string>
+    <string name="drive_known_connected">🟢 Archive drive connected</string>
+    <!-- Auto-sync -->
+    <string name="auto_sync_missing_title">Files missing from archive!</string>
+    <string name="auto_sync_missing_msg">The following files are no longer found on the OTG drive:
+
+%1$s
+
+The records remain in the database. Connect the correct drive to restore access.</string>
+    <string name="auto_sync_added_toast">Auto-sync: %1$d new file(s) added</string>
+
+    <!-- Date groups -->
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+
+    <!-- Photo Access and Security -->
+    <string name="title_photo_access">Photo Access</string>
+    <string name="photo_access_partial_desc">The app only has access to selected photos and videos. You can update which files are accessible.</string>
+    <string name="photo_access_warning_desc">You have granted partial access. Android may block copy operations for unselected or cloud files. Grant \'Allow all\' access in system settings for best performance.</string>
+    <string name="btn_manage_photos">Select More Photos</string>
+    <string name="error_media_access_denied">Access denied. If this file is stored in a cloud backup (like Google Photos), please download it to your device first, or make sure the app has permissions.</string>
+    <string name="partial_access_banner_title">⚠️ Limited Access</string>
+    <string name="partial_access_banner_desc">The app only has access to selected photos. Some files may be unavailable for archiving.</string>
+    <string name="btn_grant_full_access">Grant Full Access</string>
+    <string name="btn_open_settings">Open Settings</string>
+
+    <!-- New archive detection -->
+    <string name="new_archive_found_title">New Archive Found</string>
+    <string name="new_archive_found_msg">A different archive was detected on the connected drive. Would you like to switch to this archive?</string>
+    <string name="btn_connect_to_archive">Connect to Archive</string>
+
+    <!-- Preview placeholders -->
+    <string name="preview_on_disk">Preview on disk</string>
+    <string name="preview_cached">Preview (cached)</string>
+
+    <!-- Enhanced Info Dialog -->
+    <string name="info_original_folder">Original folder:</string>
+    <string name="info_preview_path">Preview cache:</string>
+    <string name="info_archive_id">Archive ID:</string>
+    <string name="info_location">Location:</string>
+    <string name="info_location_device">📱 On device</string>
+    <string name="info_location_otg">💾 In archive (OTG drive)</string>
+    <string name="info_location_otg_disconnected">💾 In archive (drive disconnected)</string>
+
+    <!-- Delete -->
+    <string name="btn_delete_file">Delete from device</string>
+    <string name="btn_delete_otg">Delete from archive</string>
+    <string name="delete_confirm_title">Delete file?</string>
+    <string name="delete_confirm_msg">Are you sure you want to delete \"%1$s\"? This action cannot be undone.</string>
+    <string name="delete_archived_warning">The original on the OTG drive will remain. Only the database record will be removed.</string>
+    <string name="preview_not_deletable">Previews cannot be deleted separately</string>
+
+    <!-- Sync -->
+    <string name="sync_archive_title">Synchronize Archive</string>
+    <string name="sync_archive_progress">Synchronizing…</string>
+</resources>
