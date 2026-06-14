@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +43,8 @@ fun GalleryScreen(
     val missingFilesNotification by viewModel.missingFilesNotification.collectAsState()
     val autoSyncAddedCount by viewModel.autoSyncAddedCount.collectAsState()
     val restoreRequest by viewModel.restoreRequest.collectAsState()
+    val archiveState by viewModel.archiveState.collectAsState()
+    val restoreState by viewModel.restoreState.collectAsState()
     val showRestorePicker = restoreRequest != null
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
@@ -120,7 +122,9 @@ fun GalleryScreen(
             onSetActivePreview = { state -> activePreviewState = state },
             onSetShowInfoDialog = { showInfoDialogItem = it },
             onSetShowOtgGuide = { showOtgGuideDialog = it },
-            previewCacheManager = previewCache
+            previewCacheManager = previewCache,
+            archiveState = archiveState,
+            restoreState = restoreState
         )
     }
 }

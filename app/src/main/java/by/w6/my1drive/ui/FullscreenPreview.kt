@@ -4,7 +4,22 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculateCentroidSize
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.calculateRotation
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.positionChanged
+import android.content.Context
+import android.view.MotionEvent
+import android.view.ViewConfiguration
+import android.widget.FrameLayout
+import kotlin.math.abs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -305,24 +320,36 @@ private fun ImagePage(item: MediaItem, imageLoader: ImageLoader) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(zoomScale) {
+                detectZoomPanGestures(
+                    zoomScale = zoomScale,
+                    onGesture = { _, panChange, zoomChange, _ ->
+                        zoomScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+                        if (zoomScale > 1f) {
+                            zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-2000f, 2000f)
+                            zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-2000f, 2000f)
+                        } else {
+                            zoomOffsetX = 0f
+                            zoomOffsetY = 0f
+                        }
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        zoomScale = 1f
+                        zoomOffsetX = 0f
+                        zoomOffsetY = 0f
+                    }
+                )
+            }
             .graphicsLayer(
                 scaleX = zoomScale,
                 scaleY = zoomScale,
                 translationX = zoomOffsetX,
                 translationY = zoomOffsetY
-            )
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
-                    if (zoomScale > 1f) {
-                        zoomOffsetX = (zoomOffsetX + pan.x).coerceIn(-1000f, 1000f)
-                        zoomOffsetY = (zoomOffsetY + pan.y).coerceIn(-1000f, 1000f)
-                    } else {
-                        zoomOffsetX = 0f
-                        zoomOffsetY = 0f
-                    }
-                }
-            },
+            ),
         contentAlignment = Alignment.Center
     ) {
         AsyncImage(
@@ -387,11 +414,126 @@ private fun VideoPage(item: MediaItem, isOtgConnected: Boolean) {
 
     AndroidView(
         factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = true
+            TouchInterceptingFrameLayout(ctx).apply {
+                val playerView = PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true
+                }
+                playerView.layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+                addView(playerView)
             }
         },
         modifier = Modifier.fillMaxSize()
     )
+}
+
+private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(context) {
+    private var startX = 0f
+    private var startY = 0f
+    private var isHorizontalDrag = false
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.action) {
+            MotionEvent.ACTION_DOWN -> {
+                startX = ev.x
+                startY = ev.y
+                isHorizontalDrag = false
+                parent.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = ev.x - startX
+                val dy = ev.y - startY
+                // Do not intercept if touch is in bottom 20% (SeekBar area)
+                if (ev.y < height * 0.8f) {
+                    if (abs(dx) > touchSlop && abs(dx) > abs(dy)) {
+                        isHorizontalDrag = true
+                        parent.requestDisallowInterceptTouchEvent(false)
+                        return true
+                    }
+                }
+            }
+        }
+        return super.onInterceptTouchEvent(ev)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (isHorizontalDrag) {
+            return false
+        }
+        return super.onTouchEvent(event)
+    }
+
+    override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+        super.requestDisallowInterceptTouchEvent(disallowIntercept)
+        parent?.requestDisallowInterceptTouchEvent(disallowIntercept)
+    }
+}
+
+suspend fun PointerInputScope.detectZoomPanGestures(
+    zoomScale: Float,
+    panZoomLock: Boolean = false,
+    onGesture: (centroid: Offset, pan: Offset, zoom: Float, rotation: Float) -> Unit
+) {
+    awaitEachGesture {
+        var rotation = 0f
+        var zoom = 1f
+        var pan = Offset.Zero
+        var pastTouchSlop = false
+        val touchSlop = viewConfiguration.touchSlop
+        var lockedToPanZoom = false
+
+        awaitFirstDown(requireUnconsumed = false)
+        do {
+            val event = awaitPointerEvent()
+            val canceled = event.changes.any { it.isConsumed }
+            if (!canceled) {
+                val zoomChange = event.calculateZoom()
+                val panChange = event.calculatePan()
+                val rotationChange = event.calculateRotation()
+
+                val pointerCount = event.changes.size
+                val canTriggerGesture = zoomScale > 1f || pointerCount > 1
+
+                if (!pastTouchSlop) {
+                    zoom *= zoomChange
+                    rotation += rotationChange
+                    pan += panChange
+
+                    val centroidSize = event.calculateCentroidSize(useCurrent = false)
+                    val zoomMotion = abs(1 - zoom) * centroidSize
+                    val rotationMotion = abs(rotation) * centroidSize
+                    val panMotion = pan.getDistance()
+
+                    if (canTriggerGesture && (
+                        zoomMotion > touchSlop ||
+                        rotationMotion > touchSlop ||
+                        panMotion > touchSlop
+                    )) {
+                        pastTouchSlop = true
+                        lockedToPanZoom = panZoomLock && (zoomMotion > touchSlop || rotationMotion > touchSlop)
+                    }
+                }
+
+                if (pastTouchSlop && canTriggerGesture) {
+                    val centroid = event.calculateCentroid(useCurrent = false)
+                    val effectiveRotation = if (lockedToPanZoom) 0f else rotationChange
+                    if (effectiveRotation != 0f ||
+                        zoomChange != 1f ||
+                        panChange != Offset.Zero
+                    ) {
+                        onGesture(centroid, panChange, zoomChange, effectiveRotation)
+                    }
+                    event.changes.forEach {
+                        if (it.positionChanged()) {
+                            it.consume()
+                        }
+                    }
+                }
+            }
+        } while (!canceled && event.changes.any { it.pressed })
+    }
 }

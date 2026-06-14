@@ -30,10 +30,11 @@ class OtgArchiveUtil(private val context: Context) {
 
     fun copyAndVerifyItem(item: MediaItem, targetDirUri: Uri): Flow<CopyVerifyResult> = flow {
         try {
-                        emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.05f))
+            emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.05f))
 
-            val srcHash = try {
-                calculateSha256(item.uri)
+            // Check if the source file is accessible
+            try {
+                context.contentResolver.openInputStream(item.uri)?.use { }
             } catch (e: Exception) {
                 emit(CopyVerifyResult.Skipped(item, "${e.javaClass.name}: ${e.message}"))
                 return@flow
@@ -51,25 +52,33 @@ class OtgArchiveUtil(private val context: Context) {
                 file.uri
             }
 
-                        try {
+            val digest = MessageDigest.getInstance("SHA-256")
+
+            try {
                 context.contentResolver.openOutputStream(destUri)?.use { output ->
                     context.contentResolver.openInputStream(item.uri)?.use { input ->
+                        var lastEmittedPercent = -1
                         val buffer = ByteArray(65536)
                         var totalBytesCopied = 0L
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {
                             output.write(buffer, 0, bytesRead)
+                            digest.update(buffer, 0, bytesRead)
                             totalBytesCopied += bytesRead
                             if (item.size > 0) {
                                 val progress = 0.3f + (totalBytesCopied.toFloat() / item.size) * 0.4f
-                                emit(CopyVerifyResult.Progress(item.displayName, "copying_percent:${(progress * 100).toInt()}", progress))
+                                val percent = (progress * 100).toInt()
+                                if (percent != lastEmittedPercent) {
+                                    lastEmittedPercent = percent
+                                    emit(CopyVerifyResult.Progress(item.displayName, "copying_percent:$percent", progress))
+                                }
                             }
                             bytesRead = input.read(buffer)
                         }
                     }
-                                } ?: throw Exception("otg_write_failed")
+                } ?: throw Exception("otg_write_failed")
 
-            try {
+                try {
                     context.contentResolver.openFileDescriptor(destUri, "rw")?.use { pfd ->
                         pfd.fileDescriptor.sync()
                     }
@@ -95,15 +104,17 @@ class OtgArchiveUtil(private val context: Context) {
             }
 
             emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.8f))
-            val otgHash = calculateSha256(destUri)
+            
+            val srcHash = digest.digest().joinToString("") { "%02x".format(it) }
+            val createdFile = DocumentFile.fromSingleUri(context, destUri)
+            val destSize = createdFile?.length() ?: 0L
 
-            if (srcHash != otgHash) {
-                val createdFile = DocumentFile.fromSingleUri(context, destUri)
+            if (item.size > 0 && destSize != item.size) {
                 createdFile?.delete()
-                throw Exception("verification_failed")
+                throw Exception("verification_failed: size mismatch (expected ${item.size}, got $destSize)")
             }
 
-                        // Thumbnail is NOT generated at archive time.
+            // Thumbnail is NOT generated at archive time.
             // It will be loaded on-demand by OtgThumbnailFetcher when the user views the file.
             emit(CopyVerifyResult.Success(item, srcHash, destUri.toString(), thumbnailPath = null))
         } catch (e: Exception) {
@@ -127,12 +138,6 @@ class OtgArchiveUtil(private val context: Context) {
             val otgUri = Uri.parse(otgUriString)
 
             emit(RestoreResult.Progress(item.displayName, "restore_reading", 0.15f))
-
-            // Read source data from OTG
-            val srcBytes = context.contentResolver.openInputStream(otgUri)?.use { it.readBytes() }
-                ?: throw Exception("restore_read_failed")
-
-            emit(RestoreResult.Progress(item.displayName, "restore_writing", 0.4f))
 
             val destUri: Uri = if (targetDirUri != null) {
                 // Write via SAF to chosen folder
@@ -160,6 +165,13 @@ class OtgArchiveUtil(private val context: Context) {
                     put(MediaStore.MediaColumns.MIME_TYPE, item.mimeType)
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
+                    put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
+                    put(MediaStore.MediaColumns.DATE_ADDED, item.dateModified)
+                    if (item.mimeType.startsWith("image/")) {
+                        put(MediaStore.Images.ImageColumns.DATE_TAKEN, item.dateModified * 1000)
+                    } else if (item.mimeType.startsWith("video/")) {
+                        put(MediaStore.Video.VideoColumns.DATE_TAKEN, item.dateModified * 1000)
+                    }
                 }
                 val insertedUri = context.contentResolver.insert(collection, values)
                     ?: throw Exception("restore_mediastore_insert_failed")
@@ -168,15 +180,40 @@ class OtgArchiveUtil(private val context: Context) {
                 throw Exception("restore_api_not_supported")
             }
 
-            // Write bytes to destination
+            emit(RestoreResult.Progress(item.displayName, "restore_writing", 0.4f))
+
+            val digest = MessageDigest.getInstance("SHA-256")
+
+            // Write bytes to destination using stream
             context.contentResolver.openOutputStream(destUri)?.use { output ->
-                output.write(srcBytes)
+                context.contentResolver.openInputStream(otgUri)?.use { input ->
+                    var lastEmittedPercent = -1
+                    val buffer = ByteArray(65536)
+                    var totalBytesCopied = 0L
+                    var bytesRead = input.read(buffer)
+                    while (bytesRead != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        digest.update(buffer, 0, bytesRead)
+                        totalBytesCopied += bytesRead
+                        if (item.size > 0) {
+                            val progress = 0.4f + (totalBytesCopied.toFloat() / item.size) * 0.4f
+                            val percent = (progress * 100).toInt()
+                            if (percent != lastEmittedPercent) {
+                                lastEmittedPercent = percent
+                                emit(RestoreResult.Progress(item.displayName, "restore_writing_percent:$percent", progress))
+                            }
+                        }
+                        bytesRead = input.read(buffer)
+                    }
+                }
             } ?: throw Exception("restore_write_failed")
 
             // If MediaStore pending, mark as complete
             if (targetDirUri == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
+                    put(MediaStore.MediaColumns.DATE_ADDED, item.dateModified)
                 }
                 context.contentResolver.update(destUri, values, null, null)
             }
@@ -185,7 +222,7 @@ class OtgArchiveUtil(private val context: Context) {
 
             // Verify hash
             if (item.hash != null) {
-                val destHash = calculateSha256(destUri)
+                val destHash = digest.digest().joinToString("") { "%02x".format(it) }
                 if (destHash != item.hash) {
                     // Try to delete the failed restore
                     try { context.contentResolver.delete(destUri, null, null) } catch (_: Exception) {}

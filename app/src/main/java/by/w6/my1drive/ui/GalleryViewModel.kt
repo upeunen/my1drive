@@ -255,12 +255,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun startArchiving(targetUri: Uri) { syncHelper.startArchiving(mediaItems.value.filter { it.id in _selectedIds.value }, targetUri) }
     fun archiveSingleItem(item: MediaItem, targetUri: Uri) { syncHelper.startArchiving(listOf(item), targetUri) }
     fun restoreSingleItem(item: MediaItem) {
-        if (item.originalRelativePath != null && !_askRestorePath.value) {
-            startRestoring(listOf(item), null)
-        } else {
-            pendingRestoreItems = listOf(item)
-            _restoreRequest.value = RestoreRequest.NeedFolderPicker
-        }
+        startRestoring(listOf(item), null)
     }
     fun onDeletePermissionGranted() { syncHelper.onDeletePermissionGranted(_selectedIds) }
     fun dismissPendingDelete() { syncHelper.dismissPendingDelete(_selectedIds) }
@@ -371,15 +366,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun requestRestore() {
         val selected = mediaItems.value.filter { it.id in _selectedIds.value && it.status == MediaStatus.ARCHIVED_OTG }
         if (selected.isEmpty()) return
-        val askPath = _askRestorePath.value
-        val allHavePath = selected.all { it.originalRelativePath != null }
-        val commonPath = if (allHavePath && selected.isNotEmpty()) selected.first().originalRelativePath else null
-        when {
-            !askPath && allHavePath -> startRestoring(selected, null)
-            !askPath && !allHavePath -> { pendingRestoreItems = selected; _restoreRequest.value = RestoreRequest.NeedFolderPicker }
-            askPath && allHavePath && commonPath != null -> { pendingRestoreItems = selected; _restoreRequest.value = RestoreRequest.AskOriginalOrCustom(selected, commonPath) }
-            else -> { pendingRestoreItems = selected; _restoreRequest.value = RestoreRequest.NeedFolderPicker }
-        }
+        startRestoring(selected, null)
     }
 
     fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; startRestoring(it, null) } }
@@ -412,6 +399,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun dismissRestoreError() { restoreState.value = restoreState.value.copy(error = null) }
+    fun dismissArchiveError() { syncHelper.dismissError() }
 
     // ─── Deferred Delete (fullscreen preview) ───
 

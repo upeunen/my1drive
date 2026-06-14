@@ -39,6 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
@@ -187,7 +191,9 @@ fun GalleryScreenContent(
     onSetActivePreview: (FullscreenState?) -> Unit,
     onSetShowInfoDialog: (MediaItem?) -> Unit,
     onSetShowOtgGuide: (Boolean) -> Unit,
-    previewCacheManager: PreviewCacheManager
+    previewCacheManager: PreviewCacheManager,
+    archiveState: ArchiveState = ArchiveState(),
+    restoreState: RestoreState = RestoreState()
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val context = LocalContext.current
@@ -309,6 +315,117 @@ fun GalleryScreenContent(
                 onConfirm = { viewModel.confirmDelete() },
                 onDismiss = { viewModel.dismissDelete() }
             )
+        }
+
+        if (archiveState.isArchiving) {
+            OperationProgressDialog(
+                title = "Архивирование на OTG...",
+                fileName = archiveState.currentFileName,
+                fileIndex = archiveState.currentFileIndex,
+                totalFiles = archiveState.totalFiles,
+                progressFraction = archiveState.progressFraction
+            )
+        }
+
+        if (restoreState.isRestoring) {
+            OperationProgressDialog(
+                title = "Восстановление файлов...",
+                fileName = restoreState.currentFileName,
+                fileIndex = restoreState.currentFileIndex,
+                totalFiles = restoreState.totalFiles,
+                progressFraction = restoreState.progressFraction
+            )
+        }
+
+        archiveState.error?.let { err ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissArchiveError() },
+                title = { Text("Ошибка архивирования") },
+                text = { Text(err) },
+                confirmButton = {
+                    Button(onClick = { viewModel.dismissArchiveError() }) {
+                        Text("ОК")
+                    }
+                }
+            )
+        }
+
+        restoreState.error?.let { err ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissRestoreError() },
+                title = { Text("Ошибка восстановления") },
+                text = { Text(err) },
+                confirmButton = {
+                    Button(onClick = { viewModel.dismissRestoreError() }) {
+                        Text("ОК")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun OperationProgressDialog(
+    title: String,
+    fileName: String,
+    fileIndex: Int,
+    totalFiles: Int,
+    progressFraction: Float
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = {}
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LinearProgressIndicator(
+                    progress = { progressFraction.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer,
+                    strokeCap = StrokeCap.Round
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Файл: $fileName",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Обработано: $fileIndex из $totalFiles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

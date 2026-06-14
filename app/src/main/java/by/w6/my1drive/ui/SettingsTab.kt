@@ -109,19 +109,18 @@ fun SettingsTab(
         Spacer(Modifier.height(16.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f))
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = "Как архивировать файлы:",
+                    text = "Информация о приложении",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleSmall
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "1. Перейдите на вкладку «Photos» (Фото) в меню снизу.\n2. Нажмите и удерживайте пальцем любое фото для выбора.\n3. В появившейся панели снизу нажмите кнопку «Archive to OTG» (Архивировать на OTG) для копирования.",
-                    style = MaterialTheme.typography.bodySmall,
-                    lineHeight = 16.sp
+                    text = "Версия: 1.0.0 (Первая версия)",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
