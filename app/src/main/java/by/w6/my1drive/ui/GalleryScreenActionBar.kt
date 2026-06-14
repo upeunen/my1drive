@@ -36,6 +36,8 @@ fun GalleryScreenActionBar(
     onArchive: () -> Unit,
     onRestore: () -> Unit
 ) {
+    val deleteEnabled = if (isArchiveTab) isOtgConnected else true
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -44,7 +46,8 @@ fun GalleryScreenActionBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextButton(
-            onClick = onDelete,
+            onClick = { if (deleteEnabled) onDelete() },
+            enabled = deleteEnabled,
             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
         ) {
             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -78,3 +81,4 @@ fun GalleryScreenActionBar(
         }
     }
 }
+

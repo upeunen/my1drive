@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.data.local
+package by.w6.my1drive.data.local
 
 import android.content.Context
 import androidx.room.Database
@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [MediaEntity::class],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,7 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        /** v1 ⑴' v2: added originalRelativePath column */
+        /** v1 › v2: added originalRelativePath column */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE media_archive ADD COLUMN originalRelativePath TEXT")
@@ -35,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                     .addMigrations(MIGRATION_1_2)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
@@ -42,3 +43,4 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
+

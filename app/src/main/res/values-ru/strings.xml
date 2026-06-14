@@ -154,4 +154,13 @@
     <!-- Синхронизация -->
     <string name="sync_archive_title">Синхронизация архива</string>
     <string name="sync_archive_progress">Синхронизация…</string>
+
+    <!-- Действия на полном экране -->
+    <string name="preview_delete">Удалить</string>
+    <string name="preview_will_be_deleted">Будет удалено при закрытии ✓</string>
+    <string name="preview_archive">Архивировать</string>
+    <string name="preview_restore">Восстановить</string>
+    <string name="preview_hint_swipe">Смахните вниз для закрытия</string>
+    <string name="preview_hint_zoom">Зажмите для масштаба</string>
+    <string name="deleted_on_close_toast">Удалено файлов: %1$d</string>
 </resources>

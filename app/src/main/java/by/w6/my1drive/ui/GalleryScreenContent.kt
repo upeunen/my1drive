@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -112,6 +114,56 @@ fun MissingFilesDialog(missingNames: List<String>, onDismiss: () -> Unit) {
 }
 
 @Composable
+fun DeleteConfirmDialog(
+    pendingDelete: List<MediaItem>,
+    isArchiveTab: Boolean,
+    isOtgConnected: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (pendingDelete.size == 1) stringResource(R.string.delete_confirm_title) else "${stringResource(R.string.delete_confirm_title)} (${pendingDelete.size})",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                if (pendingDelete.size == 1) {
+                    Text(stringResource(R.string.delete_confirm_msg, pendingDelete.first().displayName))
+                } else {
+                    Text("Delete ${pendingDelete.size} files?")
+                }
+                if (isArchiveTab) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.delete_archived_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(if (pendingDelete.size == 1) stringResource(R.string.btn_delete_otg) else "Delete all")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        }
+    )
+}
+
+@Composable
 fun GalleryScreenContent(
     modifier: Modifier,
     selectedIds: Set<String>,
@@ -135,6 +187,9 @@ fun GalleryScreenContent(
     onSetShowOtgGuide: (Boolean) -> Unit,
     previewCacheManager: PreviewCacheManager
 ) {
+    val pendingDelete by viewModel.pendingDelete.collectAsState()
+
+    // ... existing content ...
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             GooglePhotosTopBar(selectedCount = selectedIds.size, isOtgConnected = isOtgConnected, otgUriSet = otgDirectoryUri != null, onClearSelection = onClearSelection, onSelectOtgClick = onSelectOtgDirectory)
@@ -145,10 +200,10 @@ fun GalleryScreenContent(
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (currentScreenRoute) {
                     "photos" -> PhotosRoute(viewModel = viewModel, selectedIds = selectedIds, imageLoader = imageLoader, isOtgConnected = isOtgConnected,
-                        onItemClick = { item -> if (selectedIds.isNotEmpty()) viewModel.toggleSelection(item.id) else onSetShowInfoDialog(item) },
+                        onItemClick = { item -> if (selectedIds.isNotEmpty()) viewModel.toggleSelection(item.id) else onSetActivePreview(item) },
                         onItemLongClick = { item -> viewModel.toggleSelection(item.id) })
                     "archive" -> ArchiveRoute(viewModel = viewModel, selectedIds = selectedIds, imageLoader = imageLoader, isOtgConnected = isOtgConnected,
-                        onItemClick = { item -> if (selectedIds.isNotEmpty()) viewModel.toggleSelection(item.id) else onSetShowInfoDialog(item) },
+                        onItemClick = { item -> if (selectedIds.isNotEmpty()) viewModel.toggleSelection(item.id) else onSetActivePreview(item) },
                         onItemLongClick = { item -> viewModel.toggleSelection(item.id) })
                     "settings" -> {
                         val otgUri = otgDirectoryUri
@@ -167,7 +222,7 @@ fun GalleryScreenContent(
 
         showInfoDialogItem?.let { item ->
             InfoDialog(item = item, imageLoader = imageLoader ?: return@let, isOtgConnected = isOtgConnected,
-                onOpenFullscreen = { onSetActivePreview(item) }, onDeleteFile = { viewModel.deleteArchivedRecord(item) }, onDismiss = { onSetShowInfoDialog(null) })
+                onOpenFullscreen = { onSetActivePreview(item) }, onDismiss = { onSetShowInfoDialog(null) })
         }
 
         if (showOtgGuideDialog) {
@@ -179,7 +234,31 @@ fun GalleryScreenContent(
         }
 
         activePreviewItem?.let { item ->
-            FullscreenPreview(item = item, imageLoader = imageLoader ?: return@let, onClose = { onSetActivePreview(null) }, onShowInfo = { onSetShowInfoDialog(item) })
+            FullscreenPreview(
+                item = item,
+                imageLoader = imageLoader ?: return@let,
+                isOtgConnected = isOtgConnected,
+                otgDirectoryUri = otgDirectoryUri,
+                deferredDeleteIds = viewModel.deferredDeleteIds.collectAsState().value,
+                onClose = {
+                    viewModel.commitDeferredDeletes()
+                    onSetActivePreview(null)
+                },
+                onShowInfo = { onSetShowInfoDialog(item) },
+                onToggleDeferredDelete = { viewModel.toggleDeferredDelete(item.id) },
+                onArchiveSingle = { otgDirectoryUri?.let { uri -> viewModel.archiveSingleItem(item, uri) } },
+                onRestoreSingle = { viewModel.restoreSingleItem(item) }
+            )
+        }
+
+        pendingDelete?.let { items ->
+            DeleteConfirmDialog(
+                pendingDelete = items,
+                isArchiveTab = currentScreenRoute == "archive",
+                isOtgConnected = isOtgConnected,
+                onConfirm = { viewModel.confirmDelete() },
+                onDismiss = { viewModel.dismissDelete() }
+            )
         }
     }
 }

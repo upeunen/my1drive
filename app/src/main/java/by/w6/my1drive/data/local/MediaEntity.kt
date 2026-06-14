@@ -1,5 +1,6 @@
-﻿package by.w6.my1drive.data.local
+package by.w6.my1drive.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,5 +16,6 @@ data class MediaEntity(
     val thumbnailPath: String?,              // Local cache path: filesDir/my1drive_previews/{hash}.webp
     val duration: Long? = null,              // Video duration in ms
     val originalRelativePath: String? = null,// Original MediaStore RELATIVE_PATH (e.g. "DCIM/Camera")
+    @ColumnInfo(defaultValue = "0")
     val lastAccessed: Long = 0L              // Unix ms -- updated when preview is loaded (for LRU eviction)
 )

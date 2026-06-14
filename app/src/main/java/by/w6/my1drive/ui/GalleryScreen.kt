@@ -42,7 +42,8 @@ fun GalleryScreen(
     val isOtgConnected by viewModel.isOtgConnected.collectAsState()
     val missingFilesNotification by viewModel.missingFilesNotification.collectAsState()
     val autoSyncAddedCount by viewModel.autoSyncAddedCount.collectAsState()
-    val showRestorePicker by viewModel.showRestorePicker.collectAsState()
+    val restoreRequest by viewModel.restoreRequest.collectAsState()
+    val showRestorePicker = restoreRequest != null
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
     var activePreviewItem by remember { mutableStateOf<MediaItem?>(null) }
@@ -90,8 +91,8 @@ fun GalleryScreen(
                         isArchiveTab = currentScreenRoute == "archive",
                         isOtgConnected = isOtgConnected,
                         otgDirectoryUri = otgDirectoryUri,
-                        onDelete = { viewModel.deleteSelected() },
-                        onArchive = { viewModel.startArchiving() },
+                        onDelete = { viewModel.requestDeleteSelected() },
+                        onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
                         onRestore = { viewModel.requestRestore() }
                     )
                 }

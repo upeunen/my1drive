@@ -2,9 +2,6 @@ package by.w6.my1drive.utils
 
 import android.content.ContentValues
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -14,8 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import java.io.File
-import java.io.FileOutputStream
 import java.security.MessageDigest
 
 sealed class CopyVerifyResult {
@@ -206,7 +201,7 @@ class OtgArchiveUtil(private val context: Context) {
         }
     }.flowOn(Dispatchers.IO)
 
-    fun calculateSha256(uri: Uri): String {
+        fun calculateSha256(uri: Uri): String {
                 val digest = MessageDigest.getInstance("SHA-256")
         val stream = context.contentResolver.openInputStream(uri)
             ?: throw Exception("Failed to open stream for $uri")
@@ -219,75 +214,5 @@ class OtgArchiveUtil(private val context: Context) {
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
-    fun createThumbnail(uri: Uri, isVideo: Boolean): File? {
-        return try {
-            val bitmap: Bitmap? = if (isVideo) {
-                val retriever = MediaMetadataRetriever()
-                try {
-                    retriever.setDataSource(context, uri)
-                    val frame = retriever.frameAtTime
-                    if (frame != null) {
-                        val scaled = Bitmap.createScaledBitmap(frame, 512, (512 * frame.height / frame.width).coerceAtLeast(1), true)
-                        if (scaled != frame) {
-                            frame.recycle()
-                        }
-                        scaled
-                    } else null
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    null
-                } finally {
-                    retriever.release()
-                }
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    try {
-                        context.contentResolver.loadThumbnail(uri, android.util.Size(512, 512), null)
-                    } catch (e: Exception) {
-                        decodeBitmapFallback(uri)
-                    }
-                } else {
-                    decodeBitmapFallback(uri)
-                }
-            }
-
-            if (bitmap == null) return null
-
-            val thumbnailFile = File(context.filesDir, "thumb_${System.currentTimeMillis()}.jpg")
-            FileOutputStream(thumbnailFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
-            }
-            bitmap.recycle()
-            thumbnailFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-        private fun decodeBitmapFallback(uri: Uri): Bitmap? {
-        return try {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                BitmapFactory.decodeStream(input, null, options)
-                var scale = 1
-                while (options.outWidth / scale / 2 >= 512 && options.outHeight / scale / 2 >= 512) {
-                    scale *= 2
-                }
-                val options2 = BitmapFactory.Options().apply {
-                    inSampleSize = scale
-                }
-                context.contentResolver.openInputStream(uri)?.use { input2 ->
-                    BitmapFactory.decodeStream(input2, null, options2)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
     }
 }

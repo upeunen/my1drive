@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,8 +68,8 @@ fun PhotosGridTab(
                 items = groupedItems,
                 key = { item ->
                     when (item) {
-                        is GalleryItem.Header -> "header_"
-                        is GalleryItem.Media -> "media_"
+                        is GalleryItem.Header -> "header_${item.title}"
+                        is GalleryItem.Media -> "media_${item.item.id}"
                     }
                 },
                 span = { item ->

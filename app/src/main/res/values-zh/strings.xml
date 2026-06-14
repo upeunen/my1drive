@@ -1,120 +1,121 @@
 <resources>
     <string name="app_name">My1Drive</string>
-    <string name="tab_photos">照片</string>
-    <string name="tab_archive">归档</string>
-    <string name="tab_settings">设置</string>
+    <string name="tab_photos">Fotos</string>
+    <string name="tab_archive">Archivo</string>
+    <string name="tab_settings">Ajustes</string>
     
-    <string name="title_settings">设置</string>
-    <string name="storage_stats">存储统计</string>
-    <string name="on_phone">手机上：</string>
-    <string name="in_archive">OTG归档中：</string>
-    <string name="thumbnail_cache">缩略图缓存：</string>
-    <string name="room_db_wal">Room 数据库 WAL：</string>
-    <string name="status_active">活跃</string>
-    <string name="files_count">%1$d 个文件</string>
+    <string name="title_settings">Ajustes</string>
+    <string name="storage_stats">Estadísticas de almacenamiento</string>
+    <string name="on_phone">En el teléfono:</string>
+    <string name="in_archive">En archivo OTG:</string>
+    <string name="thumbnail_cache">Caché de miniaturas:</string>
+    <string name="room_db_wal">Base de datos Room WAL:</string>
+    <string name="status_active">ACTIVO</string>
+    <string name="files_count">%1$d archivos</string>
     
-    <string name="otg_archive_folder">OTG 归档文件夹</string>
-    <string name="drive_not_selected">未选择存储盘</string>
-    <string name="change_otg_folder">更改 OTG 文件夹</string>
-    <string name="select_otg_folder">选择 OTG 文件夹</string>
-    <string name="safe_eject">安全弹出</string>
-    <string name="quick_actions">快速操作</string>
-    <string name="clear_thumb_cache">清除缩略图缓存</string>
+    <string name="otg_archive_folder">Carpeta de archivo OTG</string>
+    <string name="drive_not_selected">Dispositivo no seleccionado</string>
+    <string name="change_otg_folder">Cambiar carpeta OTG</string>
+    <string name="select_otg_folder">Seleccionar carpeta OTG</string>
+    <string name="safe_eject">Expulsión segura</string>
+    <string name="quick_actions">Acciones rápidas</string>
+    <string name="clear_thumb_cache">Limpiar caché de miniaturas</string>
     
-    <string name="empty_category">此类别中没有媒体文件</string>
-    <string name="selected_count">已选择：%1$d</string>
-    <string name="archive_on_otg">归档到 OTG</string>
-    <string name="btn_ok">确定</string>
-    <string name="btn_cancel">取消</string>
-    <string name="btn_close">关闭</string>
-    <string name="error_title">错误</string>
+    <string name="empty_category">No hay archivos multimedia en esta categoría</string>
+    <string name="selected_count">Seleccionado: %1$d</string>
+    <string name="archive_on_otg">Archivar en OTG</string>
+    <string name="btn_ok">Aceptar</string>
+    <string name="btn_cancel">Cancelar</string>
+    <string name="btn_close">Cerrar</string>
+    <string name="error_title">Error</string>
     
-    <string name="archiving_title">备份到 OTG…</string>
-    <string name="archiving_title_count">备份到 OTG（第 %1$d 个，共 %2$d 个）…</string>
-    <string name="archiving_file">文件：%1$s</string>
+    <string name="archiving_title">Copia de seguridad en OTG…</string>
+    <string name="archiving_title_count">Copia de seguridad en OTG (%1$d de %2$d)…</string>
+    <string name="archiving_file">Archivo: %1$s</string>
     
-    <string name="otg_select_title">选择 USB OTG 存储盘</string>
-    <string name="otg_select_guide">为了安全归档，您必须使用系统文件选择器授予对 USB 存储盘根文件夹的访问权限。</string>
-    <string name="otg_guide_step1">使用 OTG 适配器连接 USB 存储盘。</string>
-    <string name="otg_guide_step2">在系统文件选择器中，选择您的 USB 存储盘。</string>
-    <string name="otg_guide_step3">点击屏幕底部的“使用此文件夹”或“允许访问”。</string>
-    <string name="otg_guide_step4">在弹出窗口中确认权限请求。</string>
-    <string name="btn_go_to_select">前往选择</string>
+    <string name="otg_select_title">Selección de dispositivo USB OTG</string>
+    <string name="otg_select_guide">Para un archivado seguro, debe otorgar acceso a la carpeta raíz de la unidad USB utilizando el selector de archivos del sistema.</string>
+    <string name="otg_guide_step1">Conecte la unidad USB utilizando un adaptador OTG.</string>
+    <string name="otg_guide_step2">En el selector de archivos del sistema, seleccione su unidad USB.</string>
+    <string name="otg_guide_step3">Haga clic en \"Usar esta carpeta\" o \"Permitir acceso\" en la parte inferior de la pantalla.</string>
+    <string name="otg_guide_step4">Confirme la solicitud de permiso en la ventana emergente.</string>
+    <string name="btn_go_to_select">Ir a selección</string>
     
-    <string name="file_info_title">文件信息</string>
-    <string name="info_name">名称：%1$s</string>
-    <string name="info_type">类型：%1$s</string>
-    <string name="info_size">大小：%1$s</string>
-    <string name="info_status">状态：%1$s</string>
-    <string name="status_on_device">在设备上</string>
-    <string name="status_archived">已在 OTG 归档中</string>
-    <string name="info_sha256">SHA-256 哈希值：</string>
-    <string name="info_otg_path">OTG 上的 SAF 路径：</string>
+    <string name="file_info_title">Información del archivo</string>
+    <string name="info_name">Nombre: %1$s</string>
+    <string name="info_type">Tipo: %1$s</string>
+    <string name="info_size">Tamaño: %1$s</string>
+    <string name="info_status">Estado: %1$s</string>
+    <string name="status_on_device">En dispositivo</string>
+    <string name="status_archived">En archivo OTG</string>
+    <string name="info_sha256">Hash SHA-256:</string>
+    <string name="info_otg_path">Ruta SAF en OTG:</string>
     
-    <string name="permission_required_toast">需要权限以访问媒体文件</string>
-    <string name="grant_permission_btn">授予权限</string>
-    <string name="otg_folder_selected_toast">成功选择 OTG 文件夹！</string>
-    <string name="otg_folder_error_toast">访问文件夹错误：%1$s</string>
-    <string name="eject_success_toast">应用中成功安全弹出 OTG 盘。现在您可以拔掉设备。</string>
+    <string name="permission_required_toast">Se requieren permisos para acceder a los archivos multimedia</string>
+    <string name="grant_permission_btn">Conceder permisos</string>
+    <string name="otg_folder_selected_toast">¡Carpeta OTG seleccionada correctamente!</string>
+    <string name="otg_folder_error_toast">Error al acceder a la carpeta: %1$s</string>
+    <string name="eject_success_toast">Dispositivo OTG expulsado de forma segura en la aplicación. Ya puede desconectarlo físicamente.</string>
     
     <!-- Progress messages -->
-    <string name="progress_preparing">准备中…</string>
-    <string name="progress_sha256">正在计算 SHA-256 校验和…</string>
-    <string name="progress_copying">正在复制到 OTG 盘…</string>
-    <string name="progress_copying_percent">正在复制… (%1$d%%)</string>
-    <string name="progress_verifying">正在验证完整性 (SHA-256)…</string>
-    <string name="progress_thumbnail">正在创建本地缩略图缓存…</string>
-    <string name="progress_deleting">正在删除原始文件…</string>
+    <string name="progress_preparing">Preparando…</string>
+    <string name="progress_sha256">Calculando la suma de comprobación SHA-256…</string>
+    <string name="progress_copying">Copiando a la unidad OTG…</string>
+    <string name="progress_copying_percent">Copiando… (%1$d%%)</string>
+    <string name="progress_verifying">Verificando integridad (SHA-256)…</string>
+    <string name="progress_thumbnail">Creando caché local de miniaturas…</string>
+    <string name="progress_deleting">Eliminando archivo original…</string>
     
     <!-- Error messages -->
-    <string name="error_sha256_failed">无法计算源文件的 SHA-256</string>
-    <string name="error_otg_access_failed">无法访问 OTG 文件夹</string>
-    <string name="error_otg_create_failed">无法在 OTG 盘上创建文件</string>
-    <string name="error_otg_write_failed">无法打开输出流写入 OTG 盘</string>
-    <string name="error_verification_failed">验证错误！校验和不匹配。</string>
-    <string name="error_delete_failed">复制后无法删除本地文件</string>
-    <string name="error_no_delete_permission">没有删除文件的权限：%1$s</string>
-    <string name="error_delete_completion_failed">无法完成删除：%1$s</string>
-    <string name="error_archive_item_failed">归档 %1$s 错误：%2$s</string>
+    <string name="error_sha256_failed">Error al calcular el hash SHA-256 del archivo de origen</string>
+    <string name="error_otg_access_failed">Error al acceder a la carpeta OTG</string>
+    <string name="error_otg_create_failed">Error al crear el archivo en la unidad OTG</string>
+    <string name="error_otg_write_failed">Error al abrir el flujo de escritura en la unidad OTG</string>
+    <string name="error_verification_failed">¡Error de verificación! Las sumas de comprobación no coinciden.</string>
+    <string name="error_delete_failed">Error al eliminar el archivo local después de copiar</string>
+    <string name="error_no_delete_permission">No hay permiso para eliminar el archivo: %1$s</string>
+    <string name="error_delete_completion_failed">Error al finalizar la eliminación: %1$s</string>
+    <string name="error_archive_item_failed">Error de archivo para %1$s: %2$s</string>
     
     <!-- Date groups -->
-    <string name="date_today">今天</string>
-    <string name="date_yesterday">昨天</string>
+    <string name="date_today">Hoy</string>
+    <string name="date_yesterday">Ayer</string>
 
     <!-- Photo Access and Security -->
-    <string name="title_photo_access">照片访问权限</string>
-    <string name="photo_access_partial_desc">应用仅能访问所选的照片和视频。您可以更新可访问的文件列表。</string>
-    <string name="photo_access_warning_desc">已授予部分访问权限。Android 可能会阻止未选择或云端文件的复制。建议在系统设置中允许完整访问。</string>
-    <string name="btn_manage_photos">选择更多照片</string>
-    <string name="error_media_access_denied">拒绝访问文件。如果该文件存储在云端备份中（例如 Google 相册），请先将其下载到设备上，或者确保应用具有权限。</string>
+    <string name="title_photo_access">Acceso a fotos</string>
+    <string name="photo_access_partial_desc">La aplicación solo tiene acceso a las fotos y videos seleccionados. Puede actualizar qué archivos son accesibles.</string>
+    <string name="photo_access_warning_desc">Se ha concedido acceso parcial. Android puede bloquear la copia de archivos no seleccionados o en la nube. Se recomienda permitir el acceso completo en los ajustes.</string>
+    <string name="btn_manage_photos">Seleccionar más fotos</string>
+    <string name="error_media_access_denied">Acceso denegado. Si este archivo está guardado en la nube (como Google Fotos), descárguelo primero en su dispositivo o asegúrese de que la aplicación tiene los permisos.</string>
 
-    <!-- 新归档 -->
-    <string name="new_archive_found_title">发现新归档</string>
-    <string name="new_archive_found_msg">在连接的驱动器上检测到不同的归档。是否要切换到此归档？</string>
-    <string name="btn_connect_to_archive">连接到归档</string>
+    <!-- Nuevo archivo -->
+    <string name="new_archive_found_title">Nuevo archivo encontrado</string>
+    <string name="new_archive_found_msg">Se ha detectado un archivo diferente en la unidad conectada. ¿Desea cambiar a este archivo?</string>
+    <string name="btn_connect_to_archive">Conectar al archivo</string>
 
-    <!-- 预览占位符 -->
-    <string name="preview_on_disk">预览在磁盘上</string>
-    <string name="preview_cached">预览（缓存）</string>
+    <!-- Vista previa -->
+    <string name="preview_on_disk">Vista previa en disco</string>
+    <string name="preview_cached">Vista previa (caché)</string>
 
-    <!-- 增强信息 -->
-    <string name="info_original_folder">原始文件夹：</string>
-    <string name="info_preview_path">预览缓存：</string>
-    <string name="info_archive_id">归档 ID：</string>
-    <string name="info_location">位置：</string>
-    <string name="info_location_device">📱 在设备上</string>
-    <string name="info_location_otg">💾 在归档中（OTG 驱动器）</string>
-    <string name="info_location_otg_disconnected">💾 在归档中（驱动器已断开）</string>
+    <!-- Info mejorada -->
+    <string name="info_original_folder">Carpeta original:</string>
+    <string name="info_preview_path">Caché de vista previa:</string>
+    <string name="info_archive_id">ID del archivo:</string>
+    <string name="info_location">Ubicación:</string>
+    <string name="info_location_device">📱 En el dispositivo</string>
+    <string name="info_location_otg">💾 En archivo (unidad OTG)</string>
+    <string name="info_location_otg_disconnected">💾 En archivo (unidad desconectada)</string>
 
-    <!-- 删除 -->
-    <string name="btn_delete_file">从设备删除</string>
-    <string name="btn_delete_otg">从归档删除</string>
-    <string name="delete_confirm_title">删除文件？</string>
-    <string name="delete_confirm_msg">您确定要删除"%1$s"吗？此操作无法撤消。</string>
-    <string name="delete_archived_warning">OTG 驱动器上的原始文件将保留。只会删除数据库记录。</string>
-    <string name="preview_not_deletable">预览不能单独删除</string>
+    <!-- Eliminar -->
+    <string name="btn_delete_file">Eliminar del dispositivo</string>
+    <string name="btn_delete_otg">Eliminar del archivo</string>
+    <string name="delete_confirm_title">¿Eliminar archivo?</string>
+    <string name="delete_confirm_msg">¿Está seguro de que desea eliminar \"%1$s\"? Esta acción no se puede deshacer.</string>
+    <string name="delete_archived_warning">El original en la unidad OTG permanecerá. Solo se eliminará el registro de la base de datos.</string>
+    <string name="preview_not_deletable">Las vistas previas no se pueden eliminar por separado</string>
+    <string name="delete_otg_needs_connection">Conecte la unidad OTG para eliminar archivos del archivo</string>
 
-    <!-- 同步 -->
-    <string name="sync_archive_title">同步归档</string>
-    <string name="sync_archive_progress">正在同步…</string>
+    <!-- Sincronización -->
+    <string name="sync_archive_title">Sincronizar archivo</string>
+    <string name="sync_archive_progress">Sincronizando…</string>
 </resources>

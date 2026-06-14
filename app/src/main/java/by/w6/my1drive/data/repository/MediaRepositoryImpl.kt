@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.data.repository
+package by.w6.my1drive.data.repository
 
 import android.content.ContentUris
 import android.content.Context
@@ -112,96 +112,102 @@ class MediaRepositoryImpl(
 
     private fun queryLocalMediaStore(): List<MediaItem> {
         val list = mutableListOf<MediaItem>()
-        val contentResolver = context.contentResolver
+        try {
+            val contentResolver = context.contentResolver
 
-        val collections = listOf(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI to true,
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI to false
-        )
-
-        for ((collection, isImage) in collections) {
-            val projection = mutableListOf(
-                MediaStore.MediaColumns._ID,
-                MediaStore.MediaColumns.DISPLAY_NAME,
-                MediaStore.MediaColumns.MIME_TYPE,
-                MediaStore.MediaColumns.SIZE,
-                MediaStore.MediaColumns.DATE_MODIFIED
-            )
-            if (!isImage) {
-                projection.add(MediaStore.Video.VideoColumns.DURATION)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                projection.add(MediaStore.MediaColumns.IS_PENDING)
-                projection.add(MediaStore.MediaColumns.RELATIVE_PATH)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                projection.add(MediaStore.MediaColumns.IS_TRASHED)
-            }
-
-            val query = contentResolver.query(
-                collection,
-                projection.toTypedArray(),
-                null,
-                null,
-                "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+            val collections = listOf(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI to true,
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI to false
             )
 
-            query?.use { cursor ->
-                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                val mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
-                val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
-                val durationColumn = if (!isImage) {
-                    cursor.getColumnIndex(MediaStore.Video.VideoColumns.DURATION)
-                } else -1
-                val isPendingColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.MediaColumns.IS_PENDING)
-                } else -1
-                val isTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
-                } else -1
-                val relativePathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
-                } else -1
+            for ((collection, isImage) in collections) {
+                val projection = mutableListOf(
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.MIME_TYPE,
+                    MediaStore.MediaColumns.SIZE,
+                    MediaStore.MediaColumns.DATE_MODIFIED
+                )
+                if (!isImage) {
+                    projection.add(MediaStore.Video.VideoColumns.DURATION)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    projection.add(MediaStore.MediaColumns.IS_PENDING)
+                    projection.add(MediaStore.MediaColumns.RELATIVE_PATH)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    projection.add(MediaStore.MediaColumns.IS_TRASHED)
+                }
 
-                while (cursor.moveToNext()) {
-                    if (isPendingColumn != -1 && cursor.getInt(isPendingColumn) != 0) {
-                        continue
-                    }
-                    if (isTrashedColumn != -1 && cursor.getInt(isTrashedColumn) != 0) {
-                        continue
-                    }
+                val query = contentResolver.query(
+                    collection,
+                    projection.toTypedArray(),
+                    null,
+                    null,
+                    "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+                )
 
-                    val id = cursor.getLong(idColumn)
-                    val name = cursor.getString(nameColumn) ?: "Unnamed"
-                    val mimeType = cursor.getString(mimeColumn) ?: (if (isImage) "image/jpeg" else "video/mp4")
-                    val size = cursor.getLong(sizeColumn)
-                    val dateModified = cursor.getLong(dateColumn)
-                    val duration = if (!isImage && durationColumn != -1) {
-                        cursor.getLong(durationColumn)
-                    } else null
-                    val relativePath = if (relativePathColumn != -1) {
-                        cursor.getString(relativePathColumn)
-                    } else null
+                query?.use { cursor ->
+                    val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                    val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                    val mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                    val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                    val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                    val durationColumn = if (!isImage) {
+                        cursor.getColumnIndex(MediaStore.Video.VideoColumns.DURATION)
+                    } else -1
+                    val isPendingColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.MediaColumns.IS_PENDING)
+                    } else -1
+                    val isTrashedColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
+                    } else -1
+                    val relativePathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                    } else -1
 
-                    val contentUri = ContentUris.withAppendedId(collection, id)
+                    while (cursor.moveToNext()) {
+                        if (isPendingColumn != -1 && cursor.getInt(isPendingColumn) != 0) {
+                            continue
+                        }
+                        if (isTrashedColumn != -1 && cursor.getInt(isTrashedColumn) != 0) {
+                            continue
+                        }
 
-                    list.add(
-                        MediaItem(
-                            id = "local_$id",
-                            displayName = name,
-                            uri = contentUri,
-                            mimeType = mimeType,
-                            size = size,
-                            dateModified = dateModified,
-                            status = MediaStatus.ON_DEVICE,
-                            duration = duration,
-                            originalRelativePath = relativePath
+                        val id = cursor.getLong(idColumn)
+                        val name = cursor.getString(nameColumn) ?: "Unnamed"
+                        val mimeType = cursor.getString(mimeColumn) ?: (if (isImage) "image/jpeg" else "video/mp4")
+                        val size = cursor.getLong(sizeColumn)
+                        val dateModified = cursor.getLong(dateColumn)
+                        val duration = if (!isImage && durationColumn != -1) {
+                            cursor.getLong(durationColumn)
+                        } else null
+                        val relativePath = if (relativePathColumn != -1) {
+                            cursor.getString(relativePathColumn)
+                        } else null
+
+                        val contentUri = ContentUris.withAppendedId(collection, id)
+
+                        list.add(
+                            MediaItem(
+                                id = "local_$id",
+                                displayName = name,
+                                uri = contentUri,
+                                mimeType = mimeType,
+                                size = size,
+                                dateModified = dateModified,
+                                status = MediaStatus.ON_DEVICE,
+                                duration = duration,
+                                originalRelativePath = relativePath
+                            )
                         )
-                    )
+                    }
                 }
             }
+        } catch (e: SecurityException) {
+            // Permissions not granted yet
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         return list.sortedByDescending { it.dateModified }

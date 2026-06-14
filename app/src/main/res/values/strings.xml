@@ -150,8 +150,18 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="delete_confirm_msg">Are you sure you want to delete \"%1$s\"? This action cannot be undone.</string>
     <string name="delete_archived_warning">The original on the OTG drive will remain. Only the database record will be removed.</string>
     <string name="preview_not_deletable">Previews cannot be deleted separately</string>
+    <string name="delete_otg_needs_connection">Connect the OTG drive to delete files from the archive</string>
 
     <!-- Sync -->
     <string name="sync_archive_title">Synchronize Archive</string>
     <string name="sync_archive_progress">Synchronizing…</string>
+
+    <!-- Fullscreen Preview Actions -->
+    <string name="preview_delete">Delete</string>
+    <string name="preview_will_be_deleted">Will be deleted on close ✓</string>
+    <string name="preview_archive">Archive</string>
+    <string name="preview_restore">Restore</string>
+    <string name="preview_hint_swipe">Swipe down to close</string>
+    <string name="preview_hint_zoom">Pinch to zoom</string>
+    <string name="deleted_on_close_toast">Deleted %1$d file(s)</string>
 </resources>

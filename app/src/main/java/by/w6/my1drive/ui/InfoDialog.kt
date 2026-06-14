@@ -3,7 +3,6 @@
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.AlertDialog
@@ -67,14 +65,12 @@ fun InfoDialog(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     onOpenFullscreen: () -> Unit,
-    onDeleteFile: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val sizeMb = remember(item.size) {
         String.format(Locale.US, "%.2f MB", item.size.toFloat() / (1024 * 1024))
     }
     val context = LocalContext.current
-    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -264,29 +260,6 @@ fun InfoDialog(
                         fontSize = 10.sp
                     )
                 }
-
-                // ── Delete button (files can be deleted, previews cannot) ──
-                if (item.status == MediaStatus.ARCHIVED_OTG) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { showDeleteConfirm = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.btn_delete_otg))
-                    }
-                    Text(
-                        text = stringResource(R.string.preview_not_deletable),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                    )
-                }
             }
         },
         confirmButton = {
@@ -302,47 +275,4 @@ fun InfoDialog(
         }
     )
 
-    // Delete confirmation sub-dialog
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(28.dp)
-                )
-            },
-            title = { Text(stringResource(R.string.delete_confirm_title), fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text(stringResource(R.string.delete_confirm_msg, item.displayName))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.delete_archived_warning),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteConfirm = false
-                        onDeleteFile()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(R.string.btn_delete_otg))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text(stringResource(R.string.btn_cancel))
-                }
-            }
-        )
-    }
 }
-

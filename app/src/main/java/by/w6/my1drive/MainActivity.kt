@@ -1,4 +1,6 @@
-﻿package by.w6.my1drive
+package by.w6.my1drive
+
+
 
 import android.Manifest
 import android.content.BroadcastReceiver
@@ -35,6 +37,19 @@ import androidx.core.content.ContextCompat
 import by.w6.my1drive.ui.GalleryScreen
 import by.w6.my1drive.ui.GalleryViewModel
 import by.w6.my1drive.ui.theme.My1DriveTheme
+import java.io.File
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.text.font.FontFamily
 
 class MainActivity : ComponentActivity() {
 
@@ -42,20 +57,7 @@ class MainActivity : ComponentActivity() {
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
 
-    private val usbReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                UsbManager.ACTION_USB_DEVICE_ATTACHED,
-                UsbManager.ACTION_USB_DEVICE_DETACHED,
-                Intent.ACTION_MEDIA_MOUNTED,
-                Intent.ACTION_MEDIA_REMOVED,
-                Intent.ACTION_MEDIA_EJECT,
-                Intent.ACTION_MEDIA_UNMOUNTED -> {
-                    viewModel.updateOtgStatus()
-                }
-            }
-        }
-    }
+
 
     private val deletePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -95,11 +97,11 @@ class MainActivity : ComponentActivity() {
                 viewModel.restoreToChosenFolder(uri)
             } catch (e: Exception) {
                 Toast.makeText(this, getString(R.string.otg_folder_error_toast, e.localizedMessage), Toast.LENGTH_LONG).show()
-                viewModel.dismissRestorePicker()
+                viewModel.dismissRestoreRequest()
+                }
+            } else {
+                viewModel.dismissRestoreRequest()
             }
-        } else {
-            viewModel.dismissRestorePicker()
-        }
     }
 
     /** Returns a URI hint pointing to the phone's internal storage root for OpenDocumentTree */
@@ -125,6 +127,121 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val crashLogFile = File(filesDir, "crash_log.txt")
+
+        // Глобальный обработчик необработанных исключений
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                crashLogFile.writeText(
+                    """
+                    Timestamp: ${java.util.Date()}
+                    Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (API ${android.os.Build.VERSION.SDK_INT})
+                    App Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})
+                    Thread: ${thread.name}
+                    
+                    Stacktrace:
+                    ${throwable.stackTraceToString()}
+                    """.trimIndent()
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+
+        if (crashLogFile.exists()) {
+            val crashContent = try {
+                crashLogFile.readText()
+            } catch (e: Exception) {
+                "Failed to read crash log: ${e.localizedMessage}"
+            }
+
+            setContent {
+                My1DriveTheme {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "Application Crash Detected",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                LazyColumn(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    item {
+                                        Text(
+                                            text = crashContent,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        val clip = android.content.ClipData.newPlainText("Crash Log", crashContent)
+                                        clipboard.setPrimaryClip(clip)
+                                        Toast.makeText(this@MainActivity, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Copy Log")
+                                }
+                                Button(
+                                    onClick = {
+                                        try {
+                                            crashLogFile.delete()
+                                            deleteDatabase("my1drive.db")
+                                            val dbFile = getDatabasePath("my1drive.db")
+                                            try { File(dbFile.path + "-wal").delete() } catch (_: Exception) {}
+                                            try { File(dbFile.path + "-shm").delete() } catch (_: Exception) {}
+                                            getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+                                                .edit()
+                                                .clear()
+                                                .commit()
+                                            val intent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                            }
+                                            startActivity(intent)
+                                            Runtime.getRuntime().exit(0)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(this@MainActivity, "Reset failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text("Reset App")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return
+        }
+
         enableEdgeToEdge()
         updatePermissionStates()
 
@@ -194,35 +311,10 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         updatePermissionStates()
 
-        val filter = IntentFilter().apply {
-            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
-            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-            addAction(Intent.ACTION_MEDIA_MOUNTED)
-            addAction(Intent.ACTION_MEDIA_REMOVED)
-            addAction(Intent.ACTION_MEDIA_EJECT)
-            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
-            addDataScheme("file")
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(usbReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(usbReceiver, filter)
-        }
-
         viewModel.updateOtgStatus()
 
         if (hasPermissions || hasPartialAccess) {
             viewModel.refresh()
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        try {
-            unregisterReceiver(usbReceiver)
-        } catch (e: Exception) {
-            // Ignore if not registered
         }
     }
 
