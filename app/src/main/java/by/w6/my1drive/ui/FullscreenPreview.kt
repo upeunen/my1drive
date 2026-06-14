@@ -10,8 +10,6 @@ import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.calculateRotation
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.positionChanged
@@ -79,6 +77,7 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 @Composable
@@ -320,29 +319,87 @@ private fun ImagePage(item: MediaItem, imageLoader: ImageLoader) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(zoomScale) {
-                detectZoomPanGestures(
-                    zoomScale = zoomScale,
-                    onGesture = { _, panChange, zoomChange, _ ->
-                        zoomScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val firstDown = awaitFirstDown()
+                    var wasDoubleTap = false
+
+                    // Check for double tap: wait a bit for a second tap
+                    val secondDown = withTimeoutOrNull(250L) {
+                        awaitFirstDown(requireUnconsumed = false)
+                    }
+                    if (secondDown != null) {
+                        // Double tap detected
+                        wasDoubleTap = true
+                        val tapOffset = secondDown.position
                         if (zoomScale > 1f) {
-                            zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-2000f, 2000f)
-                            zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-2000f, 2000f)
-                        } else {
+                            zoomScale = 1f
                             zoomOffsetX = 0f
                             zoomOffsetY = 0f
+                        } else {
+                            zoomScale = 3f
+                            zoomOffsetX = (tapOffset.x * 2f).coerceIn(-1000f, 1000f)
+                            zoomOffsetY = (tapOffset.y * 2f).coerceIn(-1000f, 1000f)
                         }
+                        // Consume the rest of the second tap
+                        val up = awaitPointerEvent()
+                        up.changes.forEach { if (it.pressed) it.consume() }
                     }
-                )
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        zoomScale = 1f
-                        zoomOffsetX = 0f
-                        zoomOffsetY = 0f
+
+                    if (!wasDoubleTap) {
+                        // Track multi-touch gestures (zoom + pan)
+                        var zoom = 1f
+                        var pan = Offset.Zero
+                        var pastTouchSlop = false
+                        val touchSlop = viewConfiguration.touchSlop
+
+                        do {
+                            val event = awaitPointerEvent()
+                            val canceled = event.changes.any { it.isConsumed }
+                            if (!canceled) {
+                                val zoomChange = event.calculateZoom()
+                                val panChange = event.calculatePan()
+
+                                if (!pastTouchSlop) {
+                                    zoom *= zoomChange
+                                    pan += panChange
+                                    val panMotion = pan.getDistance()
+                                    val zoomMotion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
+                                    if (event.changes.size > 1 || zoomScale > 1f) {
+                                        if (zoomMotion > touchSlop || panMotion > touchSlop) {
+                                            pastTouchSlop = true
+                                        }
+                                    }
+                                }
+
+                                if (pastTouchSlop) {
+                                    val centroid = event.calculateCentroid(useCurrent = false)
+                                    val newScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+                                    if (newScale != zoomScale) {
+                                        val scaleChange = newScale / zoomScale
+                                        zoomOffsetX = centroid.x - scaleChange * (centroid.x - zoomOffsetX)
+                                        zoomOffsetY = centroid.y - scaleChange * (centroid.y - zoomOffsetY)
+                                    }
+                                    zoomScale = newScale
+
+                                    if (zoomScale > 1f) {
+                                        val maxPanX = (zoomScale - 1f) * 500f
+                                        val maxPanY = (zoomScale - 1f) * 500f
+                                        zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, maxPanX)
+                                        zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, maxPanY)
+                                    } else {
+                                        zoomOffsetX = 0f
+                                        zoomOffsetY = 0f
+                                    }
+
+                                    event.changes.forEach {
+                                        if (it.positionChanged()) it.consume()
+                                    }
+                                }
+                            }
+                        } while (!canceled && event.changes.any { it.pressed })
                     }
-                )
+                }
             }
             .graphicsLayer(
                 scaleX = zoomScale,
@@ -473,67 +530,3 @@ private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(conte
     }
 }
 
-suspend fun PointerInputScope.detectZoomPanGestures(
-    zoomScale: Float,
-    panZoomLock: Boolean = false,
-    onGesture: (centroid: Offset, pan: Offset, zoom: Float, rotation: Float) -> Unit
-) {
-    awaitEachGesture {
-        var rotation = 0f
-        var zoom = 1f
-        var pan = Offset.Zero
-        var pastTouchSlop = false
-        val touchSlop = viewConfiguration.touchSlop
-        var lockedToPanZoom = false
-
-        awaitFirstDown(requireUnconsumed = false)
-        do {
-            val event = awaitPointerEvent()
-            val canceled = event.changes.any { it.isConsumed }
-            if (!canceled) {
-                val zoomChange = event.calculateZoom()
-                val panChange = event.calculatePan()
-                val rotationChange = event.calculateRotation()
-
-                val pointerCount = event.changes.size
-                val canTriggerGesture = zoomScale > 1f || pointerCount > 1
-
-                if (!pastTouchSlop) {
-                    zoom *= zoomChange
-                    rotation += rotationChange
-                    pan += panChange
-
-                    val centroidSize = event.calculateCentroidSize(useCurrent = false)
-                    val zoomMotion = abs(1 - zoom) * centroidSize
-                    val rotationMotion = abs(rotation) * centroidSize
-                    val panMotion = pan.getDistance()
-
-                    if (canTriggerGesture && (
-                        zoomMotion > touchSlop ||
-                        rotationMotion > touchSlop ||
-                        panMotion > touchSlop
-                    )) {
-                        pastTouchSlop = true
-                        lockedToPanZoom = panZoomLock && (zoomMotion > touchSlop || rotationMotion > touchSlop)
-                    }
-                }
-
-                if (pastTouchSlop && canTriggerGesture) {
-                    val centroid = event.calculateCentroid(useCurrent = false)
-                    val effectiveRotation = if (lockedToPanZoom) 0f else rotationChange
-                    if (effectiveRotation != 0f ||
-                        zoomChange != 1f ||
-                        panChange != Offset.Zero
-                    ) {
-                        onGesture(centroid, panChange, zoomChange, effectiveRotation)
-                    }
-                    event.changes.forEach {
-                        if (it.positionChanged()) {
-                            it.consume()
-                        }
-                    }
-                }
-            }
-        } while (!canceled && event.changes.any { it.pressed })
-    }
-}
