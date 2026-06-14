@@ -1,0 +1,175 @@
+<resources>
+    <string name="app_name">My1Drive</string>
+    <string name="tab_photos">写真</string>
+    <string name="tab_archive">アーカイブ</string>
+    <string name="tab_settings">設定</string>
+    
+    <string name="title_settings">設定</string>
+    <string name="storage_stats">ストレージ統計</string>
+    <string name="on_phone">端末内：</string>
+    <string name="in_archive">OTGアーカイブ内：</string>
+    <string name="thumbnail_cache">サムネイルキャッシュ：</string>
+    <string name="room_db_wal">RoomデータベースWAL：</string>
+    <string name="status_active">アクティブ</string>
+    <string name="files_count">%1$dファイル</string>
+    
+    <string name="otg_archive_folder">OTGアーカイブフォルダ</string>
+    <string name="drive_not_selected">ドライブ未選択</string>
+    <string name="change_otg_folder">OTGフォルダを変更</string>
+    <string name="select_otg_folder">OTGフォルダを選択</string>
+    <string name="safe_eject">安全な取り出し</string>
+    <string name="quick_actions">クイックアクション</string>
+    <string name="clear_thumb_cache">サムネイルキャッシュを消去</string>
+    
+    <string name="empty_category">このカテゴリにメディアファイルはありません</string>
+    <string name="selected_count">選択中: %1$d</string>
+    <string name="archive_on_otg">OTGにアーカイブ</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">キャンセル</string>
+    <string name="btn_close">閉じる</string>
+    <string name="error_title">エラー</string>
+    
+    <string name="archiving_title">OTGにバックアップ中…</string>
+    <string name="archiving_title_count">OTGにバックアップ中 (%1$d/%2$d)…</string>
+    <string name="archiving_file">ファイル: %1$s</string>
+    
+    <string name="otg_select_title">USB OTGドライブの選択</string>
+    <string name="otg_select_guide">安全にアーカイブするには、システムのファイルピッカーを使用してUSBドライブのルートフォルダへのアクセスを許可する必要があります。</string>
+    <string name="otg_guide_step1">OTGアダプタを使用してUSBドライブを接続します。</string>
+    <string name="otg_guide_step2">システムのファイルピッカーでUSBドライブを選択します。</string>
+    <string name="otg_guide_step3">画面下部の「このフォルダを使用」または「アクセスを許可」をクリックします。</string>
+    <string name="otg_guide_step4">ポップアップウィンドウで権限リクエストを確認します。</string>
+    <string name="btn_go_to_select">選択画面へ</string>
+    
+    <string name="file_info_title">ファイル情報</string>
+    <string name="info_name">名前: %1$s</string>
+    <string name="info_type">種類: %1$s</string>
+    <string name="info_size">サイズ: %1$s</string>
+    <string name="info_status">ステータス: %1$s</string>
+    <string name="status_on_device">端末上</string>
+    <string name="status_archived">OTGアーカイブ内</string>
+    <string name="info_sha256">SHA-256ハッシュ：</string>
+    <string name="info_otg_path">OTG上のSAFパス：</string>
+    
+    <string name="permission_required_toast">メディアファイルにアクセスするには権限が必要です</string>
+    <string name="grant_permission_btn">権限を付与</string>
+    <string name="otg_folder_selected_toast">OTGフォルダが正常に選択されました！</string>
+    <string name="otg_folder_error_toast">フォルダへのアクセスエラー: %1$s</string>
+    <string name="eject_success_toast">OTGドライブがアプリ内で安全に取り出されました。デバイスを物理的に取り外せます。</string>
+    
+    <!-- Progress messages -->
+    <string name="progress_preparing">準備中…</string>
+    <string name="progress_sha256">SHA-256チェックサムを計算中…</string>
+    <string name="progress_copying">OTGドライブにコピー中…</string>
+    <string name="progress_copying_percent">コピー中… (%1$d%%)</string>
+    <string name="progress_verifying">整合性を検証中 (SHA-256)…</string>
+    <string name="progress_thumbnail">ローカルサムネイルキャッシュを作成中…</string>
+    <string name="progress_deleting">元のファイルを削除中…</string>
+    
+    <!-- Error messages -->
+    <string name="error_sha256_failed">ソースファイルのSHA-256計算に失敗しました</string>
+    <string name="error_otg_access_failed">OTGフォルダへのアクセスに失敗しました</string>
+    <string name="error_otg_create_failed">OTGドライブにファイルを作成できませんでした</string>
+    <string name="error_otg_write_failed">OTGドライブへの書き込みストリームを開けませんでした</string>
+    <string name="error_verification_failed">検証エラー！チェックサムが一致しません。</string>
+    <string name="error_delete_failed">コピー後のローカルファイルの削除に失敗しました</string>
+    <string name="error_no_delete_permission">ファイルを削除する権限がありません: %1$s</string>
+    <string name="error_delete_completion_failed">削除の完了に失敗しました: %1$s</string>
+    <string name="error_archive_item_failed">%1$s のアーカイブエラー: %2$s</string>
+    
+    <!-- Restore (復元) -->
+    <string name="restore_from_otg">OTGから復元</string>
+    <string name="restoring_title">OTGから復元中…</string>
+    <string name="restoring_title_count">OTGから復元中 (%1$d/%2$d)…</string>
+    <string name="restoring_file">ファイル: %1$s</string>
+    <string name="restore_progress_preparing">復元の準備中…</string>
+    <string name="restore_progress_reading">OTGから読み取り中…</string>
+    <string name="restore_progress_writing">端末に書き込み中…</string>
+    <string name="restore_progress_verifying">検証中 (SHA-256)…</string>
+    <string name="restore_success_title">復元完了</string>
+    <string name="restore_success_msg">選択したすべてのファイルが端末に復元されました。</string>
+    <string name="restore_error_title">復元エラー</string>
+    <string name="restore_ask_title">復元先</string>
+    <string name="restore_ask_original">元のフォルダに復元: %1$s</string>
+    <string name="restore_ask_choose">他のフォルダを選択…</string>
+    <string name="restore_need_folder_msg">元の保存先が不明です。復元先のフォルダを選択してください。</string>
+    <string name="setting_ask_restore_path">復元先を確認する</string>
+    <string name="setting_ask_restore_path_desc">ON：常に復元先（元のフォルダか別の場所か）を確認します。OFF：自動的に元のパスに復元します（不明な場合は確認します）。</string>
+
+    <!-- Drive status -->
+    <string name="drive_unknown_connected">🔴 このドライブにアーカイブが見つかりません</string>
+    <string name="drive_known_disconnected">🔴 OTGドライブが切断されました</string>
+    <string name="drive_known_connected">🟢 アーカイブドライブ接続済み</string>
+    
+    <!-- Auto-sync -->
+    <string name="auto_sync_missing_title">アーカイブからファイルが消失しました！</string>
+    <string name="auto_sync_missing_msg">以下のファイルがOTGドライブ上で見つからなくなりました：
+    
+%1$s
+
+データベースのレコードは残っています。正しいドライブを接続してアクセスを復元してください。</string>
+    <string name="auto_sync_added_toast">自動同期: %1$dファイルを追加しました</string>
+
+    <!-- Date groups -->
+    <string name="date_today">今日</string>
+    <string name="date_yesterday">昨日</string>
+
+    <!-- Photo Access and Security -->
+    <string name="title_photo_access">写真アクセス</string>
+    <string name="photo_access_partial_desc">アプリは選択された写真とビデオにのみアクセスできます。アクセス可能なファイルを更新できます。</string>
+    <string name="photo_access_warning_desc">部分的なアクセスが許可されています。Androidは未選択のファイルやクラウドファイルのコピー操作をブロックする場合があります。最適なパフォーマンスのため、設定で「すべて許可」を付与してください。</string>
+    <string name="btn_manage_photos">写真をさらに選択</string>
+    <string name="error_media_access_denied">アクセスが拒否されました。このファイルがクラウド（Googleフォトなど）に保存されている場合は、端末にダウンロードするか、アプリの権限を確認してください。</string>
+    <string name="partial_access_banner_title">⚠️ 制限付きアクセス</string>
+    <string name="partial_access_banner_desc">アプリは選択された写真にのみアクセスできます。一部のファイルはアーカイブに利用できない場合があります。</string>
+    <string name="btn_grant_full_access">フルアクセスを許可</string>
+    <string name="btn_open_settings">設定を開く</string>
+
+    <!-- New archive detection -->
+    <string name="new_archive_found_title">新しいアーカイブを発見</string>
+    <string name="new_archive_found_msg">接続されたドライブに別のアーカイブが検出されました。このアーカイブに切り替えますか？</string>
+    <string name="btn_connect_to_archive">アーカイブに接続</string>
+
+    <!-- Preview placeholders -->
+    <string name="preview_on_disk">ディスク上のプレビュー</string>
+    <string name="preview_cached">プレビュー（キャッシュ）</string>
+
+    <!-- Enhanced Info Dialog -->
+    <string name="info_original_folder">元のフォルダ：</string>
+    <string name="info_preview_path">プレビューキャッシュ：</string>
+    <string name="info_archive_id">アーカイブID：</string>
+    <string name="info_location">場所：</string>
+    <string name="info_location_device">📱 端末上</string>
+    <string name="info_location_otg">💾 アーカイブ内（OTGドライブ）</string>
+    <string name="info_location_otg_disconnected">💾 アーカイブ内（ドライブ切断）</string>
+
+    <!-- Delete -->
+    <string name="btn_delete_file">端末から削除</string>
+    <string name="btn_delete_otg">アーカイブから削除</string>
+    <string name="delete_confirm_title">ファイルを削除しますか？</string>
+    <string name="delete_confirm_msg">「%1$s」を削除してもよろしいですか？この操作は元に戻せません。</string>
+    <string name="delete_archived_warning">OTGドライブ上のオリジナルは残ります。データベースのレコードのみが削除されます。</string>
+    <string name="preview_not_deletable">プレビューは個別に削除できません</string>
+    <string name="delete_otg_needs_connection">OTGドライブを接続してアーカイブからファイルを削除してください</string>
+
+    <!-- Sync -->
+    <string name="sync_archive_title">アーカイブを同期</string>
+    <string name="sync_archive_progress">同期中…</string>
+
+    <!-- Fullscreen Preview Actions -->
+    <string name="preview_delete">削除</string>
+    <string name="preview_will_be_deleted">閉じると削除されます ✓</string>
+    <string name="preview_archive">アーカイブ</string>
+    <string name="preview_restore">復元</string>
+    <string name="preview_hint_swipe">下にスワイプして閉じる</string>
+    <string name="preview_hint_zoom">ピンチでズーム</string>
+    <string name="deleted_on_close_toast">%1$dファイルを削除しました</string>
+    <string name="preview_source_device">端末</string>
+
+    <!-- Action bar / selection mode -->
+    <string name="action_delete">削除</string>
+    <string name="action_delete_all">すべて削除</string>
+    <string name="action_delete_files_question">%1$dファイルを削除しますか？</string>
+    <string name="action_delete_from_archive">アーカイブから削除</string>
+    <string name="action_properties">プロパティ</string>
+</resources>

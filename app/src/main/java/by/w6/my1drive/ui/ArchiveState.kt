@@ -30,6 +30,7 @@ data class ArchiveState(
     val progressFraction: Float = 0f,
     val totalFiles: Int = 0,
     val currentFileIndex: Int = 0,
+    val pendingQueueSize: Int = 0,
     val error: String? = null
 )
 

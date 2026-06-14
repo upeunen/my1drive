@@ -1,0 +1,175 @@
+<resources>
+    <string name="app_name">My1Drive</string>
+    <string name="tab_photos">Fotos</string>
+    <string name="tab_archive">Archiv</string>
+    <string name="tab_settings">Einstellungen</string>
+    
+    <string name="title_settings">Einstellungen</string>
+    <string name="storage_stats">Speicherstatistik</string>
+    <string name="on_phone">Auf dem Telefon:</string>
+    <string name="in_archive">Im OTG-Archiv:</string>
+    <string name="thumbnail_cache">Thumbnail-Cache:</string>
+    <string name="room_db_wal">Room-Datenbank WAL:</string>
+    <string name="status_active">AKTIV</string>
+    <string name="files_count">%1$d Dateien</string>
+    
+    <string name="otg_archive_folder">OTG-Archivordner</string>
+    <string name="drive_not_selected">Kein Laufwerk ausgewählt</string>
+    <string name="change_otg_folder">OTG-Ordner ändern</string>
+    <string name="select_otg_folder">OTG-Ordner auswählen</string>
+    <string name="safe_eject">Sicheres Entfernen</string>
+    <string name="quick_actions">Schnellaktionen</string>
+    <string name="clear_thumb_cache">Thumbnail-Cache leeren</string>
+    
+    <string name="empty_category">Keine Mediendateien in dieser Kategorie</string>
+    <string name="selected_count">Ausgewählt: %1$d</string>
+    <string name="archive_on_otg">Auf OTG archivieren</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="btn_close">Schließen</string>
+    <string name="error_title">Fehler</string>
+    
+    <string name="archiving_title">Sichere auf OTG…</string>
+    <string name="archiving_title_count">Sichere auf OTG (%1$d von %2$d)…</string>
+    <string name="archiving_file">Datei: %1$s</string>
+    
+    <string name="otg_select_title">USB-OTG-Laufwerkauswahl</string>
+    <string name="otg_select_guide">Für sicheres Archivieren müssen Sie der App Zugriff auf das Stammverzeichnis des USB-Laufwerks über die System-Dateiauswahl gewähren.</string>
+    <string name="otg_guide_step1">Verbinden Sie das USB-Laufwerk mit einem OTG-Adapter.</string>
+    <string name="otg_guide_step2">Wählen Sie in der System-Dateiauswahl Ihr USB-Laufwerk aus.</string>
+    <string name="otg_guide_step3">Klicken Sie auf \"Diesen Ordner verwenden\" oder \"Zugriff erlauben\" unten auf dem Bildschirm.</string>
+    <string name="otg_guide_step4">Bestätigen Sie die Berechtigungsanfrage im Pop-up-Fenster.</string>
+    <string name="btn_go_to_select">Zur Auswahl gehen</string>
+    
+    <string name="file_info_title">Dateiinformationen</string>
+    <string name="info_name">Name: %1$s</string>
+    <string name="info_type">Typ: %1$s</string>
+    <string name="info_size">Größe: %1$s</string>
+    <string name="info_status">Status: %1$s</string>
+    <string name="status_on_device">Auf dem Gerät</string>
+    <string name="status_archived">Im OTG-Archiv</string>
+    <string name="info_sha256">SHA-256-Hash:</string>
+    <string name="info_otg_path">SAF-Pfad auf OTG:</string>
+    
+    <string name="permission_required_toast">Berechtigungen zum Zugriff auf Mediendateien erforderlich</string>
+    <string name="grant_permission_btn">Berechtigungen erteilen</string>
+    <string name="otg_folder_selected_toast">OTG-Ordner erfolgreich ausgewählt!</string>
+    <string name="otg_folder_error_toast">Fehler beim Zugriff auf Ordner: %1$s</string>
+    <string name="eject_success_toast">OTG-Laufwerk in der App sicher entfernt. Sie können das Gerät jetzt physisch trennen.</string>
+    
+    <!-- Progress messages -->
+    <string name="progress_preparing">Vorbereitung…</string>
+    <string name="progress_sha256">Berechne SHA-256-Prüfsumme…</string>
+    <string name="progress_copying">Kopiere auf OTG-Laufwerk…</string>
+    <string name="progress_copying_percent">Kopieren… (%1$d%%)</string>
+    <string name="progress_verifying">Überprüfe Integrität (SHA-256)…</string>
+    <string name="progress_thumbnail">Erstelle lokalen Thumbnail-Cache…</string>
+    <string name="progress_deleting">Lösche Originaldatei…</string>
+    
+    <!-- Error messages -->
+    <string name="error_sha256_failed">SHA-256-Berechnung der Quelldatei fehlgeschlagen</string>
+    <string name="error_otg_access_failed">Zugriff auf OTG-Ordner fehlgeschlagen</string>
+    <string name="error_otg_create_failed">Dateierstellung auf OTG-Laufwerk fehlgeschlagen</string>
+    <string name="error_otg_write_failed">Öffnen des Schreibstreams zum OTG-Laufwerk fehlgeschlagen</string>
+    <string name="error_verification_failed">Überprüfungsfehler! Prüfsummen stimmen nicht überein.</string>
+    <string name="error_delete_failed">Löschen der lokalen Datei nach dem Kopieren fehlgeschlagen</string>
+    <string name="error_no_delete_permission">Keine Berechtigung zum Löschen der Datei: %1$s</string>
+    <string name="error_delete_completion_failed">Löschen konnte nicht abgeschlossen werden: %1$s</string>
+    <string name="error_archive_item_failed">Archivierungsfehler für %1$s: %2$s</string>
+    
+    <!-- Restore (Wiederherstellung) -->
+    <string name="restore_from_otg">Von OTG wiederherstellen</string>
+    <string name="restoring_title">Wiederherstellung von OTG…</string>
+    <string name="restoring_title_count">Wiederherstellung von OTG (%1$d von %2$d)…</string>
+    <string name="restoring_file">Datei: %1$s</string>
+    <string name="restore_progress_preparing">Bereite Wiederherstellung vor…</string>
+    <string name="restore_progress_reading">Lese von OTG…</string>
+    <string name="restore_progress_writing">Schreibe auf Gerät…</string>
+    <string name="restore_progress_verifying">Überprüfe (SHA-256)…</string>
+    <string name="restore_success_title">Wiederherstellung abgeschlossen</string>
+    <string name="restore_success_msg">Alle ausgewählten Dateien wurden auf dem Gerät wiederhergestellt.</string>
+    <string name="restore_error_title">Wiederherstellungsfehler</string>
+    <string name="restore_ask_title">Wo wiederherstellen?</string>
+    <string name="restore_ask_original">Im Originalordner wiederherstellen: %1$s</string>
+    <string name="restore_ask_choose">Anderen Ordner wählen…</string>
+    <string name="restore_need_folder_msg">Der ursprüngliche Pfad ist unbekannt. Bitte wählen Sie den Ordner für die Wiederherstellung.</string>
+    <string name="setting_ask_restore_path">Nach Wiederherstellungsort fragen</string>
+    <string name="setting_ask_restore_path_desc">EIN: immer fragen, ob im Originalordner oder einem anderen Ordner wiederhergestellt werden soll. AUS: automatisch im Originalpfad wiederherstellen (oder fragen, wenn unbekannt).</string>
+
+    <!-- Laufwerkstatus -->
+    <string name="drive_unknown_connected">🔴 Archiv auf diesem Laufwerk nicht gefunden</string>
+    <string name="drive_known_disconnected">🔴 OTG-Laufwerk getrennt</string>
+    <string name="drive_known_connected">🟢 Archivlaufwerk verbunden</string>
+    
+    <!-- Auto-Sync -->
+    <string name="auto_sync_missing_title">Dateien fehlen im Archiv!</string>
+    <string name="auto_sync_missing_msg">Die folgenden Dateien wurden auf dem OTG-Laufwerk nicht mehr gefunden:
+    
+%1$s
+
+Die Einträge bleiben in der Datenbank. Verbinden Sie das richtige Laufwerk, um den Zugriff wiederherzustellen.</string>
+    <string name="auto_sync_added_toast">Auto-Sync: %1$d neue Datei(en) hinzugefügt</string>
+
+    <!-- Datumsgruppen -->
+    <string name="date_today">Heute</string>
+    <string name="date_yesterday">Gestern</string>
+
+    <!-- Foto-Zugriff -->
+    <string name="title_photo_access">Foto-Zugriff</string>
+    <string name="photo_access_partial_desc">Die App hat nur Zugriff auf ausgewählte Fotos und Videos. Sie können die zugänglichen Dateien aktualisieren.</string>
+    <string name="photo_access_warning_desc">Sie haben nur teilweisen Zugriff gewährt. Android kann Kopiervorgänge für nicht ausgewählte oder Cloud-Dateien blockieren. Gewähren Sie vollen Zugriff in den Einstellungen für beste Leistung.</string>
+    <string name="btn_manage_photos">Mehr Fotos auswählen</string>
+    <string name="error_media_access_denied">Zugriff verweigert. Wenn diese Datei in der Cloud (z.B. Google Fotos) gespeichert ist, laden Sie sie zuerst auf Ihr Gerät herunter oder überprüfen Sie die App-Berechtigungen.</string>
+    <string name="partial_access_banner_title">⚠️ Eingeschränkter Zugriff</string>
+    <string name="partial_access_banner_desc">Die App hat nur Zugriff auf ausgewählte Fotos. Einige Dateien sind möglicherweise nicht zum Archivieren verfügbar.</string>
+    <string name="btn_grant_full_access">Vollen Zugriff gewähren</string>
+    <string name="btn_open_settings">Einstellungen öffnen</string>
+
+    <!-- Neues Archiv -->
+    <string name="new_archive_found_title">Neues Archiv gefunden</string>
+    <string name="new_archive_found_msg">Ein anderes Archiv wurde auf dem verbundenen Laufwerk erkannt. Möchten Sie zu diesem Archiv wechseln?</string>
+    <string name="btn_connect_to_archive">Mit Archiv verbinden</string>
+
+    <!-- Vorschau-Platzhalter -->
+    <string name="preview_on_disk">Vorschau auf Datenträger</string>
+    <string name="preview_cached">Vorschau (Cache)</string>
+
+    <!-- Erweiterter Info-Dialog -->
+    <string name="info_original_folder">Originalordner:</string>
+    <string name="info_preview_path">Vorschau-Cache:</string>
+    <string name="info_archive_id">Archiv-ID:</string>
+    <string name="info_location">Speicherort:</string>
+    <string name="info_location_device">📱 Auf dem Gerät</string>
+    <string name="info_location_otg">💾 Im Archiv (OTG-Laufwerk)</string>
+    <string name="info_location_otg_disconnected">💾 Im Archiv (Laufwerk getrennt)</string>
+
+    <!-- Löschen -->
+    <string name="btn_delete_file">Vom Gerät löschen</string>
+    <string name="btn_delete_otg">Aus Archiv löschen</string>
+    <string name="delete_confirm_title">Datei löschen?</string>
+    <string name="delete_confirm_msg">Sind Sie sicher, dass Sie \"%1$s\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="delete_archived_warning">Das Original auf dem OTG-Laufwerk bleibt erhalten. Nur der Datenbankeintrag wird entfernt.</string>
+    <string name="preview_not_deletable">Vorschauen können nicht einzeln gelöscht werden</string>
+    <string name="delete_otg_needs_connection">Verbinden Sie das OTG-Laufwerk, um Dateien aus dem Archiv zu löschen</string>
+
+    <!-- Sync -->
+    <string name="sync_archive_title">Archiv synchronisieren</string>
+    <string name="sync_archive_progress">Synchronisiere…</string>
+
+    <!-- Vollbild-Vorschau-Aktionen -->
+    <string name="preview_delete">Löschen</string>
+    <string name="preview_will_be_deleted">Wird beim Schließen gelöscht ✓</string>
+    <string name="preview_archive">Archivieren</string>
+    <string name="preview_restore">Wiederherstellen</string>
+    <string name="preview_hint_swipe">Nach unten wischen zum Schließen</string>
+    <string name="preview_hint_zoom">Zum Zoomen zusammenziehen</string>
+    <string name="deleted_on_close_toast">%1$d Datei(en) gelöscht</string>
+    <string name="preview_source_device">Gerät</string>
+
+    <!-- Aktionsleiste / Auswahlmodus -->
+    <string name="action_delete">Löschen</string>
+    <string name="action_delete_all">Alle löschen</string>
+    <string name="action_delete_files_question">%1$d Dateien löschen?</string>
+    <string name="action_delete_from_archive">Aus Archiv löschen</string>
+    <string name="action_properties">Eigenschaften</string>
+</resources>

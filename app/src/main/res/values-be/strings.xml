@@ -48,8 +48,8 @@
     <string name="info_status">Статус: %1$s</string>
     <string name="status_on_device">На устройстве</string>
     <string name="status_archived">В архиве на OTG</string>
-    <string name="info_sha256">SHA-256 Hash:</string>
-    <string name="info_otg_path">SAF Путь на OTG:</string>
+        <string name="info_sha256">Хэш SHA-256:</string>
+    <string name="info_otg_path">Шлях SAF на OTG:</string>
     
     <string name="permission_required_toast">Необходимы разрешения для доступа к медиафайлам</string>
     <string name="grant_permission_btn">Предоставить разрешения</string>
@@ -153,6 +153,23 @@
     <string name="delete_otg_needs_connection">Подключите OTG-накопитель для удаления файлов из архива</string>
 
     <!-- Синхронизация -->
-    <string name="sync_archive_title">Синхронизация архива</string>
+        <string name="sync_archive_title">Синхронизация архива</string>
     <string name="sync_archive_progress">Синхронизация…</string>
+
+    <!-- Дзеянні на поўным экране -->
+    <string name="preview_delete">Выдаліць</string>
+    <string name="preview_will_be_deleted">Будзе выдалена пры закрыцці ✓</string>
+    <string name="preview_archive">Архіваваць</string>
+    <string name="preview_restore">Аднавіць</string>
+    <string name="preview_hint_swipe">Смахніце ўніз для закрыцця</string>
+    <string name="preview_hint_zoom">Зацісніце для маштабу</string>
+    <string name="deleted_on_close_toast">Выдалена файлаў: %1$d</string>
+    <string name="preview_source_device">Прылада</string>
+
+    <!-- Панэль дзеянняў / рэжым выбару -->
+    <string name="action_delete">Выдаліць</string>
+    <string name="action_delete_all">Выдаліць усё</string>
+    <string name="action_delete_files_question">Выдаліць %1$d файлаў?</string>
+    <string name="action_delete_from_archive">Выдаліць з архіва</string>
+    <string name="action_properties">Уласцівасці</string>
 </resources>

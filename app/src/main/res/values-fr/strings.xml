@@ -1,0 +1,175 @@
+<resources>
+    <string name="app_name">My1Drive</string>
+    <string name="tab_photos">Photos</string>
+    <string name="tab_archive">Archive</string>
+    <string name="tab_settings">Paramètres</string>
+    
+    <string name="title_settings">Paramètres</string>
+    <string name="storage_stats">Statistiques de stockage</string>
+    <string name="on_phone">Sur le téléphone :</string>
+    <string name="in_archive">Dans l\'archive OTG :</string>
+    <string name="thumbnail_cache">Cache des miniatures :</string>
+    <string name="room_db_wal">Base Room WAL :</string>
+    <string name="status_active">ACTIF</string>
+    <string name="files_count">%1$d fichiers</string>
+    
+    <string name="otg_archive_folder">Dossier d\'archive OTG</string>
+    <string name="drive_not_selected">Périphérique non sélectionné</string>
+    <string name="change_otg_folder">Changer le dossier OTG</string>
+    <string name="select_otg_folder">Sélectionner le dossier OTG</string>
+    <string name="safe_eject">Éjection sécurisée</string>
+    <string name="quick_actions">Actions rapides</string>
+    <string name="clear_thumb_cache">Vider le cache des miniatures</string>
+    
+    <string name="empty_category">Aucun fichier média dans cette catégorie</string>
+    <string name="selected_count">Sélectionné : %1$d</string>
+    <string name="archive_on_otg">Archiver sur OTG</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">Annuler</string>
+    <string name="btn_close">Fermer</string>
+    <string name="error_title">Erreur</string>
+    
+    <string name="archiving_title">Sauvegarde sur OTG…</string>
+    <string name="archiving_title_count">Sauvegarde sur OTG (%1$d sur %2$d)…</string>
+    <string name="archiving_file">Fichier : %1$s</string>
+    
+    <string name="otg_select_title">Sélection du périphérique USB OTG</string>
+    <string name="otg_select_guide">Pour un archivage sécurisé, vous devez autoriser l\'accès au dossier racine du périphérique USB via le sélecteur de fichiers système.</string>
+    <string name="otg_guide_step1">Connectez le périphérique USB à l\'aide d\'un adaptateur OTG.</string>
+    <string name="otg_guide_step2">Dans le sélecteur de fichiers système, sélectionnez votre périphérique USB.</string>
+    <string name="otg_guide_step3">Cliquez sur \"Utiliser ce dossier\" ou \"Autoriser l\'accès\" en bas de l\'écran.</string>
+    <string name="otg_guide_step4">Confirmez la demande d\'autorisation dans la fenêtre contextuelle.</string>
+    <string name="btn_go_to_select">Aller à la sélection</string>
+    
+    <string name="file_info_title">Informations sur le fichier</string>
+    <string name="info_name">Nom : %1$s</string>
+    <string name="info_type">Type : %1$s</string>
+    <string name="info_size">Taille : %1$s</string>
+    <string name="info_status">Statut : %1$s</string>
+    <string name="status_on_device">Sur l\'appareil</string>
+    <string name="status_archived">Dans l\'archive OTG</string>
+    <string name="info_sha256">Hash SHA-256 :</string>
+    <string name="info_otg_path">Chemin SAF sur OTG :</string>
+    
+    <string name="permission_required_toast">Des autorisations sont requises pour accéder aux fichiers multimédias</string>
+    <string name="grant_permission_btn">Accorder les autorisations</string>
+    <string name="otg_folder_selected_toast">Dossier OTG sélectionné avec succès !</string>
+    <string name="otg_folder_error_toast">Erreur d\'accès au dossier : %1$s</string>
+    <string name="eject_success_toast">Périphérique OTG éjecté en toute sécurité dans l\'application. Vous pouvez maintenant le déconnecter physiquement.</string>
+    
+    <!-- Progress messages -->
+    <string name="progress_preparing">Préparation…</string>
+    <string name="progress_sha256">Calcul de la somme de contrôle SHA-256…</string>
+    <string name="progress_copying">Copie vers le périphérique OTG…</string>
+    <string name="progress_copying_percent">Copie… (%1$d%%)</string>
+    <string name="progress_verifying">Vérification de l\'intégrité (SHA-256)…</string>
+    <string name="progress_thumbnail">Création du cache local de miniature…</string>
+    <string name="progress_deleting">Suppression du fichier original…</string>
+    
+    <!-- Error messages -->
+    <string name="error_sha256_failed">Échec du calcul SHA-256 du fichier source</string>
+    <string name="error_otg_access_failed">Échec d\'accès au dossier OTG</string>
+    <string name="error_otg_create_failed">Échec de création du fichier sur le périphérique OTG</string>
+    <string name="error_otg_write_failed">Échec d\'ouverture du flux d\'écriture vers le périphérique OTG</string>
+    <string name="error_verification_failed">Erreur de vérification ! Les sommes de contrôle ne correspondent pas.</string>
+    <string name="error_delete_failed">Échec de suppression du fichier local après copie</string>
+    <string name="error_no_delete_permission">Pas d\'autorisation de supprimer le fichier : %1$s</string>
+    <string name="error_delete_completion_failed">Échec de finalisation de la suppression : %1$s</string>
+    <string name="error_archive_item_failed">Erreur d\'archivage pour %1$s : %2$s</string>
+    
+    <!-- Restore (Désarchivage) -->
+    <string name="restore_from_otg">Restaurer depuis OTG</string>
+    <string name="restoring_title">Restauration depuis OTG…</string>
+    <string name="restoring_title_count">Restauration depuis OTG (%1$d sur %2$d)…</string>
+    <string name="restoring_file">Fichier : %1$s</string>
+    <string name="restore_progress_preparing">Préparation de la restauration…</string>
+    <string name="restore_progress_reading">Lecture depuis OTG…</string>
+    <string name="restore_progress_writing">Écriture sur l\'appareil…</string>
+    <string name="restore_progress_verifying">Vérification (SHA-256)…</string>
+    <string name="restore_success_title">Restauration terminée</string>
+    <string name="restore_success_msg">Tous les fichiers sélectionnés ont été restaurés sur l\'appareil.</string>
+    <string name="restore_error_title">Erreur de restauration</string>
+    <string name="restore_ask_title">Où restaurer ?</string>
+    <string name="restore_ask_original">Restaurer dans le dossier d\'origine : %1$s</string>
+    <string name="restore_ask_choose">Choisir un autre dossier…</string>
+    <string name="restore_need_folder_msg">Le chemin d\'origine est inconnu. Veuillez sélectionner le dossier de restauration.</string>
+    <string name="setting_ask_restore_path">Demander où restaurer</string>
+    <string name="setting_ask_restore_path_desc">ON : toujours demander si restaurer dans le dossier d\'origine ou en choisir un autre. OFF : restaurer automatiquement dans le chemin d\'origine (ou demander si inconnu).</string>
+
+    <!-- Drive status -->
+    <string name="drive_unknown_connected">🔴 Archive introuvable sur ce périphérique</string>
+    <string name="drive_known_disconnected">🔴 Périphérique OTG déconnecté</string>
+    <string name="drive_known_connected">🟢 Périphérique d\'archive connecté</string>
+    
+    <!-- Auto-sync -->
+    <string name="auto_sync_missing_title">Fichiers manquants dans l\'archive !</string>
+    <string name="auto_sync_missing_msg">Les fichiers suivants ne sont plus trouvés sur le périphérique OTG :
+    
+%1$s
+
+Les enregistrements restent dans la base de données. Connectez le bon périphérique pour restaurer l\'accès.</string>
+    <string name="auto_sync_added_toast">Auto-sync : %1$d nouveau(x) fichier(s) ajouté(s)</string>
+
+    <!-- Date groups -->
+    <string name="date_today">Aujourd\'hui</string>
+    <string name="date_yesterday">Hier</string>
+
+    <!-- Photo Access and Security -->
+    <string name="title_photo_access">Accès aux photos</string>
+    <string name="photo_access_partial_desc">L\'application a accès uniquement aux photos et vidéos sélectionnées. Vous pouvez modifier les fichiers accessibles.</string>
+    <string name="photo_access_warning_desc">Vous avez accordé un accès partiel. Android peut bloquer les opérations de copie pour les fichiers non sélectionnés ou cloud. Accordez l\'accès complet dans les paramètres pour de meilleures performances.</string>
+    <string name="btn_manage_photos">Sélectionner plus de photos</string>
+    <string name="error_media_access_denied">Accès refusé. Si ce fichier est stocké dans le cloud (comme Google Photos), téléchargez-le d\'abord sur votre appareil ou vérifiez les autorisations de l\'application.</string>
+    <string name="partial_access_banner_title">⚠️ Accès limité</string>
+    <string name="partial_access_banner_desc">L\'application a accès uniquement aux photos sélectionnées. Certains fichiers peuvent ne pas être disponibles pour l\'archivage.</string>
+    <string name="btn_grant_full_access">Accorder l\'accès complet</string>
+    <string name="btn_open_settings">Ouvrir les paramètres</string>
+
+    <!-- New archive detection -->
+    <string name="new_archive_found_title">Nouvelle archive trouvée</string>
+    <string name="new_archive_found_msg">Une archive différente a été détectée sur le périphérique connecté. Voulez-vous basculer vers cette archive ?</string>
+    <string name="btn_connect_to_archive">Connecter à l\'archive</string>
+
+    <!-- Preview placeholders -->
+    <string name="preview_on_disk">Aperçu sur le disque</string>
+    <string name="preview_cached">Aperçu (cache)</string>
+
+    <!-- Enhanced Info Dialog -->
+    <string name="info_original_folder">Dossier d\'origine :</string>
+    <string name="info_preview_path">Cache d\'aperçu :</string>
+    <string name="info_archive_id">ID d\'archive :</string>
+    <string name="info_location">Emplacement :</string>
+    <string name="info_location_device">📱 Sur l\'appareil</string>
+    <string name="info_location_otg">💾 Dans l\'archive (périphérique OTG)</string>
+    <string name="info_location_otg_disconnected">💾 Dans l\'archive (périphérique déconnecté)</string>
+
+    <!-- Delete -->
+    <string name="btn_delete_file">Supprimer de l\'appareil</string>
+    <string name="btn_delete_otg">Supprimer de l\'archive</string>
+    <string name="delete_confirm_title">Supprimer le fichier ?</string>
+    <string name="delete_confirm_msg">Êtes-vous sûr de vouloir supprimer \"%1$s\" ? Cette action est irréversible.</string>
+    <string name="delete_archived_warning">L\'original sur le périphérique OTG restera. Seul l\'enregistrement de la base de données sera supprimé.</string>
+    <string name="preview_not_deletable">Les aperçus ne peuvent pas être supprimés séparément</string>
+    <string name="delete_otg_needs_connection">Connectez le périphérique OTG pour supprimer des fichiers de l\'archive</string>
+
+    <!-- Sync -->
+    <string name="sync_archive_title">Synchroniser l\'archive</string>
+    <string name="sync_archive_progress">Synchronisation…</string>
+
+    <!-- Fullscreen Preview Actions -->
+    <string name="preview_delete">Supprimer</string>
+    <string name="preview_will_be_deleted">Sera supprimé à la fermeture ✓</string>
+    <string name="preview_archive">Archiver</string>
+    <string name="preview_restore">Restaurer</string>
+    <string name="preview_hint_swipe">Balayez vers le bas pour fermer</string>
+    <string name="preview_hint_zoom">Pincez pour zoomer</string>
+    <string name="deleted_on_close_toast">%1$d fichier(s) supprimé(s)</string>
+    <string name="preview_source_device">Appareil</string>
+
+    <!-- Action bar / selection mode -->
+    <string name="action_delete">Supprimer</string>
+    <string name="action_delete_all">Tout supprimer</string>
+    <string name="action_delete_files_question">Supprimer %1$d fichiers ?</string>
+    <string name="action_delete_from_archive">Supprimer de l\'archive</string>
+    <string name="action_properties">Propriétés</string>
+</resources>

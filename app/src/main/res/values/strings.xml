@@ -165,4 +165,19 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="preview_hint_zoom">Pinch to zoom</string>
     <string name="deleted_on_close_toast">Deleted %1$d file(s)</string>
     <string name="preview_source_device">Device</string>
+
+    <!-- Action bar / selection mode -->
+    <string name="action_delete">Delete</string>
+    <string name="action_delete_all">Delete all</string>
+    <string name="action_delete_files_question">Delete %1$d files?</string>
+    <string name="action_delete_from_archive">Delete from archive</string>
+    <string name="action_properties">Properties</string>
+
+    <!-- First launch dialog -->
+    <string name="welcome_title">Welcome to My1Drive!</string>
+    <string name="welcome_msg">This app allows you to save files to a USB OTG drive and free up device storage. You can restore them at any time.</string>
+    <string name="welcome_msg_drive_detected">USB OTG drive detected!</string>
+    <string name="welcome_msg_drive_not_detected">USB OTG drive not detected. Connect it via an OTG adapter.</string>
+    <string name="welcome_btn_start">Get Started</string>
+    <string name="welcome_btn_close">Close</string>
 </resources>

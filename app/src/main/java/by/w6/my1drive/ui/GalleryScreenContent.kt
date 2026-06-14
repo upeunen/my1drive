@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SdStorage
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material3.AlertDialog
@@ -32,27 +30,22 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.ui.GalleryItem
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
-import java.io.File
 
 @Composable
 fun UnknownDriveBanner() {
@@ -143,7 +136,7 @@ fun DeleteConfirmDialog(
                 if (pendingDelete.size == 1) {
                     Text(stringResource(R.string.delete_confirm_msg, pendingDelete.first().displayName))
                 } else {
-                    Text("Delete ${pendingDelete.size} files?")
+                    Text(stringResource(R.string.action_delete_files_question, pendingDelete.size))
                 }
                 if (isArchiveTab) {
                     Spacer(Modifier.height(8.dp))
@@ -160,7 +153,7 @@ fun DeleteConfirmDialog(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text(if (pendingDelete.size == 1) stringResource(R.string.btn_delete_otg) else "Delete all")
+                Text(if (pendingDelete.size == 1) stringResource(R.string.btn_delete_otg) else stringResource(R.string.action_delete_all))
             }
         },
         dismissButton = {
@@ -203,7 +196,47 @@ fun GalleryScreenContent(
     // ... existing content ...
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            GooglePhotosTopBar(selectedCount = selectedIds.size, isOtgConnected = isOtgConnected, otgUriSet = otgDirectoryUri != null, onClearSelection = onClearSelection, onSelectOtgClick = onSelectOtgDirectory)
+                        GooglePhotosTopBar(selectedCount = selectedIds.size, isOtgConnected = isOtgConnected, otgUriSet = otgDirectoryUri != null, onClearSelection = onClearSelection, onSelectOtgClick = onSelectOtgDirectory)
+
+                        // Тонкий прогресс-бар архивации/восстановления
+            if (archiveState.isArchiving) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    LinearProgressIndicator(
+                        progress = { archiveState.progressFraction.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(3.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primaryContainer,
+                        strokeCap = StrokeCap.Round
+                    )
+                    val queue = if (archiveState.pendingQueueSize > 0) " +${archiveState.pendingQueueSize} в очереди" else ""
+                    Text(
+                        text = "Архивация: ${archiveState.currentFileIndex}/${archiveState.totalFiles} — ${archiveState.currentFileName}$queue",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp)
+                    )
+                }
+            } else if (restoreState.isRestoring) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    LinearProgressIndicator(
+                        progress = { restoreState.progressFraction.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(3.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primaryContainer,
+                        strokeCap = StrokeCap.Round
+                    )
+                    Text(
+                        text = "Восстановление: ${restoreState.currentFileIndex}/${restoreState.totalFiles} — ${restoreState.currentFileName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp)
+                    )
+                }
+            }
 
             if (!isOtgConnected && otgDirectoryUri != null) UnknownDriveBanner()
             if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
@@ -322,26 +355,6 @@ fun GalleryScreenContent(
             )
         }
 
-        if (archiveState.isArchiving) {
-            OperationProgressDialog(
-                title = "Архивирование на OTG...",
-                fileName = archiveState.currentFileName,
-                fileIndex = archiveState.currentFileIndex,
-                totalFiles = archiveState.totalFiles,
-                progressFraction = archiveState.progressFraction
-            )
-        }
-
-        if (restoreState.isRestoring) {
-            OperationProgressDialog(
-                title = "Восстановление файлов...",
-                fileName = restoreState.currentFileName,
-                fileIndex = restoreState.currentFileIndex,
-                totalFiles = restoreState.totalFiles,
-                progressFraction = restoreState.progressFraction
-            )
-        }
-
         archiveState.error?.let { err ->
             AlertDialog(
                 onDismissRequest = { viewModel.dismissArchiveError() },
@@ -391,69 +404,7 @@ fun GalleryScreenContent(
     }
 }
 
-@Composable
-fun OperationProgressDialog(
-    title: String,
-    fileName: String,
-    fileIndex: Int,
-    totalFiles: Int,
-    progressFraction: Float
-) {
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = {}
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(16.dp))
 
-                LinearProgressIndicator(
-                    progress = { progressFraction.coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primaryContainer,
-                    strokeCap = StrokeCap.Round
-                )
-                Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Файл: $fileName",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Обработано: $fileIndex из $totalFiles",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
 
 

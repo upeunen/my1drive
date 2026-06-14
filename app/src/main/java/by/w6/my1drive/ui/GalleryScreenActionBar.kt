@@ -52,7 +52,7 @@ fun GalleryScreenActionBar(
         ) {
             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Delete", fontSize = 13.sp)
+            Text(stringResource(R.string.action_delete), fontSize = 13.sp)
         }
 
         if (!isArchiveTab) {

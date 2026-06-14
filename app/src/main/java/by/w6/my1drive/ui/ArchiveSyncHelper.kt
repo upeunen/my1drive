@@ -153,60 +153,76 @@ class ArchiveSyncHelper(
 
     fun dismissSync() { _syncState.value = null }
 
-    // ─── Archive (copy to OTG) ───
+        // ─── Archive queue ───
 
+    private val archiveQueue = mutableListOf<Pair<List<MediaItem>, Uri>>()
+    private var isArchiveJobRunning = false
+
+    /** Add items to archive queue. If nothing is running, starts immediately. */
     fun startArchiving(items: List<MediaItem>, targetUri: Uri) {
         if (items.isEmpty()) return
-        performArchiving(items, targetUri)
+        archiveQueue.add(items to targetUri)
+        _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
+        if (!isArchiveJobRunning) {
+            isArchiveJobRunning = true
+            scope.launch { processArchiveQueue() }
+        }
     }
 
-    private fun performArchiving(items: List<MediaItem>, targetUri: Uri) {
+    private suspend fun processArchiveQueue() {
+        while (archiveQueue.isNotEmpty()) {
+            val (items, targetUri) = archiveQueue.removeAt(0)
+            _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
+            performArchiving(items, targetUri)
+        }
+        isArchiveJobRunning = false
+    }
+
+    private suspend fun performArchiving(items: List<MediaItem>, targetUri: Uri) {
         if (items.isEmpty()) return
-        scope.launch {
-            _archiveState.value = ArchiveState(isArchiving = true, totalFiles = items.size)
-            val copied = mutableListOf<ArchivedInfo>()
-            val skipped = mutableListOf<Pair<MediaItem, String>>()
-            var errorMsg: String? = null
+        _archiveState.value = ArchiveState(isArchiving = true, totalFiles = items.size, pendingQueueSize = archiveQueue.size)
+        val copied = mutableListOf<ArchivedInfo>()
+        val skipped = mutableListOf<Pair<MediaItem, String>>()
+        var errorMsg: String? = null
 
-            for ((index, item) in items.withIndex()) {
-                _archiveState.value = _archiveState.value.copy(
-                    currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = ""
-                )
-                var success: ArchivedInfo? = null
-                var itemErr: String? = null
-                var isSkipped = false; var skipReason = ""
+        for ((index, item) in items.withIndex()) {
+            _archiveState.value = _archiveState.value.copy(
+                currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = ""
+            )
+            var success: ArchivedInfo? = null
+            var itemErr: String? = null
+            var isSkipped = false; var skipReason = ""
 
-                archiveUtil.copyAndVerifyItem(item, targetUri).collect { result ->
-                    when (result) {
-                        is CopyVerifyResult.Progress -> _archiveState.value = _archiveState.value.copy(
-                            currentStep = result.step,
-                            progressFraction = (index.toFloat() + result.progressFraction) / items.size
-                        )
-                        is CopyVerifyResult.Success -> success = ArchivedInfo(result.item, result.hash, result.otgUri, result.thumbnailPath)
-                        is CopyVerifyResult.Skipped -> { isSkipped = true; skipReason = result.message }
-                        is CopyVerifyResult.Error -> itemErr = result.message
-                    }
-                }
-                when {
-                    success != null -> copied.add(success!!)
-                    isSkipped -> skipped.add(item to skipReason)
-                    itemErr != null -> errorMsg = itemErr
+            archiveUtil.copyAndVerifyItem(item, targetUri).collect { result ->
+                when (result) {
+                    is CopyVerifyResult.Progress -> _archiveState.value = _archiveState.value.copy(
+                        currentStep = result.step,
+                        progressFraction = (index.toFloat() + result.progressFraction) / items.size
+                    )
+                    is CopyVerifyResult.Success -> success = ArchivedInfo(result.item, result.hash, result.otgUri, result.thumbnailPath)
+                    is CopyVerifyResult.Skipped -> { isSkipped = true; skipReason = result.message }
+                    is CopyVerifyResult.Error -> itemErr = result.message
                 }
             }
-
-            lastArchiveSummary = if (skipped.isNotEmpty() || errorMsg != null) buildString {
-                append("Некоторые файлы не удалось архивировать.\n")
-                append("Успешно скопировано: ${copied.size} из ${items.size}.\n")
-                if (skipped.isNotEmpty()) append("Пропущено: ${skipped.size}\n") else append("\n")
-                if (errorMsg != null) append("\nОшибка:\n$errorMsg")
-            } else null
-
-            if (copied.isNotEmpty()) processDeletions(copied)
-            else {
-                _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary ?: "Ошибка архивирования")
-                lastArchiveSummary = null
-                onOperationComplete()
+            when {
+                success != null -> copied.add(success!!)
+                isSkipped -> skipped.add(item to skipReason)
+                itemErr != null -> errorMsg = itemErr
             }
+        }
+
+        lastArchiveSummary = if (skipped.isNotEmpty() || errorMsg != null) buildString {
+            append("Некоторые файлы не удалось архивировать.\n")
+            append("Успешно скопировано: ${copied.size} из ${items.size}.\n")
+            if (skipped.isNotEmpty()) append("Пропущено: ${skipped.size}\n") else append("\n")
+            if (errorMsg != null) append("\nОшибка:\n$errorMsg")
+        } else null
+
+        if (copied.isNotEmpty()) processDeletions(copied)
+        else {
+            _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary ?: "Ошибка архивирования", pendingQueueSize = archiveQueue.size)
+            lastArchiveSummary = null
+            onOperationComplete()
         }
     }
 
@@ -219,8 +235,8 @@ class ArchiveSyncHelper(
                     items = list.map { it.item }, hashes = list.map { it.hash },
                     otgUris = list.map { it.otgUri }, thumbnailPaths = list.map { it.thumbnailPath }
                 )
-            } catch (e: Exception) {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage)
+                        } catch (e: Exception) {
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
                 onOperationComplete()
             }
         } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
@@ -232,9 +248,9 @@ class ArchiveSyncHelper(
                         application.contentResolver.delete(info.item.uri, null, null)
                         repository.insertArchivedItem(info.item, info.otgUri, info.hash, info.thumbnailPath, info.item.originalRelativePath)
                     }
-                    _archiveState.value = ArchiveState(isArchiving = false)
+                    _archiveState.value = ArchiveState(isArchiving = false, pendingQueueSize = archiveQueue.size)
                 } catch (e: Exception) {
-                    _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage)
+                    _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
                 } finally {
                     onOperationComplete()
                 }
@@ -244,7 +260,7 @@ class ArchiveSyncHelper(
 
     private fun processNextQueueDelete() {
         if (pendingDeletesQueue.isEmpty()) {
-            _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary)
+            _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary, pendingQueueSize = archiveQueue.size)
             lastArchiveSummary = null
             onOperationComplete()
             return
@@ -257,7 +273,7 @@ class ArchiveSyncHelper(
                     pendingDeletesQueue.removeAt(0); processNextQueueDelete()
                 }
             } else {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = "delete_failed")
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = "delete_failed", pendingQueueSize = archiveQueue.size)
                 onOperationComplete()
             }
         } catch (se: SecurityException) {
@@ -268,7 +284,7 @@ class ArchiveSyncHelper(
                     otgUris = listOf(next.otgUri), thumbnailPaths = listOf(next.thumbnailPath)
                 )
             } else {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = se.localizedMessage)
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = se.localizedMessage, pendingQueueSize = archiveQueue.size)
                 onOperationComplete()
             }
         }
@@ -283,9 +299,9 @@ class ArchiveSyncHelper(
                         try { application.contentResolver.delete(pending.items[i].uri, null, null) } catch (_: Exception) { }
                         try { repository.insertArchivedItem(pending.items[i], pending.otgUris[i], pending.hashes[i], pending.thumbnailPaths[i], pending.items[i].originalRelativePath) } catch (_: Exception) { }
                     }
-                    selectedIds.value = emptySet()
+                                        selectedIds.value = emptySet()
                     _pendingDeleteRequest.value = null
-                    _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary)
+                    _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary, pendingQueueSize = archiveQueue.size)
                     lastArchiveSummary = null
                     onOperationComplete()
                 } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
@@ -298,8 +314,8 @@ class ArchiveSyncHelper(
                     }
                     _pendingDeleteRequest.value = null; processNextQueueDelete()
                 }
-            } catch (e: Exception) {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage)
+                        } catch (e: Exception) {
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
                 _pendingDeleteRequest.value = null
                 onOperationComplete()
             }
@@ -308,7 +324,7 @@ class ArchiveSyncHelper(
 
     fun dismissPendingDelete(selectedIds: MutableStateFlow<Set<String>>) {
         _pendingDeleteRequest.value = null; pendingDeletesQueue.clear()
-        _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary); lastArchiveSummary = null
+        _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary, pendingQueueSize = archiveQueue.size); lastArchiveSummary = null
         onOperationComplete()
     }
 

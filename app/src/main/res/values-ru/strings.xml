@@ -48,8 +48,8 @@
     <string name="info_status">Статус: %1$s</string>
     <string name="status_on_device">На устройстве</string>
     <string name="status_archived">В архиве на OTG</string>
-    <string name="info_sha256">SHA-256 Hash:</string>
-    <string name="info_otg_path">SAF Путь на OTG:</string>
+        <string name="info_sha256">Хэш SHA-256:</string>
+    <string name="info_otg_path">Путь SAF на OTG:</string>
     
     <string name="permission_required_toast">Необходимы разрешения для доступа к медиафайлам</string>
     <string name="grant_permission_btn">Предоставить разрешения</string>
@@ -149,7 +149,8 @@
     <string name="delete_confirm_title">Удалить файл?</string>
     <string name="delete_confirm_msg">Вы уверены, что хотите удалить \"%1$s\"? Это действие нельзя отменить.</string>
     <string name="delete_archived_warning">Оригинал на OTG-носителе останется. Будет удалена только запись из базы данных.</string>
-    <string name="preview_not_deletable">Превью нельзя удалить отдельно</string>
+        <string name="preview_not_deletable">Превью нельзя удалить отдельно</string>
+    <string name="delete_otg_needs_connection">Подключите OTG-накопитель для удаления файлов из архива</string>
 
     <!-- Синхронизация -->
     <string name="sync_archive_title">Синхронизация архива</string>
@@ -163,4 +164,12 @@
     <string name="preview_hint_swipe">Смахните вниз для закрытия</string>
     <string name="preview_hint_zoom">Зажмите для масштаба</string>
     <string name="deleted_on_close_toast">Удалено файлов: %1$d</string>
+    <string name="preview_source_device">Устройство</string>
+
+    <!-- Панель действий / режим выбора -->
+    <string name="action_delete">Удалить</string>
+    <string name="action_delete_all">Удалить все</string>
+    <string name="action_delete_files_question">Удалить %1$d файлов?</string>
+    <string name="action_delete_from_archive">Удалить из архива</string>
+    <string name="action_properties">Свойства</string>
 </resources>

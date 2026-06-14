@@ -86,7 +86,11 @@
     <string name="photo_access_partial_desc">La aplicación solo tiene acceso a las fotos y videos seleccionados. Puede actualizar qué archivos son accesibles.</string>
     <string name="photo_access_warning_desc">Se ha concedido acceso parcial. Android puede bloquear la copia de archivos no seleccionados o en la nube. Se recomienda permitir el acceso completo en los ajustes.</string>
     <string name="btn_manage_photos">Seleccionar más fotos</string>
-    <string name="error_media_access_denied">Acceso denegado. Si este archivo está guardado en la nube (como Google Fotos), descárguelo primero en su dispositivo o asegúrese de que la aplicación tiene los permisos.</string>
+        <string name="error_media_access_denied">Acceso denegado. Si este archivo está guardado en la nube (como Google Fotos), descárguelo primero en su dispositivo o asegúrese de que la aplicación tiene los permisos.</string>
+    <string name="partial_access_banner_title">⚠️ Acceso limitado</string>
+    <string name="partial_access_banner_desc">La aplicación solo tiene acceso a las fotos seleccionadas. Es posible que algunos archivos no estén disponibles para archivar.</string>
+    <string name="btn_grant_full_access">Conceder acceso completo</string>
+    <string name="btn_open_settings">Abrir ajustes</string>
 
     <!-- Nuevo archivo -->
     <string name="new_archive_found_title">Nuevo archivo encontrado</string>
@@ -112,9 +116,60 @@
     <string name="delete_confirm_title">¿Eliminar archivo?</string>
     <string name="delete_confirm_msg">¿Está seguro de que desea eliminar \"%1$s\"? Esta acción no se puede deshacer.</string>
     <string name="delete_archived_warning">El original en la unidad OTG permanecerá. Solo se eliminará el registro de la base de datos.</string>
-    <string name="preview_not_deletable">Las vistas previas no se pueden eliminar por separado</string>
+        <string name="preview_not_deletable">Las vistas previas no se pueden eliminar por separado</string>
+    <string name="delete_otg_needs_connection">Conecte la unidad OTG para eliminar archivos del archivo</string>
+
+    <!-- Estado de la unidad -->
+    <string name="drive_unknown_connected">🔴 Archivo no encontrado en esta unidad</string>
+    <string name="drive_known_disconnected">🔴 Unidad OTG desconectada</string>
+    <string name="drive_known_connected">🟢 Unidad de archivo conectada</string>
+
+    <!-- Auto-sincronización -->
+    <string name="auto_sync_missing_title">¡Faltan archivos del archivo!</string>
+    <string name="auto_sync_missing_msg">Los siguientes archivos ya no se encuentran en la unidad OTG:
+
+%1$s
+
+Los registros permanecen en la base de datos. Conecte la unidad correcta para restaurar el acceso.</string>
+    <string name="auto_sync_added_toast">Auto-sinc: %1$d archivo(s) añadido(s)</string>
 
     <!-- Sincronización -->
-    <string name="sync_archive_title">Sincronizar archivo</string>
+        <string name="sync_archive_title">Sincronizar archivo</string>
     <string name="sync_archive_progress">Sincronizando…</string>
+
+    <!-- Restaurar -->
+    <string name="restore_from_otg">Restaurar desde OTG</string>
+    <string name="restoring_title">Restaurando desde OTG…</string>
+    <string name="restoring_title_count">Restaurando desde OTG (%1$d de %2$d)…</string>
+    <string name="restoring_file">Archivo: %1$s</string>
+    <string name="restore_progress_preparing">Preparando restauración…</string>
+    <string name="restore_progress_reading">Leyendo de OTG…</string>
+    <string name="restore_progress_writing">Escribiendo en el dispositivo…</string>
+    <string name="restore_progress_verifying">Verificando (SHA-256)…</string>
+    <string name="restore_success_title">Restauración completada</string>
+    <string name="restore_success_msg">Todos los archivos seleccionados han sido restaurados en el dispositivo.</string>
+    <string name="restore_error_title">Error de restauración</string>
+    <string name="restore_ask_title">¿Dónde restaurar?</string>
+    <string name="restore_ask_original">Restaurar en la carpeta original: %1$s</string>
+    <string name="restore_ask_choose">Elegir otra carpeta…</string>
+    <string name="restore_need_folder_msg">La ruta original es desconocida. Seleccione la carpeta para restaurar.</string>
+    <string name="setting_ask_restore_path">Preguntar dónde restaurar</string>
+    <string name="setting_ask_restore_path_desc">ON: siempre preguntar si restaurar en la carpeta original o elegir otra. OFF: restaurar automáticamente en la ruta original (o preguntar si es desconocida).</string>
+
+    <!-- Acciones de vista previa a pantalla completa -->
+    <string name="preview_delete">Eliminar</string>
+    <string name="preview_will_be_deleted">Se eliminará al cerrar ✓</string>
+    <string name="preview_archive">Archivar</string>
+    <string name="preview_restore">Restaurar</string>
+    <string name="preview_hint_swipe">Desliza hacia abajo para cerrar</string>
+    <string name="preview_hint_zoom">Pellizca para hacer zoom</string>
+    <string name="deleted_on_close_toast">Eliminado(s) %1$d archivo(s)</string>
+    <string name="preview_source_device">Dispositivo</string>
+
+    <!-- Barra de acciones / modo de selección -->
+    <string name="action_delete">Eliminar</string>
+    <string name="action_delete_all">Eliminar todo</string>
+    <string name="action_delete_files_question">¿Eliminar %1$d archivos?</string>
+    <string name="action_delete_from_archive">Eliminar del archivo</string>
+    <string name="action_properties">Propiedades</string>
 </resources>

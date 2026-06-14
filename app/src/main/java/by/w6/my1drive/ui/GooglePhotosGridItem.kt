@@ -124,7 +124,7 @@ fun GooglePhotosGridItem(
                             ) {
                                 Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Delete from archive", color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.action_delete_from_archive), color = MaterialTheme.colorScheme.error)
                             }
                             TextButton(
                                 onClick = {
@@ -137,7 +137,7 @@ fun GooglePhotosGridItem(
                             ) {
                                 Icon(Icons.Default.Info, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Properties")
+                                Text(stringResource(R.string.action_properties))
                             }
                         }
                     },

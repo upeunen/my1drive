@@ -28,83 +28,63 @@ sealed class RestoreResult {
 
 class OtgArchiveUtil(private val context: Context) {
 
-    fun copyAndVerifyItem(item: MediaItem, targetDirUri: Uri): Flow<CopyVerifyResult> = flow {
+        fun copyAndVerifyItem(item: MediaItem, targetDirUri: Uri): Flow<CopyVerifyResult> = flow {
         try {
-            emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.05f))
+            emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.0f))
 
-            // Check if the source file is accessible
-            try {
-                context.contentResolver.openInputStream(item.uri)?.use { }
-            } catch (e: Exception) {
-                emit(CopyVerifyResult.Skipped(item, "${e.javaClass.name}: ${e.message}"))
-                return@flow
-            }
+            val dir = DocumentFile.fromTreeUri(context, targetDirUri)
+                ?: throw Exception("otg_access_failed")
 
-            emit(CopyVerifyResult.Progress(item.displayName, "copying", 0.3f))
-            
-            val dir = DocumentFile.fromTreeUri(context, targetDirUri) ?: throw Exception("otg_access_failed")
-            
             val existingFile = dir.findFile(item.displayName)
             val destUri = if (existingFile != null) {
                 existingFile.uri
             } else {
-                val file = dir.createFile(item.mimeType, item.displayName) ?: throw Exception("otg_create_failed")
+                val file = dir.createFile(item.mimeType, item.displayName)
+                    ?: throw Exception("otg_create_failed")
                 file.uri
             }
 
             val digest = MessageDigest.getInstance("SHA-256")
+            var totalBytesCopied = 0L
+            val buffer = ByteArray(262144) // 256 KB buffer
 
             try {
                 context.contentResolver.openOutputStream(destUri)?.use { output ->
                     context.contentResolver.openInputStream(item.uri)?.use { input ->
-                        var lastEmittedPercent = -1
-                        val buffer = ByteArray(65536)
-                        var totalBytesCopied = 0L
+                        var lastEmittedStep = -1
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {
                             output.write(buffer, 0, bytesRead)
                             digest.update(buffer, 0, bytesRead)
                             totalBytesCopied += bytesRead
                             if (item.size > 0) {
-                                val progress = 0.3f + (totalBytesCopied.toFloat() / item.size) * 0.4f
-                                val percent = (progress * 100).toInt()
-                                if (percent != lastEmittedPercent) {
-                                    lastEmittedPercent = percent
-                                    emit(CopyVerifyResult.Progress(item.displayName, "copying_percent:$percent", progress))
+                                val pct = ((totalBytesCopied.toFloat() / item.size) * 100).toInt()
+                                val step = pct / 10 // emit every 10%
+                                if (step != lastEmittedStep) {
+                                    lastEmittedStep = step
+                                    emit(CopyVerifyResult.Progress(
+                                        item.displayName,
+                                        "copying",
+                                        (totalBytesCopied.toFloat() / item.size).coerceAtMost(0.95f)
+                                    ))
                                 }
                             }
                             bytesRead = input.read(buffer)
                         }
                     }
                 } ?: throw Exception("otg_write_failed")
-
-                try {
-                    context.contentResolver.openFileDescriptor(destUri, "rw")?.use { pfd ->
-                        pfd.fileDescriptor.sync()
-                    }
-                } catch (e: Exception) {
-                    try {
-                        context.contentResolver.openFileDescriptor(destUri, "w")?.use { pfd ->
-                            pfd.fileDescriptor.sync()
-                        }
-                    } catch (e2: Exception) {
-                        e2.printStackTrace()
-                    }
-                }
             } catch (se: SecurityException) {
-                val createdFile = DocumentFile.fromSingleUri(context, destUri)
-                createdFile?.delete()
+                DocumentFile.fromSingleUri(context, destUri)?.delete()
                 emit(CopyVerifyResult.Skipped(item, "COPY PHASE: ${se.javaClass.name}: ${se.message}"))
                 return@flow
             } catch (fnf: java.io.FileNotFoundException) {
-                val createdFile = DocumentFile.fromSingleUri(context, destUri)
-                createdFile?.delete()
+                DocumentFile.fromSingleUri(context, destUri)?.delete()
                 emit(CopyVerifyResult.Skipped(item, "COPY PHASE: ${fnf.javaClass.name}: ${fnf.message}"))
                 return@flow
             }
 
-            emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.8f))
-            
+            emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.95f))
+
             val srcHash = digest.digest().joinToString("") { "%02x".format(it) }
             val createdFile = DocumentFile.fromSingleUri(context, destUri)
             val destSize = createdFile?.length() ?: 0L
