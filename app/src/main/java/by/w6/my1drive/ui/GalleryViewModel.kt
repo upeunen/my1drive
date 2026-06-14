@@ -44,7 +44,7 @@ private const val PREF_OTG_URI = "otg_directory_uri"
 private const val PREF_KNOWN_ARCHIVE_ID = "known_archive_uuid"
 private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
-private const val IS_LIMIT_ACTIVE = true // Внутренний переключатель лимита 128 МБ (true - включен, false - отключен)
+private const val IS_LIMIT_ACTIVE = false // Внутренний переключатель лимита 128 МБ (true - включен, false - отключен)
 private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
 
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
@@ -105,9 +105,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         .map { it == DriveStatus.KNOWN_DRIVE_CONNECTED }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
+        val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
     val restoreState = MutableStateFlow(RestoreState())
-    val pendingDeleteRequest: StateFlow<PendingDeleteRequest?> = syncHelper.pendingDeleteRequest
     val syncState: StateFlow<String?> = syncHelper.syncState
 
     private val _showLimitReachedDialog = MutableStateFlow(false)
@@ -335,8 +334,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun restoreSingleItem(item: MediaItem) {
         startRestoring(listOf(item), null)
     }
-    fun onDeletePermissionGranted() { syncHelper.onDeletePermissionGranted(_selectedIds) }
-    fun dismissPendingDelete() { syncHelper.dismissPendingDelete(_selectedIds) }
     fun dismissError() { syncHelper.dismissError() }
     fun refresh() { repository.refresh() }
 

@@ -57,23 +57,13 @@ class MainActivity : ComponentActivity() {
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
 
-    private val otgReceiver = object : BroadcastReceiver() {
+            private val otgReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             viewModel.updateOtgStatus()
         }
     }
 
-
-
-    private val deletePermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            viewModel.onDeletePermissionGranted()
-        } else {
-            viewModel.dismissPendingDelete()
-        }
-    }
+    
 
     private val deviceDeleteLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -290,17 +280,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             My1DriveTheme {
-                LaunchedEffect(hasPermissions, hasPartialAccess) {
+                                LaunchedEffect(hasPermissions, hasPartialAccess) {
                     if (!hasPermissions && !hasPartialAccess) {
                         requestMediaPermissions()
-                    }
-                }
-
-                val pendingDelete by viewModel.pendingDeleteRequest.collectAsState()
-                LaunchedEffect(pendingDelete) {
-                    pendingDelete?.let { request ->
-                        val intentSenderRequest = IntentSenderRequest.Builder(request.intentSender).build()
-                        deletePermissionLauncher.launch(intentSenderRequest)
                     }
                 }
 

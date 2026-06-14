@@ -1,11 +1,7 @@
 package by.w6.my1drive.ui
 
 import android.app.Application
-import android.app.RecoverableSecurityException
-import android.content.Context
 import android.net.Uri
-import android.os.Build
-import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.data.local.AppDatabase
 import by.w6.my1drive.data.local.MediaEntity
@@ -40,19 +36,14 @@ class ArchiveSyncHelper(
     val syncState: StateFlow<String?> = _syncState.asStateFlow()
 
     private val _archiveState = MutableStateFlow(ArchiveState())
-    val archiveState: StateFlow<ArchiveState> = _archiveState.asStateFlow()
+        val archiveState: StateFlow<ArchiveState> = _archiveState.asStateFlow()
 
-    private val _pendingDeleteRequest = MutableStateFlow<PendingDeleteRequest?>(null)
-    val pendingDeleteRequest: StateFlow<PendingDeleteRequest?> = _pendingDeleteRequest.asStateFlow()
-
-    private val _missingFilesNotification = MutableStateFlow<List<String>?>(null)
+    private val _missingFilesNotification  = MutableStateFlow<List<String>?>(null)
     val missingFilesNotification: StateFlow<List<String>?> = _missingFilesNotification.asStateFlow()
 
     private val _autoSyncAddedCount = MutableStateFlow(0)
-    val autoSyncAddedCount: StateFlow<Int> = _autoSyncAddedCount.asStateFlow()
+        val autoSyncAddedCount: StateFlow<Int> = _autoSyncAddedCount.asStateFlow()
 
-    val pendingDeletesQueue = mutableListOf<ArchivedInfo>()
-    var lastArchiveSummary: String? = null
     var isSilentSyncing = false
 
     private val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
@@ -211,121 +202,26 @@ class ArchiveSyncHelper(
             }
         }
 
-        lastArchiveSummary = if (skipped.isNotEmpty() || errorMsg != null) buildString {
-            append("Некоторые файлы не удалось архивировать.\n")
-            append("Успешно скопировано: ${copied.size} из ${items.size}.\n")
-            if (skipped.isNotEmpty()) append("Пропущено: ${skipped.size}\n") else append("\n")
-            if (errorMsg != null) append("\nОшибка:\n$errorMsg")
-        } else null
-
         if (copied.isNotEmpty()) processDeletions(copied)
-        else {
-            _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary ?: "Ошибка архивирования", pendingQueueSize = archiveQueue.size)
-            lastArchiveSummary = null
+                else {
+            _archiveState.value = ArchiveState(isArchiving = false, error = "Ошибка архивирования", pendingQueueSize = archiveQueue.size)
             onOperationComplete()
         }
     }
 
-    private fun processDeletions(list: List<ArchivedInfo>) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val pendingIntent = MediaStore.createDeleteRequest(application.contentResolver, list.map { it.item.uri })
-                _pendingDeleteRequest.value = PendingDeleteRequest(
-                    intentSender = pendingIntent.intentSender,
-                    items = list.map { it.item }, hashes = list.map { it.hash },
-                    otgUris = list.map { it.otgUri }, thumbnailPaths = list.map { it.thumbnailPath }
-                )
-                        } catch (e: Exception) {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
-                onOperationComplete()
-            }
-        } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-            pendingDeletesQueue.clear(); pendingDeletesQueue.addAll(list); processNextQueueDelete()
-        } else {
-            scope.launch {
-                try {
-                    for (info in list) {
-                        application.contentResolver.delete(info.item.uri, null, null)
-                        repository.insertArchivedItem(info.item, info.otgUri, info.hash, info.thumbnailPath, info.item.originalRelativePath)
-                    }
-                    _archiveState.value = ArchiveState(isArchiving = false, pendingQueueSize = archiveQueue.size)
-                } catch (e: Exception) {
-                    _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
-                } finally {
-                    onOperationComplete()
-                }
-            }
-        }
-    }
-
-    private fun processNextQueueDelete() {
-        if (pendingDeletesQueue.isEmpty()) {
-            _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary, pendingQueueSize = archiveQueue.size)
-            lastArchiveSummary = null
-            onOperationComplete()
-            return
-        }
-        val next = pendingDeletesQueue.first()
-        try {
-            if (application.contentResolver.delete(next.item.uri, null, null) > 0) {
-                scope.launch {
-                    repository.insertArchivedItem(next.item, next.otgUri, next.hash, next.thumbnailPath, next.item.originalRelativePath)
-                    pendingDeletesQueue.removeAt(0); processNextQueueDelete()
-                }
-            } else {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = "delete_failed", pendingQueueSize = archiveQueue.size)
-                onOperationComplete()
-            }
-        } catch (se: SecurityException) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && se is RecoverableSecurityException) {
-                _pendingDeleteRequest.value = PendingDeleteRequest(
-                    intentSender = se.userAction.actionIntent.intentSender,
-                    items = listOf(next.item), hashes = listOf(next.hash),
-                    otgUris = listOf(next.otgUri), thumbnailPaths = listOf(next.thumbnailPath)
-                )
-            } else {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = se.localizedMessage, pendingQueueSize = archiveQueue.size)
-                onOperationComplete()
-            }
-        }
-    }
-
-    fun onDeletePermissionGranted(selectedIds: MutableStateFlow<Set<String>>) {
-        val pending = _pendingDeleteRequest.value ?: return
+        private fun processDeletions(list: List<ArchivedInfo>) {
         scope.launch {
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    for (i in pending.items.indices) {
-                        try { application.contentResolver.delete(pending.items[i].uri, null, null) } catch (_: Exception) { }
-                        try { repository.insertArchivedItem(pending.items[i], pending.otgUris[i], pending.hashes[i], pending.thumbnailPaths[i], pending.items[i].originalRelativePath) } catch (_: Exception) { }
-                    }
-                                        selectedIds.value = emptySet()
-                    _pendingDeleteRequest.value = null
-                    _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary, pendingQueueSize = archiveQueue.size)
-                    lastArchiveSummary = null
-                    onOperationComplete()
-                } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-                    val next = pendingDeletesQueue.firstOrNull()
-                    if (next != null) {
-                        application.contentResolver.delete(next.item.uri, null, null)
-                        repository.insertArchivedItem(next.item, next.otgUri, next.hash, next.thumbnailPath, next.item.originalRelativePath)
-                        selectedIds.value = selectedIds.value.toMutableSet().apply { remove(next.item.id) }
-                        pendingDeletesQueue.removeAt(0)
-                    }
-                    _pendingDeleteRequest.value = null; processNextQueueDelete()
+                for (info in list) {
+                    repository.insertArchivedItem(info.item, info.otgUri, info.hash, info.thumbnailPath, info.item.originalRelativePath)
                 }
-                        } catch (e: Exception) {
+                _archiveState.value = ArchiveState(isArchiving = false, pendingQueueSize = archiveQueue.size)
+            } catch (e: Exception) {
                 _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
-                _pendingDeleteRequest.value = null
+            } finally {
                 onOperationComplete()
             }
         }
-    }
-
-    fun dismissPendingDelete(selectedIds: MutableStateFlow<Set<String>>) {
-        _pendingDeleteRequest.value = null; pendingDeletesQueue.clear()
-        _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary, pendingQueueSize = archiveQueue.size); lastArchiveSummary = null
-        onOperationComplete()
     }
 
     fun dismissError() { _archiveState.value = _archiveState.value.copy(error = null) }

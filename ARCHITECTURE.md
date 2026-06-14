@@ -127,8 +127,8 @@ graph TD
 
 ### Как считается текущий объём архива
 
-Метод `calculatePhysicalArchiveSize()` (строка 123) обходит OTG-папку через SAF и суммирует длины всех файлов (исключая служебный `.my1drive_uuid`).  
-Вызов `updatePhysicalArchiveSize()` происходит:
+Вызов `updatePhysicalArchiveSize()` через `calculatePhysicalArchiveSize()` получает сумму `size` из таблицы `media_archive` в Room (`SELECT COALESCE(SUM(size), 0) FROM media_archive`).  
+Вызов происходит:
 1. При первом подключении диска (переход статуса в `KNOWN_DRIVE_CONNECTED`).
 2. При явном изменении папки архива (`setOtgDirectory()`).
 3. По завершении операций архивации, фоновой или ручной синхронизации (через колбэк `onOperationComplete` в [ArchiveSyncHelper](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/ui/ArchiveSyncHelper.kt)).
