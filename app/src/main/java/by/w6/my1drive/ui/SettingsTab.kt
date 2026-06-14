@@ -45,7 +45,9 @@ fun SettingsTab(
     otgDirectoryDisplayName: String? = null,
     cacheSize: Long = 0L,
     cacheFilesCount: Int = 0,
-    isLocalFolder: Boolean = false
+    isLocalFolder: Boolean = false,
+    currentArchiveSize: Long = 0L,
+    isLimitActive: Boolean = true
 ) {
     val context = LocalContext.current
 
@@ -104,6 +106,49 @@ fun SettingsTab(
         Button(onClick = onSelectOtgDirectory) {
             Text(if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
                 else stringResource(R.string.select_otg_folder))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isLimitActive && currentArchiveSize >= 128 * 1024 * 1024L)
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+                else
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = if (isLimitActive) "Объем архива (Бесплатная версия)" else "Объем архива",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (isLimitActive && currentArchiveSize >= 128 * 1024 * 1024L)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(6.dp))
+                val usedMb = currentArchiveSize.toDouble() / (1024.0 * 1024.0)
+                Text(
+                    text = if (isLimitActive) "Использовано: %.1f МБ из 128.0 МБ".format(usedMb)
+                           else "Использовано: %.1f МБ".format(usedMb),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isLimitActive && currentArchiveSize >= 128 * 1024 * 1024L)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                if (isLimitActive && currentArchiveSize >= 128 * 1024 * 1024L) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Достигнут лимит бесплатной версии. Приобретите PRO версию или удалите часть файлов из архива.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(16.dp))

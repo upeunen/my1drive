@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
+import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.ui.GalleryItem
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
@@ -255,6 +257,7 @@ fun GalleryScreenContent(
                             }
                         })
                     "settings" -> {
+                        val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
                         SettingsTab(
                             onSelectOtgDirectory = onSelectOtgDirectory,
                             onClearCache = { viewModel.clearPreviewCache() },
@@ -262,7 +265,9 @@ fun GalleryScreenContent(
                             otgDirectoryDisplayName = viewModel.getOtgDirectoryDisplayName(),
                             cacheSize = previewCacheManager.getCacheSize(),
                             cacheFilesCount = previewCacheManager.getCacheFileCount(),
-                            isLocalFolder = viewModel.isOtgLocalFolder()
+                            isLocalFolder = viewModel.isOtgLocalFolder(),
+                            currentArchiveSize = physicalArchiveSize,
+                            isLimitActive = viewModel.isLimitActive
                         )
                     }
                 }
@@ -358,6 +363,27 @@ fun GalleryScreenContent(
                 confirmButton = {
                     Button(onClick = { viewModel.dismissRestoreError() }) {
                         Text("ОК")
+                    }
+                }
+            )
+        }
+
+        val showLimitReachedDialog by viewModel.showLimitReachedDialog.collectAsState()
+        if (showLimitReachedDialog) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissLimitReachedDialog() },
+                title = { Text("Лимит бесплатной версии", fontWeight = FontWeight.Bold) },
+                text = { Text("Вы достигли лимита бесплатной версии в 128 МБ. Для продолжения архивации необходимо приобрести PRO версию либо удалить часть фото из архива.") },
+                confirmButton = {
+                    Button(onClick = { viewModel.dismissLimitReachedDialog() }) {
+                        Text("ОК")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        Toast.makeText(context, "Покупка PRO версии временно недоступна", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("Купить PRO")
                     }
                 }
             )

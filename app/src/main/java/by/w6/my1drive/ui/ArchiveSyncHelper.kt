@@ -32,7 +32,8 @@ class ArchiveSyncHelper(
     private val archiveUtil: OtgArchiveUtil,
     private val prefs: android.content.SharedPreferences,
     private val previewCache: PreviewCacheManager,
-    private val scope: kotlinx.coroutines.CoroutineScope
+    private val scope: kotlinx.coroutines.CoroutineScope,
+    private val onOperationComplete: () -> Unit = {}
 ) {
 
     private val _syncState = MutableStateFlow<String?>(null)
@@ -88,7 +89,7 @@ class ArchiveSyncHelper(
                 }
 
                 if (addedCount > 0) { repository.refresh(); _autoSyncAddedCount.value = addedCount }
-            } catch (_: Exception) { } finally { isSilentSyncing = false }
+            } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
         }
     }
 
@@ -142,7 +143,11 @@ class ArchiveSyncHelper(
                 logSb.appendLine("Sync completed: imported $synced, skipped $skipped")
                 _syncState.value = logSb.toString()
                 repository.refresh()
-            } catch (e: Exception) { _syncState.value = "Ошибка синхронизации: ${e.localizedMessage}" }
+            } catch (e: Exception) {
+                _syncState.value = "Ошибка синхронизации: ${e.localizedMessage}"
+            } finally {
+                onOperationComplete()
+            }
         }
     }
 
@@ -200,6 +205,7 @@ class ArchiveSyncHelper(
             else {
                 _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary ?: "Ошибка архивирования")
                 lastArchiveSummary = null
+                onOperationComplete()
             }
         }
     }
@@ -213,7 +219,10 @@ class ArchiveSyncHelper(
                     items = list.map { it.item }, hashes = list.map { it.hash },
                     otgUris = list.map { it.otgUri }, thumbnailPaths = list.map { it.thumbnailPath }
                 )
-            } catch (e: Exception) { _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage) }
+            } catch (e: Exception) {
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage)
+                onOperationComplete()
+            }
         } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
             pendingDeletesQueue.clear(); pendingDeletesQueue.addAll(list); processNextQueueDelete()
         } else {
@@ -224,7 +233,11 @@ class ArchiveSyncHelper(
                         repository.insertArchivedItem(info.item, info.otgUri, info.hash, info.thumbnailPath, info.item.originalRelativePath)
                     }
                     _archiveState.value = ArchiveState(isArchiving = false)
-                } catch (e: Exception) { _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage) }
+                } catch (e: Exception) {
+                    _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage)
+                } finally {
+                    onOperationComplete()
+                }
             }
         }
     }
@@ -232,7 +245,9 @@ class ArchiveSyncHelper(
     private fun processNextQueueDelete() {
         if (pendingDeletesQueue.isEmpty()) {
             _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary)
-            lastArchiveSummary = null; return
+            lastArchiveSummary = null
+            onOperationComplete()
+            return
         }
         val next = pendingDeletesQueue.first()
         try {
@@ -241,7 +256,10 @@ class ArchiveSyncHelper(
                     repository.insertArchivedItem(next.item, next.otgUri, next.hash, next.thumbnailPath, next.item.originalRelativePath)
                     pendingDeletesQueue.removeAt(0); processNextQueueDelete()
                 }
-            } else _archiveState.value = _archiveState.value.copy(isArchiving = false, error = "delete_failed")
+            } else {
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = "delete_failed")
+                onOperationComplete()
+            }
         } catch (se: SecurityException) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && se is RecoverableSecurityException) {
                 _pendingDeleteRequest.value = PendingDeleteRequest(
@@ -249,7 +267,10 @@ class ArchiveSyncHelper(
                     items = listOf(next.item), hashes = listOf(next.hash),
                     otgUris = listOf(next.otgUri), thumbnailPaths = listOf(next.thumbnailPath)
                 )
-            } else _archiveState.value = _archiveState.value.copy(isArchiving = false, error = se.localizedMessage)
+            } else {
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = se.localizedMessage)
+                onOperationComplete()
+            }
         }
     }
 
@@ -266,6 +287,7 @@ class ArchiveSyncHelper(
                     _pendingDeleteRequest.value = null
                     _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary)
                     lastArchiveSummary = null
+                    onOperationComplete()
                 } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
                     val next = pendingDeletesQueue.firstOrNull()
                     if (next != null) {
@@ -276,13 +298,18 @@ class ArchiveSyncHelper(
                     }
                     _pendingDeleteRequest.value = null; processNextQueueDelete()
                 }
-            } catch (e: Exception) { _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage); _pendingDeleteRequest.value = null }
+            } catch (e: Exception) {
+                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage)
+                _pendingDeleteRequest.value = null
+                onOperationComplete()
+            }
         }
     }
 
     fun dismissPendingDelete(selectedIds: MutableStateFlow<Set<String>>) {
         _pendingDeleteRequest.value = null; pendingDeletesQueue.clear()
         _archiveState.value = ArchiveState(isArchiving = false, error = lastArchiveSummary); lastArchiveSummary = null
+        onOperationComplete()
     }
 
     fun dismissError() { _archiveState.value = _archiveState.value.copy(error = null) }

@@ -43,5 +43,11 @@ interface MediaDao {
     /** Count items with cached previews */
     @Query("SELECT COUNT(*) FROM media_archive WHERE thumbnailPath IS NOT NULL")
     fun getCachedPreviewCount(): Int
+
+    /** Total archive size in bytes (sum of all archived file sizes) — для расчёта лимита 128 МБ */
+    @Query("SELECT COALESCE(SUM(size), 0) FROM media_archive")
+    fun getTotalArchiveSize(): Long
 }
+
+
 

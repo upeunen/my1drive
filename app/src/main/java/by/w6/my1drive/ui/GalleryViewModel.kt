@@ -44,6 +44,8 @@ private const val PREF_OTG_URI = "otg_directory_uri"
 private const val PREF_KNOWN_ARCHIVE_ID = "known_archive_uuid"
 private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
+private const val IS_LIMIT_ACTIVE = true // Внутренний переключатель лимита 128 МБ (true - включен, false - отключен)
+private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
 
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -54,7 +56,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val previewCache = PreviewCacheManager(application, db.mediaDao())
 
     private val syncHelper = ArchiveSyncHelper(
-        application, db, repository, archiveUtil, prefs, previewCache, viewModelScope
+        application, db, repository, archiveUtil, prefs, previewCache, viewModelScope,
+        onOperationComplete = { updatePhysicalArchiveSize() }
     )
 
     private var driveErrorCount = 0
@@ -107,6 +110,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val pendingDeleteRequest: StateFlow<PendingDeleteRequest?> = syncHelper.pendingDeleteRequest
     val syncState: StateFlow<String?> = syncHelper.syncState
 
+    private val _showLimitReachedDialog = MutableStateFlow(false)
+    val showLimitReachedDialog = _showLimitReachedDialog.asStateFlow()
+
+    val isLimitActive = IS_LIMIT_ACTIVE
+
+    private val _physicalArchiveSize = MutableStateFlow(0L)
+    val physicalArchiveSize = _physicalArchiveSize.asStateFlow()
+
     private val _askRestorePath = MutableStateFlow(prefs.getBoolean(PREF_ASK_RESTORE_PATH, false))
     val askRestorePath = _askRestorePath.asStateFlow()
 
@@ -136,6 +147,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             while (true) {
                 val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
                 if (newStatus != _driveStatus.value) _driveStatus.value = newStatus
+                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED) {
+                    if (previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED) {
+                        updatePhysicalArchiveSize()
+                    }
+                } else {
+                    if (_physicalArchiveSize.value != 0L) {
+                        _physicalArchiveSize.value = 0L
+                    }
+                }
                 if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED &&
                     !syncHelper.archiveState.value.isArchiving && !restoreState.value.isRestoring && !isSilentSyncing
                 ) { syncHelper.silentSyncArchive(_otgDirectoryUri.value); refreshCacheStats() }
@@ -210,6 +230,30 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateOtgStatus() { viewModelScope.launch { _driveStatus.value = withContext(Dispatchers.IO) { computeDriveStatus() } } }
 
+    /** Считает реальный физический объём файлов в OTG-папке (исключая служебные) */
+    private fun calculatePhysicalArchiveSize(): Long {
+        val uri = _otgDirectoryUri.value ?: return 0L
+        return try {
+            val dir = DocumentFile.fromTreeUri(getApplication(), uri)
+            if (dir != null && dir.exists()) {
+                dir.listFiles()
+                    .filter { !it.isDirectory && it.name != ".my1drive_uuid" }
+                    .sumOf { it.length() }
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
+    fun updatePhysicalArchiveSize() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val size = calculatePhysicalArchiveSize()
+            _physicalArchiveSize.value = size
+        }
+    }
+
     // ─── Preview cache ───
 
     fun onPreviewCached(hash: String, path: String) {
@@ -230,7 +274,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun setOtgDirectory(uri: Uri) {
         _otgDirectoryUri.value = uri; prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
-        viewModelScope.launch { _driveStatus.value = computeDriveStatus() }
+        viewModelScope.launch {
+            _driveStatus.value = computeDriveStatus()
+            if (_driveStatus.value == DriveStatus.KNOWN_DRIVE_CONNECTED) {
+                updatePhysicalArchiveSize()
+            }
+        }
     }
 
     fun ejectOtg() {
@@ -238,6 +287,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             try { getApplication<Application>().contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } catch (_: Exception) { }
         }
         _otgDirectoryUri.value = null; prefs.edit().remove(PREF_OTG_URI).apply(); _driveStatus.value = DriveStatus.NO_URI_CONFIGURED
+        _physicalArchiveSize.value = 0L
     }
 
     // ─── Selection ───
@@ -252,8 +302,36 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissAutoSyncAddedCount() { syncHelper.dismissAutoSyncAddedCount() }
     fun syncArchive() { syncHelper.syncArchive(_otgDirectoryUri.value) }
     fun dismissSync() { syncHelper.dismissSync() }
-    fun startArchiving(targetUri: Uri) { syncHelper.startArchiving(mediaItems.value.filter { it.id in _selectedIds.value }, targetUri) }
-    fun archiveSingleItem(item: MediaItem, targetUri: Uri) { syncHelper.startArchiving(listOf(item), targetUri) }
+    fun startArchiving(targetUri: Uri) {
+        val selected = mediaItems.value.filter { it.id in _selectedIds.value }
+        if (selected.isEmpty()) return
+
+        if (IS_LIMIT_ACTIVE) {
+            val currentArchivedSize = physicalArchiveSize.value
+            val newSelectionSize = selected.sumOf { it.size }
+            val totalProjectedSize = currentArchivedSize + newSelectionSize
+            if (totalProjectedSize > ARCHIVE_SIZE_LIMIT) {
+                _showLimitReachedDialog.value = true
+                return
+            }
+        }
+        syncHelper.startArchiving(selected, targetUri)
+        // Размер архива пересчитается в колбэке onOperationComplete
+    }
+
+    fun archiveSingleItem(item: MediaItem, targetUri: Uri) {
+        if (IS_LIMIT_ACTIVE) {
+            val currentArchivedSize = physicalArchiveSize.value
+            val totalProjectedSize = currentArchivedSize + item.size
+
+            if (totalProjectedSize > ARCHIVE_SIZE_LIMIT) {
+                _showLimitReachedDialog.value = true
+                return
+            }
+        }
+        syncHelper.startArchiving(listOf(item), targetUri)
+        // Размер архива пересчитается в колбэке onOperationComplete
+    }
     fun restoreSingleItem(item: MediaItem) {
         startRestoring(listOf(item), null)
     }
@@ -356,6 +434,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 } catch (_: Exception) { }
             }
             repository.refresh()
+            updatePhysicalArchiveSize()
         }
     }
 
@@ -395,6 +474,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 successCount < items.size -> "Восстановлено: $successCount из ${items.size}."
                 else -> null
             })
+            updatePhysicalArchiveSize()
         }
     }
 
@@ -473,5 +553,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private fun isYesterday(target: Calendar, now: Calendar): Boolean {
         val yesterday = now.clone() as Calendar; yesterday.add(Calendar.DAY_OF_YEAR, -1)
         return target.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && target.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)
+    }
+
+    fun dismissLimitReachedDialog() { _showLimitReachedDialog.value = false }
+
+    fun getArchivedSize(): Long {
+        return physicalArchiveSize.value
     }
 }

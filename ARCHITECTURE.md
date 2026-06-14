@@ -99,6 +99,21 @@ graph TD
 
 ---
 
+## 🔒 Лимиты бесплатной версии (Archive Size Limits)
+
+В приложении действует жесткий неотключаемый лимит в **128 МБ** на общий объем архивированных файлов.
+
+* **Проверка лимита перед операцией:**
+  Перед началом любой операции архивации (`startArchiving` или `archiveSingleItem` в [GalleryViewModel](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/ui/GalleryViewModel.kt)) приложение вычисляет суммарный прогнозируемый размер: `текущий_размер_архива + размер_выбираемых_файлов`. Если сумма превышает 128 МБ, операция блокируется и выводится предупреждающий диалог.
+* **Событийный расчет физического объема:**
+  Вместо периодического опроса директории по таймеру, подсчет физического объема архива происходит по событийному принципу с помощью метода `updatePhysicalArchiveSize()`:
+  1. При первом подключении диска (переход статуса в `KNOWN_DRIVE_CONNECTED`).
+  2. При явном изменении папки архива (`setOtgDirectory()`).
+  3. По завершении операций архивации, фоновой или ручной синхронизации (через колбэк `onOperationComplete` в [ArchiveSyncHelper](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/ui/ArchiveSyncHelper.kt)).
+  4. По завершении операций восстановления (`startRestoring()`) или удаления файлов из архива (`deleteArchivedItems()`).
+
+---
+
 ## 🚨 Ключевые правила разработки (Strict Constraints)
 
 1. **SHA-256 в качестве Primary Key:** Всегда используйте SHA-256 хэш файла как уникальный идентификатор в Room ([MediaEntity](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/data/local/MediaEntity.kt)). Никаких случайных UUID.
