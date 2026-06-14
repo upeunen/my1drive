@@ -265,12 +265,6 @@ fun InfoDialog(
                     )
                 }
 
-                // ── Archive ID ──
-                item.archiveId?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    InfoRow(label = stringResource(R.string.info_archive_id), value = it.take(8) + "…")
-                }
-
                 // ── Delete button (files can be deleted, previews cannot) ──
                 if (item.status == MediaStatus.ARCHIVED_OTG) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -351,3 +345,4 @@ fun InfoDialog(
         )
     }
 }
+

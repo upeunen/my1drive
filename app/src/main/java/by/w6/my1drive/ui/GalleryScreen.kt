@@ -1,6 +1,7 @@
-package by.w6.my1drive.ui
+﻿package by.w6.my1drive.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +9,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,11 +40,9 @@ fun GalleryScreen(
     val selectedIds by viewModel.selectedIds.collectAsState()
     val otgDirectoryUri by viewModel.otgDirectoryUri.collectAsState()
     val isOtgConnected by viewModel.isOtgConnected.collectAsState()
-    val driveStatus by viewModel.driveStatus.collectAsState()
-    val restoreRequest by viewModel.restoreRequest.collectAsState()
     val missingFilesNotification by viewModel.missingFilesNotification.collectAsState()
     val autoSyncAddedCount by viewModel.autoSyncAddedCount.collectAsState()
-    val newArchiveId by viewModel.newArchiveId.collectAsState()
+    val showRestorePicker by viewModel.showRestorePicker.collectAsState()
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
     var activePreviewItem by remember { mutableStateOf<MediaItem?>(null) }
@@ -65,6 +65,13 @@ fun GalleryScreen(
     }
     val previewCache = viewModel.getPreviewCacheManager()
 
+    // Trigger SAF folder picker when restore items lack originalRelativePath
+    LaunchedEffect(showRestorePicker) {
+        if (showRestorePicker) {
+            onPickRestoreFolder()
+        }
+    }
+
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
@@ -81,10 +88,10 @@ fun GalleryScreen(
                 ) {
                     GalleryScreenActionBar(
                         isArchiveTab = currentScreenRoute == "archive",
-                        driveStatus = driveStatus,
+                        isOtgConnected = isOtgConnected,
                         otgDirectoryUri = otgDirectoryUri,
                         onDelete = { viewModel.deleteSelected() },
-                        onArchive = { viewModel.startArchiving(otgDirectoryUri!!) },
+                        onArchive = { viewModel.startArchiving() },
                         onRestore = { viewModel.requestRestore() }
                     )
                 }
@@ -94,12 +101,10 @@ fun GalleryScreen(
         GalleryScreenContent(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             selectedIds = selectedIds,
-            driveStatus = driveStatus,
             otgDirectoryUri = otgDirectoryUri,
             isOtgConnected = isOtgConnected,
             hasPartialAccess = hasPartialAccess,
             currentScreenRoute = currentScreenRoute,
-            newArchiveId = newArchiveId,
             missingFilesNotification = missingFilesNotification,
             autoSyncAddedCount = autoSyncAddedCount,
             activePreviewItem = activePreviewItem,
@@ -118,3 +123,4 @@ fun GalleryScreen(
         )
     }
 }
+

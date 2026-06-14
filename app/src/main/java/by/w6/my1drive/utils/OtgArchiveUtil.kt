@@ -1,19 +1,13 @@
 package by.w6.my1drive.utils
 
-import by.w6.my1drive.BuildConfig
-
-import android.Manifest
 import android.content.ContentValues
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
-import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
-import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.domain.model.MediaItem
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +15,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 
@@ -40,109 +33,14 @@ sealed class RestoreResult {
 
 class OtgArchiveUtil(private val context: Context) {
 
-    /**
-     * Diagnose current permission state for debugging.
-     */
-    private fun diagnosePermissions(): String {
-        val sb = StringBuilder()
-        sb.appendLine("=== Permission Diagnostics ===")
-        sb.appendLine("Android API: ${Build.VERSION.SDK_INT}")
-        sb.appendLine("App: my1drive v${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})")
-        sb.appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val img = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES)
-            val vid = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO)
-            sb.appendLine("READ_MEDIA_IMAGES: ${if (img == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"}")
-            sb.appendLine("READ_MEDIA_VIDEO: ${if (vid == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"}")
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val vus = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-            sb.appendLine("READ_MEDIA_VISUAL_USER_SELECTED: ${if (vus == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"}")
-        }
-        val ext = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE)
-        sb.appendLine("READ_EXTERNAL_STORAGE: ${if (ext == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"}")
-
-        return sb.toString()
-    }
-
-    /**
-     * Check if we can actually read a URI before attempting full operations.
-     */
-    private fun checkUriAccess(uri: Uri): String {
-        val sb = StringBuilder()
-        sb.appendLine("=== URI Access Check: $uri ===")
-
-        // Check via checkCallingOrSelfUriPermission
-        try {
-            val readPerm = context.checkCallingOrSelfUriPermission(
-                uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-            sb.appendLine("URI read permission check: ${if (readPerm == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"}")
-        } catch (e: Exception) {
-            sb.appendLine("URI read permission check error: ${e.javaClass.simpleName}: ${e.message}")
-        }
-
-        // Try openFileDescriptor
-        try {
-            val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-            if (pfd != null) {
-                sb.appendLine("openFileDescriptor: SUCCESS (size=${pfd.statSize})")
-                pfd.close()
-            } else {
-                sb.appendLine("openFileDescriptor: returned NULL")
-            }
-        } catch (e: Exception) {
-            sb.appendLine("openFileDescriptor: FAILED - ${e.javaClass.simpleName}: ${e.message}")
-        }
-
-        // Try openInputStream
-        try {
-            val stream = context.contentResolver.openInputStream(uri)
-            if (stream != null) {
-                sb.appendLine("openInputStream: SUCCESS")
-                stream.close()
-            } else {
-                sb.appendLine("openInputStream: returned NULL")
-            }
-        } catch (e: Exception) {
-            sb.appendLine("openInputStream: FAILED - ${e.javaClass.simpleName}: ${e.message}")
-        }
-
-        // Query content resolver for type
-        try {
-            val type = context.contentResolver.getType(uri)
-            sb.appendLine("ContentResolver.getType: $type")
-        } catch (e: Exception) {
-            sb.appendLine("ContentResolver.getType: FAILED - ${e.javaClass.simpleName}: ${e.message}")
-        }
-
-        return sb.toString()
-    }
-
     fun copyAndVerifyItem(item: MediaItem, targetDirUri: Uri): Flow<CopyVerifyResult> = flow {
         try {
-            emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.05f))
-
-            // Diagnose permissions and URI access before doing anything
-            val permDiag = diagnosePermissions()
-            val uriDiag = checkUriAccess(item.uri)
-
-            emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.1f))
+                        emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.05f))
 
             val srcHash = try {
                 calculateSha256(item.uri)
             } catch (e: Exception) {
-                val details = """
-                    ${e.javaClass.name}: ${e.message}
-                    File: ${item.displayName}
-                    URI: ${item.uri}
-                    MimeType: ${item.mimeType}
-                    Size: ${item.size} bytes
-                    $permDiag
-                    $uriDiag
-                """.trimIndent()
-                emit(CopyVerifyResult.Skipped(item, details))
+                emit(CopyVerifyResult.Skipped(item, "${e.javaClass.name}: ${e.message}"))
                 return@flow
             }
 
@@ -158,10 +56,10 @@ class OtgArchiveUtil(private val context: Context) {
                 file.uri
             }
 
-            try {
+                        try {
                 context.contentResolver.openOutputStream(destUri)?.use { output ->
                     context.contentResolver.openInputStream(item.uri)?.use { input ->
-                        val buffer = ByteArray(65536) // 64KB buffer
+                        val buffer = ByteArray(65536)
                         var totalBytesCopied = 0L
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {
@@ -174,10 +72,9 @@ class OtgArchiveUtil(private val context: Context) {
                             bytesRead = input.read(buffer)
                         }
                     }
-                } ?: throw Exception("otg_write_failed")
+                                } ?: throw Exception("otg_write_failed")
 
-                // Force sync to physical storage to bypass OS write caching
-                try {
+            try {
                     context.contentResolver.openFileDescriptor(destUri, "rw")?.use { pfd ->
                         pfd.fileDescriptor.sync()
                     }
@@ -193,28 +90,12 @@ class OtgArchiveUtil(private val context: Context) {
             } catch (se: SecurityException) {
                 val createdFile = DocumentFile.fromSingleUri(context, destUri)
                 createdFile?.delete()
-                val details = """
-                    COPY PHASE: ${se.javaClass.name}: ${se.message}
-                    File: ${item.displayName}
-                    URI: ${item.uri}
-                    MimeType: ${item.mimeType}
-                    Size: ${item.size} bytes
-                    $permDiag
-                    $uriDiag
-                """.trimIndent()
-                emit(CopyVerifyResult.Skipped(item, details))
+                emit(CopyVerifyResult.Skipped(item, "COPY PHASE: ${se.javaClass.name}: ${se.message}"))
                 return@flow
             } catch (fnf: java.io.FileNotFoundException) {
                 val createdFile = DocumentFile.fromSingleUri(context, destUri)
                 createdFile?.delete()
-                val details = """
-                    COPY PHASE: ${fnf.javaClass.name}: ${fnf.message}
-                    File: ${item.displayName}
-                    URI: ${item.uri}
-                    $permDiag
-                    $uriDiag
-                """.trimIndent()
-                emit(CopyVerifyResult.Skipped(item, details))
+                emit(CopyVerifyResult.Skipped(item, "COPY PHASE: ${fnf.javaClass.name}: ${fnf.message}"))
                 return@flow
             }
 
@@ -227,27 +108,11 @@ class OtgArchiveUtil(private val context: Context) {
                 throw Exception("verification_failed")
             }
 
-            // Thumbnail is NOT generated at archive time.
+                        // Thumbnail is NOT generated at archive time.
             // It will be loaded on-demand by OtgThumbnailFetcher when the user views the file.
             emit(CopyVerifyResult.Success(item, srcHash, destUri.toString(), thumbnailPath = null))
         } catch (e: Exception) {
-            val sw = java.io.StringWriter()
-            e.printStackTrace(java.io.PrintWriter(sw))
-            val permDiag = try { diagnosePermissions() } catch (_: Exception) { "N/A" }
-            val uriDiag = try { checkUriAccess(item.uri) } catch (_: Exception) { "N/A" }
-            val details = """
-                Exception: ${e.javaClass.name}
-                Message: ${e.message}
-                File: ${item.displayName}
-                URI: ${item.uri}
-                MimeType: ${item.mimeType}
-                Size: ${item.size} bytes
-                $permDiag
-                $uriDiag
-                Stacktrace:
-                $sw
-            """.trimIndent()
-            emit(CopyVerifyResult.Error(item.displayName, details))
+            emit(CopyVerifyResult.Error(item.displayName, "${e.javaClass.name}: ${e.message}"))
         }
     }.flowOn(Dispatchers.IO)
 
@@ -342,9 +207,9 @@ class OtgArchiveUtil(private val context: Context) {
     }.flowOn(Dispatchers.IO)
 
     fun calculateSha256(uri: Uri): String {
-        val digest = MessageDigest.getInstance("SHA-256")
+                val digest = MessageDigest.getInstance("SHA-256")
         val stream = context.contentResolver.openInputStream(uri)
-            ?: throw Exception("Не удалось открыть поток для чтения $uri")
+            ?: throw Exception("Failed to open stream for $uri")
         stream.use { input ->
             val buffer = ByteArray(65536)
             var bytesRead = input.read(buffer)
@@ -402,7 +267,7 @@ class OtgArchiveUtil(private val context: Context) {
         }
     }
 
-    private fun decodeBitmapFallback(uri: Uri): Bitmap? {
+        private fun decodeBitmapFallback(uri: Uri): Bitmap? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
                 val options = BitmapFactory.Options().apply {
@@ -419,39 +284,6 @@ class OtgArchiveUtil(private val context: Context) {
                 context.contentResolver.openInputStream(uri)?.use { input2 ->
                     BitmapFactory.decodeStream(input2, null, options2)
                 }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    private fun deleteLocalFile(uri: Uri): Boolean {
-        val deleted = context.contentResolver.delete(uri, null, null)
-        return deleted > 0
-    }
-    /**
-     * Reads the archive UUID from `.my1drive_uuid` in the OTG root.
-     * If the file doesn't exist, creates a new UUID and writes it.
-     * Returns the UUID string, or null if the directory is not writable.
-     */
-    fun getOrCreateArchiveId(dir: DocumentFile): String? {
-        return try {
-            val uuidFile = dir.findFile(".my1drive_uuid")
-            if (uuidFile != null && uuidFile.exists()) {
-                // Read existing UUID
-                context.contentResolver.openInputStream(uuidFile.uri)?.use { stream ->
-                    stream.bufferedReader().readText().trim().takeIf { it.isNotEmpty() }
-                }
-            } else {
-                // Create new UUID and write it
-                val newUuid = java.util.UUID.randomUUID().toString()
-                val newFile = dir.createFile("text/plain", ".my1drive_uuid")
-                    ?: return null
-                context.contentResolver.openOutputStream(newFile.uri)?.use { out ->
-                    out.write(newUuid.toByteArray())
-                }
-                newUuid
             }
         } catch (e: Exception) {
             e.printStackTrace()

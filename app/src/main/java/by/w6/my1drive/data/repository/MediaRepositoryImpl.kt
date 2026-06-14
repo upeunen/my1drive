@@ -1,4 +1,4 @@
-package by.w6.my1drive.data.repository
+﻿package by.w6.my1drive.data.repository
 
 import android.content.ContentUris
 import android.content.Context
@@ -47,8 +47,7 @@ class MediaRepositoryImpl(
                     hash = entity.id,
                     otgUri = entity.otgUri,
                     thumbnailPath = entity.thumbnailPath,
-                    originalRelativePath = entity.originalRelativePath,
-                    archiveId = entity.archiveId
+                    originalRelativePath = entity.originalRelativePath
                 )
             }
 
@@ -71,9 +70,8 @@ class MediaRepositoryImpl(
         otgUri: String,
         hash: String,
         thumbnailPath: String?,
-        originalRelativePath: String?,
-        archiveId: String?
-    ) = withContext(Dispatchers.IO) {
+        originalRelativePath: String?
+) = withContext(Dispatchers.IO) {
         val entity = MediaEntity(
             id = hash,
             displayName = item.displayName,
@@ -83,8 +81,7 @@ class MediaRepositoryImpl(
             otgUri = otgUri,
             thumbnailPath = thumbnailPath,
             duration = item.duration,
-            originalRelativePath = originalRelativePath ?: item.originalRelativePath,
-            archiveId = archiveId
+            originalRelativePath = originalRelativePath ?: item.originalRelativePath
         )
         mediaDao.insert(entity)
     }
@@ -210,3 +207,7 @@ class MediaRepositoryImpl(
         return list.sortedByDescending { it.dateModified }
     }
 }
+
+
+
+

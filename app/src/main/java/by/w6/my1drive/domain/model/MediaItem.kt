@@ -1,4 +1,4 @@
-package by.w6.my1drive.domain.model
+﻿package by.w6.my1drive.domain.model
 
 import android.net.Uri
 
@@ -15,10 +15,10 @@ data class MediaItem(
     val otgUri: String? = null,             // SAF Document URI on OTG drive
     val thumbnailPath: String? = null,       // Local cache path (filesDir/my1drive_previews/{hash}.webp)
     val originalRelativePath: String? = null,// MediaStore RELATIVE_PATH (e.g. "DCIM/Camera")
-    val archiveId: String? = null,           // UUID of the OTG drive this item belongs to
     val isVideo: Boolean = mimeType.startsWith("video/")
 ) {
     /** True if a local preview thumbnail is cached and the file exists */
     val hasCachedPreview: Boolean
         get() = thumbnailPath != null && java.io.File(thumbnailPath).exists()
 }
+

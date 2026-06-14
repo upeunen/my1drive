@@ -1,13 +1,10 @@
 ﻿package by.w6.my1drive.ui
 
 import androidx.compose.foundation.layout.Row
-import by.w6.my1drive.ui.DriveStatus
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -20,20 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun GooglePhotosTopBar(
     selectedCount: Int,
-    driveStatus: DriveStatus,
+    isOtgConnected: Boolean,
     otgUriSet: Boolean,
     onClearSelection: () -> Unit,
     onSelectOtgClick: () -> Unit
 ) {
     val title = when {
-        selectedCount > 0 -> "$selectedCount selected"
-        driveStatus == DriveStatus.KNOWN_DRIVE_CONNECTED -> "My1Drive"
-        driveStatus == DriveStatus.NO_URI_CONFIGURED -> "My1Drive"
+        selectedCount > 0 -> " selected"
+        isOtgConnected -> "My1Drive"
         else -> "My1Drive"
     }
     Row(

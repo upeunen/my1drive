@@ -36,8 +36,7 @@ fun PhotosGridTab(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
     onItemClick: (MediaItem) -> Unit,
-    onItemLongClick: (MediaItem) -> Unit,
-    onFolderClick: ((String) -> Unit)? = null
+    onItemLongClick: (MediaItem) -> Unit
 ) {
     if (groupedItems.isEmpty()) {
         Box(
@@ -69,27 +68,19 @@ fun PhotosGridTab(
                 items = groupedItems,
                 key = { item ->
                     when (item) {
-                        is GalleryItem.Header -> "header_${item.title}"
-                        is GalleryItem.Media -> "media_${item.item.id}"
-                        is GalleryItem.Folder -> "folder_${item.path}"
+                        is GalleryItem.Header -> "header_"
+                        is GalleryItem.Media -> "media_"
                     }
                 },
                 span = { item ->
                     when (item) {
                         is GalleryItem.Header -> GridItemSpan(maxLineSpan)
-                        is GalleryItem.Folder -> GridItemSpan(1)
                         is GalleryItem.Media -> GridItemSpan(1)
                     }
                 }
             ) { item ->
                 when (item) {
                     is GalleryItem.Header -> DateCategoryHeader(title = item.title)
-                    is GalleryItem.Folder -> {
-                        FolderGridItem(
-                            name = item.name,
-                            onClick = { onFolderClick?.invoke(item.name) }
-                        )
-                    }
                     is GalleryItem.Media -> {
                         val isSelected = selectedIds.contains(item.item.id)
                         GooglePhotosGridItem(

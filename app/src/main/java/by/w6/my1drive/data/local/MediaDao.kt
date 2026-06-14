@@ -1,4 +1,4 @@
-package by.w6.my1drive.data.local
+﻿package by.w6.my1drive.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -31,7 +31,7 @@ interface MediaDao {
     @Query("UPDATE media_archive SET lastAccessed = :timestamp WHERE id = :id")
     fun updateLastAccessed(id: String, timestamp: Long)
 
-    /** Get items sorted by lastAccessed ASC (oldest first) — used for LRU eviction */
+    /** Get items sorted by lastAccessed ASC (oldest first) вЂ” used for LRU eviction */
     @Query("SELECT * FROM media_archive WHERE thumbnailPath IS NOT NULL ORDER BY lastAccessed ASC LIMIT :limit")
     fun getOldestByLastAccessed(limit: Int): List<MediaEntity>
 
@@ -39,15 +39,9 @@ interface MediaDao {
     @Query("UPDATE media_archive SET thumbnailPath = NULL WHERE id = :id")
     fun clearThumbnailPath(id: String)
 
-    /** Get all items belonging to a specific archive drive */
-    @Query("SELECT * FROM media_archive WHERE archiveId = :archiveId ORDER BY dateModified DESC")
-    fun getByArchiveId(archiveId: String): List<MediaEntity>
-
-    /** Delete all items for an archive drive */
-    @Query("DELETE FROM media_archive WHERE archiveId = :archiveId")
-    fun deleteByArchiveId(archiveId: String)
 
     /** Count items with cached previews */
     @Query("SELECT COUNT(*) FROM media_archive WHERE thumbnailPath IS NOT NULL")
     fun getCachedPreviewCount(): Int
 }
+

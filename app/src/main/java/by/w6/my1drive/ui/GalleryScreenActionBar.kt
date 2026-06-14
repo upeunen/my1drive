@@ -1,4 +1,4 @@
-package by.w6.my1drive.ui
+﻿package by.w6.my1drive.ui
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +30,7 @@ import by.w6.my1drive.R
 @Composable
 fun GalleryScreenActionBar(
     isArchiveTab: Boolean,
-    driveStatus: DriveStatus,
+    isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
     onDelete: () -> Unit,
     onArchive: () -> Unit,
@@ -55,7 +55,7 @@ fun GalleryScreenActionBar(
         if (!isArchiveTab) {
             Button(
                 onClick = onArchive,
-                enabled = driveStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && otgDirectoryUri != null,
+                enabled = isOtgConnected && otgDirectoryUri != null,
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(20.dp))

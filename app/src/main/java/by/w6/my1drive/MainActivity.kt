@@ -1,4 +1,4 @@
-package by.w6.my1drive
+﻿package by.w6.my1drive
 
 import android.Manifest
 import android.content.BroadcastReceiver
@@ -34,7 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import by.w6.my1drive.ui.GalleryScreen
 import by.w6.my1drive.ui.GalleryViewModel
-import by.w6.my1drive.ui.RestoreRequest
 import by.w6.my1drive.ui.theme.My1DriveTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,10 +41,6 @@ class MainActivity : ComponentActivity() {
     private val viewModel: GalleryViewModel by viewModels()
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // BroadcastReceiver: listens for USB attach/detach to update drive status
-    // ─────────────────────────────────────────────────────────────────────────
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -56,7 +51,6 @@ class MainActivity : ComponentActivity() {
                 Intent.ACTION_MEDIA_REMOVED,
                 Intent.ACTION_MEDIA_EJECT,
                 Intent.ACTION_MEDIA_UNMOUNTED -> {
-                    // Drive state changed — recompute status immediately
                     viewModel.updateOtgStatus()
                 }
             }
@@ -89,7 +83,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** SAF folder picker for restore destination — opened at phone internal storage root. */
+    /** SAF folder picker for restore destination — when originalRelativePath is unknown. */
     private val restoreFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -101,10 +95,10 @@ class MainActivity : ComponentActivity() {
                 viewModel.restoreToChosenFolder(uri)
             } catch (e: Exception) {
                 Toast.makeText(this, getString(R.string.otg_folder_error_toast, e.localizedMessage), Toast.LENGTH_LONG).show()
-                viewModel.dismissRestoreRequest()
+                viewModel.dismissRestorePicker()
             }
         } else {
-            viewModel.dismissRestoreRequest()
+            viewModel.dismissRestorePicker()
         }
     }
 
@@ -129,10 +123,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Lifecycle
-    // ─────────────────────────────────────────────────────────────────────────
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -151,18 +141,6 @@ class MainActivity : ComponentActivity() {
                     pendingDelete?.let { request ->
                         val intentSenderRequest = IntentSenderRequest.Builder(request.intentSender).build()
                         deletePermissionLauncher.launch(intentSenderRequest)
-                    }
-                }
-
-                // Handle restore requests that need UI interaction (folder picker)
-                val restoreRequest by viewModel.restoreRequest.collectAsState()
-                LaunchedEffect(restoreRequest) {
-                    when (restoreRequest) {
-                        is RestoreRequest.NeedFolderPicker -> {
-                            // Launch SAF folder picker at phone internal storage root
-                            restoreFolderLauncher.launch(phoneStorageRootUri())
-                        }
-                        else -> { /* AskOriginalOrCustom is handled in GalleryScreen as a dialog */ }
                     }
                 }
 
@@ -207,8 +185,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Called when app is already running and USB device is attached
-        // (because launchMode="singleTask" reuses the existing instance)
         if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
             viewModel.updateOtgStatus()
         }
@@ -218,7 +194,6 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         updatePermissionStates()
 
-        // Register USB + media mount/unmount events
         val filter = IntentFilter().apply {
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
@@ -226,7 +201,6 @@ class MainActivity : ComponentActivity() {
             addAction(Intent.ACTION_MEDIA_REMOVED)
             addAction(Intent.ACTION_MEDIA_EJECT)
             addAction(Intent.ACTION_MEDIA_UNMOUNTED)
-            // MEDIA_MOUNTED / REMOVED require a data scheme
             addDataScheme("file")
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -236,7 +210,6 @@ class MainActivity : ComponentActivity() {
             registerReceiver(usbReceiver, filter)
         }
 
-        // Force immediate status check
         viewModel.updateOtgStatus()
 
         if (hasPermissions || hasPartialAccess) {
@@ -253,9 +226,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Permissions
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun updatePermissionStates() {
         hasPermissions = checkFullMediaAccess()
