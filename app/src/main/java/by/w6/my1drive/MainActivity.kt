@@ -69,6 +69,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val deviceDeleteLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            viewModel.onDeviceDeleteConfirmed()
+        } else {
+            viewModel.onDeviceDeleteCancelled()
+        }
+    }
+
     private val otgFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -258,6 +268,14 @@ class MainActivity : ComponentActivity() {
                     pendingDelete?.let { request ->
                         val intentSenderRequest = IntentSenderRequest.Builder(request.intentSender).build()
                         deletePermissionLauncher.launch(intentSenderRequest)
+                    }
+                }
+
+                val deviceDeleteSender by viewModel.deviceDeleteSender.collectAsState()
+                LaunchedEffect(deviceDeleteSender) {
+                    deviceDeleteSender?.let { sender ->
+                        val intentSenderRequest = IntentSenderRequest.Builder(sender).build()
+                        deviceDeleteLauncher.launch(intentSenderRequest)
                     }
                 }
 

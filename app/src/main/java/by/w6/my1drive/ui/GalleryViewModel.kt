@@ -1,9 +1,13 @@
 package by.w6.my1drive.ui
 
 import android.app.Application
+import android.app.RecoverableSecurityException
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.text.format.DateUtils
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
@@ -220,6 +224,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissError() { syncHelper.dismissError() }
     fun refresh() { repository.refresh() }
 
+    // ─── Device delete sender (for system dialog on Q+) ───
+
+    private val _deviceDeleteSender = MutableStateFlow<IntentSender?>(null)
+    val deviceDeleteSender: StateFlow<IntentSender?> = _deviceDeleteSender.asStateFlow()
+
+    private val _deviceDeletePendingItems = mutableListOf<MediaItem>()
+
     // ─── Delete state ───
 
     private val _pendingDelete = MutableStateFlow<List<MediaItem>?>(null)
@@ -235,33 +246,80 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun confirmDelete() {
         val items = _pendingDelete.value ?: return
         _pendingDelete.value = null
-        viewModelScope.launch {
-            for (item in items) {
-                try {
-                    if (item.status == MediaStatus.ARCHIVED_OTG) {
-                        repository.deleteArchivedItem(item)
-                        // Delete file from OTG via SAF
-                        item.otgUri?.let { otgUri ->
-                            val uri = Uri.parse(otgUri)
-                            val docFile = DocumentFile.fromSingleUri(getApplication(), uri)
-                            try { docFile?.delete() } catch (_: Exception) { }
-                        }
-                    } else if (item.status == MediaStatus.ON_DEVICE) {
-                        // Delete from MediaStore
-                        try {
-                            getApplication<Application>().contentResolver.delete(item.uri, null, null)
-                        } catch (e: SecurityException) {
-                            // Permission denied — skip
-                        }
-                    }
-                } catch (_: Exception) { }
-            }
-            _selectedIds.value = emptySet()
-            repository.refresh()
-        }
+        _selectedIds.value = emptySet()
+        deleteDeviceItems(items.filter { it.status == MediaStatus.ON_DEVICE })
+        deleteArchivedItems(items.filter { it.status == MediaStatus.ARCHIVED_OTG })
     }
 
     fun dismissDelete() { _pendingDelete.value = null }
+
+    /** Called when user confirms device delete in system dialog */
+    fun onDeviceDeleteConfirmed() {
+        val items = _deviceDeletePendingItems.toList()
+        _deviceDeleteSender.value = null
+        _deviceDeletePendingItems.clear()
+        if (items.isEmpty()) return
+        directDeleteDeviceItems(items)
+    }
+
+    /** Called when user cancels device delete in system dialog */
+    fun onDeviceDeleteCancelled() {
+        _deviceDeleteSender.value = null
+        _deviceDeletePendingItems.clear()
+    }
+
+    /** Unified device delete: works on all API levels */
+    private fun deleteDeviceItems(items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        val context = getApplication<Application>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, items.map { it.uri })
+                _deviceDeleteSender.value = pendingIntent.intentSender
+                _deviceDeletePendingItems.clear()
+                _deviceDeletePendingItems.addAll(items)
+            } catch (_: Exception) {
+                directDeleteDeviceItems(items)
+            }
+        } else {
+            directDeleteDeviceItems(items)
+        }
+    }
+
+    private fun directDeleteDeviceItems(items: List<MediaItem>) {
+        val context = getApplication<Application>()
+        val remaining = items.toMutableList()
+        for (item in items) {
+            try {
+                context.contentResolver.delete(item.uri, null, null)
+                remaining.remove(item)
+            } catch (e: SecurityException) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
+                    _deviceDeleteSender.value = e.userAction.actionIntent.intentSender
+                    _deviceDeletePendingItems.clear()
+                    _deviceDeletePendingItems.addAll(remaining)
+                    return
+                }
+            } catch (_: Exception) { }
+        }
+        _deviceDeletePendingItems.clear()
+        viewModelScope.launch { repository.refresh() }
+    }
+
+    private fun deleteArchivedItems(items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        viewModelScope.launch {
+            for (item in items) {
+                try {
+                    repository.deleteArchivedItem(item)
+                    item.otgUri?.let { otgUri ->
+                        try { DocumentFile.fromSingleUri(getApplication(), Uri.parse(otgUri))?.delete() } catch (_: Exception) { }
+                    }
+                } catch (_: Exception) { }
+            }
+            repository.refresh()
+        }
+    }
 
     // ─── Restore ───
 
@@ -328,29 +386,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val itemsToDelete = mediaItems.value.filter { it.id in _deferredDeleteIds.value }
         if (itemsToDelete.isEmpty()) return
         _deferredDeleteIds.value = emptySet()
-        viewModelScope.launch {
-            var deletedCount = 0
-            for (item in itemsToDelete) {
-                try {
-                    if (item.status == MediaStatus.ARCHIVED_OTG) {
-                        repository.deleteArchivedItem(item)
-                        item.otgUri?.let { otgUri ->
-                            val uri = Uri.parse(otgUri)
-                            try { DocumentFile.fromSingleUri(getApplication(), uri)?.delete() } catch (_: Exception) { }
-                        }
-                        deletedCount++
-                    } else if (item.status == MediaStatus.ON_DEVICE) {
-                        try {
-                            getApplication<Application>().contentResolver.delete(item.uri, null, null)
-                            deletedCount++
-                        } catch (e: SecurityException) { /* skip */ }
-                    }
-                } catch (_: Exception) { }
-            }
-            if (deletedCount > 0) {
-                repository.refresh()
-            }
-        }
+        deleteDeviceItems(itemsToDelete.filter { it.status == MediaStatus.ON_DEVICE })
+        deleteArchivedItems(itemsToDelete.filter { it.status == MediaStatus.ARCHIVED_OTG })
     }
 
     fun clearDeferredDeletes() {
