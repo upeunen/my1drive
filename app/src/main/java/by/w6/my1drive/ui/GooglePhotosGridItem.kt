@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -43,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -177,7 +178,9 @@ fun GooglePhotosGridItem(
                     imageLoader = imageLoader,
                     contentDescription = item.displayName,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (isArchivedOffline) 0.5f else 1.0f)
                 )
             }
             // Green/Red dot indicator for original availability (archived items only)

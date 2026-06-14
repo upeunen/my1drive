@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
 @Composable
 fun SettingsTab(
@@ -40,7 +44,8 @@ fun SettingsTab(
     isOtgConnected: Boolean = false,
     otgDirectoryDisplayName: String? = null,
     cacheSize: Long = 0L,
-    cacheFilesCount: Int = 0
+    cacheFilesCount: Int = 0,
+    isLocalFolder: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -80,10 +85,45 @@ fun SettingsTab(
             style = MaterialTheme.typography.bodySmall,
             color = if (isOtgConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
         )
-        Spacer(Modifier.height(8.dp))
+        if (isLocalFolder && otgDirectoryDisplayName != null) {
+            Spacer(Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f))
+            ) {
+                Text(
+                    text = "⚠️ Внимание: Выбрана папка во внутренней памяти телефона. Для резервного копирования рекомендуется выбрать папку на USB флешке.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
         Button(onClick = onSelectOtgDirectory) {
             Text(if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
                 else stringResource(R.string.select_otg_folder))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "Как архивировать файлы:",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "1. Перейдите на вкладку «Photos» (Фото) в меню снизу.\n2. Нажмите и удерживайте пальцем любое фото для выбора.\n3. В появившейся панели снизу нажмите кнопку «Archive to OTG» (Архивировать на OTG) для копирования.",
+                    style = MaterialTheme.typography.bodySmall,
+                    lineHeight = 16.sp
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))

@@ -1,6 +1,7 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
+import by.w6.my1drive.ui.GalleryItem
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
 import java.io.File
@@ -173,7 +175,7 @@ fun GalleryScreenContent(
     currentScreenRoute: String,
     missingFilesNotification: List<String>?,
     autoSyncAddedCount: Int,
-    activePreviewItem: MediaItem?,
+    activePreviewState: FullscreenState?,
     showInfoDialogItem: MediaItem?,
     showOtgGuideDialog: Boolean,
     imageLoader: ImageLoader,
@@ -182,12 +184,13 @@ fun GalleryScreenContent(
     onRequestFullAccess: () -> Unit,
     onOpenSettings: () -> Unit,
     onClearSelection: () -> Unit,
-    onSetActivePreview: (MediaItem?) -> Unit,
+    onSetActivePreview: (FullscreenState?) -> Unit,
     onSetShowInfoDialog: (MediaItem?) -> Unit,
     onSetShowOtgGuide: (Boolean) -> Unit,
     previewCacheManager: PreviewCacheManager
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
+    val context = LocalContext.current
 
     // ... existing content ...
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
@@ -200,20 +203,60 @@ fun GalleryScreenContent(
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (currentScreenRoute) {
                     "photos" -> PhotosRoute(viewModel = viewModel, selectedIds = selectedIds, imageLoader = imageLoader, isOtgConnected = isOtgConnected,
-                        onItemClick = { item -> if (selectedIds.isNotEmpty()) viewModel.toggleSelection(item.id) else onSetActivePreview(item) },
+                        onItemClick = { item ->
+                            if (selectedIds.isNotEmpty()) {
+                                viewModel.toggleSelection(item.id)
+                            } else {
+                                val grouped = viewModel.groupedMediaItems.value
+                                val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
+                                val index = allMediaItems.indexOfFirst { it.id == item.id }
+                                if (index >= 0) {
+                                    onSetActivePreview(FullscreenState(
+                                        items = allMediaItems,
+                                        initialIndex = index,
+                                        sourceTab = SourceTab.PHOTOS
+                                    ))
+                                }
+                            }
+                        },
                         onItemLongClick = { item -> viewModel.toggleSelection(item.id) })
                     "archive" -> ArchiveRoute(viewModel = viewModel, selectedIds = selectedIds, imageLoader = imageLoader, isOtgConnected = isOtgConnected,
-                        onItemClick = { item -> if (selectedIds.isNotEmpty()) viewModel.toggleSelection(item.id) else onSetActivePreview(item) },
-                        onItemLongClick = { item -> viewModel.toggleSelection(item.id) })
+                        onItemClick = { item ->
+                            if (isOtgConnected) {
+                                if (selectedIds.isNotEmpty()) {
+                                    viewModel.toggleSelection(item.id)
+                                } else {
+                                    val grouped = viewModel.archivedGroupedItems.value
+                                    val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
+                                    val index = allMediaItems.indexOfFirst { it.id == item.id }
+                                    if (index >= 0) {
+                                        onSetActivePreview(FullscreenState(
+                                            items = allMediaItems,
+                                            initialIndex = index,
+                                            sourceTab = SourceTab.ARCHIVE
+                                        ))
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onItemLongClick = { item ->
+                            if (isOtgConnected) {
+                                viewModel.toggleSelection(item.id)
+                            } else {
+                                Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
+                            }
+                        })
                     "settings" -> {
-                        val otgUri = otgDirectoryUri
                         SettingsTab(
                             onSelectOtgDirectory = onSelectOtgDirectory,
                             onClearCache = { viewModel.clearPreviewCache() },
                             isOtgConnected = isOtgConnected,
-                            otgDirectoryDisplayName = otgUri?.toString()?.substringAfterLast("/"),
+                            otgDirectoryDisplayName = viewModel.getOtgDirectoryDisplayName(),
                             cacheSize = previewCacheManager.getCacheSize(),
-                            cacheFilesCount = previewCacheManager.getCacheFileCount()
+                            cacheFilesCount = previewCacheManager.getCacheFileCount(),
+                            isLocalFolder = viewModel.isOtgLocalFolder()
                         )
                     }
                 }
@@ -222,7 +265,14 @@ fun GalleryScreenContent(
 
         showInfoDialogItem?.let { item ->
             InfoDialog(item = item, imageLoader = imageLoader ?: return@let, isOtgConnected = isOtgConnected,
-                onOpenFullscreen = { onSetActivePreview(item) }, onDismiss = { onSetShowInfoDialog(null) })
+                onOpenFullscreen = {
+                    // Open fullscreen from info: just this single item
+                    onSetActivePreview(FullscreenState(
+                        items = listOf(item),
+                        initialIndex = 0,
+                        sourceTab = SourceTab.PHOTOS
+                    ))
+                }, onDismiss = { onSetShowInfoDialog(null) })
         }
 
         if (showOtgGuideDialog) {
@@ -233,9 +283,9 @@ fun GalleryScreenContent(
             MissingFilesDialog(missingNames = missingNames, onDismiss = { viewModel.dismissMissingFilesNotification() })
         }
 
-        activePreviewItem?.let { item ->
+        activePreviewState?.let { state ->
             FullscreenPreview(
-                item = item,
+                state = state,
                 imageLoader = imageLoader ?: return@let,
                 isOtgConnected = isOtgConnected,
                 otgDirectoryUri = otgDirectoryUri,
@@ -244,10 +294,10 @@ fun GalleryScreenContent(
                     viewModel.commitDeferredDeletes()
                     onSetActivePreview(null)
                 },
-                onShowInfo = { onSetShowInfoDialog(item) },
-                onToggleDeferredDelete = { viewModel.toggleDeferredDelete(item.id) },
-                onArchiveSingle = { otgDirectoryUri?.let { uri -> viewModel.archiveSingleItem(item, uri) } },
-                onRestoreSingle = { viewModel.restoreSingleItem(item) }
+                onShowInfo = { item -> onSetShowInfoDialog(item) },
+                onToggleDeferredDelete = { id -> viewModel.toggleDeferredDelete(id) },
+                onArchiveSingle = { item, uri -> viewModel.archiveSingleItem(item, uri) },
+                onRestoreSingle = { item -> viewModel.restoreSingleItem(item) }
             )
         }
 

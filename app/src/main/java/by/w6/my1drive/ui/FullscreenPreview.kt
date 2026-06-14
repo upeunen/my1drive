@@ -1,12 +1,10 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,15 +13,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,22 +41,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
-import by.w6.my1drive.ui.components.ExoPlayerView
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
@@ -64,141 +68,53 @@ import java.io.File
 
 @Composable
 fun FullscreenPreview(
-    item: MediaItem,
+    state: FullscreenState,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
-    otgDirectoryUri: android.net.Uri?,
+    otgDirectoryUri: Uri?,
     deferredDeleteIds: Set<String>,
     onClose: () -> Unit,
-    onShowInfo: () -> Unit,
-    onToggleDeferredDelete: () -> Unit,
-    onArchiveSingle: () -> Unit,
-    onRestoreSingle: () -> Unit
+    onShowInfo: (MediaItem) -> Unit,
+    onToggleDeferredDelete: (String) -> Unit,
+    onArchiveSingle: (MediaItem, Uri) -> Unit,
+    onRestoreSingle: (MediaItem) -> Unit
 ) {
+    val items = state.items
+    val pagerState = rememberPagerState(
+        initialPage = state.initialIndex.coerceIn(0, items.size - 1),
+        pageCount = { items.size }
+    )
+
     var isNavigatingBack by remember { mutableStateOf(false) }
-    var dragOffsetY by remember { mutableStateOf(0f) }
-    var isClosing by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
-    val isMarkedForDelete = item.id in deferredDeleteIds
+    val currentItem = if (items.isNotEmpty()) items[pagerState.currentPage] else return
 
-    val handleClose: () -> Unit = {
-        if (!isNavigatingBack && !isClosing) {
+    BackHandler {
+        if (!isNavigatingBack) {
             isNavigatingBack = true
-            scope.launch {
-                delay(300)
-                onClose()
-            }
+            scope.launch { delay(300); onClose() }
         }
-    }
-
-    BackHandler(onBack = handleClose)
-
-    val scaleFactor by animateFloatAsState(
-        targetValue = if (isClosing) 0.3f else (1f - (dragOffsetY / 800f).coerceIn(0f, 0.5f)),
-        label = "scale"
-    )
-    val alphaFactor by animateFloatAsState(
-        targetValue = if (isClosing) 0f else (1f - (dragOffsetY / 600f).coerceIn(0f, 0.6f)),
-        label = "alpha"
-    )
-    val translationY by animateFloatAsState(
-        targetValue = if (isClosing) 300f else dragOffsetY,
-        label = "translateY"
-    )
-
-    var zoomScale by remember { mutableStateOf(1f) }
-    var zoomOffsetX by remember { mutableStateOf(0f) }
-    var zoomOffsetY by remember { mutableStateOf(0f) }
-
-    val dragModifier = if (!isNavigatingBack) {
-        Modifier.pointerInput(Unit) {
-            detectVerticalDragGestures(
-                onDragStart = { dragOffsetY = 0f; isClosing = false },
-                onDragEnd = {
-                    if (dragOffsetY > 120f) {
-                        isClosing = true
-                        scope.launch {
-                            delay(150)
-                            onClose()
-                        }
-                    } else {
-                        dragOffsetY = 0f
-                    }
-                },
-                onDragCancel = { dragOffsetY = 0f },
-                onVerticalDrag = { _, dragAmount ->
-                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
-                }
-            )
-        }
-    } else {
-        Modifier.clickable(enabled = true) { /* блокируем взаимодействие */ }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .then(dragModifier)
     ) {
         if (!isNavigatingBack) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scale(scaleFactor)
-                    .graphicsLayer { this.alpha = alphaFactor }
-                    .offset(y = translationY.dp)
-            ) {
-                if (item.isVideo) {
-                    val videoUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.otgUri != null) {
-                        Uri.parse(item.otgUri)
-                    } else {
-                        item.uri
-                    }
-                    ExoPlayerView(videoUri = videoUri)
-                } else {
-                    val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.thumbnailPath != null) {
-                        Uri.fromFile(File(item.thumbnailPath))
-                    } else {
-                        item.uri
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer(
-                                scaleX = zoomScale,
-                                scaleY = zoomScale,
-                                translationX = zoomOffsetX,
-                                translationY = zoomOffsetY
-                            )
-                            .pointerInput(Unit) {
-                                detectTransformGestures { _, pan, zoom, _ ->
-                                    zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
-                                    if (zoomScale > 1f) {
-                                        zoomOffsetX = (zoomOffsetX + pan.x).coerceIn(-1000f, 1000f)
-                                        zoomOffsetY = (zoomOffsetY + pan.y).coerceIn(-1000f, 1000f)
-                                    } else {
-                                        zoomOffsetX = 0f
-                                        zoomOffsetY = 0f
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = imageUri,
-                            imageLoader = imageLoader,
-                            contentDescription = item.displayName,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+            // ─── Content ───
+            Box(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val item = items[page]
+                    PagerPage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected)
                 }
             }
 
-            // ─── Top bar: name + info ───
+            // ─── Top bar ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -215,16 +131,26 @@ fun FullscreenPreview(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = item.displayName,
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (isMarkedForDelete) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = when (state.sourceTab) {
+                                SourceTab.PHOTOS -> stringResource(R.string.preview_source_device)
+                                SourceTab.ARCHIVE -> stringResource(R.string.tab_archive)
+                            },
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = currentItem.displayName,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (currentItem.id in deferredDeleteIds) {
                         Text(
                             text = stringResource(R.string.preview_will_be_deleted),
                             color = MaterialTheme.colorScheme.error,
@@ -233,13 +159,13 @@ fun FullscreenPreview(
                             modifier = Modifier.padding(end = 8.dp)
                         )
                     }
-                    IconButton(onClick = onShowInfo) {
+                    IconButton(onClick = { onShowInfo(currentItem) }) {
                         Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
                     }
                 }
             }
 
-            // ─── Bottom bar: actions ───
+            // ─── Bottom bar ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -257,7 +183,7 @@ fun FullscreenPreview(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val hintText = if (!item.isVideo) {
+                    val hintText = if (!currentItem.isVideo) {
                         stringResource(R.string.preview_hint_swipe) + " • " + stringResource(R.string.preview_hint_zoom)
                     } else {
                         stringResource(R.string.preview_hint_swipe)
@@ -275,10 +201,9 @@ fun FullscreenPreview(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Delete toggle
-                        if (isMarkedForDelete) {
+                        if (currentItem.id in deferredDeleteIds) {
                             OutlinedButton(
-                                onClick = onToggleDeferredDelete,
+                                onClick = { onToggleDeferredDelete(currentItem.id) },
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
@@ -290,7 +215,7 @@ fun FullscreenPreview(
                             }
                         } else {
                             Button(
-                                onClick = onToggleDeferredDelete,
+                                onClick = { onToggleDeferredDelete(currentItem.id) },
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White.copy(alpha = 0.15f),
@@ -303,10 +228,13 @@ fun FullscreenPreview(
                             }
                         }
 
-                        // Archive / Restore button
-                        if (item.status == MediaStatus.ON_DEVICE) {
+                        if (currentItem.status == MediaStatus.ON_DEVICE) {
                             Button(
-                                onClick = onArchiveSingle,
+                                onClick = {
+                                    otgDirectoryUri?.let { uri ->
+                                        onArchiveSingle(currentItem, uri)
+                                    }
+                                },
                                 enabled = isOtgConnected && otgDirectoryUri != null,
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
@@ -318,7 +246,7 @@ fun FullscreenPreview(
                             }
                         } else {
                             Button(
-                                onClick = onRestoreSingle,
+                                onClick = { onRestoreSingle(currentItem) },
                                 enabled = isOtgConnected,
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
@@ -333,23 +261,7 @@ fun FullscreenPreview(
                 }
             }
 
-            // Swipe-down hint
-            if (dragOffsetY > 30f && !isClosing) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                        .padding(top = 60.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Release to close",
-                        color = Color.White.copy(alpha = (dragOffsetY / 120f).coerceIn(0.3f, 1f)),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
+            // ─── Navigating back indicator ───
         }
 
         if (isNavigatingBack) {
@@ -357,7 +269,7 @@ fun FullscreenPreview(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable(enabled = true) { /* блокируем повторные нажатия */ },
+                    .clickable(enabled = true) { },
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
@@ -367,4 +279,119 @@ fun FullscreenPreview(
             }
         }
     }
+}
+
+@Composable
+private fun PagerPage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected: Boolean) {
+    if (item.isVideo) {
+        VideoPage(item = item, isOtgConnected = isOtgConnected)
+    } else {
+        ImagePage(item = item, imageLoader = imageLoader)
+    }
+}
+
+@Composable
+private fun ImagePage(item: MediaItem, imageLoader: ImageLoader) {
+    val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.thumbnailPath != null) {
+        Uri.fromFile(File(item.thumbnailPath))
+    } else {
+        item.uri
+    }
+
+    var zoomScale by remember { mutableStateOf(1f) }
+    var zoomOffsetX by remember { mutableStateOf(0f) }
+    var zoomOffsetY by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer(
+                scaleX = zoomScale,
+                scaleY = zoomScale,
+                translationX = zoomOffsetX,
+                translationY = zoomOffsetY
+            )
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
+                    if (zoomScale > 1f) {
+                        zoomOffsetX = (zoomOffsetX + pan.x).coerceIn(-1000f, 1000f)
+                        zoomOffsetY = (zoomOffsetY + pan.y).coerceIn(-1000f, 1000f)
+                    } else {
+                        zoomOffsetX = 0f
+                        zoomOffsetY = 0f
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = imageUri,
+            imageLoader = imageLoader,
+            contentDescription = item.displayName,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@UnstableApi
+@Composable
+private fun VideoPage(item: MediaItem, isOtgConnected: Boolean) {
+    val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
+    if (isOffline) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.PlayCircle,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.3f),
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Видео недоступно (OTG отключен)",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        return
+    }
+
+    val context = LocalContext.current
+    val videoUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.otgUri != null) {
+        Uri.parse(item.otgUri)
+    } else {
+        item.uri
+    }
+
+    val exoPlayer = remember(videoUri) {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = androidx.media3.common.MediaItem.fromUri(videoUri)
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(videoUri) {
+        onDispose { exoPlayer.release() }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = true
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 }

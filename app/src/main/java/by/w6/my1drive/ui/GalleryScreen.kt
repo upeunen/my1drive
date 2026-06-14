@@ -46,7 +46,7 @@ fun GalleryScreen(
     val showRestorePicker = restoreRequest != null
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
-    var activePreviewItem by remember { mutableStateOf<MediaItem?>(null) }
+    var activePreviewState by remember { mutableStateOf<FullscreenState?>(null) }
     var showInfoDialogItem by remember { mutableStateOf<MediaItem?>(null) }
     var showOtgGuideDialog by remember { mutableStateOf(false) }
 
@@ -108,7 +108,7 @@ fun GalleryScreen(
             currentScreenRoute = currentScreenRoute,
             missingFilesNotification = missingFilesNotification,
             autoSyncAddedCount = autoSyncAddedCount,
-            activePreviewItem = activePreviewItem,
+            activePreviewState = activePreviewState,
             showInfoDialogItem = showInfoDialogItem,
             showOtgGuideDialog = showOtgGuideDialog,
             imageLoader = imageLoader,
@@ -117,7 +117,7 @@ fun GalleryScreen(
             onRequestFullAccess = onRequestFullAccess,
             onOpenSettings = onOpenSettings,
             onClearSelection = { viewModel.clearSelection() },
-            onSetActivePreview = { activePreviewItem = it },
+            onSetActivePreview = { state -> activePreviewState = state },
             onSetShowInfoDialog = { showInfoDialogItem = it },
             onSetShowOtgGuide = { showOtgGuideDialog = it },
             previewCacheManager = previewCache

@@ -87,20 +87,7 @@ class ArchiveSyncHelper(
                     }
                 }
 
-                val otgUriStrings = otgFiles.map { it.uri.toString() }.toSet()
-                val missingNames = db.mediaDao().getAllSync()
-                    .filter { it.otgUri !in otgUriStrings }
-                    .map { it.displayName }
-
                 if (addedCount > 0) { repository.refresh(); _autoSyncAddedCount.value = addedCount }
-                if (missingNames.isNotEmpty()) {
-                    val missingHash = missingNames.sorted().joinToString(",")
-                    val wasDismissed = prefs.getBoolean(PREF_MISSING_FILES_DISMISSED, false)
-                    val lastHash = prefs.getString(PREF_MISSING_FILES_HASH, null)
-                    if (!wasDismissed || lastHash != missingHash) {
-                        _missingFilesNotification.value = missingNames
-                    }
-                }
             } catch (_: Exception) { } finally { isSilentSyncing = false }
         }
     }

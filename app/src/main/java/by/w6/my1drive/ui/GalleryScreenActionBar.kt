@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +68,7 @@ fun GalleryScreenActionBar(
         } else {
             Button(
                 onClick = onRestore,
+                enabled = isOtgConnected && otgDirectoryUri != null,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer

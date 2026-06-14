@@ -57,6 +57,12 @@ class MainActivity : ComponentActivity() {
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
 
+    private val otgReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            viewModel.updateOtgStatus()
+        }
+    }
+
 
 
     private val deletePermissionLauncher = registerForActivityResult(
@@ -124,6 +130,33 @@ class MainActivity : ComponentActivity() {
         } else {
             Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A")
         }
+    }
+
+    private fun selectOtgFolder() {
+        val otgUri = otgStorageRootUri(this)
+        if (otgUri != null) {
+            otgFolderLauncher.launch(otgUri)
+        } else {
+            Toast.makeText(this, "Внешний носитель не найден. Выберите папку на устройстве.", Toast.LENGTH_LONG).show()
+            otgFolderLauncher.launch(phoneStorageRootUri())
+        }
+    }
+
+    private fun otgStorageRootUri(context: Context): Uri? {
+        val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager ?: return null
+        for (volume in storageManager.storageVolumes) {
+            if (volume.isRemovable && volume.state == android.os.Environment.MEDIA_MOUNTED) {
+                val uuid = volume.uuid
+                if (uuid != null) {
+                    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        DocumentsContract.buildRootUri("com.android.externalstorage.documents", uuid)
+                    } else {
+                        Uri.parse("content://com.android.externalstorage.documents/tree/$uuid%3A")
+                    }
+                }
+            }
+        }
+        return null
     }
 
     private val permissionsLauncher = registerForActivityResult(
@@ -282,7 +315,7 @@ class MainActivity : ComponentActivity() {
                 if (hasPermissions || hasPartialAccess) {
                     GalleryScreen(
                         onSelectOtgDirectory = {
-                            otgFolderLauncher.launch(null)
+                            selectOtgFolder()
                         },
                         onPickRestoreFolder = {
                             restoreFolderLauncher.launch(phoneStorageRootUri())
@@ -334,6 +367,37 @@ class MainActivity : ComponentActivity() {
         if (hasPermissions || hasPartialAccess) {
             viewModel.refresh()
         }
+
+        val filter = IntentFilter().apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        }
+        ContextCompat.registerReceiver(
+            this,
+            otgReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
+
+        val mediaFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addDataScheme("file")
+        }
+        ContextCompat.registerReceiver(
+            this,
+            otgReceiver,
+            mediaFilter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
+    }
+
+    override fun onPause() {
+        super.onPause()
+        try {
+            unregisterReceiver(otgReceiver)
+        } catch (_: Exception) {}
     }
 
     // Permissions

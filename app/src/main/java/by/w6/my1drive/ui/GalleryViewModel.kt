@@ -9,6 +9,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.text.format.DateUtils
+import android.os.Environment
+import android.os.storage.StorageManager
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -147,16 +149,57 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun computeDriveStatus(): DriveStatus {
         val savedUri = _otgDirectoryUri.value ?: return DriveStatus.NO_URI_CONFIGURED
         val context = getApplication<Application>()
+        
+        // Detailed check of volume mount status by UUID
+        val isPhysicallyConnected = isOtgUriPhysicallyConnected(context, savedUri)
+        if (!isPhysicallyConnected) {
+            return DriveStatus.KNOWN_DRIVE_DISCONNECTED
+        }
+        
         return try {
             val docFile = DocumentFile.fromTreeUri(context, savedUri)
-            if (docFile != null && docFile.exists() && docFile.canRead()) { driveErrorCount = 0; DriveStatus.KNOWN_DRIVE_CONNECTED }
-            else if (hasAnyUsbDevice(context)) DriveStatus.UNKNOWN_DRIVE_CONNECTED
-            else DriveStatus.KNOWN_DRIVE_DISCONNECTED
+            if (docFile != null && docFile.exists() && docFile.canRead()) {
+                driveErrorCount = 0
+                DriveStatus.KNOWN_DRIVE_CONNECTED
+            } else {
+                DriveStatus.UNKNOWN_DRIVE_CONNECTED
+            }
         } catch (e: Exception) {
             driveErrorCount++
-            if (driveErrorCount >= MAX_DRIVE_ERRORS) { _otgDirectoryUri.value = null; prefs.edit().remove(PREF_OTG_URI).apply(); driveErrorCount = 0 }
-            if (hasAnyUsbDevice(context)) DriveStatus.UNKNOWN_DRIVE_CONNECTED else DriveStatus.KNOWN_DRIVE_DISCONNECTED
+            if (driveErrorCount >= MAX_DRIVE_ERRORS) {
+                _otgDirectoryUri.value = null
+                prefs.edit().remove(PREF_OTG_URI).apply()
+                driveErrorCount = 0
+            }
+            DriveStatus.UNKNOWN_DRIVE_CONNECTED
         }
+    }
+
+    private fun isOtgUriPhysicallyConnected(context: Context, uri: Uri): Boolean {
+        try {
+            val path = uri.path ?: return false
+            val treeSegment = path.substringAfter("/tree/", "")
+            if (treeSegment.isEmpty()) return false
+            val rawId = treeSegment.substringBefore(":")
+            if (rawId.isEmpty()) return false
+
+            val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
+            val volumes = storageManager.storageVolumes
+
+            if (rawId.equals("primary", ignoreCase = true)) {
+                return volumes.firstOrNull { it.isPrimary }?.state == Environment.MEDIA_MOUNTED
+            }
+
+            for (volume in volumes) {
+                val volUuid = volume.uuid
+                if (volUuid != null && volUuid.equals(rawId, ignoreCase = true)) {
+                    return volume.state == Environment.MEDIA_MOUNTED
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return false
     }
 
     private fun hasAnyUsbDevice(context: Context): Boolean = try {
@@ -417,6 +460,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             tc.get(Calendar.YEAR) == now.get(Calendar.YEAR) -> SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date(dateMs))
             else -> SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(dateMs))
         }
+    }
+
+    fun getOtgDirectoryDisplayName(): String? {
+        val uri = _otgDirectoryUri.value ?: return null
+        val context = getApplication<Application>()
+        return try {
+            val docFile = DocumentFile.fromTreeUri(context, uri)
+            docFile?.name ?: Uri.decode(uri.toString().substringAfterLast("/"))
+        } catch (e: Exception) {
+            Uri.decode(uri.toString().substringAfterLast("/"))
+        }
+    }
+
+    fun isOtgLocalFolder(): Boolean {
+        val uri = _otgDirectoryUri.value ?: return false
+        val path = uri.path ?: return false
+        val treeSegment = path.substringAfter("/tree/", "")
+        if (treeSegment.isEmpty()) return false
+        val rawId = treeSegment.substringBefore(":")
+        return rawId.equals("primary", ignoreCase = true)
     }
 
     private fun isYesterday(target: Calendar, now: Calendar): Boolean {
