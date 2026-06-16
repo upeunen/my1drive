@@ -77,6 +77,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onOperationComplete = { otgManager.updateArchiveSize() },
             onArchiveSuccess = { items ->
                 _selectedIds.value = emptySet()
+                deleteDeviceItems(items)
             }
         )
     }
