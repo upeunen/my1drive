@@ -81,7 +81,6 @@ fun GalleryScreen(
                 currentRoute = currentScreenRoute,
                 onNavigate = { route ->
                     if (activePreviewState != null) {
-                        viewModel.commitDeferredDeletes()
                         activePreviewState = null
                     }
                     currentScreenRoute = route

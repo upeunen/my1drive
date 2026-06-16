@@ -86,28 +86,47 @@ fun FullscreenPreview(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
-    deferredDeleteIds: Set<String>,
     onClose: () -> Unit,
     onShowInfo: (MediaItem) -> Unit,
-    onToggleDeferredDelete: (String) -> Unit,
+    onDeleteImmediate: (MediaItem) -> Unit,
     onArchiveSingle: (MediaItem, Uri) -> Unit,
     onRestoreSingle: (MediaItem) -> Unit
 ) {
-    val items = state.items
+    var previewItems by remember(state.items) { mutableStateOf(state.items.toMutableList()) }
     val pagerState = rememberPagerState(
-        initialPage = state.initialIndex.coerceIn(0, items.size - 1),
-        pageCount = { items.size }
+        initialPage = state.initialIndex.coerceIn(0, (previewItems.size - 1).coerceAtLeast(0)),
+        pageCount = { previewItems.size }
     )
 
     var isNavigatingBack by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
-    val currentItem = if (items.isNotEmpty()) items[pagerState.currentPage] else return
+    val currentItem = if (previewItems.isNotEmpty()) previewItems[pagerState.currentPage] else return
 
     BackHandler {
         if (!isNavigatingBack) {
             isNavigatingBack = true
             scope.launch { delay(300); onClose() }
+        }
+    }
+
+    fun deleteCurrentItem(item: MediaItem) {
+        val currentIndex = pagerState.currentPage
+        if (previewItems.size <= 1) {
+            onDeleteImmediate(item)
+            onClose()
+        } else {
+            val targetPage = if (currentIndex < previewItems.size - 1) {
+                currentIndex
+            } else {
+                currentIndex - 1
+            }
+            scope.launch {
+                onDeleteImmediate(item)
+                val newList = previewItems.toMutableList().apply { removeAt(currentIndex) }
+                previewItems = newList
+                pagerState.scrollToPage(targetPage.coerceIn(0, newList.size - 1))
+            }
         }
     }
 
@@ -123,7 +142,7 @@ fun FullscreenPreview(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
-                    val item = items[page]
+                    val item = previewItems[page]
                     PagerPage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected)
                 }
             }
@@ -162,15 +181,6 @@ fun FullscreenPreview(
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    if (currentItem.id in deferredDeleteIds) {
-                        Text(
-                            text = stringResource(R.string.preview_will_be_deleted),
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(end = 8.dp)
                         )
                     }
                     IconButton(onClick = { onShowInfo(currentItem) }) {
@@ -215,31 +225,17 @@ fun FullscreenPreview(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (currentItem.id in deferredDeleteIds) {
-                            OutlinedButton(
-                                onClick = { onToggleDeferredDelete(currentItem.id) },
-                                shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.preview_will_be_deleted), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-                        } else {
-                            Button(
-                                onClick = { onToggleDeferredDelete(currentItem.id) },
-                                shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White.copy(alpha = 0.15f),
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
-                            }
+                        Button(
+                            onClick = { deleteCurrentItem(currentItem) },
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.15f),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
                         }
 
                         if (currentItem.status == MediaStatus.ON_DEVICE) {

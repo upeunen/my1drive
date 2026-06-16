@@ -441,28 +441,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissRestoreError() { restoreState.value = restoreState.value.copy(error = null) }
     fun dismissArchiveError() { syncHelper.dismissError() }
 
-    // ─── Deferred Delete (fullscreen preview) ───
 
-    private val _deferredDeleteIds = MutableStateFlow<Set<String>>(emptySet())
-    val deferredDeleteIds: StateFlow<Set<String>> = _deferredDeleteIds.asStateFlow()
+    // ─── Immediate Delete (fullscreen preview) ───
 
-    fun toggleDeferredDelete(itemId: String) {
-        _deferredDeleteIds.value = _deferredDeleteIds.value.toMutableSet().apply {
-            if (contains(itemId)) remove(itemId) else add(itemId)
+    fun deleteSingleItemImmediate(item: MediaItem) {
+        if (item.status == MediaStatus.ON_DEVICE) {
+            deleteDeviceItems(listOf(item))
+        } else {
+            deleteArchivedItems(listOf(item))
         }
-    }
-
-    /** Called when fullscreen preview is closed — deletes all deferred items */
-    fun commitDeferredDeletes() {
-        val itemsToDelete = mediaItems.value.filter { it.id in _deferredDeleteIds.value }
-        if (itemsToDelete.isEmpty()) return
-        _deferredDeleteIds.value = emptySet()
-        deleteDeviceItems(itemsToDelete.filter { it.status == MediaStatus.ON_DEVICE })
-        deleteArchivedItems(itemsToDelete.filter { it.status == MediaStatus.ARCHIVED_OTG })
-    }
-
-    fun clearDeferredDeletes() {
-        _deferredDeleteIds.value = emptySet()
     }
 
     // ─── Create folder ───

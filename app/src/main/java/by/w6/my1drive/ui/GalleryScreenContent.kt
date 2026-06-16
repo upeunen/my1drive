@@ -365,13 +365,11 @@ fun GalleryScreenContent(
                 imageLoader = imageLoader ?: return@let,
                 isOtgConnected = isOtgConnected,
                 otgDirectoryUri = otgDirectoryUri,
-                deferredDeleteIds = viewModel.deferredDeleteIds.collectAsState().value,
                 onClose = {
-                    viewModel.commitDeferredDeletes()
                     onSetActivePreview(null)
                 },
                 onShowInfo = { item -> onSetShowInfoDialog(item) },
-                onToggleDeferredDelete = { id -> viewModel.toggleDeferredDelete(id) },
+                onDeleteImmediate = { item -> viewModel.deleteSingleItemImmediate(item) },
                 onArchiveSingle = { item, uri -> viewModel.archiveSingleItem(item, uri) },
                 onRestoreSingle = { item -> viewModel.restoreSingleItem(item) }
             )
