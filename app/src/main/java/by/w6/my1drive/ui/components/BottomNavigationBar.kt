@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui.components
 
+import android.os.Build
+import androidx.compose.runtime.remember
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Photo
@@ -33,10 +35,28 @@ fun BottomNavigationBar(
         Screen.Settings
     )
 
+    val deviceTabName = remember {
+        val manufacturer = Build.MANUFACTURER
+        val model = Build.MODEL
+        val cleanModel = model.replace(Regex("[^a-zA-Z\\s]"), "").replace(Regex("\\s+"), " ").trim()
+        val cleanManufacturer = manufacturer.replace(Regex("[^a-zA-Z\\s]"), "").replace(Regex("\\s+"), " ").trim()
+        val modelFirstWord = cleanModel.split(" ").firstOrNull() ?: ""
+        val name = if (modelFirstWord.length > 2) {
+            modelFirstWord
+        } else {
+            cleanManufacturer.split(" ").firstOrNull() ?: ""
+        }
+        if (name.isNotEmpty()) {
+            name.lowercase().replaceFirstChar { it.uppercase() }
+        } else {
+            "Устройство"
+        }
+    }
+
     NavigationBar {
         items.forEach { screen ->
             val isSelected = currentRoute == screen.route
-            val title = stringResource(screen.titleResId)
+            val title = if (screen == Screen.Photos) deviceTabName else stringResource(screen.titleResId)
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onNavigate(screen.route) },

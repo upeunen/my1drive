@@ -21,7 +21,8 @@ data class JsonEntry(
     val size: Long,
     val dateModified: Long,
     val originalRelativePath: String?,
-    val duration: Long? = null
+    val duration: Long? = null,
+    val dateArchived: Long = System.currentTimeMillis() / 1000
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("hash", hash)
@@ -31,6 +32,7 @@ data class JsonEntry(
         put("dateModified", dateModified)
         put("originalRelativePath", originalRelativePath ?: JSONObject.NULL)
         put("duration", duration?.toDouble() ?: JSONObject.NULL)
+        put("dateArchived", dateArchived)
     }
 
     companion object {
@@ -44,7 +46,8 @@ data class JsonEntry(
                 size = json.getLong("size"),
                 dateModified = json.getLong("dateModified"),
                 originalRelativePath = if (json.isNull("originalRelativePath")) null else json.getString("originalRelativePath"),
-                duration = if (json.isNull("duration")) null else json.getLong("duration")
+                duration = if (json.isNull("duration")) null else json.getLong("duration"),
+                dateArchived = json.optLong("dateArchived", json.optLong("dateModified", System.currentTimeMillis() / 1000))
             )
         } catch (e: Exception) { null }
     }

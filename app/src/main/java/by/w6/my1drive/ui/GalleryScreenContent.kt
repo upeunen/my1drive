@@ -3,6 +3,8 @@ package by.w6.my1drive.ui
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -114,8 +119,85 @@ fun ArchiveRoute(
     isOtgConnected: Boolean, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
-    PhotosGridTab(groupedItems = archivedGroupedItems, selectedIds = selectedIds, imageLoader = imageLoader,
-        isOtgConnected = isOtgConnected, onItemClick = onItemClick, onItemLongClick = onItemLongClick)
+    val sortMode by viewModel.archiveSortMode.collectAsState()
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val transparentColor = Color.Transparent
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Сортировка: ",
+                style = MaterialTheme.typography.bodySmall,
+                color = onSurfaceVariantColor
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                modifier = Modifier
+                    .background(
+                        color = surfaceVariantColor,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(2.dp)
+            ) {
+                val buttonModifier = { active: Boolean, targetMode: ArchiveSortMode ->
+                    Modifier
+                        .background(
+                            color = if (active) primaryColor else transparentColor,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .clickable {
+                            viewModel.setArchiveSortMode(targetMode)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                }
+
+                Box(
+                    modifier = buttonModifier(sortMode == ArchiveSortMode.BY_PHOTO_DATE, ArchiveSortMode.BY_PHOTO_DATE),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Дата фото",
+                        color = if (sortMode == ArchiveSortMode.BY_PHOTO_DATE) onPrimaryColor else onSurfaceVariantColor,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Box(
+                    modifier = buttonModifier(sortMode == ArchiveSortMode.BY_ARCHIVE_DATE, ArchiveSortMode.BY_ARCHIVE_DATE),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Дата архивации",
+                        color = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) onPrimaryColor else onSurfaceVariantColor,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            PhotosGridTab(
+                groupedItems = archivedGroupedItems,
+                selectedIds = selectedIds,
+                imageLoader = imageLoader,
+                isOtgConnected = isOtgConnected,
+                onItemClick = onItemClick,
+                onItemLongClick = onItemLongClick
+            )
+        }
+    }
 }
 
 @Composable
@@ -237,6 +319,7 @@ fun GalleryScreenContent(
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val context = LocalContext.current
+    var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
 
     // ... existing content ...
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
@@ -327,7 +410,7 @@ fun GalleryScreenContent(
                                     }
                                 }
                             } else {
-                                Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
+                                showDisconnectedOtgItemInfo = item
                             }
                         },
                         onItemLongClick = { item ->
@@ -478,6 +561,14 @@ fun GalleryScreenContent(
                         Text("Купить PRO")
                     }
                 }
+            )
+        }
+
+        showDisconnectedOtgItemInfo?.let { item ->
+            DisconnectedOtgInfoDialog(
+                item = item,
+                imageLoader = imageLoader,
+                onDismiss = { showDisconnectedOtgItemInfo = null }
             )
         }
     }

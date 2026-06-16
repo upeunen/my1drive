@@ -93,11 +93,58 @@ class MainActivity : ComponentActivity() {
                 return@registerForActivityResult
             }
             try {
+                var finalUri = uri
+                var autoCreatedFolderName: String? = null
+                try {
+                    val treeDocId = DocumentsContract.getTreeDocumentId(uri)
+                    val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
+                    if (pathSegment.isEmpty()) {
+                        val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri)
+                        if (documentFile != null && documentFile.exists()) {
+                            val manufacturer = Build.MANUFACTURER
+                            val model = Build.MODEL
+                            val cleanModel = model.replace(Regex("[^a-zA-Z0-9\\s]"), "").replace(Regex("\\s+"), " ").trim()
+                            val cleanManufacturer = manufacturer.replace(Regex("[^a-zA-Z0-9\\s]"), "").replace(Regex("\\s+"), " ").trim()
+                            val segments = cleanModel.split(" ")
+                            val first = segments.getOrNull(0) ?: ""
+                            val second = segments.getOrNull(1) ?: ""
+                            val secondContainsDigit = second.any { it.isDigit() }
+                            val name = if (first.length > 2) {
+                                if (second.isNotEmpty() && (second.matches(Regex("\\d+")) || (second.length <= 3 && secondContainsDigit))) {
+                                    first + second
+                                    } else {
+                                        first
+                                    }
+                            } else {
+                                cleanManufacturer.split(" ").firstOrNull() ?: ""
+                            }
+                            val formattedName = if (name.isNotEmpty()) {
+                                name.lowercase().replaceFirstChar { it.uppercase() }
+                            } else {
+                                "Device"
+                            }
+                            val folderName = "Arhiv-$formattedName"
+                            val subDir = documentFile.findFile(folderName) ?: documentFile.createDirectory(folderName)
+                            if (subDir != null) {
+                                finalUri = subDir.uri
+                                autoCreatedFolderName = folderName
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Fallback to original uri
+                }
+
                 val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 contentResolver.takePersistableUriPermission(uri, takeFlags)
-                viewModel.setOtgDirectory(uri)
-                Toast.makeText(this, getString(R.string.otg_folder_selected_toast), Toast.LENGTH_SHORT).show()
+                viewModel.setOtgDirectory(finalUri)
+                
+                if (autoCreatedFolderName != null) {
+                    Toast.makeText(this, "Вы не выбрали папку, я создал для вас папку $autoCreatedFolderName, чтобы не создавать беспорядок на носителе", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, getString(R.string.otg_folder_selected_toast), Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
                 Toast.makeText(this, getString(R.string.otg_folder_error_toast, e.localizedMessage), Toast.LENGTH_LONG).show()
             }
@@ -122,12 +169,9 @@ class MainActivity : ComponentActivity() {
 
     private fun phoneFolderUri(relativePath: String): Uri {
         val clean = relativePath.trim('/', '\\').replace('\\', '/')
-        val docId = if (clean.isNotEmpty()) "primary:$clean" else "primary"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            DocumentsContract.buildRootUri("com.android.externalstorage.documents", docId)
-        } else {
-            Uri.parse("content://com.android.externalstorage.documents/tree/" + Uri.encode(docId))
-        }
+        val docId = if (clean.isNotEmpty()) "primary:$clean" else "primary:"
+        val treeUri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A")
+        return DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
     }
 
     private fun selectLocalFolder() {
@@ -172,13 +216,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun selectOtgFolder() {
-        val otgUri = otgStorageRootUri(this)
-        if (otgUri != null) {
-            otgFolderLauncher.launch(otgUri)
-        } else {
-            Toast.makeText(this, "Внешний носитель не найден. Выберите папку на устройстве.", Toast.LENGTH_LONG).show()
-            otgFolderLauncher.launch(phoneStorageRootUri())
+        val currentOtgUri = viewModel.otgDirectoryUri.value
+        val initialUri = when {
+            currentOtgUri != null -> currentOtgUri
+            else -> {
+                val otgRoot = otgStorageRootUri(this)
+                if (otgRoot == null) {
+                    Toast.makeText(this, "Внешний носитель не найден. Выберите папку на устройстве.", Toast.LENGTH_LONG).show()
+                }
+                otgRoot ?: phoneStorageRootUri()
+            }
         }
+        otgFolderLauncher.launch(initialUri)
     }
 
     private fun otgStorageRootUri(context: Context): Uri? {

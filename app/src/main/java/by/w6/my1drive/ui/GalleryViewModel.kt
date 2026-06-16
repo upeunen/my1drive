@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import by.w6.my1drive.utils.ArchiveMetadataStore
@@ -48,6 +49,11 @@ private const val PREF_LOCAL_FOLDER_SKIP_COUNT = "local_folder_skip_count"
 private const val PREF_LAST_REQUESTED_FOLDER = "last_requested_folder_path"
 private const val IS_LIMIT_ACTIVE = false // Внутренний переключатель лимита 128 МБ (true - включен, false - отключен)
 private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
+
+enum class ArchiveSortMode {
+    BY_PHOTO_DATE,
+    BY_ARCHIVE_DATE
+}
 
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -103,17 +109,52 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val archivedGroupedItems: StateFlow<List<GalleryItem>> = mediaItems
-        .map { list ->
-            val archivedList = list.filter { it.status == MediaStatus.ARCHIVED_OTG && (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/")) }
-            val resultList = mutableListOf<GalleryItem>()
-            for ((headerText, items) in archivedList.groupBy { formatDateHeader(it.dateModified) }) {
-                resultList.add(GalleryItem.Header(headerText))
-                items.forEach { resultList.add(GalleryItem.Media(it)) }
-            }
-            resultList
+    private val _archiveSortMode = MutableStateFlow(
+        try {
+            ArchiveSortMode.valueOf(
+                prefs.getString("archive_sort_mode", ArchiveSortMode.BY_PHOTO_DATE.name) ?: ArchiveSortMode.BY_PHOTO_DATE.name
+            )
+        } catch (e: Exception) {
+            ArchiveSortMode.BY_PHOTO_DATE
         }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    )
+    val archiveSortMode = _archiveSortMode.asStateFlow()
+
+    fun setArchiveSortMode(mode: ArchiveSortMode) {
+        _archiveSortMode.value = mode
+        prefs.edit().putString("archive_sort_mode", mode.name).apply()
+    }
+
+    val archivedGroupedItems: StateFlow<List<GalleryItem>> = combine(
+        mediaItems,
+        archiveSortMode
+    ) { list, sortMode ->
+        val archivedList = list.filter {
+            it.status == MediaStatus.ARCHIVED_OTG &&
+            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+        }.run {
+            if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                sortedByDescending { it.dateArchived ?: 0L }
+            } else {
+                sortedByDescending { it.dateModified }
+            }
+        }
+
+        val resultList = mutableListOf<GalleryItem>()
+        val grouped = archivedList.groupBy { item ->
+            val date = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                item.dateArchived ?: 0L
+            } else {
+                item.dateModified
+            }
+            formatDateHeader(date)
+        }
+        for ((headerText, items) in grouped) {
+            resultList.add(GalleryItem.Header(headerText))
+            items.forEach { resultList.add(GalleryItem.Media(it)) }
+        }
+        resultList
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds = _selectedIds.asStateFlow()
@@ -500,7 +541,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             } catch (_: Exception) { }
         }
         val folderToRequest = items.firstOrNull()?.originalRelativePath
-        if (folderToRequest != null && _deviceDirectoryUri.value == null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && folderToRequest != null && _deviceDirectoryUri.value == null) {
             val lastFolder = prefs.getString(PREF_LAST_REQUESTED_FOLDER, "") ?: ""
             var skipCount = prefs.getInt(PREF_LOCAL_FOLDER_SKIP_COUNT, 0)
 

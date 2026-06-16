@@ -92,7 +92,8 @@ class ArchiveSyncHelper(
                             otgUri = otgFileUri,
                             thumbnailPath = null,
                             duration = entry.duration,
-                            originalRelativePath = entry.originalRelativePath
+                            originalRelativePath = entry.originalRelativePath,
+                            dateArchived = entry.dateArchived
                         ))
                         roomModified = true
                     }
@@ -116,7 +117,8 @@ class ArchiveSyncHelper(
                             size = file.length(),
                             dateModified = file.lastModified() / 1000,
                             originalRelativePath = defaultPath,
-                            duration = null
+                            duration = null,
+                            dateArchived = file.lastModified() / 1000
                         )
                         newEntries.add(entry)
                         knownHashes.add(hash)
@@ -231,7 +233,8 @@ class ArchiveSyncHelper(
                                 size = file.length(),
                                 dateModified = file.lastModified() / 1000,
                                 originalRelativePath = defaultPath,
-                                duration = null
+                                duration = null,
+                                dateArchived = System.currentTimeMillis() / 1000
                             )
                             newEntries.add(entry)
                             jsonEntries.add(entry)
@@ -364,7 +367,7 @@ class ArchiveSyncHelper(
      */
     private suspend fun processArchivedResults(list: List<ArchivedInfo>, otgUri: Uri) {
         try {
-            // 1. Write truth to JSON on the OTG drive
+            val currentTimeSec = System.currentTimeMillis() / 1000
             val jsonEntries = list.map { info ->
                 JsonEntry(
                     hash = info.hash,
@@ -373,7 +376,8 @@ class ArchiveSyncHelper(
                     size = info.item.size,
                     dateModified = info.item.dateModified,
                     originalRelativePath = info.item.originalRelativePath,
-                    duration = info.item.duration
+                    duration = info.item.duration,
+                    dateArchived = currentTimeSec
                 )
             }
             metadataStore.addEntries(otgUri, jsonEntries)
@@ -382,7 +386,8 @@ class ArchiveSyncHelper(
             for (info in list) {
                 repository.insertArchivedItem(
                     info.item, info.otgUri, info.hash,
-                    info.thumbnailPath, info.item.originalRelativePath
+                    info.thumbnailPath, info.item.originalRelativePath,
+                    currentTimeSec
                 )
             }
 

@@ -17,5 +17,7 @@ data class MediaEntity(
     val duration: Long? = null,              // Video duration in ms
     val originalRelativePath: String? = null,// Original MediaStore RELATIVE_PATH (e.g. "DCIM/Camera")
     @ColumnInfo(defaultValue = "0")
-    val lastAccessed: Long = 0L              // Unix ms -- updated when preview is loaded (for LRU eviction)
+    val lastAccessed: Long = 0L,              // Unix ms -- updated when preview is loaded (for LRU eviction)
+    @ColumnInfo(defaultValue = "0")
+    val dateArchived: Long = 0L              // Unix timestamp in seconds
 )

@@ -47,7 +47,8 @@ class MediaRepositoryImpl(
                     hash = entity.id,
                     otgUri = entity.otgUri,
                     thumbnailPath = entity.thumbnailPath,
-                    originalRelativePath = entity.originalRelativePath
+                    originalRelativePath = entity.originalRelativePath,
+                    dateArchived = entity.dateArchived
                 )
             }
 
@@ -70,7 +71,8 @@ class MediaRepositoryImpl(
         otgUri: String,
         hash: String,
         thumbnailPath: String?,
-        originalRelativePath: String?
+        originalRelativePath: String?,
+        dateArchived: Long
 ) = withContext(Dispatchers.IO) {
         val entity = MediaEntity(
             id = hash,
@@ -81,7 +83,8 @@ class MediaRepositoryImpl(
             otgUri = otgUri,
             thumbnailPath = thumbnailPath,
             duration = item.duration,
-            originalRelativePath = originalRelativePath ?: item.originalRelativePath
+            originalRelativePath = originalRelativePath ?: item.originalRelativePath,
+            dateArchived = dateArchived
         )
         mediaDao.insert(entity)
     }

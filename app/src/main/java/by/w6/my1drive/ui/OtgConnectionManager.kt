@@ -195,9 +195,8 @@ class OtgConnectionManager(
             val isConnected = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _physicalConnected.value = isConnected
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
-            // Если URI не выбран — сбрасываем флаг, чтобы при следующем подключении
-            // диалог показался снова (логика перетыкания флешки)
-            if (_otgDirectoryUri.value == null) {
+            // Сбрасываем флаг только при реальном подключении флешки (когда была отключена и стала подключена)
+            if (_otgDirectoryUri.value == null && isConnected && !wasConnected) {
                 firstLaunchHandled = false
             }
         }
