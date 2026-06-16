@@ -79,7 +79,13 @@ fun GalleryScreen(
         bottomBar = {
             BottomNavigationBar(
                 currentRoute = currentScreenRoute,
-                onNavigate = { route -> currentScreenRoute = route }
+                onNavigate = { route ->
+                    if (activePreviewState != null) {
+                        viewModel.commitDeferredDeletes()
+                        activePreviewState = null
+                    }
+                    currentScreenRoute = route
+                }
             )
         },
         floatingActionButton = {
