@@ -90,11 +90,15 @@ class OtgConnectionManager(
                 // IMPORTANT: Do NOT reset archive size on disconnect —
                 // keep last known value (as per spec C)
 
-                // First-launch detection
-                if (_physicalConnected.value && !wasPhysicalConnected && _otgDirectoryUri.value == null) {
+                // First-launch detection: показываем приветствие если URI не выбран,
+                // а OTG-флешка физически подключена (или появляется).
+                // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
+                val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                _physicalConnected.value = otgPluggedIn
+                if (otgPluggedIn && !wasPhysicalConnected && _otgDirectoryUri.value == null) {
                     _showFirstLaunchDialog.value = true
                 }
-                wasPhysicalConnected = _physicalConnected.value
+                wasPhysicalConnected = otgPluggedIn
 
                 // Trigger silent sync when transitioning to KNOWN_DRIVE_CONNECTED
                 if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED &&
@@ -117,6 +121,7 @@ class OtgConnectionManager(
         _otgDirectoryUri.value = uri
         prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
         scope.launch {
+            _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
             if (_status.value == DriveStatus.KNOWN_DRIVE_CONNECTED) {
                 updateArchiveSize()
@@ -150,6 +155,7 @@ class OtgConnectionManager(
     /** Called from BroadcastReceiver when physical USB connection changes. */
     fun onPhysicalConnectionChanged() {
         scope.launch {
+            _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
         }
     }
@@ -186,7 +192,6 @@ class OtgConnectionManager(
         val savedUri = _otgDirectoryUri.value ?: return DriveStatus.NO_URI_CONFIGURED
 
         val isPhysicallyConnected = isOtgUriPhysicallyConnected(savedUri)
-        _physicalConnected.value = isPhysicallyConnected
 
         if (!isPhysicallyConnected) {
             return DriveStatus.KNOWN_DRIVE_DISCONNECTED
@@ -212,6 +217,18 @@ class OtgConnectionManager(
             }
             _showUnknownDriveDialog.value = true
             DriveStatus.UNKNOWN_DRIVE_CONNECTED
+        }
+    }
+
+    /** Checks if any removable (OTG) drive is physically connected. */
+    private fun isAnyOtgDrivePresent(): Boolean {
+        return try {
+            val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
+            storageManager.storageVolumes.any { volume ->
+                volume.isRemovable && volume.state == Environment.MEDIA_MOUNTED
+            }
+        } catch (e: Exception) {
+            false
         }
     }
 
