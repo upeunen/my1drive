@@ -69,14 +69,20 @@ class ArchiveSyncHelper(
                 val dir = DocumentFile.fromTreeUri(application, uri) ?: return@launch
                 if (!dir.exists()) return@launch
 
+                // ── Шаг 0: Быстрый сбор файлов с флешки в карту ──
+                val otgFiles = dir.listFiles().filter {
+                    !it.isDirectory && it.name != null &&
+                    it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
+                }
+                val fileUriMap = otgFiles.associate { it.name!! to it.uri.toString() }
+
                 // ── Шаг 1: Синхронизация JSON → Room ──
                 // JSON — источник истины. Все записи из JSON должны быть в Room.
                 val jsonEntries = metadataStore.readMetadata(uri)
                 var roomModified = false
                 for (entry in jsonEntries) {
                     if (db.mediaDao().getById(entry.hash) == null) {
-                        // Поищем актуальный URI файла на флешке
-                        val otgFileUri = dir.findFile(entry.displayName)?.uri?.toString() ?: ""
+                        val otgFileUri = fileUriMap[entry.displayName] ?: ""
                         db.mediaDao().insert(MediaEntity(
                             id = entry.hash,
                             displayName = entry.displayName,
@@ -94,11 +100,6 @@ class ArchiveSyncHelper(
 
                 // ── Шаг 2: Поиск новых файлов на флешке ──
                 val knownHashes = jsonEntries.map { it.hash }.toHashSet()
-
-                val otgFiles = dir.listFiles().filter {
-                    !it.isDirectory && it.name != null &&
-                    it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
-                }
 
                 val newEntries = mutableListOf<JsonEntry>()
                 for (file in otgFiles) {
@@ -129,7 +130,7 @@ class ArchiveSyncHelper(
 
                     // Добавить в Room
                     for (entry in newEntries) {
-                        val otgFileUri = dir.findFile(entry.displayName)?.uri?.toString() ?: ""
+                        val otgFileUri = fileUriMap[entry.displayName] ?: ""
                         if (db.mediaDao().getById(entry.hash) == null) {
                             db.mediaDao().insert(MediaEntity(
                                 id = entry.hash,
@@ -148,37 +149,24 @@ class ArchiveSyncHelper(
                 }
 
                 // ── Шаг 3: Удаление мёртвых записей (файлов, пропавших с OTG) ──
-                                val allRoomEntities = db.mediaDao().getAllSync()
-                                for (entity in allRoomEntities) {
-                                    if (entity.otgUri.isNullOrEmpty()) {
-                                        // Нет URI — не можем проверить, но чистим на всякий случай
-                                        db.mediaDao().delete(entity)
-                                        roomModified = true
-                                        continue
-                                    }
-                                    try {
-                                        val docFile = DocumentFile.fromSingleUri(application, Uri.parse(entity.otgUri))
-                                        if (docFile == null || !docFile.exists()) {
-                                            // Файла нет на флешке — удаляем запись из Room
-                                            entity.thumbnailPath?.let { path ->
-                                                val file = java.io.File(path)
-                                                if (file.exists()) file.delete()
-                                            }
-                                            db.mediaDao().delete(entity)
-                                            roomModified = true
-                                        }
-                                    } catch (_: Exception) {
-                                        // Ошибка проверки — удаляем на всякий случай
-                                        db.mediaDao().delete(entity)
-                                        roomModified = true
-                                    }
-                                }
+                val allRoomEntities = db.mediaDao().getAllSync()
+                for (entity in allRoomEntities) {
+                    if (entity.otgUri.isNullOrEmpty() || !fileUriMap.containsKey(entity.displayName)) {
+                        // Файла нет на флешке — удаляем запись из Room
+                        entity.thumbnailPath?.let { path ->
+                            val file = java.io.File(path)
+                            if (file.exists()) file.delete()
+                        }
+                        db.mediaDao().delete(entity)
+                        roomModified = true
+                    }
+                }
 
-                                if (roomModified) {
-                                    repository.refresh()
-                                    _autoSyncAddedCount.value = newEntries.size
-                                }
-                            } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
+                if (roomModified) {
+                    repository.refresh()
+                    _autoSyncAddedCount.value = newEntries.size
+                }
+            } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
         }
     }
 
