@@ -349,36 +349,70 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun findFileInTree(context: Context, treeUri: Uri, relativePath: String?, displayName: String): DocumentFile? {
-        val root = DocumentFile.fromTreeUri(context, treeUri) ?: return null
-        if (!root.exists() || !root.canWrite()) return null
-
         val cleanPath = relativePath?.trim('/', '\\') ?: ""
-        val treeDocId = try {
-            DocumentsContract.getTreeDocumentId(treeUri)
-        } catch (_: Exception) {
-            ""
-        }
-        val rootDirName = treeDocId.substringAfter(":", "").trim('/', '\\')
-        
-        var segments = cleanPath.split('/', '\\').filter { it.isNotEmpty() }
-        if (rootDirName.isNotEmpty() && segments.isNotEmpty() && segments[0].equals(rootDirName, ignoreCase = true)) {
-            segments = segments.drop(1)
-        }
+        val fileName = displayName.trim()
+        val fullRelativePath = if (cleanPath.isNotEmpty()) "$cleanPath/$fileName" else fileName
 
-        var currentDir: DocumentFile = root
-        for (segment in segments) {
-            val nextDir = currentDir.findFile(segment)
-            if (nextDir != null && nextDir.isDirectory) {
-                currentDir = nextDir
-            } else {
-                return null
+        // Method 1: Direct URI construction (Fast & O(1) for external storage provider)
+        try {
+            val authority = treeUri.authority
+            if (authority == "com.android.externalstorage.documents") {
+                val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+                val volumeId = treeDocId.substringBefore(":", "primary")
+                val targetDocId = "$volumeId:$fullRelativePath"
+                val fileUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, targetDocId)
+                val docFile = DocumentFile.fromSingleUri(context, fileUri)
+                if (docFile != null && docFile.exists()) {
+                    return docFile
+                }
             }
-        }
-        
-        val file = currentDir.findFile(displayName)
-        if (file != null && file.isFile) {
-            return file
-        }
+        } catch (_: Exception) {}
+
+        // Method 2: Traverse (Fallback for other providers)
+        try {
+            val root = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+            if (!root.exists() || !root.canWrite()) return null
+
+            val treeDocId = try {
+                DocumentsContract.getTreeDocumentId(treeUri)
+            } catch (_: Exception) {
+                ""
+            }
+            val selectedPath = treeDocId.substringAfter(":", "").trim('/', '\\')
+            val selectedSegments = selectedPath.split('/', '\\').filter { it.isNotEmpty() }
+            val fileSegments = cleanPath.split('/', '\\').filter { it.isNotEmpty() }
+
+            if (fileSegments.size >= selectedSegments.size) {
+                var matches = true
+                for (i in selectedSegments.indices) {
+                    if (!fileSegments[i].equals(selectedSegments[i], ignoreCase = true)) {
+                        matches = false
+                        break
+                    }
+                }
+                if (matches) {
+                    val remainingSegments = fileSegments.drop(selectedSegments.size)
+                    var currentDir: DocumentFile = root
+                    var found = true
+                    for (segment in remainingSegments) {
+                        val nextDir = currentDir.findFile(segment)
+                        if (nextDir != null && nextDir.isDirectory) {
+                            currentDir = nextDir
+                        } else {
+                            found = false
+                            break
+                        }
+                    }
+                    if (found) {
+                        val file = currentDir.findFile(fileName)
+                        if (file != null && file.exists()) {
+                            return file
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
         return null
     }
 
