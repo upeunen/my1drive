@@ -441,8 +441,10 @@ fun GalleryScreenContent(
         }
 
         val showLocalFolder by viewModel.otgManager.showLocalFolderDialog.collectAsState()
+        val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
         if (showLocalFolder) {
             LocalFolderDialog(
+                folderPath = pendingFolder ?: "DCIM/Camera",
                 onSelectFolder = {
                     onSelectDeviceDirectory()
                 },

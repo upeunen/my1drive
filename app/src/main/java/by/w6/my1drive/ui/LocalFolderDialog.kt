@@ -24,22 +24,24 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LocalFolderDialog(
+    folderPath: String,
     onSelectFolder: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val folderName = folderPath.substringAfterLast('/').ifEmpty { folderPath }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.FolderSpecial,
-                    contentDescription = "Local Folder Permission",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Доступ к памяти устройства",
+                    text = "Доступ к папке $folderName",
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -47,7 +49,7 @@ fun LocalFolderDialog(
         text = {
             Column {
                 Text(
-                    text = "Чтобы архивация и разархивация выполнялись автоматически без всплывающих окон подтверждения Android, разрешите доступ к папке с фотографиями на устройстве (например, DCIM или Pictures).",
+                    text = "Разрешите доступ к папке $folderPath на устройстве, чтобы архивация и удаление файлов происходили автоматически без подтверждений.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
@@ -60,7 +62,7 @@ fun LocalFolderDialog(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("Выбрать папку")
+                Text("Предоставить доступ")
             }
         },
         dismissButton = {
