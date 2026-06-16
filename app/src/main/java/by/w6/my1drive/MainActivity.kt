@@ -120,8 +120,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun phoneFolderUri(relativePath: String): Uri {
+        val clean = relativePath.trim('/', '\\').replace('\\', '/')
+        val docId = if (clean.isNotEmpty()) "primary:$clean" else "primary"
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            DocumentsContract.buildRootUri("com.android.externalstorage.documents", docId)
+        } else {
+            Uri.parse("content://com.android.externalstorage.documents/tree/" + Uri.encode(docId))
+        }
+    }
+
     private fun selectLocalFolder() {
-        deviceFolderLauncher.launch(phoneStorageRootUri())
+        val pendingFolder = viewModel.pendingDeviceFolderToRequest.value
+        val initialUri = if (pendingFolder != null) {
+            phoneFolderUri(pendingFolder)
+        } else {
+            phoneStorageRootUri()
+        }
+        deviceFolderLauncher.launch(initialUri)
     }
 
     /** SAF folder picker for restore destination — when originalRelativePath is unknown. */

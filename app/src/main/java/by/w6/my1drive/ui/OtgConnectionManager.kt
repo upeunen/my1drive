@@ -135,12 +135,6 @@ class OtgConnectionManager(
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
         prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
 
-        // Сразу после выбора папки OTG, если еще не выбрана папка на устройстве,
-        // показываем диалог выбора папки устройства
-        if (_deviceDirectoryUri.value == null) {
-            _showLocalFolderDialog.value = true
-        }
-
         scope.launch {
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
@@ -150,6 +144,10 @@ class OtgConnectionManager(
                 refreshCacheStats()
             }
         }
+    }
+
+    fun showLocalFolderPrompt() {
+        _showLocalFolderDialog.value = true
     }
 
     /** Called from ViewModel when user selects local device folder via SAF. */

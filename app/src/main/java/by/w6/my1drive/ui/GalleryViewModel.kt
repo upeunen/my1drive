@@ -122,6 +122,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _deviceDirectoryUri = MutableStateFlow<Uri?>(null)
     val deviceDirectoryUri = _deviceDirectoryUri.asStateFlow()
 
+    private val _pendingDeviceFolderToRequest = MutableStateFlow<String?>(null)
+    val pendingDeviceFolderToRequest = _pendingDeviceFolderToRequest.asStateFlow()
+
     private val _isOtgConnected = MutableStateFlow(false)
     val isOtgConnected: StateFlow<Boolean> = _isOtgConnected.asStateFlow()
 
@@ -493,6 +496,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     return
                 }
             } catch (_: Exception) { }
+        }
+        val folderToRequest = items.firstOrNull()?.originalRelativePath
+        if (folderToRequest != null && _deviceDirectoryUri.value == null) {
+            _pendingDeviceFolderToRequest.value = folderToRequest
+            otgManager.showLocalFolderPrompt()
         }
         _deviceDeletePendingItems.clear()
         viewModelScope.launch { repository.refresh() }
