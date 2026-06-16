@@ -300,14 +300,20 @@ private fun PagerPage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected:
     if (item.isVideo) {
         VideoPage(item = item, isOtgConnected = isOtgConnected)
     } else {
-        ImagePage(item = item, imageLoader = imageLoader)
+        ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected)
     }
 }
 
 @Composable
-private fun ImagePage(item: MediaItem, imageLoader: ImageLoader) {
-    val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.thumbnailPath != null) {
-        Uri.fromFile(File(item.thumbnailPath))
+private fun ImagePage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected: Boolean) {
+    val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
+        if (isOtgConnected && item.otgUri != null) {
+            Uri.parse(item.otgUri)
+        } else if (item.thumbnailPath != null) {
+            Uri.fromFile(File(item.thumbnailPath))
+        } else {
+            Uri.EMPTY
+        }
     } else {
         item.uri
     }
