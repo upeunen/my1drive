@@ -127,15 +127,10 @@ class OtgConnectionManager(
         scope.launch {
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
-            if (_status.value == DriveStatus.KNOWN_DRIVE_CONNECTED) {
-                updateArchiveSize()
-                // Silent sync: добавляет в Room файлы, уже присутствующие на флешке,
-                // но ещё не учтённые (например, при первом подключении старой флешки
-                // после createNewArchive / сброса URI).
-                if (!syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
-                    syncHelper.silentSyncArchive(_otgDirectoryUri.value)
-                    refreshCacheStats()
-                }
+            updateArchiveSize()
+            if (!syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+                syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                refreshCacheStats()
             }
         }
     }
