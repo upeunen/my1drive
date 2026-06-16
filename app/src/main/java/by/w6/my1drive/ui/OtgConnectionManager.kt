@@ -123,6 +123,7 @@ class OtgConnectionManager(
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri) {
         _otgDirectoryUri.value = uri
+        _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
         prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
         scope.launch {
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
@@ -149,20 +150,31 @@ class OtgConnectionManager(
         prefs.edit().remove(PREF_OTG_URI).apply()
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
+        // Сбрасываем флаг, чтобы при следующем подключении флешки диалог показался снова
+        firstLaunchHandled = false
     }
 
     /** Called from BroadcastReceiver when physical USB connection changes. */
     fun onPhysicalConnectionChanged() {
         scope.launch {
-            _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            val wasConnected = _physicalConnected.value
+            val isConnected = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            _physicalConnected.value = isConnected
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
+            // Если URI не выбран — сбрасываем флаг, чтобы при следующем подключении
+            // диалог показался снова (логика перетыкания флешки)
+            if (_otgDirectoryUri.value == null) {
+                firstLaunchHandled = false
+            }
         }
     }
 
     fun dismissFirstLaunchDialog() {
         _showFirstLaunchDialog.value = false
-        // Сбрасываем, чтобы при перетыкании флешки диалог показался снова
-        firstLaunchHandled = false
+
+
+        // Не сбрасываем firstLaunchHandled — он сбрасывается в onPhysicalConnectionChanged
+        // при реальном отключении/подключении флешки (если URI не выбран).
     }
 
     fun dismissUnknownDriveDialog() {
