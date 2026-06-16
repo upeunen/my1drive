@@ -172,4 +172,12 @@
     <string name="action_delete_files_question">Удалить %1$d файлов?</string>
     <string name="action_delete_from_archive">Удалить из архива</string>
     <string name="action_properties">Свойства</string>
-</resources>
+
+        <!-- First launch dialog -->
+        <string name="welcome_title">Добро пожаловать в My1Drive!</string>
+        <string name="welcome_msg">Это приложение позволяет сохранять файлы на USB OTG накопитель и освобождать память устройства. Вы можете восстановить их в любое время.</string>
+        <string name="welcome_msg_drive_detected">USB OTG накопитель обнаружен!</string>
+        <string name="welcome_msg_drive_not_detected">USB OTG накопитель не обнаружен. Подключите его через OTG-адаптер.</string>
+        <string name="welcome_btn_start">Начать</string>
+        <string name="welcome_btn_close">Закрыть</string>
+    </resources>

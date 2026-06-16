@@ -30,7 +30,8 @@ data class ArchiveState(
     val totalFiles: Int = 0,
     val currentFileIndex: Int = 0,
     val pendingQueueSize: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    val skippedFiles: List<Pair<String, String>> = emptyList() // (displayName, reason)
 )
 
 data class RestoreState(

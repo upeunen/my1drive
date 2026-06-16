@@ -67,8 +67,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val syncHelper: ArchiveSyncHelper by lazy {
         ArchiveSyncHelper(
-            application, db, repository, archiveUtil, prefs, previewCache, viewModelScope,
-            onOperationComplete = { otgManager.updateArchiveSize() }
+            application = application,
+            db = db,
+            repository = repository,
+            archiveUtil = archiveUtil,
+            prefs = prefs,
+            previewCache = previewCache,
+            scope = viewModelScope,
+            onOperationComplete = { otgManager.updateArchiveSize() },
+            onArchiveSuccess = { items ->
+                _selectedIds.value = emptySet()
+            }
         )
     }
 

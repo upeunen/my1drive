@@ -28,8 +28,9 @@ class ArchiveSyncHelper(
     private val prefs: android.content.SharedPreferences,
     private val previewCache: PreviewCacheManager,
     private val scope: kotlinx.coroutines.CoroutineScope,
-    private val onOperationComplete: () -> Unit = {}
-) {
+    private val onOperationComplete: () -> Unit = {},
+        private val onArchiveSuccess: (List<MediaItem>) -> Unit = {}
+    ) {
 
     private val metadataStore = ArchiveMetadataStore(application)
 
@@ -146,11 +147,38 @@ class ArchiveSyncHelper(
                     roomModified = true
                 }
 
-                if (roomModified) {
-                    repository.refresh()
-                    _autoSyncAddedCount.value = newEntries.size
-                }
-            } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
+                // ── Шаг 3: Удаление мёртвых записей (файлов, пропавших с OTG) ──
+                                val allRoomEntities = db.mediaDao().getAllSync()
+                                for (entity in allRoomEntities) {
+                                    if (entity.otgUri.isNullOrEmpty()) {
+                                        // Нет URI — не можем проверить, но чистим на всякий случай
+                                        db.mediaDao().delete(entity)
+                                        roomModified = true
+                                        continue
+                                    }
+                                    try {
+                                        val docFile = DocumentFile.fromSingleUri(application, Uri.parse(entity.otgUri))
+                                        if (docFile == null || !docFile.exists()) {
+                                            // Файла нет на флешке — удаляем запись из Room
+                                            entity.thumbnailPath?.let { path ->
+                                                val file = java.io.File(path)
+                                                if (file.exists()) file.delete()
+                                            }
+                                            db.mediaDao().delete(entity)
+                                            roomModified = true
+                                        }
+                                    } catch (_: Exception) {
+                                        // Ошибка проверки — удаляем на всякий случай
+                                        db.mediaDao().delete(entity)
+                                        roomModified = true
+                                    }
+                                }
+
+                                if (roomModified) {
+                                    repository.refresh()
+                                    _autoSyncAddedCount.value = newEntries.size
+                                }
+                            } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
         }
     }
 
@@ -325,11 +353,16 @@ class ArchiveSyncHelper(
             }
         }
 
+                val skippedFiles = skipped.map { (item, reason) -> item.displayName to reason }
+
         if (copied.isNotEmpty()) {
             processArchivedResults(copied, targetUri)
+            // Уведомить ViewModel об успешно заархивированных файлах
+            onArchiveSuccess(copied.map { it.item })
         } else {
             _archiveState.value = ArchiveState(
                 isArchiving = false, error = "Ошибка архивирования",
+                skippedFiles = skippedFiles,
                 pendingQueueSize = archiveQueue.size
             )
             onOperationComplete()
