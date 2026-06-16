@@ -416,7 +416,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                                 if (otgUri != null && result.item.hash != null) {
                                     metadataStore.removeEntry(otgUri, result.item.hash)
                                 }
-                                // 2. Remove from Room (local cache)
+                                // 2. Delete physical file from OTG drive
+                                result.item.otgUri?.let { fileUri ->
+                                    try { DocumentFile.fromSingleUri(getApplication(), Uri.parse(fileUri))?.delete() } catch (_: Exception) { }
+                                }
+                                // 3. Remove from Room (local cache)
                                 repository.deleteArchivedItem(result.item)
                             } catch (_: Exception) { }
                         }
