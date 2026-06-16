@@ -64,6 +64,8 @@ class OtgConnectionManager(
     private var driveErrorCount = 0
     private val MAX_DRIVE_ERRORS = 3
     private var wasPhysicalConnected = false
+    /** Флаг: приветственный диалог уже был показан в этой сессии (или был отклонён). */
+    private var firstLaunchHandled = false
 
     // ─── Public API ───
 
@@ -91,12 +93,14 @@ class OtgConnectionManager(
                 // keep last known value (as per spec C)
 
                 // First-launch detection: показываем приветствие если URI не выбран,
-                // а OTG-флешка физически подключена (или появляется).
+                // а OTG-флешка физически подключена. Показывается один раз за сессию
+                // (до dismiss или выбора папки).
                 // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
                 val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
-                if (otgPluggedIn && !wasPhysicalConnected && _otgDirectoryUri.value == null) {
+                if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null) {
                     _showFirstLaunchDialog.value = true
+                    firstLaunchHandled = true
                 }
                 wasPhysicalConnected = otgPluggedIn
 
@@ -162,6 +166,8 @@ class OtgConnectionManager(
 
     fun dismissFirstLaunchDialog() {
         _showFirstLaunchDialog.value = false
+        // Сбрасываем, чтобы при перетыкании флешки диалог показался снова
+        firstLaunchHandled = false
     }
 
     fun dismissUnknownDriveDialog() {
@@ -182,8 +188,9 @@ class OtgConnectionManager(
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
         _showUnknownDriveDialog.value = false
-        // Сбросить флаг, чтобы при подключённой флешке снова показать приветствие
+        // Сбросить флаги, чтобы при подключённой флешке снова показать приветствие
         wasPhysicalConnected = false
+        firstLaunchHandled = false
     }
 
     // ─── Internal helpers ───

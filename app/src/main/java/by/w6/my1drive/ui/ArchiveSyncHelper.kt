@@ -53,10 +53,12 @@ class ArchiveSyncHelper(
     // ─── Silent auto-sync ───
 
     /**
-     * Silent auto-sync: scans all files on the OTG drive and adds any
-     * missing entries to both the JSON metadata file and Room.
+     * Silent auto-sync:
+     * 1. Копирует все записи из JSON (источник истины на OTG) в Room на устройстве.
+     * 2. Сканирует файлы на флешке, добавляет в JSON и Room те, что ещё не учтены.
      *
-     * The JSON on the OTG drive is the source of truth.
+     * Это гарантирует, что после createNewArchive / переустановки приложения
+     * все ранее заархивированные файлы появятся в интерфейсе.
      */
     fun silentSyncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
@@ -66,8 +68,30 @@ class ArchiveSyncHelper(
                 val dir = DocumentFile.fromTreeUri(application, uri) ?: return@launch
                 if (!dir.exists()) return@launch
 
-                // Source of truth: JSON metadata on the OTG drive
-                val jsonEntries = metadataStore.readMetadata(uri).toMutableList()
+                // ── Шаг 1: Синхронизация JSON → Room ──
+                // JSON — источник истины. Все записи из JSON должны быть в Room.
+                val jsonEntries = metadataStore.readMetadata(uri)
+                var roomModified = false
+                for (entry in jsonEntries) {
+                    if (db.mediaDao().getById(entry.hash) == null) {
+                        // Поищем актуальный URI файла на флешке
+                        val otgFileUri = dir.findFile(entry.displayName)?.uri?.toString() ?: ""
+                        db.mediaDao().insert(MediaEntity(
+                            id = entry.hash,
+                            displayName = entry.displayName,
+                            mimeType = entry.mimeType,
+                            size = entry.size,
+                            dateModified = entry.dateModified,
+                            otgUri = otgFileUri,
+                            thumbnailPath = null,
+                            duration = entry.duration,
+                            originalRelativePath = entry.originalRelativePath
+                        ))
+                        roomModified = true
+                    }
+                }
+
+                // ── Шаг 2: Поиск новых файлов на флешке ──
                 val knownHashes = jsonEntries.map { it.hash }.toHashSet()
 
                 val otgFiles = dir.listFiles().filter {
@@ -93,16 +117,16 @@ class ArchiveSyncHelper(
                             duration = null
                         )
                         newEntries.add(entry)
-                        jsonEntries.add(entry)
                         knownHashes.add(hash)
                     }
                 }
 
                 if (newEntries.isNotEmpty()) {
-                    // 1. Write truth to JSON on the OTG drive
-                    metadataStore.writeMetadata(uri, jsonEntries)
+                    // Записать новые записи в JSON (источник истины)
+                    val updatedJson = jsonEntries.toMutableList().apply { addAll(newEntries) }
+                    metadataStore.writeMetadata(uri, updatedJson)
 
-                    // 2. Sync Room cache on device
+                    // Добавить в Room
                     for (entry in newEntries) {
                         val otgFileUri = dir.findFile(entry.displayName)?.uri?.toString() ?: ""
                         if (db.mediaDao().getById(entry.hash) == null) {
@@ -119,6 +143,10 @@ class ArchiveSyncHelper(
                             ))
                         }
                     }
+                    roomModified = true
+                }
+
+                if (roomModified) {
                     repository.refresh()
                     _autoSyncAddedCount.value = newEntries.size
                 }
