@@ -85,6 +85,20 @@ fun PartialAccessBanner(onGrantFullAccess: () -> Unit, onOpenSettings: () -> Uni
 }
 
 @Composable
+fun OtgRequiredBanner() {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Usb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
 fun PhotosRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
     isOtgConnected: Boolean, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
@@ -273,6 +287,7 @@ fun GalleryScreenContent(
             if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
             else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null) UnknownDriveBanner()
             if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
+            if (otgDirectoryUri == null) OtgRequiredBanner()
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (currentScreenRoute) {
