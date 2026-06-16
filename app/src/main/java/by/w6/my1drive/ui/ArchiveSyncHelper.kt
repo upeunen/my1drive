@@ -5,14 +5,13 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.data.local.AppDatabase
 import by.w6.my1drive.data.local.MediaEntity
-import by.w6.my1drive.data.repository.MediaRepositoryImpl
 import by.w6.my1drive.domain.model.MediaItem
-import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.repository.MediaRepository
+import by.w6.my1drive.utils.ArchiveMetadataStore
 import by.w6.my1drive.utils.CopyVerifyResult
+import by.w6.my1drive.utils.JsonEntry
 import by.w6.my1drive.utils.OtgArchiveUtil
 import by.w6.my1drive.utils.PreviewCacheManager
-import by.w6.my1drive.utils.RestoreResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,13 +31,15 @@ class ArchiveSyncHelper(
     private val onOperationComplete: () -> Unit = {}
 ) {
 
+    private val metadataStore = ArchiveMetadataStore(application)
+
     private val _syncState = MutableStateFlow<String?>(null)
     val syncState: StateFlow<String?> = _syncState.asStateFlow()
 
     private val _archiveState = MutableStateFlow(ArchiveState())
         val archiveState: StateFlow<ArchiveState> = _archiveState.asStateFlow()
 
-    private val _missingFilesNotification  = MutableStateFlow<List<String>?>(null)
+    private val _missingFilesNotification = MutableStateFlow<List<String>?>(null)
     val missingFilesNotification: StateFlow<List<String>?> = _missingFilesNotification.asStateFlow()
 
     private val _autoSyncAddedCount = MutableStateFlow(0)
@@ -51,6 +52,12 @@ class ArchiveSyncHelper(
 
     // ─── Silent auto-sync ───
 
+    /**
+     * Silent auto-sync: scans all files on the OTG drive and adds any
+     * missing entries to both the JSON metadata file and Room.
+     *
+     * The JSON on the OTG drive is the source of truth.
+     */
     fun silentSyncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
         isSilentSyncing = true
@@ -59,27 +66,62 @@ class ArchiveSyncHelper(
                 val dir = DocumentFile.fromTreeUri(application, uri) ?: return@launch
                 if (!dir.exists()) return@launch
 
+                // Source of truth: JSON metadata on the OTG drive
+                val jsonEntries = metadataStore.readMetadata(uri).toMutableList()
+                val knownHashes = jsonEntries.map { it.hash }.toHashSet()
+
                 val otgFiles = dir.listFiles().filter {
-                    !it.isDirectory && it.name != null && it.name != ".my1drive_uuid"
+                    !it.isDirectory && it.name != null &&
+                    it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
                 }
 
-                var addedCount = 0
+                val newEntries = mutableListOf<JsonEntry>()
                 for (file in otgFiles) {
                     val name = file.name ?: continue
                     val mime = file.type ?: "image/jpeg"
                     val hash = try { archiveUtil.calculateSha256(file.uri) } catch (_: Exception) { continue }
-                    if (db.mediaDao().getById(hash) == null) {
-                        db.mediaDao().insert(MediaEntity(
-                            id = hash, displayName = name, mimeType = mime,
-                            size = file.length(), dateModified = file.lastModified() / 1000,
-                            otgUri = file.uri.toString(), thumbnailPath = null,
-                            duration = null, originalRelativePath = null
-                        ))
-                        addedCount++
+
+                    if (hash !in knownHashes) {
+                        val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
+                        val entry = JsonEntry(
+                            hash = hash,
+                            displayName = name,
+                            mimeType = mime,
+                            size = file.length(),
+                            dateModified = file.lastModified() / 1000,
+                            originalRelativePath = defaultPath,
+                            duration = null
+                        )
+                        newEntries.add(entry)
+                        jsonEntries.add(entry)
+                        knownHashes.add(hash)
                     }
                 }
 
-                if (addedCount > 0) { repository.refresh(); _autoSyncAddedCount.value = addedCount }
+                if (newEntries.isNotEmpty()) {
+                    // 1. Write truth to JSON on the OTG drive
+                    metadataStore.writeMetadata(uri, jsonEntries)
+
+                    // 2. Sync Room cache on device
+                    for (entry in newEntries) {
+                        val otgFileUri = dir.findFile(entry.displayName)?.uri?.toString() ?: ""
+                        if (db.mediaDao().getById(entry.hash) == null) {
+                            db.mediaDao().insert(MediaEntity(
+                                id = entry.hash,
+                                displayName = entry.displayName,
+                                mimeType = entry.mimeType,
+                                size = entry.size,
+                                dateModified = entry.dateModified,
+                                otgUri = otgFileUri,
+                                thumbnailPath = null,
+                                duration = entry.duration,
+                                originalRelativePath = entry.originalRelativePath
+                            ))
+                        }
+                    }
+                    repository.refresh()
+                    _autoSyncAddedCount.value = newEntries.size
+                }
             } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
         }
     }
@@ -99,6 +141,9 @@ class ArchiveSyncHelper(
 
     // ─── Manual sync ───
 
+    /**
+     * Manual sync: same as silent sync but with progress reporting.
+     */
     fun syncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
         scope.launch {
@@ -107,11 +152,23 @@ class ArchiveSyncHelper(
                 val dir = DocumentFile.fromTreeUri(application, uri)
                 if (dir == null || !dir.exists()) throw Exception("Не удалось получить доступ к OTG накопителю")
 
-                val files = dir.listFiles()
+                val files = dir.listFiles().filter {
+                    !it.isDirectory && it.name != null &&
+                    it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
+                }
                 if (files.isEmpty()) { _syncState.value = "Синхронизация завершена: файлов нет."; return@launch }
 
                 var synced = 0; var skipped = 0
-                val logSb = StringBuilder().appendLine("=== Sync Archive Log ===").appendLine("Total files found: ${files.size}")
+                val logSb = StringBuilder()
+                    .appendLine("=== Sync Archive Log ===")
+                    .appendLine("Total files found: ${files.size}")
+
+                // Source of truth: JSON metadata on the OTG drive
+                val jsonEntries = withContext(Dispatchers.IO) {
+                    metadataStore.readMetadata(uri)
+                }.toMutableList()
+                val knownHashes = jsonEntries.map { it.hash }.toHashSet()
+                val newEntries = mutableListOf<JsonEntry>()
 
                 withContext(Dispatchers.IO) {
                     for ((idx, file) in files.withIndex()) {
@@ -120,20 +177,55 @@ class ArchiveSyncHelper(
                         val hash = try { archiveUtil.calculateSha256(file.uri) } catch (e: Exception) {
                             logSb.appendLine("Failed to read/hash ${file.name}: ${e.message}"); skipped++; continue
                         }
-                        if (db.mediaDao().getById(hash) == null) {
-                            db.mediaDao().insert(MediaEntity(
-                                id = hash, displayName = file.name!!, mimeType = file.type ?: "image/jpeg",
-                                size = file.length(), dateModified = file.lastModified() / 1000,
-                                otgUri = file.uri.toString(), thumbnailPath = null,
-                                duration = null, originalRelativePath = null
-                            ))
-                            synced++; logSb.appendLine("Imported new file: ${file.name} (hash=$hash)")
-                        } else logSb.appendLine("Already exists: ${file.name} (hash=$hash)")
+                        if (hash !in knownHashes) {
+                            val mime = file.type ?: "image/jpeg"
+                            val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
+                            val entry = JsonEntry(
+                                hash = hash,
+                                displayName = file.name!!,
+                                mimeType = mime,
+                                size = file.length(),
+                                dateModified = file.lastModified() / 1000,
+                                originalRelativePath = defaultPath,
+                                duration = null
+                            )
+                            newEntries.add(entry)
+                            jsonEntries.add(entry)
+                            knownHashes.add(hash)
+                            synced++
+                            logSb.appendLine("Imported new file: ${file.name} (hash=$hash)")
+                        } else {
+                            logSb.appendLine("Already exists: ${file.name} (hash=$hash)")
+                        }
                     }
                 }
+
+                if (newEntries.isNotEmpty()) {
+                    // 1. Write truth to JSON on OTG drive
+                    withContext(Dispatchers.IO) { metadataStore.writeMetadata(uri, jsonEntries) }
+
+                    // 2. Sync Room cache on device
+                    withContext(Dispatchers.IO) {
+                        for (entry in newEntries) {
+                            val otgFileUri = dir.findFile(entry.displayName)?.uri?.toString() ?: ""
+                            db.mediaDao().insert(MediaEntity(
+                                id = entry.hash,
+                                displayName = entry.displayName,
+                                mimeType = entry.mimeType,
+                                size = entry.size,
+                                dateModified = entry.dateModified,
+                                otgUri = otgFileUri,
+                                thumbnailPath = null,
+                                duration = entry.duration,
+                                originalRelativePath = entry.originalRelativePath
+                            ))
+                        }
+                    }
+                    repository.refresh()
+                }
+
                 logSb.appendLine("Sync completed: imported $synced, skipped $skipped")
                 _syncState.value = logSb.toString()
-                repository.refresh()
             } catch (e: Exception) {
                 _syncState.value = "Ошибка синхронизации: ${e.localizedMessage}"
             } finally {
@@ -144,7 +236,7 @@ class ArchiveSyncHelper(
 
     fun dismissSync() { _syncState.value = null }
 
-        // ─── Archive queue ───
+    // ─── Archive queue ───
 
     private val archiveQueue = mutableListOf<Pair<List<MediaItem>, Uri>>()
     private var isArchiveJobRunning = false
@@ -171,7 +263,10 @@ class ArchiveSyncHelper(
 
     private suspend fun performArchiving(items: List<MediaItem>, targetUri: Uri) {
         if (items.isEmpty()) return
-        _archiveState.value = ArchiveState(isArchiving = true, totalFiles = items.size, pendingQueueSize = archiveQueue.size)
+        _archiveState.value = ArchiveState(
+            isArchiving = true, totalFiles = items.size,
+            pendingQueueSize = archiveQueue.size
+        )
         val copied = mutableListOf<ArchivedInfo>()
         val skipped = mutableListOf<Pair<MediaItem, String>>()
         var errorMsg: String? = null
@@ -202,25 +297,56 @@ class ArchiveSyncHelper(
             }
         }
 
-        if (copied.isNotEmpty()) processDeletions(copied)
-                else {
-            _archiveState.value = ArchiveState(isArchiving = false, error = "Ошибка архивирования", pendingQueueSize = archiveQueue.size)
+        if (copied.isNotEmpty()) {
+            processArchivedResults(copied, targetUri)
+        } else {
+            _archiveState.value = ArchiveState(
+                isArchiving = false, error = "Ошибка архивирования",
+                pendingQueueSize = archiveQueue.size
+            )
             onOperationComplete()
         }
     }
 
-        private fun processDeletions(list: List<ArchivedInfo>) {
-        scope.launch {
-            try {
-                for (info in list) {
-                    repository.insertArchivedItem(info.item, info.otgUri, info.hash, info.thumbnailPath, info.item.originalRelativePath)
-                }
-                _archiveState.value = ArchiveState(isArchiving = false, pendingQueueSize = archiveQueue.size)
-            } catch (e: Exception) {
-                _archiveState.value = _archiveState.value.copy(isArchiving = false, error = e.localizedMessage, pendingQueueSize = archiveQueue.size)
-            } finally {
-                onOperationComplete()
+    /**
+     * Process successfully archived files:
+     * 1. Add entry to JSON metadata on the OTG drive (source of truth)
+     * 2. Insert into Room (local cache)
+     */
+    private suspend fun processArchivedResults(list: List<ArchivedInfo>, otgUri: Uri) {
+        try {
+            // 1. Write truth to JSON on the OTG drive
+            val jsonEntries = list.map { info ->
+                JsonEntry(
+                    hash = info.hash,
+                    displayName = info.item.displayName,
+                    mimeType = info.item.mimeType,
+                    size = info.item.size,
+                    dateModified = info.item.dateModified,
+                    originalRelativePath = info.item.originalRelativePath,
+                    duration = info.item.duration
+                )
             }
+            metadataStore.addEntries(otgUri, jsonEntries)
+
+            // 2. Insert into Room (local cache)
+            for (info in list) {
+                repository.insertArchivedItem(
+                    info.item, info.otgUri, info.hash,
+                    info.thumbnailPath, info.item.originalRelativePath
+                )
+            }
+
+            _archiveState.value = ArchiveState(
+                isArchiving = false, pendingQueueSize = archiveQueue.size
+            )
+        } catch (e: Exception) {
+            _archiveState.value = _archiveState.value.copy(
+                isArchiving = false, error = e.localizedMessage,
+                pendingQueueSize = archiveQueue.size
+            )
+        } finally {
+            onOperationComplete()
         }
     }
 

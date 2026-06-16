@@ -9,8 +9,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.text.format.DateUtils
-import android.os.Environment
-import android.os.storage.StorageManager
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,15 +22,15 @@ import by.w6.my1drive.utils.OtgArchiveUtil
 import by.w6.my1drive.utils.PreviewCacheManager
 import by.w6.my1drive.utils.RestoreResult
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import by.w6.my1drive.utils.ArchiveMetadataStore
+import by.w6.my1drive.utils.JsonEntry
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -54,14 +52,25 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val archiveUtil = OtgArchiveUtil(application)
     private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val previewCache = PreviewCacheManager(application, db.mediaDao())
+    private val metadataStore = ArchiveMetadataStore(application)
 
-    private val syncHelper = ArchiveSyncHelper(
-        application, db, repository, archiveUtil, prefs, previewCache, viewModelScope,
-        onOperationComplete = { updatePhysicalArchiveSize() }
-    )
+            val otgManager: OtgConnectionManager by lazy {
+        OtgConnectionManager(
+            application = application,
+            prefs = prefs,
+            db = db,
+            syncHelper = syncHelper,
+            scope = viewModelScope,
+            refreshCacheStats = { refreshCacheStats() }
+        )
+    }
 
-    private var driveErrorCount = 0
-    private val MAX_DRIVE_ERRORS = 3
+    private val syncHelper: ArchiveSyncHelper by lazy {
+        ArchiveSyncHelper(
+            application, db, repository, archiveUtil, prefs, previewCache, viewModelScope,
+            onOperationComplete = { otgManager.updateArchiveSize() }
+        )
+    }
 
     // ─── Flows ───
 
@@ -95,17 +104,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds = _selectedIds.asStateFlow()
 
-    private val _otgDirectoryUri = MutableStateFlow<Uri?>(null)
+        private val _otgDirectoryUri = MutableStateFlow<Uri?>(null)
     val otgDirectoryUri = _otgDirectoryUri.asStateFlow()
 
-    private val _driveStatus = MutableStateFlow(DriveStatus.NO_URI_CONFIGURED)
-    val driveStatus = _driveStatus.asStateFlow()
+    private val _isOtgConnected = MutableStateFlow(false)
+    val isOtgConnected: StateFlow<Boolean> = _isOtgConnected.asStateFlow()
 
-    val isOtgConnected: StateFlow<Boolean> = _driveStatus
-        .map { it == DriveStatus.KNOWN_DRIVE_CONNECTED }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
-
-        val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
+    val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
     val restoreState = MutableStateFlow(RestoreState())
     val syncState: StateFlow<String?> = syncHelper.syncState
 
@@ -135,122 +140,58 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _showCreateFolderDialog = MutableStateFlow(false)
     val showCreateFolderDialog = _showCreateFolderDialog.asStateFlow()
 
-    // ─── Init ───
+        // ─── Init ───
 
     init {
-        prefs.getString(PREF_OTG_URI, null)?.let {
-            try { _otgDirectoryUri.value = Uri.parse(it) } catch (e: Exception) { prefs.edit().remove(PREF_OTG_URI).apply() }
-        }
-        viewModelScope.launch {
-            var previousStatus: DriveStatus? = null
-            while (true) {
-                val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
-                if (newStatus != _driveStatus.value) _driveStatus.value = newStatus
-                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED) {
-                    if (previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED) {
-                        updatePhysicalArchiveSize()
-                    }
-                } else {
-                    if (_physicalArchiveSize.value != 0L) {
-                        _physicalArchiveSize.value = 0L
-                    }
-                }
-                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED &&
-                    !syncHelper.archiveState.value.isArchiving && !restoreState.value.isRestoring && !isSilentSyncing
-                ) { syncHelper.silentSyncArchive(_otgDirectoryUri.value); refreshCacheStats() }
-                previousStatus = newStatus; delay(3000)
-            }
-        }
-    }
-
-    // ─── Drive status ───
-
-    private suspend fun computeDriveStatus(): DriveStatus {
-        val savedUri = _otgDirectoryUri.value ?: return DriveStatus.NO_URI_CONFIGURED
-        val context = getApplication<Application>()
-        
-        // Detailed check of volume mount status by UUID
-        val isPhysicallyConnected = isOtgUriPhysicallyConnected(context, savedUri)
-        if (!isPhysicallyConnected) {
-            return DriveStatus.KNOWN_DRIVE_DISCONNECTED
-        }
-        
-        return try {
-            val docFile = DocumentFile.fromTreeUri(context, savedUri)
-            if (docFile != null && docFile.exists() && docFile.canRead()) {
-                driveErrorCount = 0
-                DriveStatus.KNOWN_DRIVE_CONNECTED
-            } else {
-                DriveStatus.UNKNOWN_DRIVE_CONNECTED
-            }
-        } catch (e: Exception) {
-            driveErrorCount++
-            if (driveErrorCount >= MAX_DRIVE_ERRORS) {
-                _otgDirectoryUri.value = null
+        // Restore saved OTG URI
+        val savedUri = prefs.getString(PREF_OTG_URI, null)?.let {
+            try { Uri.parse(it) } catch (e: Exception) {
                 prefs.edit().remove(PREF_OTG_URI).apply()
-                driveErrorCount = 0
+                null
             }
-            DriveStatus.UNKNOWN_DRIVE_CONNECTED
         }
+        if (savedUri != null) {
+            _otgDirectoryUri.value = savedUri
+        }
+
+        // Subscribe to otgManager flows
+        viewModelScope.launch {
+            otgManager.otgDirectoryUri.collect { uri ->
+                _otgDirectoryUri.value = uri
+            }
+        }
+
+        viewModelScope.launch {
+            otgManager.archiveSize.collect { size ->
+                _physicalArchiveSize.value = size
+            }
+        }
+
+                // Subscribe to status changes for isOtgConnected
+        viewModelScope.launch {
+            otgManager.status.collect { status ->
+                _isOtgConnected.value = status == DriveStatus.KNOWN_DRIVE_CONNECTED
+            }
+        }
+
+        // Start the polling loop
+        otgManager.start(savedUri)
     }
 
-    private fun isOtgUriPhysicallyConnected(context: Context, uri: Uri): Boolean {
-        try {
-            val path = uri.path ?: return false
-            val treeSegment = path.substringAfter("/tree/", "")
-            if (treeSegment.isEmpty()) return false
-            val rawId = treeSegment.substringBefore(":")
-            if (rawId.isEmpty()) return false
-
-            val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
-            val volumes = storageManager.storageVolumes
-
-            if (rawId.equals("primary", ignoreCase = true)) {
-                return volumes.firstOrNull { it.isPrimary }?.state == Environment.MEDIA_MOUNTED
-            }
-
-            for (volume in volumes) {
-                val volUuid = volume.uuid
-                if (volUuid != null && volUuid.equals(rawId, ignoreCase = true)) {
-                    return volume.state == Environment.MEDIA_MOUNTED
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return false
+        fun updateOtgStatus() {
+        otgManager.onPhysicalConnectionChanged()
     }
 
-    private fun hasAnyUsbDevice(context: Context): Boolean = try {
-        context.getExternalFilesDirs(null).let { it.size > 1 && it[1] != null }
-    } catch (e: Exception) { try {
-        (context.getSystemService(Context.USB_SERVICE) as android.hardware.usb.UsbManager).deviceList.isNotEmpty()
-    } catch (e2: Exception) { false } }
-
-    fun updateOtgStatus() { viewModelScope.launch { _driveStatus.value = withContext(Dispatchers.IO) { computeDriveStatus() } } }
-
-    /** Считает реальный физический объём файлов в OTG-папке (исключая служебные) */
-    private fun calculatePhysicalArchiveSize(): Long {
-        val uri = _otgDirectoryUri.value ?: return 0L
-        return try {
-            val dir = DocumentFile.fromTreeUri(getApplication(), uri)
-            if (dir != null && dir.exists()) {
-                dir.listFiles()
-                    .filter { !it.isDirectory && it.name != ".my1drive_uuid" }
-                    .sumOf { it.length() }
-            } else {
-                0L
-            }
-        } catch (e: Exception) {
-            0L
-        }
+    fun dismissFirstLaunchDialog() {
+        otgManager.dismissFirstLaunchDialog()
     }
 
-    fun updatePhysicalArchiveSize() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val size = calculatePhysicalArchiveSize()
-            _physicalArchiveSize.value = size
-        }
+    fun dismissUnknownDriveDialog() {
+        otgManager.dismissUnknownDriveDialog()
+    }
+
+    fun createNewArchive() {
+        otgManager.createNewArchive()
     }
 
     // ─── Preview cache ───
@@ -269,24 +210,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun getPreviewCacheManager(): PreviewCacheManager = previewCache
     fun setCacheMaxMb(mb: Long) { previewCache.setMaxBytes(mb * 1024 * 1024); viewModelScope.launch { previewCache.evictIfNeeded() } }
 
-    // ─── OTG folder ───
+        // ─── OTG folder ───
 
     fun setOtgDirectory(uri: Uri) {
-        _otgDirectoryUri.value = uri; prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
-        viewModelScope.launch {
-            _driveStatus.value = computeDriveStatus()
-            if (_driveStatus.value == DriveStatus.KNOWN_DRIVE_CONNECTED) {
-                updatePhysicalArchiveSize()
-            }
-        }
+        otgManager.onOtgUriSelected(uri)
     }
 
     fun ejectOtg() {
-        _otgDirectoryUri.value?.let { uri ->
-            try { getApplication<Application>().contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } catch (_: Exception) { }
-        }
-        _otgDirectoryUri.value = null; prefs.edit().remove(PREF_OTG_URI).apply(); _driveStatus.value = DriveStatus.NO_URI_CONFIGURED
-        _physicalArchiveSize.value = 0L
+        otgManager.onEject()
     }
 
     // ─── Selection ───
@@ -296,10 +227,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     // ─── Sync & Archive delegated ───
 
-    fun silentSyncArchive() { syncHelper.silentSyncArchive(_otgDirectoryUri.value) }
+    fun silentSyncArchive() { syncHelper.silentSyncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissMissingFilesNotification() { syncHelper.dismissMissingFilesNotification() }
     fun dismissAutoSyncAddedCount() { syncHelper.dismissAutoSyncAddedCount() }
-    fun syncArchive() { syncHelper.syncArchive(_otgDirectoryUri.value) }
+    fun syncArchive() { syncHelper.syncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissSync() { syncHelper.dismissSync() }
     fun startArchiving(targetUri: Uri) {
         val selected = mediaItems.value.filter { it.id in _selectedIds.value }
@@ -419,19 +350,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.refresh() }
     }
 
-    private fun deleteArchivedItems(items: List<MediaItem>) {
+        private fun deleteArchivedItems(items: List<MediaItem>) {
         if (items.isEmpty()) return
         viewModelScope.launch {
+            val otgUri = otgManager.otgDirectoryUri.value
             for (item in items) {
                 try {
-                    repository.deleteArchivedItem(item)
-                    item.otgUri?.let { otgUri ->
-                        try { DocumentFile.fromSingleUri(getApplication(), Uri.parse(otgUri))?.delete() } catch (_: Exception) { }
+                    // 1. Remove from JSON metadata on OTG drive (source of truth)
+                    if (otgUri != null && item.hash != null) {
+                        metadataStore.removeEntry(otgUri, item.hash)
                     }
+                    // 2. Delete physical file from OTG drive
+                    item.otgUri?.let { fileUri ->
+                        try { DocumentFile.fromSingleUri(getApplication(), Uri.parse(fileUri))?.delete() } catch (_: Exception) { }
+                    }
+                    // 3. Remove from Room (local cache)
+                    repository.deleteArchivedItem(item)
                 } catch (_: Exception) { }
             }
             repository.refresh()
-            updatePhysicalArchiveSize()
+            otgManager.updateArchiveSize()
         }
     }
 
@@ -449,9 +387,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; startRestoring(it, uri) } }
     fun dismissRestoreRequest() { pendingRestoreItems = emptyList(); _restoreRequest.value = null }
 
-    private fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
+        private fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
         viewModelScope.launch {
             var successCount = 0; val errors = mutableListOf<String>()
+            val otgUri = otgManager.otgDirectoryUri.value
             restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
             for ((index, item) in items.withIndex()) {
                 restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "")
@@ -460,18 +399,28 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                         is by.w6.my1drive.utils.RestoreResult.Progress -> restoreState.value = restoreState.value.copy(
                             currentStep = result.step, progressFraction = (index.toFloat() + result.progressFraction) / items.size
                         )
-                        is by.w6.my1drive.utils.RestoreResult.Success -> { successCount++; try { repository.deleteArchivedItem(result.item) } catch (_: Exception) { } }
+                        is by.w6.my1drive.utils.RestoreResult.Success -> {
+                            successCount++
+                            try {
+                                // 1. Remove from JSON metadata on OTG drive (source of truth)
+                                if (otgUri != null && result.item.hash != null) {
+                                    metadataStore.removeEntry(otgUri, result.item.hash)
+                                }
+                                // 2. Remove from Room (local cache)
+                                repository.deleteArchivedItem(result.item)
+                            } catch (_: Exception) { }
+                        }
                         is by.w6.my1drive.utils.RestoreResult.Error -> errors.add("${result.displayName}: ${result.message}")
                     }
                 }
             }
             _selectedIds.value = emptySet(); repository.refresh()
-            restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = when {
+                        restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = when {
                 errors.isNotEmpty() -> "Восстановлено: $successCount из ${items.size}.\n\nОшибки:\n" + errors.joinToString("\n")
                 successCount < items.size -> "Восстановлено: $successCount из ${items.size}."
                 else -> null
             })
-            updatePhysicalArchiveSize()
+            otgManager.updateArchiveSize()
         }
     }
 
@@ -507,8 +456,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun requestCreateFolder() { _showCreateFolderDialog.value = true }
     fun dismissCreateFolderDialog() { _showCreateFolderDialog.value = false }
 
-    fun createFolderOnOtg(folderName: String) {
-        _otgDirectoryUri.value?.let { uri ->
+        fun createFolderOnOtg(folderName: String) {
+        otgManager.otgDirectoryUri.value?.let { uri ->
             viewModelScope.launch(Dispatchers.IO) { try { DocumentFile.fromTreeUri(getApplication(), uri)?.createDirectory(folderName) } catch (_: Exception) { } }
         }
         _showCreateFolderDialog.value = false
@@ -527,8 +476,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun getOtgDirectoryDisplayName(): String? {
-        val uri = _otgDirectoryUri.value ?: return null
+        fun getOtgDirectoryDisplayName(): String? {
+        val uri = otgManager.otgDirectoryUri.value ?: return null
         val context = getApplication<Application>()
         return try {
             val docFile = DocumentFile.fromTreeUri(context, uri)
@@ -538,8 +487,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun isOtgLocalFolder(): Boolean {
-        val uri = _otgDirectoryUri.value ?: return false
+        fun isOtgLocalFolder(): Boolean {
+        val uri = otgManager.otgDirectoryUri.value ?: return false
         val path = uri.path ?: return false
         val treeSegment = path.substringAfter("/tree/", "")
         if (treeSegment.isEmpty()) return false

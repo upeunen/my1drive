@@ -9,8 +9,7 @@ enum class DriveStatus {
     NO_URI_CONFIGURED,
     KNOWN_DRIVE_CONNECTED,
     KNOWN_DRIVE_DISCONNECTED,
-    UNKNOWN_DRIVE_CONNECTED,
-    NEW_ARCHIVE_FOUND
+    UNKNOWN_DRIVE_CONNECTED
 }
 
 // ─── State data classes ───

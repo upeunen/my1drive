@@ -115,6 +115,36 @@ fun MissingFilesDialog(missingNames: List<String>, onDismiss: () -> Unit) {
 }
 
 @Composable
+fun UnknownDriveDialog(
+    onCreateNew: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Usb, contentDescription = null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Неизвестный носитель", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Text("Подключен неизвестный носитель. Создать новый архив, или если вернётся старый — сможете его синхронизировать")
+        },
+        confirmButton = {
+            Button(onClick = onCreateNew) {
+                Text("Создать новый")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        }
+    )
+}
+
+@Composable
 fun DeleteConfirmDialog(
     pendingDelete: List<MediaItem>,
     isArchiveTab: Boolean,
@@ -238,7 +268,9 @@ fun GalleryScreenContent(
                 }
             }
 
-            if (!isOtgConnected && otgDirectoryUri != null) UnknownDriveBanner()
+            val driveStatus by viewModel.otgManager.status.collectAsState()
+            if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
+            else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null) UnknownDriveBanner()
             if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -378,6 +410,27 @@ fun GalleryScreenContent(
                         Text("ОК")
                     }
                 }
+            )
+        }
+
+        val showFirstLaunch by viewModel.otgManager.showFirstLaunchDialog.collectAsState()
+        if (showFirstLaunch) {
+            val isUsbPhysical by viewModel.otgManager.physicalConnected.collectAsState()
+            FirstLaunchDialog(
+                isOtgConnected = isUsbPhysical,
+                onStart = {
+                    viewModel.dismissFirstLaunchDialog()
+                    onSelectOtgDirectory()
+                },
+                onDismiss = { viewModel.dismissFirstLaunchDialog() }
+            )
+        }
+
+        val showUnknownDrive by viewModel.otgManager.showUnknownDriveDialog.collectAsState()
+        if (showUnknownDrive) {
+            UnknownDriveDialog(
+                onCreateNew = { viewModel.createNewArchive() },
+                onDismiss = { viewModel.dismissUnknownDriveDialog() }
             )
         }
 

@@ -75,10 +75,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+        /** Returns true if the URI points to a non-primary (removable) storage volume */
+    private fun isRemovableStorageUri(uri: Uri): Boolean {
+        val path = uri.path ?: return false
+        val treeSegment = path.substringAfter("/tree/", "")
+        if (treeSegment.isEmpty()) return false
+        val rawId = treeSegment.substringBefore(":")
+        return !rawId.equals("primary", ignoreCase = true)
+    }
+
     private val otgFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
+            if (!isRemovableStorageUri(uri)) {
+                Toast.makeText(this, "Пожалуйста, выберите USB-флешку, а не внутреннюю память", Toast.LENGTH_LONG).show()
+                return@registerForActivityResult
+            }
             try {
                 val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
@@ -333,13 +346,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
-            viewModel.updateOtgStatus()
-        }
-    }
-
     override fun onResume() {
         super.onResume()
         updatePermissionStates()
@@ -350,6 +356,12 @@ class MainActivity : ComponentActivity() {
             viewModel.refresh()
         }
 
+                val receiverFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.RECEIVER_EXPORTED
+        } else {
+            0
+        }
+
         val filter = IntentFilter().apply {
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
@@ -358,7 +370,7 @@ class MainActivity : ComponentActivity() {
             this,
             otgReceiver,
             filter,
-            ContextCompat.RECEIVER_EXPORTED
+            receiverFlags
         )
 
         val mediaFilter = IntentFilter().apply {
@@ -371,7 +383,7 @@ class MainActivity : ComponentActivity() {
             this,
             otgReceiver,
             mediaFilter,
-            ContextCompat.RECEIVER_EXPORTED
+            receiverFlags
         )
     }
 
