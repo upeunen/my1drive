@@ -130,6 +130,46 @@ fun FullscreenPreview(
         }
     }
 
+    fun archiveCurrentItem(item: MediaItem, uri: Uri) {
+        val currentIndex = pagerState.currentPage
+        if (previewItems.size <= 1) {
+            onArchiveSingle(item, uri)
+            onClose()
+        } else {
+            val targetPage = if (currentIndex < previewItems.size - 1) {
+                currentIndex
+            } else {
+                currentIndex - 1
+            }
+            scope.launch {
+                onArchiveSingle(item, uri)
+                val newList = previewItems.toMutableList().apply { removeAt(currentIndex) }
+                previewItems = newList
+                pagerState.scrollToPage(targetPage.coerceIn(0, newList.size - 1))
+            }
+        }
+    }
+
+    fun restoreCurrentItem(item: MediaItem) {
+        val currentIndex = pagerState.currentPage
+        if (previewItems.size <= 1) {
+            onRestoreSingle(item)
+            onClose()
+        } else {
+            val targetPage = if (currentIndex < previewItems.size - 1) {
+                currentIndex
+            } else {
+                currentIndex - 1
+            }
+            scope.launch {
+                onRestoreSingle(item)
+                val newList = previewItems.toMutableList().apply { removeAt(currentIndex) }
+                previewItems = newList
+                pagerState.scrollToPage(targetPage.coerceIn(0, newList.size - 1))
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -242,7 +282,7 @@ fun FullscreenPreview(
                             Button(
                                 onClick = {
                                     otgDirectoryUri?.let { uri ->
-                                        onArchiveSingle(currentItem, uri)
+                                        archiveCurrentItem(currentItem, uri)
                                     }
                                 },
                                 enabled = isOtgConnected && otgDirectoryUri != null,
@@ -256,7 +296,7 @@ fun FullscreenPreview(
                             }
                         } else {
                             Button(
-                                onClick = { onRestoreSingle(currentItem) },
+                                onClick = { restoreCurrentItem(currentItem) },
                                 enabled = isOtgConnected,
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
