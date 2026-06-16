@@ -44,6 +44,8 @@ private const val PREF_DEVICE_URI = "device_directory_uri"
 private const val PREF_KNOWN_ARCHIVE_ID = "known_archive_uuid"
 private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
+private const val PREF_LOCAL_FOLDER_SKIP_COUNT = "local_folder_skip_count"
+private const val PREF_LAST_REQUESTED_FOLDER = "last_requested_folder_path"
 private const val IS_LIMIT_ACTIVE = false // Внутренний переключатель лимита 128 МБ (true - включен, false - отключен)
 private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
 
@@ -499,8 +501,25 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
         val folderToRequest = items.firstOrNull()?.originalRelativePath
         if (folderToRequest != null && _deviceDirectoryUri.value == null) {
-            _pendingDeviceFolderToRequest.value = folderToRequest
-            otgManager.showLocalFolderPrompt()
+            val lastFolder = prefs.getString(PREF_LAST_REQUESTED_FOLDER, "") ?: ""
+            var skipCount = prefs.getInt(PREF_LOCAL_FOLDER_SKIP_COUNT, 0)
+
+            val shouldShow = if (folderToRequest != lastFolder) {
+                true
+            } else {
+                skipCount += 1
+                prefs.edit().putInt(PREF_LOCAL_FOLDER_SKIP_COUNT, skipCount).apply()
+                skipCount >= 25
+            }
+
+            if (shouldShow) {
+                prefs.edit()
+                    .putInt(PREF_LOCAL_FOLDER_SKIP_COUNT, 0)
+                    .putString(PREF_LAST_REQUESTED_FOLDER, folderToRequest)
+                    .apply()
+                _pendingDeviceFolderToRequest.value = folderToRequest
+                otgManager.showLocalFolderPrompt()
+            }
         }
         _deviceDeletePendingItems.clear()
         viewModelScope.launch { repository.refresh() }
