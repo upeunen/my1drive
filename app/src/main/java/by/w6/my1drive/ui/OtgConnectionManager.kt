@@ -36,6 +36,7 @@ class OtgConnectionManager(
 ) {
     companion object {
         private const val PREF_OTG_URI = "otg_directory_uri"
+        private const val PREF_DEVICE_URI = "device_directory_uri"
         private const val POLL_INTERVAL_MS = 3000L
     }
 
@@ -59,6 +60,12 @@ class OtgConnectionManager(
     private val _otgDirectoryUri = MutableStateFlow<Uri?>(null)
     val otgDirectoryUri: StateFlow<Uri?> = _otgDirectoryUri.asStateFlow()
 
+    private val _deviceDirectoryUri = MutableStateFlow<Uri?>(null)
+    val deviceDirectoryUri: StateFlow<Uri?> = _deviceDirectoryUri.asStateFlow()
+
+    private val _showLocalFolderDialog = MutableStateFlow(false)
+    val showLocalFolderDialog: StateFlow<Boolean> = _showLocalFolderDialog.asStateFlow()
+
     // ─── Internal state ───
 
     private var driveErrorCount = 0
@@ -71,10 +78,12 @@ class OtgConnectionManager(
 
     /**
      * Start polling loop. Should be called once from init scope.
-     * @param savedUri previously persisted OTG directory URI (nullable)
+     * @param savedOtgUri previously persisted OTG directory URI (nullable)
+     * @param savedDeviceUri previously persisted local device directory URI (nullable)
      */
-    fun start(savedUri: Uri?) {
-        _otgDirectoryUri.value = savedUri
+    fun start(savedOtgUri: Uri?, savedDeviceUri: Uri?) {
+        _otgDirectoryUri.value = savedOtgUri
+        _deviceDirectoryUri.value = savedDeviceUri
         scope.launch {
             var previousStatus: DriveStatus? = null
             while (true) {
@@ -125,6 +134,13 @@ class OtgConnectionManager(
         _otgDirectoryUri.value = uri
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
         prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
+
+        // Сразу после выбора папки OTG, если еще не выбрана папка на устройстве,
+        // показываем диалог выбора папки устройства
+        if (_deviceDirectoryUri.value == null) {
+            _showLocalFolderDialog.value = true
+        }
+
         scope.launch {
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
@@ -134,6 +150,17 @@ class OtgConnectionManager(
                 refreshCacheStats()
             }
         }
+    }
+
+    /** Called from ViewModel when user selects local device folder via SAF. */
+    fun onDeviceUriSelected(uri: Uri) {
+        _deviceDirectoryUri.value = uri
+        _showLocalFolderDialog.value = false
+        prefs.edit().putString(PREF_DEVICE_URI, uri.toString()).apply()
+    }
+
+    fun dismissLocalFolderDialog() {
+        _showLocalFolderDialog.value = false
     }
 
     /** Called when user explicitly ejects / removes the drive reference. */
@@ -146,8 +173,17 @@ class OtgConnectionManager(
                 )
             } catch (_: Exception) {}
         }
+        _deviceDirectoryUri.value?.let { uri ->
+            try {
+                application.contentResolver.releasePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (_: Exception) {}
+        }
         _otgDirectoryUri.value = null
-        prefs.edit().remove(PREF_OTG_URI).apply()
+        _deviceDirectoryUri.value = null
+        prefs.edit().remove(PREF_OTG_URI).remove(PREF_DEVICE_URI).apply()
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
         // Сбрасываем флаг, чтобы при следующем подключении флешки диалог показался снова

@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.text.format.DateUtils
+import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,6 +40,7 @@ import java.util.Locale
 private const val PREFS_NAME = "my1drive_prefs"
 private const val PREF_ASK_RESTORE_PATH = "ask_restore_path"
 private const val PREF_OTG_URI = "otg_directory_uri"
+private const val PREF_DEVICE_URI = "device_directory_uri"
 private const val PREF_KNOWN_ARCHIVE_ID = "known_archive_uuid"
 private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
@@ -117,6 +119,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         private val _otgDirectoryUri = MutableStateFlow<Uri?>(null)
     val otgDirectoryUri = _otgDirectoryUri.asStateFlow()
 
+    private val _deviceDirectoryUri = MutableStateFlow<Uri?>(null)
+    val deviceDirectoryUri = _deviceDirectoryUri.asStateFlow()
+
     private val _isOtgConnected = MutableStateFlow(false)
     val isOtgConnected: StateFlow<Boolean> = _isOtgConnected.asStateFlow()
 
@@ -164,10 +169,27 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             _otgDirectoryUri.value = savedUri
         }
 
+        // Restore saved Device URI
+        val savedDeviceUri = prefs.getString(PREF_DEVICE_URI, null)?.let {
+            try { Uri.parse(it) } catch (e: Exception) {
+                prefs.edit().remove(PREF_DEVICE_URI).apply()
+                null
+            }
+        }
+        if (savedDeviceUri != null) {
+            _deviceDirectoryUri.value = savedDeviceUri
+        }
+
         // Subscribe to otgManager flows
         viewModelScope.launch {
             otgManager.otgDirectoryUri.collect { uri ->
                 _otgDirectoryUri.value = uri
+            }
+        }
+
+        viewModelScope.launch {
+            otgManager.deviceDirectoryUri.collect { uri ->
+                _deviceDirectoryUri.value = uri
             }
         }
 
@@ -185,7 +207,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         // Start the polling loop
-        otgManager.start(savedUri)
+        otgManager.start(savedUri, savedDeviceUri)
     }
 
         fun updateOtgStatus() {
@@ -194,6 +216,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun dismissFirstLaunchDialog() {
         otgManager.dismissFirstLaunchDialog()
+    }
+
+    fun setDeviceDirectory(uri: Uri) {
+        otgManager.onDeviceUriSelected(uri)
     }
 
     fun dismissUnknownDriveDialog() {
@@ -322,9 +348,87 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _deviceDeletePendingItems.clear()
     }
 
-    /** Unified device delete: works on all API levels */
+    private fun findFileInTree(context: Context, treeUri: Uri, relativePath: String?, displayName: String): DocumentFile? {
+        val root = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+        if (!root.exists() || !root.canWrite()) return null
+
+        val cleanPath = relativePath?.trim('/', '\\') ?: ""
+        val treeDocId = try {
+            DocumentsContract.getTreeDocumentId(treeUri)
+        } catch (_: Exception) {
+            ""
+        }
+        val rootDirName = treeDocId.substringAfter(":", "").trim('/', '\\')
+        
+        var segments = cleanPath.split('/', '\\').filter { it.isNotEmpty() }
+        if (rootDirName.isNotEmpty() && segments.isNotEmpty() && segments[0].equals(rootDirName, ignoreCase = true)) {
+            segments = segments.drop(1)
+        }
+
+        var currentDir: DocumentFile = root
+        for (segment in segments) {
+            val nextDir = currentDir.findFile(segment)
+            if (nextDir != null && nextDir.isDirectory) {
+                currentDir = nextDir
+            } else {
+                return null
+            }
+        }
+        
+        val file = currentDir.findFile(displayName)
+        if (file != null && file.isFile) {
+            return file
+        }
+        return null
+    }
+
+    /** Unified device delete: works on all API levels, bypasses system prompt on API 30+ if deviceDirectoryUri is set */
     private fun deleteDeviceItems(items: List<MediaItem>) {
         if (items.isEmpty()) return
+        val context = getApplication<Application>()
+        val deviceUri = _deviceDirectoryUri.value
+
+        if (deviceUri != null) {
+            val remainingItems = mutableListOf<MediaItem>()
+            var anyDeleted = false
+            for (item in items) {
+                val doc = findFileInTree(context, deviceUri, item.originalRelativePath, item.displayName)
+                if (doc != null && doc.exists() && doc.delete()) {
+                    anyDeleted = true
+                    // Scan the file path so MediaStore removes it
+                    val externalDir = android.os.Environment.getExternalStorageDirectory()
+                    val relPath = item.originalRelativePath?.trim('/', '\\') ?: ""
+                    val fileOnDisk = if (relPath.isNotEmpty()) {
+                        java.io.File(externalDir, "$relPath/${item.displayName}")
+                    } else {
+                        java.io.File(externalDir, item.displayName)
+                    }
+                    android.media.MediaScannerConnection.scanFile(
+                        context,
+                        arrayOf(fileOnDisk.absolutePath),
+                        arrayOf(item.mimeType)
+                    ) { _, _ ->
+                        viewModelScope.launch {
+                            repository.refresh()
+                        }
+                    }
+                } else {
+                    remainingItems.add(item)
+                }
+            }
+            if (anyDeleted && remainingItems.isEmpty()) {
+                // All items were deleted via SAF
+                return
+            }
+            if (remainingItems.isNotEmpty()) {
+                fallbackDeleteDeviceItems(remainingItems)
+            }
+        } else {
+            fallbackDeleteDeviceItems(items)
+        }
+    }
+
+    private fun fallbackDeleteDeviceItems(items: List<MediaItem>) {
         val context = getApplication<Application>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {

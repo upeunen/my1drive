@@ -210,6 +210,7 @@ fun GalleryScreenContent(
     imageLoader: ImageLoader,
     viewModel: GalleryViewModel,
     onSelectOtgDirectory: () -> Unit,
+    onSelectDeviceDirectory: () -> Unit = {},
     onRequestFullAccess: () -> Unit,
     onOpenSettings: () -> Unit,
     onClearSelection: () -> Unit,
@@ -421,6 +422,16 @@ fun GalleryScreenContent(
                     onSelectOtgDirectory()
                 },
                 onDismiss = { viewModel.dismissFirstLaunchDialog() }
+            )
+        }
+
+        val showLocalFolder by viewModel.otgManager.showLocalFolderDialog.collectAsState()
+        if (showLocalFolder) {
+            LocalFolderDialog(
+                onSelectFolder = {
+                    onSelectDeviceDirectory()
+                },
+                onDismiss = { viewModel.otgManager.dismissLocalFolderDialog() }
             )
         }
 

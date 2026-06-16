@@ -104,6 +104,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val deviceFolderLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                contentResolver.takePersistableUriPermission(uri, takeFlags)
+                viewModel.setDeviceDirectory(uri)
+                Toast.makeText(this, "Папка устройства успешно выбрана!", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Ошибка доступа к папке: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun selectLocalFolder() {
+        deviceFolderLauncher.launch(phoneStorageRootUri())
+    }
+
     /** SAF folder picker for restore destination — when originalRelativePath is unknown. */
     private val restoreFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -311,6 +331,9 @@ class MainActivity : ComponentActivity() {
                     GalleryScreen(
                         onSelectOtgDirectory = {
                             selectOtgFolder()
+                        },
+                        onSelectDeviceDirectory = {
+                            selectLocalFolder()
                         },
                         onPickRestoreFolder = {
                             restoreFolderLauncher.launch(phoneStorageRootUri())

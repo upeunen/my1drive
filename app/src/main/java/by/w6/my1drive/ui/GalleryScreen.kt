@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 @Composable
 fun GalleryScreen(
     onSelectOtgDirectory: () -> Unit,
+    onSelectDeviceDirectory: () -> Unit = {},
     onPickRestoreFolder: () -> Unit = {},
     viewModel: GalleryViewModel = viewModel(),
     hasPartialAccess: Boolean = false,
@@ -121,6 +122,7 @@ fun GalleryScreen(
             imageLoader = imageLoader,
             viewModel = viewModel,
             onSelectOtgDirectory = onSelectOtgDirectory,
+            onSelectDeviceDirectory = onSelectDeviceDirectory,
             onRequestFullAccess = onRequestFullAccess,
             onOpenSettings = onOpenSettings,
             onClearSelection = { viewModel.clearSelection() },
