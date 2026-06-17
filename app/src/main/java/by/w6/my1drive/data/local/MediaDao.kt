@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.data.local
+package by.w6.my1drive.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -47,6 +47,9 @@ interface MediaDao {
     /** Total archive size in bytes (sum of all archived file sizes) — для расчёта лимита 128 МБ */
     @Query("SELECT COALESCE(SUM(size), 0) FROM media_archive")
     fun getTotalArchiveSize(): Long
+
+    @Query("SELECT COUNT(*) FROM media_archive")
+    fun getCount(): Int
 }
 
 

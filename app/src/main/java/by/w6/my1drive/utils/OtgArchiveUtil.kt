@@ -4,6 +4,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.domain.model.MediaItem
@@ -295,13 +297,23 @@ class OtgArchiveUtil(private val context: Context) {
                 }
             } ?: throw Exception("restore_write_failed")
 
-            // If MediaStore pending, mark as complete
-            if (targetDirUri == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                DebugLogBuffer.log(logTag, "Marking MediaStore file as not pending")
+            // Set physical file date on filesystem
+            setFilesystemLastModified(destUri, item.dateModified)
+
+            // If MediaStore, update metadata columns to match original date
+            if (targetDirUri == null) {
+                DebugLogBuffer.log(logTag, "Updating MediaStore file metadata for original date")
                 val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    }
                     put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
                     put(MediaStore.MediaColumns.DATE_ADDED, item.dateModified)
+                    if (item.mimeType.startsWith("image/")) {
+                        put(MediaStore.Images.ImageColumns.DATE_TAKEN, item.dateModified * 1000)
+                    } else if (item.mimeType.startsWith("video/")) {
+                        put(MediaStore.Video.VideoColumns.DATE_TAKEN, item.dateModified * 1000)
+                    }
                 }
                 context.contentResolver.update(destUri, values, null, null)
             }
@@ -342,7 +354,7 @@ class OtgArchiveUtil(private val context: Context) {
     }.flowOn(Dispatchers.IO)
 
         fun calculateSha256(uri: Uri): String {
-                val digest = MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance("SHA-256")
         val stream = context.contentResolver.openInputStream(uri)
             ?: throw Exception("Failed to open stream for $uri")
         stream.use { input ->
@@ -354,5 +366,63 @@ class OtgArchiveUtil(private val context: Context) {
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun setFilesystemLastModified(uri: Uri, timestampSec: Long) {
+        val logTag = "ArchiveRestoreDate"
+        try {
+            val file = getFileFromUri(uri)
+            if (file != null && file.exists()) {
+                val success = file.setLastModified(timestampSec * 1000)
+                DebugLogBuffer.log(logTag, "setLastModified for physical path ${file.absolutePath} to ${timestampSec * 1000}: success=$success")
+            } else {
+                DebugLogBuffer.log(logTag, "Could not resolve physical path or file does not exist for URI: $uri")
+            }
+        } catch (e: Exception) {
+            DebugLogBuffer.log(logTag, "Error setting lastModified: ${e.localizedMessage}")
+        }
+    }
+
+    private fun getFileFromUri(uri: Uri): java.io.File? {
+        if ("file".equals(uri.scheme, ignoreCase = true)) {
+            return uri.path?.let { java.io.File(it) }
+        }
+        if ("content".equals(uri.scheme, ignoreCase = true)) {
+            // 1. Try MediaStore DATA query
+            try {
+                val projection = arrayOf(android.provider.MediaStore.MediaColumns.DATA)
+                context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val idx = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATA)
+                        if (idx != -1) {
+                            val path = cursor.getString(idx)
+                            if (!path.isNullOrEmpty()) return java.io.File(path)
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+
+            // 2. Try SAF parsing for primary storage provider
+            try {
+                if (DocumentsContract.isDocumentUri(context, uri)) {
+                    val docId = DocumentsContract.getDocumentId(uri)
+                    if (docId != null && docId.startsWith("primary:")) {
+                        val relativePath = docId.substringAfter("primary:")
+                        return java.io.File(Environment.getExternalStorageDirectory(), relativePath)
+                    }
+                }
+            } catch (_: Exception) {}
+
+            // 3. Try SAF parsing for tree document URIs
+            try {
+                val path = uri.path ?: ""
+                val docSegment = path.substringAfter("/document/", "")
+                if (docSegment.isNotEmpty() && docSegment.startsWith("primary:")) {
+                    val relativePath = docSegment.substringAfter("primary:")
+                    return java.io.File(Environment.getExternalStorageDirectory(), relativePath)
+                }
+            } catch (_: Exception) {}
+        }
+        return null
     }
 }

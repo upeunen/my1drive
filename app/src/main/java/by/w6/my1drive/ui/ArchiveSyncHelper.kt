@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import java.io.File
 import androidx.documentfile.provider.DocumentFile
+import android.provider.DocumentsContract
 import by.w6.my1drive.data.local.AppDatabase
 import by.w6.my1drive.data.local.MediaEntity
 import by.w6.my1drive.domain.model.MediaItem
@@ -78,108 +79,39 @@ class ArchiveSyncHelper(
                 operationMutex.withLock {
                     try {
                         DebugLogBuffer.log(logTag, "Start silentSyncArchive: targetUri=$uri")
-                        val dir = DocumentFile.fromTreeUri(application, uri) 
-                            ?: throw Exception("Failed to access tree Uri $uri")
-                        if (!dir.exists()) {
-                            DebugLogBuffer.log(logTag, "Directory does not exist: $uri")
-                            return@withLock
-                        }
 
-                        // ── Шаг 0: Быстрый сбор файлов с флешки в карту ──
-                        val otgFiles = dir.listFiles().filter {
-                            !it.isDirectory && it.name != null &&
-                            it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
-                        }
-                        DebugLogBuffer.log(logTag, "Found ${otgFiles.size} files on OTG drive")
-
-                        // Создаем карту физических файлов для регистронезависимого сопоставления по имени и размеру
-                        // Ключ: (имя в нижнем регистре, размер) -> DocumentFile
-                        val physicalFilesMap = otgFiles.associateBy { (it.name?.lowercase() ?: "") to it.length() }
-
-                        // ── Шаг 2: Чтение JSON метаданных ──
+                        // ── Шаг 1: Чтение JSON метаданных ──
                         val jsonEntries = metadataStore.readMetadata(uri)
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
-                        var jsonChanged = false
-                        val validJsonEntries = mutableListOf<JsonEntry>()
-
-                        // Защита от недозагрузки/ошибки монтирования:
-                        // Если флешка вернула 0 файлов, но в JSON метаданных есть записи, не удаляем их
-                        if (otgFiles.isEmpty() && jsonEntries.isNotEmpty()) {
-                            DebugLogBuffer.log(logTag, "Directory listing returned empty but JSON has ${jsonEntries.size} entries. Skipping metadata purge to prevent file disappearance.")
-                            validJsonEntries.addAll(jsonEntries)
-                        } else {
-                            for (entry in jsonEntries) {
-                                val key = (entry.displayName.lowercase()) to entry.size
-                                val physicalFile = physicalFilesMap[key]
-                                if (physicalFile != null) {
-                                    // Имя файла на накопителе может иметь другой регистр символов, берем имя с диска
-                                    val actualName = physicalFile.name ?: entry.displayName
-                                    validJsonEntries.add(entry.copy(displayName = actualName))
-                                } else {
-                                    jsonChanged = true
-                                    DebugLogBuffer.log(logTag, "File physically missing or size mismatch on OTG: ${entry.displayName} (expected size: ${entry.size})")
-                                }
-                            }
+                        val metadataExists = metadataStore.metadataExists(uri)
+                        if (jsonEntries.isEmpty() && !metadataExists) {
+                            DebugLogBuffer.log(logTag, "No metadata file found on OTG. Skipping Room database sync to preserve cache.")
+                            return@withLock
                         }
 
-                        // ── Шаг 3: Поиск новых физических файлов ──
-                        val knownNamesAndSizesMap = validJsonEntries.associateBy { (it.displayName.lowercase()) to it.size }
-                        val newEntries = mutableListOf<JsonEntry>()
-
-                        for (file in otgFiles) {
-                            val name = file.name ?: continue
-                            val length = file.length()
-
-                            // Если файл с таким именем и размером уже есть в валидных записях JSON, пропускаем хэширование
-                            if (knownNamesAndSizesMap.containsKey(name.lowercase() to length)) {
-                                continue
-                            }
-
-                            val mime = file.type ?: "image/jpeg"
-                            val hash = try { 
-                                archiveUtil.calculateSha256(file.uri) 
-                            } catch (e: Exception) { 
-                                DebugLogBuffer.log(logTag, "Failed to calculate SHA-256 for physical file $name: ${e.localizedMessage}")
-                                continue 
-                            }
-
-                            val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
-                            val entry = JsonEntry(
-                                hash = hash,
-                                displayName = name,
-                                mimeType = mime,
-                                size = length,
-                                dateModified = file.lastModified() / 1000,
-                                originalRelativePath = defaultPath,
-                                duration = null,
-                                dateArchived = file.lastModified() / 1000
-                            )
-                            newEntries.add(entry)
-                        }
-
-                        val finalJsonEntries = validJsonEntries + newEntries
-                        if (newEntries.isNotEmpty()) {
-                            jsonChanged = true
-                            DebugLogBuffer.log(logTag, "Found ${newEntries.size} new physical files. Registering them...")
-                        }
-
-                        // Если метаданные изменились (были удалены мертвые записи или добавлены новые файлы), переписываем JSON
-                        if (jsonChanged) {
-                            metadataStore.writeMetadata(uri, finalJsonEntries)
-                            DebugLogBuffer.log(logTag, "Updated JSON metadata file on OTG drive (total entries: ${finalJsonEntries.size})")
-                        }
-
-                        // ── Шаг 4: Синхронизация Room с валидными данными ──
-                        val finalHashes = finalJsonEntries.map { it.hash }.toSet()
+                        // ── Шаг 2: Синхронизация Room с JSON данными ──
+                        val finalHashes = jsonEntries.map { it.hash }.toSet()
                         var roomModified = false
-
-                        // Добавляем в Room новые или недостающие записи
                         var insertedToRoom = 0
-                        for (entry in finalJsonEntries) {
-                            if (db.mediaDao().getById(entry.hash) == null) {
-                                val physicalFile = physicalFilesMap[(entry.displayName.lowercase()) to entry.size]
-                                val otgFileUri = physicalFile?.uri?.toString() ?: ""
+
+                        val treeDocId = try {
+                            DocumentsContract.getTreeDocumentId(uri)
+                        } catch (e: Exception) {
+                            DebugLogBuffer.log(logTag, "Failed to get tree document ID: ${e.localizedMessage}")
+                            ""
+                        }
+
+                        for (entry in jsonEntries) {
+                            val existing = db.mediaDao().getById(entry.hash)
+                            if (existing == null) {
+                                val otgFileUri = if (treeDocId.isNotEmpty()) {
+                                    val childDocId = if (treeDocId.endsWith("/")) "$treeDocId${entry.displayName}" else "$treeDocId/${entry.displayName}"
+                                    DocumentsContract.buildDocumentUriUsingTree(uri, childDocId).toString()
+                                } else {
+                                    ""
+                                }
+
                                 db.mediaDao().insert(MediaEntity(
                                     id = entry.hash,
                                     displayName = entry.displayName,
@@ -194,13 +126,27 @@ class ArchiveSyncHelper(
                                 ))
                                 insertedToRoom++
                                 roomModified = true
+                            } else {
+                                // Если запись есть, но её имя или метаданные изменились в JSON, обновим их, сохраняя старый otgUri и thumbnailPath
+                                if (existing.displayName != entry.displayName || existing.size != entry.size || existing.dateModified != entry.dateModified) {
+                                    db.mediaDao().insert(existing.copy(
+                                        displayName = entry.displayName,
+                                        mimeType = entry.mimeType,
+                                        size = entry.size,
+                                        dateModified = entry.dateModified,
+                                        duration = entry.duration,
+                                        originalRelativePath = entry.originalRelativePath,
+                                        dateArchived = entry.dateArchived
+                                    ))
+                                    roomModified = true
+                                }
                             }
                         }
                         if (insertedToRoom > 0) {
-                            DebugLogBuffer.log(logTag, "Added $insertedToRoom missing entries to Room database")
+                            DebugLogBuffer.log(logTag, "Added $insertedToRoom missing entries from JSON to Room")
                         }
 
-                        // Удаляем из Room записи, которых больше нет в финальном списке (файлов больше нет на флешке)
+                        // Удаляем из Room записи, которых больше нет в JSON
                         val allRoomEntities = db.mediaDao().getAllSync()
                         var deletedFromRoom = 0
                         for (entity in allRoomEntities) {
@@ -220,7 +166,6 @@ class ArchiveSyncHelper(
 
                         if (roomModified) {
                             repository.refresh()
-                            _autoSyncAddedCount.value = newEntries.size
                         }
                         DebugLogBuffer.log(logTag, "Silent sync finished successfully")
                     } catch (e: Exception) {
