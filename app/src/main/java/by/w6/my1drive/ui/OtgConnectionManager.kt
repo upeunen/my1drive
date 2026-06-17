@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.os.storage.StorageManager
+import android.hardware.usb.UsbManager
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +55,9 @@ class OtgConnectionManager(
     private val _showUnknownDriveDialog = MutableStateFlow(false)
     val showUnknownDriveDialog: StateFlow<Boolean> = _showUnknownDriveDialog.asStateFlow()
 
+    private val _showUnreadableOtgDialog = MutableStateFlow(false)
+    val showUnreadableOtgDialog: StateFlow<Boolean> = _showUnreadableOtgDialog.asStateFlow()
+
     private val _archiveSize = MutableStateFlow(0L)
     val archiveSize: StateFlow<Long> = _archiveSize.asStateFlow()
 
@@ -91,9 +95,15 @@ class OtgConnectionManager(
         scope.launch {
             var previousStatus: DriveStatus? = null
             var firstCheck = true
+            var unreadableOtgDialogHandled = false
             while (true) {
+                val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
                 val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
+
+                if (!usbPhysicallyConnected) {
+                    unreadableOtgDialogHandled = false
+                }
 
                 if (!otgPluggedIn) {
                     unknownDriveDialogHandled = false
@@ -131,6 +141,15 @@ class OtgConnectionManager(
                     _showFirstLaunchDialog.value = true
                     firstLaunchHandled = true
                 }
+
+                // Check for unreadable OTG at startup
+                if (usbPhysicallyConnected && !otgPluggedIn && _otgDirectoryUri.value == null) {
+                    if (!unreadableOtgDialogHandled) {
+                        _showUnreadableOtgDialog.value = true
+                        unreadableOtgDialogHandled = true
+                    }
+                }
+
                 wasPhysicalConnected = otgPluggedIn
 
                 // Trigger silent sync when transitioning to KNOWN_DRIVE_CONNECTED
@@ -193,6 +212,10 @@ class OtgConnectionManager(
         _showLocalFolderDialog.value = false
     }
 
+    fun dismissUnreadableOtgDialog() {
+        _showUnreadableOtgDialog.value = false
+    }
+
     /** Called when user explicitly ejects / removes the drive reference. */
     fun onEject() {
         _otgDirectoryUri.value?.let { uri ->
@@ -216,6 +239,7 @@ class OtgConnectionManager(
         prefs.edit().remove(PREF_OTG_URI).remove(PREF_DEVICE_URI).apply()
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
+        _showUnreadableOtgDialog.value = false
         // Сбрасываем флаг, чтобы при следующем подключении флешки диалог показался снова
         firstLaunchHandled = false
     }
@@ -396,6 +420,24 @@ class OtgConnectionManager(
     fun updateArchiveSize() {
         scope.launch(Dispatchers.IO) {
             _archiveSize.value = calculateArchiveSize()
+        }
+    }
+
+    private fun isUsbStoragePhysicallyConnected(): Boolean {
+        return try {
+            val usbManager = application.getSystemService(Context.USB_SERVICE) as? UsbManager ?: return false
+            val deviceList = usbManager.deviceList
+            for (device in deviceList.values) {
+                for (i in 0 until device.interfaceCount) {
+                    val usbInterface = device.getInterface(i)
+                    if (usbInterface.interfaceClass == 8) { // USB_CLASS_MASS_STORAGE
+                        return true
+                    }
+                }
+            }
+            false
+        } catch (e: Exception) {
+            false
         }
     }
 }

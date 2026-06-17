@@ -34,7 +34,7 @@
     <string name="archiving_file">File: %1$s</string>
     
     <string name="otg_select_title">USB OTG Drive Selection</string>
-    <string name="otg_select_guide">For secure archiving, you must grant access to the root folder of the USB drive using the system file picker.</string>
+    <string name="otg_select_guide">Select the folder or just press the button at the bottom of the screen.</string>
     <string name="otg_guide_step1">Connect the USB drive using an OTG adapter.</string>
     <string name="otg_guide_step2">In the system file picker, select your USB drive.</string>
     <string name="otg_guide_step3">Click \"Use this folder\" or \"Allow access\" at the bottom of the screen.</string>
@@ -184,4 +184,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <!-- Preloader -->
     <string name="preloader_detecting_drive">Определение накопителя…</string>
     <string name="preloader_please_wait">Подождите, пожалуйста.\nПроцесс может занять от нескольких секунд до пары минут.</string>
+
+    <!-- Unreadable OTG warning -->
+    <string name="unreadable_otg_title">Storage Unreadable</string>
+    <string name="unreadable_otg_msg">The storage device is unreadable. Try formatting it using your smartphone\'s built-in tools.</string>
 </resources>

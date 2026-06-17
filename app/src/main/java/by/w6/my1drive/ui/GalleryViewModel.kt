@@ -300,6 +300,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)
+        if (otgManager.deviceDirectoryUri.value == null) {
+            _pendingDeviceFolderToRequest.value = "DCIM"
+            otgManager.showLocalFolderPrompt()
+        }
     }
 
     fun ejectOtg() {
@@ -552,28 +556,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 }
             } catch (_: Exception) { }
         }
-        val folderToRequest = items.firstOrNull()?.originalRelativePath
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && folderToRequest != null && _deviceDirectoryUri.value == null) {
-            val lastFolder = prefs.getString(PREF_LAST_REQUESTED_FOLDER, "") ?: ""
-            var skipCount = prefs.getInt(PREF_LOCAL_FOLDER_SKIP_COUNT, 0)
-
-            val shouldShow = if (folderToRequest != lastFolder) {
-                true
-            } else {
-                skipCount += 1
-                prefs.edit().putInt(PREF_LOCAL_FOLDER_SKIP_COUNT, skipCount).apply()
-                skipCount >= 25
-            }
-
-            if (shouldShow) {
-                prefs.edit()
-                    .putInt(PREF_LOCAL_FOLDER_SKIP_COUNT, 0)
-                    .putString(PREF_LAST_REQUESTED_FOLDER, folderToRequest)
-                    .apply()
-                _pendingDeviceFolderToRequest.value = folderToRequest
-                otgManager.showLocalFolderPrompt()
-            }
-        }
+        // Removed local folder prompt from deletion to ask in setup phase instead
         _deviceDeletePendingItems.clear()
         viewModelScope.launch { repository.refresh() }
     }

@@ -73,7 +73,7 @@ fun OtgGuideDialog(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
+                            .height(300.dp)
                             .padding(bottom = 12.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
@@ -86,14 +86,8 @@ fun OtgGuideDialog(
 
                 Text(
                     text = stringResource(R.string.otg_select_guide),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                
-                BulletPoint(number = "1", text = stringResource(R.string.otg_guide_step1))
-                BulletPoint(number = "2", text = stringResource(R.string.otg_guide_step2))
-                BulletPoint(number = "3", text = stringResource(R.string.otg_guide_step3))
-                BulletPoint(number = "4", text = stringResource(R.string.otg_guide_step4))
             }
         },
         confirmButton = {
@@ -145,7 +139,7 @@ fun VideoGuidePlayer(
             PlayerView(ctx).apply {
                 player = exoPlayer
                 useController = false // Hide progress bar, play/pause buttons
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
             }
         },
         modifier = modifier.fillMaxWidth()

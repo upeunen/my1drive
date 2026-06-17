@@ -751,7 +751,7 @@ fun GalleryScreenContent(
                 isOtgConnected = isUsbPhysical,
                 onStart = {
                     viewModel.dismissFirstLaunchDialog()
-                    onSelectOtgDirectory()
+                    onSetShowOtgGuide(true)
                 },
                 onDismiss = { viewModel.dismissFirstLaunchDialog() }
             )
@@ -761,7 +761,7 @@ fun GalleryScreenContent(
         val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
         if (showLocalFolder) {
             LocalFolderDialog(
-                folderPath = pendingFolder ?: "DCIM/Camera",
+                folderPath = pendingFolder ?: "DCIM",
                 onSelectFolder = {
                     onSelectDeviceDirectory()
                 },
@@ -774,6 +774,20 @@ fun GalleryScreenContent(
             UnknownDriveDialog(
                 onCreateNew = { viewModel.createNewArchive() },
                 onDismiss = { viewModel.dismissUnknownDriveDialog() }
+            )
+        }
+
+        val showUnreadableOtg by viewModel.otgManager.showUnreadableOtgDialog.collectAsState()
+        if (showUnreadableOtg) {
+            AlertDialog(
+                onDismissRequest = { viewModel.otgManager.dismissUnreadableOtgDialog() },
+                title = { Text(stringResource(R.string.unreadable_otg_title), fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(R.string.unreadable_otg_msg)) },
+                confirmButton = {
+                    Button(onClick = { viewModel.otgManager.dismissUnreadableOtgDialog() }) {
+                        Text("ОК")
+                    }
+                }
             )
         }
 
