@@ -76,6 +76,7 @@ class OtgConnectionManager(
     private var wasPhysicalConnected = false
     /** Флаг: приветственный диалог уже был показан в этой сессии (или был отклонён). */
     private var firstLaunchHandled = false
+    private var unknownDriveDialogHandled = false
 
     // ─── Public API ───
 
@@ -89,11 +90,18 @@ class OtgConnectionManager(
         _deviceDirectoryUri.value = savedDeviceUri
         scope.launch {
             var previousStatus: DriveStatus? = null
+            var firstCheck = true
             while (true) {
                 val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
 
-                val isVerifyingNeeded = otgPluggedIn && _otgDirectoryUri.value != null && (_status.value != DriveStatus.KNOWN_DRIVE_CONNECTED || previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED)
+                if (!otgPluggedIn) {
+                    unknownDriveDialogHandled = false
+                }
+
+                // Show preloader only when transitioning from physically disconnected to connected, or at startup
+                val isTransitionToConnected = otgPluggedIn && !wasPhysicalConnected
+                val isVerifyingNeeded = (firstCheck || isTransitionToConnected) && _otgDirectoryUri.value != null
                 if (isVerifyingNeeded) {
                     _isCheckingConnection.value = true
                 }
@@ -139,6 +147,7 @@ class OtgConnectionManager(
                     }
                 }
 
+                firstCheck = false
                 previousStatus = newStatus
                 delay(POLL_INTERVAL_MS)
             }
@@ -236,6 +245,9 @@ class OtgConnectionManager(
             }
 
             _physicalConnected.value = isConnected
+            if (!isConnected) {
+                unknownDriveDialogHandled = false
+            }
             val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
             _status.value = newStatus
             if (_otgDirectoryUri.value == null && isConnected && !wasConnected) {
@@ -281,6 +293,7 @@ class OtgConnectionManager(
         // Сбросить флаги, чтобы при подключённой флешке снова показать приветствие
         wasPhysicalConnected = false
         firstLaunchHandled = false
+        unknownDriveDialogHandled = false
     }
 
     // ─── Internal helpers ───
@@ -292,10 +305,14 @@ class OtgConnectionManager(
 
         if (!isPhysicallyConnected) {
             return if (isAnyOtgDrivePresent()) {
-                _showUnknownDriveDialog.value = true
+                if (!unknownDriveDialogHandled) {
+                    _showUnknownDriveDialog.value = true
+                    unknownDriveDialogHandled = true
+                }
                 DriveStatus.UNKNOWN_DRIVE_CONNECTED
             } else {
                 _showUnknownDriveDialog.value = false
+                unknownDriveDialogHandled = false
                 DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
         }
