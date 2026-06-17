@@ -143,11 +143,87 @@ fun PhotosRoute(
     isOtgConnected: Boolean, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
+    val sortMode by viewModel.deviceSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
-    PhotosGridTab(groupedItems = groupedItems, selectedIds = selectedIds, imageLoader = imageLoader,
-        isOtgConnected = isOtgConnected, archivingItemIds = archivingItemIds,
-        onItemClick = onItemClick, onItemLongClick = onItemLongClick)
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val transparentColor = Color.Transparent
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Сортировка: ",
+                style = MaterialTheme.typography.bodySmall,
+                color = onSurfaceVariantColor
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                modifier = Modifier
+                    .background(
+                        color = surfaceVariantColor,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(2.dp)
+            ) {
+                val buttonModifier = { active: Boolean, targetMode: DeviceSortMode ->
+                    Modifier
+                        .background(
+                            color = if (active) primaryColor else transparentColor,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .clickable {
+                            viewModel.setDeviceSortMode(targetMode)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                }
+
+                Box(
+                    modifier = buttonModifier(sortMode == DeviceSortMode.BY_PHOTO_DATE, DeviceSortMode.BY_PHOTO_DATE),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Дата фото",
+                        color = if (sortMode == DeviceSortMode.BY_PHOTO_DATE) onPrimaryColor else onSurfaceVariantColor,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Box(
+                    modifier = buttonModifier(sortMode == DeviceSortMode.BY_RESTORE_DATE, DeviceSortMode.BY_RESTORE_DATE),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Дата разархивации",
+                        color = if (sortMode == DeviceSortMode.BY_RESTORE_DATE) onPrimaryColor else onSurfaceVariantColor,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        PhotosGridTab(
+            groupedItems = groupedItems,
+            selectedIds = selectedIds,
+            imageLoader = imageLoader,
+            isOtgConnected = isOtgConnected,
+            archivingItemIds = archivingItemIds,
+            onItemClick = onItemClick,
+            onItemLongClick = onItemLongClick
+        )
+    }
 }
+
 
 private data class MonthGroup(
     val monthIndex: Int,

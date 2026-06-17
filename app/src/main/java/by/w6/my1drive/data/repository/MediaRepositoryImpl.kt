@@ -48,7 +48,8 @@ class MediaRepositoryImpl(
                     otgUri = entity.otgUri,
                     thumbnailPath = entity.thumbnailPath,
                     originalRelativePath = entity.originalRelativePath,
-                    dateArchived = entity.dateArchived
+                    dateArchived = entity.dateArchived,
+                    dateAdded = null
                 )
             }
 
@@ -129,7 +130,8 @@ class MediaRepositoryImpl(
                     MediaStore.MediaColumns.DISPLAY_NAME,
                     MediaStore.MediaColumns.MIME_TYPE,
                     MediaStore.MediaColumns.SIZE,
-                    MediaStore.MediaColumns.DATE_MODIFIED
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.MediaColumns.DATE_ADDED
                 )
                 if (!isImage) {
                     projection.add(MediaStore.Video.VideoColumns.DURATION)
@@ -169,6 +171,8 @@ class MediaRepositoryImpl(
                         cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
                     } else -1
 
+                    val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+
                     while (cursor.moveToNext()) {
                         if (isPendingColumn != -1 && cursor.getInt(isPendingColumn) != 0) {
                             continue
@@ -182,6 +186,7 @@ class MediaRepositoryImpl(
                         val mimeType = cursor.getString(mimeColumn) ?: (if (isImage) "image/jpeg" else "video/mp4")
                         val size = cursor.getLong(sizeColumn)
                         val dateModified = cursor.getLong(dateColumn)
+                        val dateAdded = cursor.getLong(addedColumn)
                         val duration = if (!isImage && durationColumn != -1) {
                             cursor.getLong(durationColumn)
                         } else null
@@ -201,7 +206,8 @@ class MediaRepositoryImpl(
                                 dateModified = dateModified,
                                 status = MediaStatus.ON_DEVICE,
                                 duration = duration,
-                                originalRelativePath = relativePath
+                                originalRelativePath = relativePath,
+                                dateAdded = dateAdded
                             )
                         )
                     }

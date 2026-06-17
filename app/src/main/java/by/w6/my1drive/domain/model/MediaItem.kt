@@ -16,7 +16,8 @@ data class MediaItem(
     val thumbnailPath: String? = null,       // Local cache path (filesDir/my1drive_previews/{hash}.webp)
     val originalRelativePath: String? = null,// MediaStore RELATIVE_PATH (e.g. "DCIM/Camera")
     val isVideo: Boolean = mimeType.startsWith("video/"),
-    val dateArchived: Long? = null          // Unix timestamp in seconds
+    val dateArchived: Long? = null,          // Unix timestamp in seconds
+    val dateAdded: Long? = null              // Unix timestamp in seconds for when it was added/restored to device
 ) {
     /** True if a local preview thumbnail is cached and the file exists */
     val hasCachedPreview: Boolean

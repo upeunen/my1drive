@@ -219,7 +219,7 @@ class OtgArchiveUtil(private val context: Context) {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                     put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
-                    put(MediaStore.MediaColumns.DATE_ADDED, item.dateModified)
+                    put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis() / 1000)
                     if (item.mimeType.startsWith("image/")) {
                         put(MediaStore.Images.ImageColumns.DATE_TAKEN, item.dateModified * 1000)
                     } else if (item.mimeType.startsWith("video/")) {
@@ -241,7 +241,7 @@ class OtgArchiveUtil(private val context: Context) {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, item.displayName)
                     put(MediaStore.MediaColumns.MIME_TYPE, item.mimeType)
                     put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
-                    put(MediaStore.MediaColumns.DATE_ADDED, item.dateModified)
+                    put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis() / 1000)
                 }
                 val insertedUri = context.contentResolver.insert(collection, values)
                     ?: throw Exception("restore_mediastore_insert_failed")
@@ -319,7 +319,7 @@ class OtgArchiveUtil(private val context: Context) {
                         put(MediaStore.MediaColumns.IS_PENDING, 0)
                     }
                     put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
-                    put(MediaStore.MediaColumns.DATE_ADDED, item.dateModified)
+                    put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis() / 1000)
                     if (item.mimeType.startsWith("image/")) {
                         put(MediaStore.Images.ImageColumns.DATE_TAKEN, item.dateModified * 1000)
                     } else if (item.mimeType.startsWith("video/")) {

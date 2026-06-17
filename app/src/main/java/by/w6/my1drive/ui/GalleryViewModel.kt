@@ -56,6 +56,11 @@ enum class ArchiveSortMode {
     BY_ARCHIVE_DATE
 }
 
+enum class DeviceSortMode {
+    BY_PHOTO_DATE,
+    BY_RESTORE_DATE
+}
+
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -101,17 +106,48 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val mediaItems: StateFlow<List<MediaItem>> = repository.getMediaItemsFlow()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val groupedMediaItems: StateFlow<List<GalleryItem>> = mediaItems
-        .map { list ->
-            val localItems = list.filter { it.status == MediaStatus.ON_DEVICE }
-            val resultList = mutableListOf<GalleryItem>()
-            for ((headerText, items) in localItems.groupBy { formatDateHeader(it.dateModified) }) {
-                resultList.add(GalleryItem.Header(headerText))
-                items.forEach { resultList.add(GalleryItem.Media(it)) }
-            }
-            resultList
+    private val _deviceSortMode = MutableStateFlow(
+        try {
+            DeviceSortMode.valueOf(
+                prefs.getString("device_sort_mode", DeviceSortMode.BY_PHOTO_DATE.name) ?: DeviceSortMode.BY_PHOTO_DATE.name
+            )
+        } catch (e: Exception) {
+            DeviceSortMode.BY_PHOTO_DATE
         }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    )
+    val deviceSortMode = _deviceSortMode.asStateFlow()
+
+    fun setDeviceSortMode(mode: DeviceSortMode) {
+        _deviceSortMode.value = mode
+        prefs.edit().putString("device_sort_mode", mode.name).apply()
+    }
+
+    val groupedMediaItems: StateFlow<List<GalleryItem>> = combine(
+        mediaItems,
+        deviceSortMode
+    ) { list, sortMode ->
+        val localItems = list.filter { it.status == MediaStatus.ON_DEVICE }.run {
+            if (sortMode == DeviceSortMode.BY_RESTORE_DATE) {
+                sortedByDescending { it.dateAdded ?: 0L }
+            } else {
+                sortedByDescending { it.dateModified }
+            }
+        }
+        val resultList = mutableListOf<GalleryItem>()
+        val grouped = localItems.groupBy { item ->
+            val date = if (sortMode == DeviceSortMode.BY_RESTORE_DATE) {
+                item.dateAdded ?: 0L
+            } else {
+                item.dateModified
+            }
+            formatDateHeader(date)
+        }
+        for ((headerText, items) in grouped) {
+            resultList.add(GalleryItem.Header(headerText))
+            items.forEach { resultList.add(GalleryItem.Media(it)) }
+        }
+        resultList
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _archiveSortMode = MutableStateFlow(
         try {
