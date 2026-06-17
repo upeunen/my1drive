@@ -103,6 +103,9 @@ class OtgConnectionManager(
                     _status.value = newStatus
                 }
 
+                // Verification is done, dismiss preloader
+                _isCheckingConnection.value = false
+
                 // Update archive size only when transitioning TO known connected
                 if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED) {
                     if (previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED) {
@@ -128,13 +131,8 @@ class OtgConnectionManager(
                     !syncHelper.archiveState.value.isArchiving &&
                     !syncHelper.isSilentSyncing
                 ) {
-                    _isCheckingConnection.value = true
                     syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                     refreshCacheStats()
-                }
-
-                if (newStatus != DriveStatus.KNOWN_DRIVE_CONNECTED || syncHelper.archiveState.value.isArchiving) {
-                    _isCheckingConnection.value = false
                 }
 
                 previousStatus = newStatus
@@ -155,11 +153,10 @@ class OtgConnectionManager(
             val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
             _status.value = newStatus
             updateArchiveSize()
+            _isCheckingConnection.value = false
             if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
-            } else {
-                _isCheckingConnection.value = false
             }
         }
     }
@@ -240,11 +237,10 @@ class OtgConnectionManager(
             if (_otgDirectoryUri.value == null && isConnected && !wasConnected) {
                 firstLaunchHandled = false
             }
+            _isCheckingConnection.value = false
             if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
-            } else {
-                _isCheckingConnection.value = false
             }
         }
     }

@@ -320,7 +320,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissSync() { syncHelper.dismissSync() }
     fun startArchiving(targetUri: Uri) {
         val selected = mediaItems.value.filter { it.id in _selectedIds.value }
-        if (selected.isEmpty()) return
+        DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${_selectedIds.value.size}, matchedSelected=${selected.size}")
+        if (selected.isEmpty()) {
+            DebugLogBuffer.log("GalleryViewModel", "startArchiving: selected list is empty, aborting.")
+            return
+        }
 
         if (IS_LIMIT_ACTIVE) {
             val currentArchivedSize = physicalArchiveSize.value
@@ -328,6 +332,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val totalProjectedSize = currentArchivedSize + newSelectionSize
             if (totalProjectedSize > ARCHIVE_SIZE_LIMIT) {
                 _showLimitReachedDialog.value = true
+                DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, aborting.")
                 return
             }
         }

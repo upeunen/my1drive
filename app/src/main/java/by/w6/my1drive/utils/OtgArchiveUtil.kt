@@ -65,11 +65,20 @@ class OtgArchiveUtil(private val context: Context) {
             val buffer = ByteArray(262144) // 256 KB buffer
 
             DebugLogBuffer.log(logTag, "Opening streams for copy...")
-            context.contentResolver.openFileDescriptor(destUri, "w")?.use { pfd ->
-                java.io.FileOutputStream(pfd.fileDescriptor).use { output ->
-                    context.contentResolver.openInputStream(item.uri)?.use { input ->
+            val input = try {
+                context.contentResolver.openInputStream(item.uri)
+                    ?: throw Exception("otg_read_stream_failed: input stream is null")
+            } catch (e: java.io.FileNotFoundException) {
+                DebugLogBuffer.log(logTag, "Source file not found on device (stale MediaStore): ${item.displayName}")
+                emit(CopyVerifyResult.Skipped(item, "SKIP: source file not found on device: ${e.localizedMessage}"))
+                return@flow
+            }
+
+            input.use { inputStream ->
+                context.contentResolver.openFileDescriptor(destUri, "w")?.use { pfd ->
+                    java.io.FileOutputStream(pfd.fileDescriptor).use { output ->
                         var lastEmittedStep = -1
-                        var bytesRead = input.read(buffer)
+                        var bytesRead = inputStream.read(buffer)
                         while (bytesRead != -1) {
                             output.write(buffer, 0, bytesRead)
                             digest.update(buffer, 0, bytesRead)
@@ -86,19 +95,19 @@ class OtgArchiveUtil(private val context: Context) {
                                       ))
                                 }
                             }
-                            bytesRead = input.read(buffer)
+                            bytesRead = inputStream.read(buffer)
                         }
-                    } ?: throw Exception("otg_read_stream_failed: input stream is null")
-                    output.flush()
-                }
-                try {
-                    DebugLogBuffer.log(logTag, "Syncing file descriptor to disk...")
-                    pfd.fileDescriptor.sync()
-                    DebugLogBuffer.log(logTag, "Sync completed successfully")
-                } catch (syncEx: Exception) {
-                    DebugLogBuffer.log(logTag, "Failed to sync file descriptor: ${syncEx.localizedMessage}")
-                }
-            } ?: throw Exception("otg_write_failed")
+                        output.flush()
+                    }
+                    try {
+                        DebugLogBuffer.log(logTag, "Syncing file descriptor to disk...")
+                        pfd.fileDescriptor.sync()
+                        DebugLogBuffer.log(logTag, "Sync completed successfully")
+                    } catch (syncEx: Exception) {
+                        DebugLogBuffer.log(logTag, "Failed to sync file descriptor: ${syncEx.localizedMessage}")
+                    }
+                } ?: throw Exception("otg_write_failed")
+            }
 
             emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.95f))
 
