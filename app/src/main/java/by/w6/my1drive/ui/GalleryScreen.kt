@@ -49,6 +49,7 @@ fun GalleryScreen(
     val showRestorePicker = restoreRequest != null
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
+    var selectionOriginRoute by remember { mutableStateOf<String?>(null) }
     var activePreviewState by remember { mutableStateOf<FullscreenState?>(null) }
     var showInfoDialogItem by remember { mutableStateOf<MediaItem?>(null) }
     var showOtgGuideDialog by remember { mutableStateOf(false) }
@@ -69,6 +70,16 @@ fun GalleryScreen(
     }
     val previewCache = viewModel.getPreviewCacheManager()
 
+    LaunchedEffect(selectedIds) {
+        if (selectedIds.isNotEmpty()) {
+            if (selectionOriginRoute == null) {
+                selectionOriginRoute = currentScreenRoute
+            }
+        } else {
+            selectionOriginRoute = null
+        }
+    }
+
     // Trigger SAF folder picker when restore items lack originalRelativePath
     LaunchedEffect(showRestorePicker) {
         if (showRestorePicker) {
@@ -83,6 +94,9 @@ fun GalleryScreen(
                 onNavigate = { route ->
                     if (activePreviewState != null) {
                         activePreviewState = null
+                    }
+                    if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
+                        viewModel.clearSelection()
                     }
                     currentScreenRoute = route
                 }
