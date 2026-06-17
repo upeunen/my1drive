@@ -214,6 +214,24 @@ fun ArchiveRoute(
     }
 
     val expandedMonths = remember { mutableStateMapOf<String, Boolean>() }
+    var hasInitializedDefaults by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(yearGroups) {
+        if (!hasInitializedDefaults && yearGroups.isNotEmpty()) {
+            val currentCal = Calendar.getInstance()
+            val curYear = currentCal.get(Calendar.YEAR)
+            val curMonth = currentCal.get(Calendar.MONTH)
+            val curKey = "${curYear}_${curMonth}"
+            expandedMonths[curKey] = true
+
+            yearGroups.firstOrNull()?.months?.firstOrNull()?.let { firstMonth ->
+                val firstYear = yearGroups.first().year
+                val firstKey = "${firstYear}_${firstMonth.monthIndex}"
+                expandedMonths[firstKey] = true
+            }
+            hasInitializedDefaults = true
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
