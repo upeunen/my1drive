@@ -93,7 +93,7 @@ class OtgConnectionManager(
                 val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
 
-                val isVerifyingNeeded = otgPluggedIn && (_status.value != DriveStatus.KNOWN_DRIVE_CONNECTED || previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED)
+                val isVerifyingNeeded = otgPluggedIn && _otgDirectoryUri.value != null && (_status.value != DriveStatus.KNOWN_DRIVE_CONNECTED || previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED)
                 if (isVerifyingNeeded) {
                     _isCheckingConnection.value = true
                 }
@@ -212,7 +212,9 @@ class OtgConnectionManager(
 
     /** Called from BroadcastReceiver when physical USB connection changes. */
     fun onPhysicalConnectionChanged() {
-        _isCheckingConnection.value = true
+        if (_otgDirectoryUri.value != null) {
+            _isCheckingConnection.value = true
+        }
         scope.launch {
             val wasConnected = _physicalConnected.value
             val isConnected = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
