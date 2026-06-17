@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Usb
@@ -47,7 +48,8 @@ fun SettingsTab(
     cacheFilesCount: Int = 0,
     isLocalFolder: Boolean = false,
     currentArchiveSize: Long = 0L,
-    isLimitActive: Boolean = true
+    isLimitActive: Boolean = true,
+    onShowDebugLogs: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -198,6 +200,20 @@ fun SettingsTab(
             Icon(Icons.Default.CleaningServices, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.clear_thumb_cache))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onShowDebugLogs,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Просмотр логов отладки")
         }
 
         Spacer(Modifier.height(24.dp))

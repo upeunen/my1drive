@@ -9,6 +9,7 @@ import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.repository.MediaRepository
 import by.w6.my1drive.utils.ArchiveMetadataStore
 import by.w6.my1drive.utils.CopyVerifyResult
+import by.w6.my1drive.utils.DebugLogBuffer
 import by.w6.my1drive.utils.JsonEntry
 import by.w6.my1drive.utils.OtgArchiveUtil
 import by.w6.my1drive.utils.PreviewCacheManager
@@ -64,22 +65,31 @@ class ArchiveSyncHelper(
     fun silentSyncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
         isSilentSyncing = true
+        val logTag = "SilentSync"
         scope.launch(Dispatchers.IO) {
             try {
-                val dir = DocumentFile.fromTreeUri(application, uri) ?: return@launch
-                if (!dir.exists()) return@launch
+                DebugLogBuffer.log(logTag, "Start silentSyncArchive: targetUri=$uri")
+                val dir = DocumentFile.fromTreeUri(application, uri) 
+                    ?: throw Exception("Failed to access tree Uri $uri")
+                if (!dir.exists()) {
+                    DebugLogBuffer.log(logTag, "Directory does not exist: $uri")
+                    return@launch
+                }
 
                 // ── Шаг 0: Быстрый сбор файлов с флешки в карту ──
                 val otgFiles = dir.listFiles().filter {
                     !it.isDirectory && it.name != null &&
                     it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
                 }
+                DebugLogBuffer.log(logTag, "Found ${otgFiles.size} files on OTG drive")
                 val fileUriMap = otgFiles.associate { it.name!! to it.uri.toString() }
 
                 // ── Шаг 1: Синхронизация JSON → Room ──
                 // JSON — источник истины. Все записи из JSON должны быть в Room.
                 val jsonEntries = metadataStore.readMetadata(uri)
+                DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
                 var roomModified = false
+                var importedFromJson = 0
                 for (entry in jsonEntries) {
                     if (db.mediaDao().getById(entry.hash) == null) {
                         val otgFileUri = fileUriMap[entry.displayName] ?: ""
@@ -95,8 +105,12 @@ class ArchiveSyncHelper(
                             originalRelativePath = entry.originalRelativePath,
                             dateArchived = entry.dateArchived
                         ))
+                        importedFromJson++
                         roomModified = true
                     }
+                }
+                if (importedFromJson > 0) {
+                    DebugLogBuffer.log(logTag, "Imported $importedFromJson missing entries from JSON metadata into Room database")
                 }
 
                 // ── Шаг 2: Поиск новых файлов на флешке ──
@@ -106,7 +120,12 @@ class ArchiveSyncHelper(
                 for (file in otgFiles) {
                     val name = file.name ?: continue
                     val mime = file.type ?: "image/jpeg"
-                    val hash = try { archiveUtil.calculateSha256(file.uri) } catch (_: Exception) { continue }
+                    val hash = try { 
+                        archiveUtil.calculateSha256(file.uri) 
+                    } catch (e: Exception) { 
+                        DebugLogBuffer.log(logTag, "Failed to calculate SHA-256 for physical file $name: ${e.localizedMessage}")
+                        continue 
+                    }
 
                     if (hash !in knownHashes) {
                         val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
@@ -126,11 +145,13 @@ class ArchiveSyncHelper(
                 }
 
                 if (newEntries.isNotEmpty()) {
+                    DebugLogBuffer.log(logTag, "Found ${newEntries.size} physical files on OTG not yet in JSON. Registering them...")
                     // Записать новые записи в JSON (источник истины)
                     val updatedJson = jsonEntries.toMutableList().apply { addAll(newEntries) }
                     metadataStore.writeMetadata(uri, updatedJson)
 
                     // Добавить в Room
+                    var insertedToRoom = 0
                     for (entry in newEntries) {
                         val otgFileUri = fileUriMap[entry.displayName] ?: ""
                         if (db.mediaDao().getById(entry.hash) == null) {
@@ -145,13 +166,16 @@ class ArchiveSyncHelper(
                                 duration = entry.duration,
                                 originalRelativePath = entry.originalRelativePath
                             ))
+                            insertedToRoom++
                         }
                     }
+                    DebugLogBuffer.log(logTag, "Successfully updated JSON metadata on OTG and added $insertedToRoom new entries to Room database")
                     roomModified = true
                 }
 
                 // ── Шаг 3: Удаление мёртвых записей (файлов, пропавших с OTG) ──
                 val allRoomEntities = db.mediaDao().getAllSync()
+                var deletedFromRoom = 0
                 for (entity in allRoomEntities) {
                     if (entity.otgUri.isNullOrEmpty() || !fileUriMap.containsKey(entity.displayName)) {
                         // Файла нет на флешке — удаляем запись из Room
@@ -160,15 +184,25 @@ class ArchiveSyncHelper(
                             if (file.exists()) file.delete()
                         }
                         db.mediaDao().delete(entity)
+                        deletedFromRoom++
                         roomModified = true
                     }
+                }
+                if (deletedFromRoom > 0) {
+                    DebugLogBuffer.log(logTag, "Removed $deletedFromRoom dead entries from Room database (files no longer on OTG)")
                 }
 
                 if (roomModified) {
                     repository.refresh()
                     _autoSyncAddedCount.value = newEntries.size
                 }
-            } catch (_: Exception) { } finally { isSilentSyncing = false; onOperationComplete() }
+                DebugLogBuffer.log(logTag, "Silent sync finished successfully")
+            } catch (e: Exception) {
+                DebugLogBuffer.log(logTag, "Error in silentSyncArchive: ${e.localizedMessage}")
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                DebugLogBuffer.log(logTag, "Stacktrace: $sw")
+            } finally { isSilentSyncing = false; onOperationComplete() }
         }
     }
 
@@ -273,8 +307,14 @@ class ArchiveSyncHelper(
 
                 logSb.appendLine("Sync completed: imported $synced, skipped $skipped")
                 _syncState.value = logSb.toString()
+                DebugLogBuffer.log("ManualSync", logSb.toString())
             } catch (e: Exception) {
-                _syncState.value = "Ошибка синхронизации: ${e.localizedMessage}"
+                val errorMsg = "Ошибка синхронизации: ${e.localizedMessage}"
+                _syncState.value = errorMsg
+                DebugLogBuffer.log("ManualSync", "Exception in manual sync: ${e.localizedMessage}")
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                DebugLogBuffer.log("ManualSync", "Stacktrace: $sw")
             } finally {
                 onOperationComplete()
             }
@@ -310,15 +350,18 @@ class ArchiveSyncHelper(
 
     private suspend fun performArchiving(items: List<MediaItem>, targetUri: Uri) {
         if (items.isEmpty()) return
+        val logTag = "ArchiveManager"
+        DebugLogBuffer.log(logTag, "Start performArchiving for ${items.size} items. Target: $targetUri")
         _archiveState.value = ArchiveState(
             isArchiving = true, totalFiles = items.size,
             pendingQueueSize = archiveQueue.size
         )
         val copied = mutableListOf<ArchivedInfo>()
         val skipped = mutableListOf<Pair<MediaItem, String>>()
-        var errorMsg: String? = null
+        val errors = mutableListOf<Pair<MediaItem, String>>()
 
         for ((index, item) in items.withIndex()) {
+            DebugLogBuffer.log(logTag, "Processing queue item [${index + 1}/${items.size}]: ${item.displayName}")
             _archiveState.value = _archiveState.value.copy(
                 currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = ""
             )
@@ -338,21 +381,37 @@ class ArchiveSyncHelper(
                 }
             }
             when {
-                success != null -> copied.add(success!!)
-                isSkipped -> skipped.add(item to skipReason)
-                itemErr != null -> errorMsg = itemErr
+                success != null -> {
+                    copied.add(success)
+                    DebugLogBuffer.log(logTag, "Item success: ${item.displayName}")
+                }
+                isSkipped -> {
+                    skipped.add(item to skipReason)
+                    DebugLogBuffer.log(logTag, "Item skipped: ${item.displayName}. Reason: $skipReason")
+                }
+                itemErr != null -> {
+                    errors.add(item to itemErr)
+                    DebugLogBuffer.log(logTag, "Item failed: ${item.displayName}. Error: $itemErr")
+                }
             }
         }
 
-                val skippedFiles = skipped.map { (item, reason) -> item.displayName to reason }
+        val skippedFiles = skipped.map { (item, reason) -> item.displayName to reason }
+        val errorSummary = if (errors.isNotEmpty()) {
+            "Не удалось заархивировать ${errors.size} файл(ов):\n" + 
+            errors.joinToString("\n") { "- ${it.first.displayName}: ${it.second.substringBefore("\n")}" }
+        } else null
+
+        DebugLogBuffer.log(logTag, "Archiving queue round finished. Copied: ${copied.size}, Skipped: ${skipped.size}, Failed: ${errors.size}")
 
         if (copied.isNotEmpty()) {
-            processArchivedResults(copied, targetUri)
+            processArchivedResults(copied, targetUri, errorSummary)
             // Уведомить ViewModel об успешно заархивированных файлах
             onArchiveSuccess(copied.map { it.item })
         } else {
+            val combinedError = errorSummary ?: "Ошибка архивирования"
             _archiveState.value = ArchiveState(
-                isArchiving = false, error = "Ошибка архивирования",
+                isArchiving = false, error = combinedError,
                 skippedFiles = skippedFiles,
                 pendingQueueSize = archiveQueue.size
             )
@@ -365,8 +424,10 @@ class ArchiveSyncHelper(
      * 1. Add entry to JSON metadata on the OTG drive (source of truth)
      * 2. Insert into Room (local cache)
      */
-    private suspend fun processArchivedResults(list: List<ArchivedInfo>, otgUri: Uri) {
+    private suspend fun processArchivedResults(list: List<ArchivedInfo>, otgUri: Uri, errorMsg: String? = null) {
+        val logTag = "ArchiveManager"
         try {
+            DebugLogBuffer.log(logTag, "Processing archived results in database: writing metadata for ${list.size} items")
             val currentTimeSec = System.currentTimeMillis() / 1000
             val jsonEntries = list.map { info ->
                 JsonEntry(
@@ -381,6 +442,7 @@ class ArchiveSyncHelper(
                 )
             }
             metadataStore.addEntries(otgUri, jsonEntries)
+            DebugLogBuffer.log(logTag, "Added entries to JSON metadata on OTG drive")
 
             // 2. Insert into Room (local cache)
             for (info in list) {
@@ -389,12 +451,20 @@ class ArchiveSyncHelper(
                     info.thumbnailPath, info.item.originalRelativePath,
                     currentTimeSec
                 )
+                DebugLogBuffer.log(logTag, "Inserted item to local DB: ${info.item.displayName} (hash=${info.hash})")
             }
 
             _archiveState.value = ArchiveState(
-                isArchiving = false, pendingQueueSize = archiveQueue.size
+                isArchiving = false, 
+                error = errorMsg,
+                pendingQueueSize = archiveQueue.size
             )
         } catch (e: Exception) {
+            DebugLogBuffer.log(logTag, "Error processing archived results: ${e.localizedMessage}")
+            val sw = java.io.StringWriter()
+            e.printStackTrace(java.io.PrintWriter(sw))
+            DebugLogBuffer.log(logTag, "Stacktrace: $sw")
+            
             _archiveState.value = _archiveState.value.copy(
                 isArchiving = false, error = e.localizedMessage,
                 pendingQueueSize = archiveQueue.size

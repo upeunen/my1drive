@@ -320,6 +320,7 @@ fun GalleryScreenContent(
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
+    var showDebugLogsDialog by remember { mutableStateOf(false) }
 
     // ... existing content ...
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
@@ -431,7 +432,8 @@ fun GalleryScreenContent(
                             cacheFilesCount = previewCacheManager.getCacheFileCount(),
                             isLocalFolder = viewModel.isOtgLocalFolder(),
                             currentArchiveSize = physicalArchiveSize,
-                            isLimitActive = viewModel.isLimitActive
+                            isLimitActive = viewModel.isLimitActive,
+                            onShowDebugLogs = { showDebugLogsDialog = true }
                         )
                     }
                 }
@@ -570,6 +572,10 @@ fun GalleryScreenContent(
                 imageLoader = imageLoader,
                 onDismiss = { showDisconnectedOtgItemInfo = null }
             )
+        }
+
+        if (showDebugLogsDialog) {
+            DebugLogsDialog(onDismiss = { showDebugLogsDialog = false })
         }
     }
 }
