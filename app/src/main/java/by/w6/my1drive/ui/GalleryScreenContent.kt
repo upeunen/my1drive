@@ -80,6 +80,12 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.CloudDownload
 
 @Composable
 fun UnknownDriveBanner() {
@@ -571,44 +577,27 @@ fun GalleryScreenContent(
                 )
             }
 
-            // Тонкий прогресс-бар архивации/восстановления
+            // Прогресс-панель архивации/восстановления
             if (archiveState.isArchiving) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    LinearProgressIndicator(
-                        progress = { archiveState.progressFraction.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primaryContainer,
-                        strokeCap = StrokeCap.Round
-                    )
-                    val queue = if (archiveState.pendingQueueSize > 0) " +${archiveState.pendingQueueSize} в очереди" else ""
-                    Text(
-                        text = "Архивация: ${archiveState.currentFileIndex}/${archiveState.totalFiles} — ${archiveState.currentFileName}$queue",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp)
-                    )
-                }
+                val queue = if (archiveState.pendingQueueSize > 0) " (+${archiveState.pendingQueueSize} в очереди)" else ""
+                ProgressPanel(
+                    title = "Архивация",
+                    fileName = archiveState.currentFileName,
+                    currentIndex = archiveState.currentFileIndex,
+                    totalFiles = archiveState.totalFiles,
+                    progressFraction = archiveState.progressFraction,
+                    extraInfo = queue,
+                    icon = Icons.Default.CloudUpload
+                )
             } else if (restoreState.isRestoring) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    LinearProgressIndicator(
-                        progress = { restoreState.progressFraction.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primaryContainer,
-                        strokeCap = StrokeCap.Round
-                    )
-                    Text(
-                        text = "Восстановление: ${restoreState.currentFileIndex}/${restoreState.totalFiles} — ${restoreState.currentFileName}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp)
-                    )
-                }
+                ProgressPanel(
+                    title = "Восстановление",
+                    fileName = restoreState.currentFileName,
+                    currentIndex = restoreState.currentFileIndex,
+                    totalFiles = restoreState.totalFiles,
+                    progressFraction = restoreState.progressFraction,
+                    icon = Icons.Default.CloudDownload
+                )
             }
 
             val driveStatus by viewModel.otgManager.status.collectAsState()
@@ -1017,6 +1006,86 @@ fun DateRangePickerDialog(
             showModeToggle = false,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+@Composable
+fun ProgressPanel(
+    title: String,
+    fileName: String,
+    currentIndex: Int,
+    totalFiles: Int,
+    progressFraction: Float,
+    extraInfo: String = "",
+    icon: ImageVector
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressFraction.coerceIn(0f, 1f),
+        animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "Progress"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "$title ($currentIndex из $totalFiles)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    if (fileName.isNotEmpty()) {
+                        Text(
+                            text = fileName + extraInfo,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "${(progressFraction * 100).toInt()}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = { animatedProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primaryContainer,
+                strokeCap = StrokeCap.Round
+            )
+        }
     }
 }
 
