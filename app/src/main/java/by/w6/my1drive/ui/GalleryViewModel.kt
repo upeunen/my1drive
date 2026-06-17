@@ -310,6 +310,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun toggleSelection(itemId: String) { _selectedIds.value = _selectedIds.value.toMutableSet().apply { if (contains(itemId)) remove(itemId) else add(itemId) } }
     fun clearSelection() { _selectedIds.value = emptySet() }
+    fun selectItems(itemIds: Collection<String>) {
+        _selectedIds.value = _selectedIds.value.toMutableSet().apply { addAll(itemIds) }
+    }
 
     // ─── Sync & Archive delegated ───
 

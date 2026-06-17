@@ -64,6 +64,22 @@ import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.ui.GalleryItem
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 @Composable
 fun UnknownDriveBanner() {
@@ -504,13 +520,40 @@ fun GalleryScreenContent(
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
+    val groupedItems by viewModel.groupedMediaItems.collectAsState()
+    val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
+    val mediaItems by viewModel.mediaItems.collectAsState()
+    var showDateRangePicker by remember { mutableStateOf(false) }
 
-    // ... existing content ...
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-                        GooglePhotosTopBar(selectedCount = selectedIds.size, isOtgConnected = isOtgConnected, otgUriSet = otgDirectoryUri != null, onClearSelection = onClearSelection, onSelectOtgClick = onSelectOtgDirectory)
+            GooglePhotosTopBar(selectedCount = selectedIds.size, isOtgConnected = isOtgConnected, otgUriSet = otgDirectoryUri != null, onClearSelection = onClearSelection, onSelectOtgClick = onSelectOtgDirectory)
 
-                        // Тонкий прогресс-бар архивации/восстановления
+            AnimatedVisibility(
+                visible = selectedIds.isNotEmpty(),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                val visibleItems = remember(currentScreenRoute, mediaItems) {
+                    if (currentScreenRoute == "photos") {
+                        mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
+                    } else {
+                        mediaItems.filter {
+                            it.status == MediaStatus.ARCHIVED_OTG &&
+                            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+                        }
+                    }
+                }
+                val firstSelectedItem = mediaItems.firstOrNull { it.id in selectedIds }
+                SelectionHelperPanel(
+                    firstSelectedItem = firstSelectedItem,
+                    visibleItems = visibleItems,
+                    onSelectItems = { ids -> viewModel.selectItems(ids) },
+                    onSelectDateRangeClick = { showDateRangePicker = true }
+                )
+            }
+
+            // Тонкий прогресс-бар архивации/восстановления
             if (archiveState.isArchiving) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     LinearProgressIndicator(
@@ -798,8 +841,167 @@ fun GalleryScreenContent(
         if (showDebugLogsDialog) {
             DebugLogsDialog(onDismiss = { showDebugLogsDialog = false })
         }
+
+        if (showDateRangePicker) {
+            val visibleItems = remember(currentScreenRoute, mediaItems) {
+                if (currentScreenRoute == "photos") {
+                    mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
+                } else {
+                    mediaItems.filter {
+                        it.status == MediaStatus.ARCHIVED_OTG &&
+                        (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+                    }
+                }
+            }
+            DateRangePickerDialog(
+                onDismiss = { showDateRangePicker = false },
+                onDateRangeSelected = { startMillis, endMillis ->
+                    showDateRangePicker = false
+                    if (startMillis != null && endMillis != null) {
+                        val startSec = startMillis / 1000
+                        val endSec = (endMillis / 1000) + 86399
+                        val matching = visibleItems.filter { item ->
+                            item.dateModified in startSec..endSec
+                        }.map { it.id }
+                        viewModel.selectItems(matching)
+                    }
+                }
+            )
+        }
     }
 }
+
+@Composable
+fun SelectionHelperPanel(
+    firstSelectedItem: MediaItem?,
+    visibleItems: List<MediaItem>,
+    onSelectItems: (Collection<String>) -> Unit,
+    onSelectDateRangeClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val hasSelected = firstSelectedItem != null
+
+        // Chip 1: Все с этой датой
+        AssistChip(
+            enabled = hasSelected,
+            onClick = {
+                if (firstSelectedItem != null) {
+                    val targetDate = firstSelectedItem.dateModified
+                    val cal1 = Calendar.getInstance().apply { timeInMillis = targetDate * 1000 }
+                    val matching = visibleItems.filter { item ->
+                        val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
+                        cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+                    }.map { it.id }
+                    onSelectItems(matching)
+                }
+            },
+            label = { Text("Все с этой датой", style = MaterialTheme.typography.labelMedium) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.CalendarToday,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            )
+        )
+
+        // Chip 2: Все в этой папке
+        val hasFolder = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty()
+        AssistChip(
+            enabled = hasFolder,
+            onClick = {
+                if (firstSelectedItem != null) {
+                    val targetPath = firstSelectedItem.originalRelativePath
+                    val matching = visibleItems.filter { it.originalRelativePath == targetPath }.map { it.id }
+                    onSelectItems(matching)
+                }
+            },
+            label = { Text("Все в этой папке", style = MaterialTheme.typography.labelMedium) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.Folder,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            )
+        )
+
+        // Chip 3: Выбрать диапазон
+        AssistChip(
+            onClick = onSelectDateRangeClick,
+            label = { Text("Выбрать диапазон", style = MaterialTheme.typography.labelMedium) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.DateRange,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            )
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DateRangePickerDialog(
+    onDismiss: () -> Unit,
+    onDateRangeSelected: (startDateMillis: Long?, endDateMillis: Long?) -> Unit
+) {
+    val state = rememberDateRangePickerState()
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDateRangeSelected(state.selectedStartDateMillis, state.selectedEndDateMillis)
+                }
+            ) {
+                Text("Выбрать")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    ) {
+        DateRangePicker(
+            state = state,
+            title = {
+                Text(
+                    text = "Выберите диапазон дат",
+                    modifier = Modifier.padding(start = 24.dp, top = 24.dp)
+                )
+            },
+            headline = {
+                // Default headline behaves fine, but we can customize if needed
+            },
+            showModeToggle = false,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
 
 
 
