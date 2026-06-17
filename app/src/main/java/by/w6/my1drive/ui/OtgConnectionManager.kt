@@ -291,7 +291,13 @@ class OtgConnectionManager(
         val isPhysicallyConnected = isOtgUriPhysicallyConnected(savedUri)
 
         if (!isPhysicallyConnected) {
-            return DriveStatus.KNOWN_DRIVE_DISCONNECTED
+            return if (isAnyOtgDrivePresent()) {
+                _showUnknownDriveDialog.value = true
+                DriveStatus.UNKNOWN_DRIVE_CONNECTED
+            } else {
+                _showUnknownDriveDialog.value = false
+                DriveStatus.KNOWN_DRIVE_DISCONNECTED
+            }
         }
 
         return try {
@@ -301,19 +307,16 @@ class OtgConnectionManager(
                 _showUnknownDriveDialog.value = false
                 DriveStatus.KNOWN_DRIVE_CONNECTED
             } else {
-                // Different drive is connected (UUID matches but content differs)
-                _showUnknownDriveDialog.value = true
-                DriveStatus.UNKNOWN_DRIVE_CONNECTED
+                // Same physical drive, but we can't read/exist (e.g. unmounting)
+                // Do NOT show unknown drive dialog, just treat as disconnected
+                _showUnknownDriveDialog.value = false
+                DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
         } catch (e: Exception) {
-            driveErrorCount++
-            if (driveErrorCount >= MAX_DRIVE_ERRORS) {
-                _otgDirectoryUri.value = null
-                prefs.edit().remove(PREF_OTG_URI).apply()
-                driveErrorCount = 0
-            }
-            _showUnknownDriveDialog.value = true
-            DriveStatus.UNKNOWN_DRIVE_CONNECTED
+            // Access error (e.g. unmounting or temporary permission lock)
+            // Treat as disconnected, do NOT show unknown drive dialog
+            _showUnknownDriveDialog.value = false
+            DriveStatus.KNOWN_DRIVE_DISCONNECTED
         }
     }
 
