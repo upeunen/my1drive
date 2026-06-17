@@ -211,13 +211,29 @@ class OtgConnectionManager(
     }
 
     /** Called from BroadcastReceiver when physical USB connection changes. */
-    fun onPhysicalConnectionChanged() {
-        if (_otgDirectoryUri.value != null) {
+    fun onPhysicalConnectionChanged(isStartup: Boolean = false) {
+        val shouldShowPreloader = _otgDirectoryUri.value != null || !isStartup
+        if (shouldShowPreloader) {
             _isCheckingConnection.value = true
         }
         scope.launch {
             val wasConnected = _physicalConnected.value
-            val isConnected = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            val firstCheck = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            
+            var isConnected = firstCheck
+            if (!firstCheck && !wasConnected) {
+                // Был отключен, и сейчас не определен как смонтированный — ждем монтирования до 4 секунд
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < 4000) {
+                    delay(500)
+                    val check = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                    if (check) {
+                        isConnected = true
+                        break
+                    }
+                }
+            }
+
             _physicalConnected.value = isConnected
             val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
             _status.value = newStatus

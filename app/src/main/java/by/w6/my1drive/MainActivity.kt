@@ -57,9 +57,9 @@ class MainActivity : ComponentActivity() {
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
 
-            private val otgReceiver = object : BroadcastReceiver() {
+    private val otgReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            viewModel.updateOtgStatus()
+            viewModel.updateOtgStatus(isStartup = false)
         }
     }
 
@@ -438,7 +438,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         updatePermissionStates()
 
-        viewModel.updateOtgStatus()
+        viewModel.updateOtgStatus(isStartup = true)
 
         if (hasPermissions || hasPartialAccess) {
             viewModel.refresh()

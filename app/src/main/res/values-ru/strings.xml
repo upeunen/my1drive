@@ -180,4 +180,8 @@
         <string name="welcome_msg_drive_not_detected">USB OTG накопитель не обнаружен. Подключите его через OTG-адаптер.</string>
         <string name="welcome_btn_start">Начать</string>
         <string name="welcome_btn_close">Закрыть</string>
+
+        <!-- Preloader -->
+        <string name="preloader_detecting_drive">Определение накопителя…</string>
+        <string name="preloader_please_wait">Подождите, пожалуйста.\nПроцесс может занять от нескольких секунд до пары минут.</string>
     </resources>

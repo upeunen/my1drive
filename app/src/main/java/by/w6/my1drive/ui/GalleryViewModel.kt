@@ -260,8 +260,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         otgManager.start(savedUri, savedDeviceUri)
     }
 
-        fun updateOtgStatus() {
-        otgManager.onPhysicalConnectionChanged()
+    fun updateOtgStatus(isStartup: Boolean = false) {
+        otgManager.onPhysicalConnectionChanged(isStartup)
     }
 
     fun dismissFirstLaunchDialog() {

@@ -115,10 +115,18 @@ class ArchiveSyncHelper(
 
                 // ── Шаг 2: Поиск новых файлов на флешке ──
                 val knownHashes = jsonEntries.map { it.hash }.toHashSet()
+                val knownNamesAndSizes = jsonEntries.associateBy { it.displayName to it.size }
 
                 val newEntries = mutableListOf<JsonEntry>()
                 for (file in otgFiles) {
                     val name = file.name ?: continue
+                    val length = file.length()
+                    
+                    // Если файл с таким именем и размером уже есть в JSON, пропускаем дорогой расчет SHA-256
+                    if (knownNamesAndSizes.containsKey(name to length)) {
+                        continue
+                    }
+
                     val mime = file.type ?: "image/jpeg"
                     val hash = try { 
                         archiveUtil.calculateSha256(file.uri) 
@@ -133,7 +141,7 @@ class ArchiveSyncHelper(
                             hash = hash,
                             displayName = name,
                             mimeType = mime,
-                            size = file.length(),
+                            size = length,
                             dateModified = file.lastModified() / 1000,
                             originalRelativePath = defaultPath,
                             duration = null,
@@ -248,23 +256,49 @@ class ArchiveSyncHelper(
                     metadataStore.readMetadata(uri)
                 }.toMutableList()
                 val knownHashes = jsonEntries.map { it.hash }.toHashSet()
+                val knownNamesAndSizes = jsonEntries.associateBy { it.displayName to it.size }
                 val newEntries = mutableListOf<JsonEntry>()
 
                 withContext(Dispatchers.IO) {
                     for ((idx, file) in files.withIndex()) {
                         if (file.isDirectory) { logSb.appendLine("Skipping directory: ${file.name}"); continue }
-                        _syncState.value = "Обрабатывается: ${file.name} (${idx + 1} из ${files.size})"
+                        val name = file.name ?: continue
+                        val length = file.length()
+
+                        // Если файл с таким именем и размером уже есть в JSON, то его хэш и метаданные уже известны.
+                        // Проверяем наличие в локальной БД Room, при необходимости восстанавливаем запись.
+                        if (knownNamesAndSizes.containsKey(name to length)) {
+                            logSb.appendLine("Already exists (skipped hash): $name")
+                            val entry = knownNamesAndSizes[name to length]!!
+                            val otgFileUri = file.uri.toString()
+                            if (db.mediaDao().getById(entry.hash) == null) {
+                                db.mediaDao().insert(MediaEntity(
+                                    id = entry.hash,
+                                    displayName = entry.displayName,
+                                    mimeType = entry.mimeType,
+                                    size = entry.size,
+                                    dateModified = entry.dateModified,
+                                    otgUri = otgFileUri,
+                                    thumbnailPath = null,
+                                    duration = entry.duration,
+                                    originalRelativePath = entry.originalRelativePath
+                                ))
+                            }
+                            continue
+                        }
+
+                        _syncState.value = "Обрабатывается: $name (${idx + 1} из ${files.size})"
                         val hash = try { archiveUtil.calculateSha256(file.uri) } catch (e: Exception) {
-                            logSb.appendLine("Failed to read/hash ${file.name}: ${e.message}"); skipped++; continue
+                            logSb.appendLine("Failed to read/hash $name: ${e.message}"); skipped++; continue
                         }
                         if (hash !in knownHashes) {
                             val mime = file.type ?: "image/jpeg"
                             val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
                             val entry = JsonEntry(
                                 hash = hash,
-                                displayName = file.name!!,
+                                displayName = name,
                                 mimeType = mime,
-                                size = file.length(),
+                                size = length,
                                 dateModified = file.lastModified() / 1000,
                                 originalRelativePath = defaultPath,
                                 duration = null,
@@ -274,9 +308,9 @@ class ArchiveSyncHelper(
                             jsonEntries.add(entry)
                             knownHashes.add(hash)
                             synced++
-                            logSb.appendLine("Imported new file: ${file.name} (hash=$hash)")
+                            logSb.appendLine("Imported new file: $name (hash=$hash)")
                         } else {
-                            logSb.appendLine("Already exists: ${file.name} (hash=$hash)")
+                            logSb.appendLine("Already exists: $name (hash=$hash)")
                         }
                     }
                 }
