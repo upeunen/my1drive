@@ -192,7 +192,7 @@ fun GooglePhotosGridItem(
                     onError = { isImageLoading = false },
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(if (isArchivedOffline || isArchiving) 0.5f else 1.0f)
+                        .alpha(if (item.status == MediaStatus.ARCHIVED_OTG && !isArchiving) 0.5f else 1.0f)
                 )
                 if (isImageLoading) {
                     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
