@@ -122,6 +122,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit().putString("device_sort_mode", mode.name).apply()
     }
 
+    private val _gridColumnsCount = MutableStateFlow(
+        prefs.getInt("grid_columns_count", 3)
+    )
+    val gridColumnsCount = _gridColumnsCount.asStateFlow()
+
+    fun setGridColumnsCount(count: Int) {
+        _gridColumnsCount.value = count
+        prefs.edit().putInt("grid_columns_count", count).apply()
+    }
+
     val groupedMediaItems: StateFlow<List<GalleryItem>> = combine(
         mediaItems,
         deviceSortMode

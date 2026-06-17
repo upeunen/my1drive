@@ -140,7 +140,7 @@ fun OtgRequiredBanner() {
 @Composable
 fun PhotosRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
-    isOtgConnected: Boolean, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
+    isOtgConnected: Boolean, gridColumnsCount: Int = 3, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val sortMode by viewModel.deviceSortMode.collectAsState()
@@ -218,6 +218,7 @@ fun PhotosRoute(
             imageLoader = imageLoader,
             isOtgConnected = isOtgConnected,
             archivingItemIds = archivingItemIds,
+            gridColumnsCount = gridColumnsCount,
             onItemClick = onItemClick,
             onItemLongClick = onItemLongClick
         )
@@ -239,7 +240,7 @@ private data class YearGroup(
 @Composable
 fun ArchiveRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
-    isOtgConnected: Boolean, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
+    isOtgConnected: Boolean, gridColumnsCount: Int = 3, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val sortMode by viewModel.archiveSortMode.collectAsState()
@@ -462,7 +463,7 @@ fun ArchiveRoute(
 
                             // 3. Сетка фотографий (если раскрыто)
                             if (isExpanded) {
-                                val chunkedItems = monthGroup.items.chunked(3)
+                                val chunkedItems = monthGroup.items.chunked(gridColumnsCount)
                                 items(chunkedItems, key = { chunk -> "chunk_${chunk.first().id}" }) { rowItems ->
                                     Row(
                                         modifier = Modifier
@@ -470,7 +471,7 @@ fun ArchiveRoute(
                                             .padding(vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        for (i in 0 until 3) {
+                                        for (i in 0 until gridColumnsCount) {
                                             Box(
                                                 modifier = Modifier
                                                     .weight(1f)
@@ -628,11 +629,20 @@ fun GalleryScreenContent(
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val mediaItems by viewModel.mediaItems.collectAsState()
+    val gridColumnsCount by viewModel.gridColumnsCount.collectAsState()
     var showDateRangePicker by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            GooglePhotosTopBar(selectedCount = selectedIds.size, isOtgConnected = isOtgConnected, otgUriSet = otgDirectoryUri != null, onClearSelection = onClearSelection, onSelectOtgClick = onSelectOtgDirectory)
+            GooglePhotosTopBar(
+                selectedCount = selectedIds.size,
+                isOtgConnected = isOtgConnected,
+                otgUriSet = otgDirectoryUri != null,
+                onClearSelection = onClearSelection,
+                onSelectOtgClick = onSelectOtgDirectory,
+                gridColumnsCount = gridColumnsCount,
+                onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
+            )
 
             AnimatedVisibility(
                 visible = selectedIds.isNotEmpty(),
@@ -689,7 +699,12 @@ fun GalleryScreenContent(
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (currentScreenRoute) {
-                    "photos" -> PhotosRoute(viewModel = viewModel, selectedIds = selectedIds, imageLoader = imageLoader, isOtgConnected = isOtgConnected,
+                    "photos" -> PhotosRoute(
+                        viewModel = viewModel,
+                        selectedIds = selectedIds,
+                        imageLoader = imageLoader,
+                        isOtgConnected = isOtgConnected,
+                        gridColumnsCount = gridColumnsCount,
                         onItemClick = { item ->
                             if (selectedIds.isNotEmpty()) {
                                 viewModel.toggleSelection(item.id)
@@ -706,8 +721,14 @@ fun GalleryScreenContent(
                                 }
                             }
                         },
-                        onItemLongClick = { item -> viewModel.toggleSelection(item.id) })
-                    "archive" -> ArchiveRoute(viewModel = viewModel, selectedIds = selectedIds, imageLoader = imageLoader, isOtgConnected = isOtgConnected,
+                        onItemLongClick = { item -> viewModel.toggleSelection(item.id) }
+                    )
+                    "archive" -> ArchiveRoute(
+                        viewModel = viewModel,
+                        selectedIds = selectedIds,
+                        imageLoader = imageLoader,
+                        isOtgConnected = isOtgConnected,
+                        gridColumnsCount = gridColumnsCount,
                         onItemClick = { item ->
                             if (isOtgConnected) {
                                 if (selectedIds.isNotEmpty()) {
@@ -1027,6 +1048,26 @@ fun SelectionHelperPanel(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Chip 0: Выбрать все
+        AssistChip(
+            onClick = {
+                val allIds = visibleItems.map { it.id }
+                onSelectItems(allIds)
+            },
+            label = { Text("Выбрать все", style = MaterialTheme.typography.labelMedium) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircleOutline,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            )
+        )
+
         val hasSelected = firstSelectedItem != null
 
         // Chip 1: Все с этой датой

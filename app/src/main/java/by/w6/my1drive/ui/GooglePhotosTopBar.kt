@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,16 +18,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.GridView
+
 @Composable
 fun GooglePhotosTopBar(
     selectedCount: Int,
     isOtgConnected: Boolean,
     otgUriSet: Boolean,
     onClearSelection: () -> Unit,
-    onSelectOtgClick: () -> Unit
+    onSelectOtgClick: () -> Unit,
+    gridColumnsCount: Int = 3,
+    onToggleGridColumns: () -> Unit = {}
 ) {
     val title = when {
-        selectedCount > 0 -> " selected"
+        selectedCount > 0 -> "$selectedCount" // Let's output count of selected files
         isOtgConnected -> "My1Drive"
         else -> "My1Drive"
     }
@@ -53,6 +58,13 @@ fun GooglePhotosTopBar(
             modifier = Modifier.weight(1f)
         )
         if (selectedCount == 0) {
+            IconButton(onClick = onToggleGridColumns) {
+                Icon(
+                    imageVector = if (gridColumnsCount == 3) Icons.Default.GridView else Icons.Default.GridOn,
+                    contentDescription = "Toggle Grid Columns",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
             IconButton(onClick = onSelectOtgClick) {
                 Icon(
                     imageVector = Icons.Default.Menu,

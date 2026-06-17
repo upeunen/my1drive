@@ -1,6 +1,13 @@
 package by.w6.my1drive.ui
 import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,6 +80,7 @@ fun GooglePhotosGridItem(
     val isArchivedOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     val isArchivedOnline = item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected
     val hasCachedPreview = item.hasCachedPreview
+    var isImageLoading by remember { mutableStateOf(false) }
     // Build Coil model: use OtgThumbnailRequest for archived items, plain URI for local
     val imageModel: Any = if (item.status == MediaStatus.ARCHIVED_OTG && item.hash != null) {
         OtgThumbnailRequest(
@@ -179,10 +187,30 @@ fun GooglePhotosGridItem(
                     imageLoader = imageLoader,
                     contentDescription = item.displayName,
                     contentScale = ContentScale.Crop,
+                    onLoading = { isImageLoading = true },
+                    onSuccess = { isImageLoading = false },
+                    onError = { isImageLoading = false },
                     modifier = Modifier
                         .fillMaxSize()
                         .alpha(if (isArchivedOffline || isArchiving) 0.5f else 1.0f)
                 )
+                if (isImageLoading) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+                    val pulseAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.3f,
+                        targetValue = 0.7f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 800, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "pulseAlpha"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Gray.copy(alpha = pulseAlpha))
+                    )
+                }
             }
             // Green/Red dot indicator for original availability (archived items only)
             if (item.status == MediaStatus.ARCHIVED_OTG) {
@@ -203,15 +231,34 @@ fun GooglePhotosGridItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(6.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayCircle,
                         contentDescription = "Video",
                         tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
+                            .size(32.dp)
+                            .align(Alignment.Center)
                     )
+                    item.duration?.let { durationMs ->
+                        if (durationMs > 0) {
+                            val totalSec = durationMs / 1000
+                            val min = totalSec / 60
+                            val sec = totalSec % 60
+                            val durationStr = "${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}"
+                            Text(
+                                text = durationStr,
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
             }
             // Storage status icon (Top Right)

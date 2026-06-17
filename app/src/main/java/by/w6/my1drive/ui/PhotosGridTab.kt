@@ -36,6 +36,7 @@ fun PhotosGridTab(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
     archivingItemIds: Set<String> = emptySet(),
+    gridColumnsCount: Int = 3,
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit
 ) {
@@ -61,7 +62,7 @@ fun PhotosGridTab(
         }
     } else {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
+            columns = GridCells.Fixed(gridColumnsCount),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
             modifier = Modifier.fillMaxSize()
         ) {
