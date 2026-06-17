@@ -209,6 +209,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds = _selectedIds.asStateFlow()
 
+    private val _restoringItemIds = MutableStateFlow<Set<String>>(emptySet())
+    val restoringItemIds = _restoringItemIds.asStateFlow()
+
         private val _otgDirectoryUri = MutableStateFlow<Uri?>(null)
     val otgDirectoryUri = _otgDirectoryUri.asStateFlow()
 
@@ -789,64 +792,72 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissRestoreRequest() { pendingRestoreItems = emptyList(); _restoreRequest.value = null }
 
         private fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
+        // Clear selection for these items immediately as restoration starts
+        _selectedIds.value = _selectedIds.value - items.map { it.id }.toSet()
+        _restoringItemIds.value = items.map { it.id }.toSet()
         viewModelScope.launch {
             val logTag = "RestoreManager"
-            DebugLogBuffer.log(logTag, "Start startRestoring for ${items.size} items, targetDirUri=$targetDirUri")
-            var successCount = 0; val errors = mutableListOf<String>()
-            val otgUri = otgManager.otgDirectoryUri.value
-            restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
-            for ((index, item) in items.withIndex()) {
-                DebugLogBuffer.log(logTag, "Restoring item [${index + 1}/${items.size}]: ${item.displayName}")
-                restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "")
-                archiveUtil.restoreItem(item, targetDirUri).collect { result ->
-                    when (result) {
-                        is by.w6.my1drive.utils.RestoreResult.Progress -> restoreState.value = restoreState.value.copy(
-                            currentStep = result.step, progressFraction = (index.toFloat() + result.progressFraction) / items.size
-                        )
-                        is by.w6.my1drive.utils.RestoreResult.Success -> {
-                            successCount++
-                            DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
-                            try {
-                                // 1. Remove from JSON metadata on OTG drive (source of truth)
-                                if (otgUri != null && result.item.hash != null) {
-                                    metadataStore.removeEntry(otgUri, result.item.hash)
-                                    DebugLogBuffer.log(logTag, "Removed metadata entry from JSON for ${result.item.displayName}")
-                                }
-                                // 2. Delete physical file from OTG drive
-                                result.item.otgUri?.let { fileUri ->
-                                    try {
-                                        val otgFile = DocumentFile.fromSingleUri(getApplication(), Uri.parse(fileUri))
-                                        val deleted = otgFile?.delete() ?: false
-                                        DebugLogBuffer.log(logTag, "Deleted physical file from OTG: ${result.item.displayName}, success=$deleted")
-                                    } catch (ex: Exception) {
-                                        DebugLogBuffer.log(logTag, "Failed to delete physical file on OTG for ${result.item.displayName}: ${ex.localizedMessage}")
+            try {
+                DebugLogBuffer.log(logTag, "Start startRestoring for ${items.size} items, targetDirUri=$targetDirUri")
+                var successCount = 0; val errors = mutableListOf<String>()
+                val otgUri = otgManager.otgDirectoryUri.value
+                restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
+                for ((index, item) in items.withIndex()) {
+                    DebugLogBuffer.log(logTag, "Restoring item [${index + 1}/${items.size}]: ${item.displayName}")
+                    restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "")
+                    archiveUtil.restoreItem(item, targetDirUri).collect { result ->
+                        when (result) {
+                            is by.w6.my1drive.utils.RestoreResult.Progress -> restoreState.value = restoreState.value.copy(
+                                currentStep = result.step, progressFraction = (index.toFloat() + result.progressFraction) / items.size
+                            )
+                            is by.w6.my1drive.utils.RestoreResult.Success -> {
+                                successCount++
+                                DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
+                                try {
+                                    // 1. Remove from JSON metadata on OTG drive (source of truth)
+                                    if (otgUri != null && result.item.hash != null) {
+                                        metadataStore.removeEntry(otgUri, result.item.hash)
+                                        DebugLogBuffer.log(logTag, "Removed metadata entry from JSON for ${result.item.displayName}")
                                     }
+                                    // 2. Delete physical file from OTG drive
+                                    result.item.otgUri?.let { fileUri ->
+                                        try {
+                                            val otgFile = DocumentFile.fromSingleUri(getApplication(), Uri.parse(fileUri))
+                                            val deleted = otgFile?.delete() ?: false
+                                            DebugLogBuffer.log(logTag, "Deleted physical file from OTG: ${result.item.displayName}, success=$deleted")
+                                        } catch (ex: Exception) {
+                                            DebugLogBuffer.log(logTag, "Failed to delete physical file on OTG for ${result.item.displayName}: ${ex.localizedMessage}")
+                                        }
+                                    }
+                                    // 3. Remove from Room (local cache)
+                                    repository.deleteArchivedItem(result.item)
+                                    DebugLogBuffer.log(logTag, "Deleted item from local Room DB: ${result.item.displayName}")
+                                } catch (e: Exception) {
+                                    DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
                                 }
-                                // 3. Remove from Room (local cache)
-                                repository.deleteArchivedItem(result.item)
-                                DebugLogBuffer.log(logTag, "Deleted item from local Room DB: ${result.item.displayName}")
-                            } catch (e: Exception) {
-                                DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
+                            }
+                            is by.w6.my1drive.utils.RestoreResult.Error -> {
+                                val errStr = "${result.displayName}: ${result.message}"
+                                errors.add(errStr)
+                                DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
                             }
                         }
-                        is by.w6.my1drive.utils.RestoreResult.Error -> {
-                            val errStr = "${result.displayName}: ${result.message}"
-                            errors.add(errStr)
-                            DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
-                        }
                     }
+                    _restoringItemIds.value = _restoringItemIds.value - item.id
                 }
+                repository.refresh()
+                val finalError = when {
+                    errors.isNotEmpty() -> "Восстановлено: $successCount из ${items.size}.\n\nОшибки:\n" + errors.joinToString("\n")
+                    successCount < items.size -> "Восстановлено: $successCount из ${items.size}."
+                    else -> null
+                }
+                DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")
+                restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = finalError)
+                otgManager.updateArchiveSize()
+                syncHelper.incrementActionCount()
+            } finally {
+                _restoringItemIds.value = emptySet()
             }
-            _selectedIds.value = emptySet(); repository.refresh()
-            val finalError = when {
-                errors.isNotEmpty() -> "Восстановлено: $successCount из ${items.size}.\n\nОшибки:\n" + errors.joinToString("\n")
-                successCount < items.size -> "Восстановлено: $successCount из ${items.size}."
-                else -> null
-            }
-            DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")
-            restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = finalError)
-            otgManager.updateArchiveSize()
-            syncHelper.incrementActionCount()
         }
     }
 

@@ -81,6 +81,12 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.CloudUpload
@@ -245,6 +251,7 @@ fun ArchiveRoute(
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val sortMode by viewModel.archiveSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
+    val restoringItemIds by viewModel.restoringItemIds.collectAsState()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -481,10 +488,11 @@ fun ArchiveRoute(
                                                     val mediaItem = rowItems[i]
                                                     val isSelected = selectedIds.contains(mediaItem.id)
                                                     val isArchiving = archivingItemIds.contains(mediaItem.id)
+                                                    val isRestoring = restoringItemIds.contains(mediaItem.id)
                                                     GooglePhotosGridItem(
                                                         item = mediaItem,
                                                         isSelected = isSelected,
-                                                        isArchiving = isArchiving,
+                                                        isArchiving = isArchiving || isRestoring,
                                                         imageLoader = imageLoader,
                                                         isOtgConnected = isOtgConnected,
                                                         onClick = { onItemClick(mediaItem) },
@@ -678,7 +686,8 @@ fun GalleryScreenContent(
                     totalFiles = archiveState.totalFiles,
                     progressFraction = archiveState.progressFraction,
                     extraInfo = queue,
-                    icon = Icons.Default.CloudUpload
+                    icon = Icons.Default.CloudUpload,
+                    statusText = mapStepToText(archiveState.currentStep)
                 )
             } else if (restoreState.isRestoring) {
                 ProgressPanel(
@@ -687,7 +696,8 @@ fun GalleryScreenContent(
                     currentIndex = restoreState.currentFileIndex,
                     totalFiles = restoreState.totalFiles,
                     progressFraction = restoreState.progressFraction,
-                    icon = Icons.Default.CloudDownload
+                    icon = Icons.Default.CloudDownload,
+                    statusText = mapStepToText(restoreState.currentStep)
                 )
             }
 
@@ -1184,6 +1194,21 @@ fun DateRangePickerDialog(
     }
 }
 
+fun mapStepToText(step: String): String {
+    return when {
+        step == "preparing" || step == "restore_preparing" -> "Подготовка..."
+        step == "verifying" || step == "restore_verifying" -> "Проверка целостности..."
+        step == "copying" -> "Копирование в архив..."
+        step == "restore_reading" -> "Чтение из архива..."
+        step == "restore_writing" -> "Запись на устройство..."
+        step.startsWith("restore_writing_percent:") -> {
+            val pct = step.substringAfter(":")
+            "Запись на устройство... ($pct%)"
+        }
+        else -> "Обработка..."
+    }
+}
+
 @Composable
 fun ProgressPanel(
     title: String,
@@ -1192,12 +1217,24 @@ fun ProgressPanel(
     totalFiles: Int,
     progressFraction: Float,
     extraInfo: String = "",
-    icon: ImageVector
+    icon: ImageVector,
+    statusText: String? = null
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progressFraction.coerceIn(0f, 1f),
         animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
         label = "Progress"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val cardPulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.40f,
+        targetValue = 0.60f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
     )
 
     Card(
@@ -1206,7 +1243,7 @@ fun ProgressPanel(
             .padding(horizontal = 12.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = cardPulseAlpha)
         )
     ) {
         Column(
@@ -1237,6 +1274,15 @@ fun ProgressPanel(
                             text = fileName + extraInfo,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (!statusText.isNullOrEmpty()) {
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
