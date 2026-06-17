@@ -66,6 +66,9 @@ class OtgConnectionManager(
     private val _showLocalFolderDialog = MutableStateFlow(false)
     val showLocalFolderDialog: StateFlow<Boolean> = _showLocalFolderDialog.asStateFlow()
 
+    private val _isCheckingConnection = MutableStateFlow(false)
+    val isCheckingConnection: StateFlow<Boolean> = _isCheckingConnection.asStateFlow()
+
     // ─── Internal state ───
 
     private var driveErrorCount = 0
@@ -87,6 +90,14 @@ class OtgConnectionManager(
         scope.launch {
             var previousStatus: DriveStatus? = null
             while (true) {
+                val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                _physicalConnected.value = otgPluggedIn
+
+                val isVerifyingNeeded = otgPluggedIn && (_status.value != DriveStatus.KNOWN_DRIVE_CONNECTED || previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED)
+                if (isVerifyingNeeded) {
+                    _isCheckingConnection.value = true
+                }
+
                 val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
                 if (newStatus != _status.value) {
                     _status.value = newStatus
@@ -105,8 +116,6 @@ class OtgConnectionManager(
                 // а OTG-флешка физически подключена. Показывается один раз за сессию
                 // (до dismiss или выбора папки).
                 // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
-                val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
-                _physicalConnected.value = otgPluggedIn
                 if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null) {
                     _showFirstLaunchDialog.value = true
                     firstLaunchHandled = true
@@ -119,8 +128,13 @@ class OtgConnectionManager(
                     !syncHelper.archiveState.value.isArchiving &&
                     !syncHelper.isSilentSyncing
                 ) {
+                    _isCheckingConnection.value = true
                     syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                     refreshCacheStats()
+                }
+
+                if (newStatus != DriveStatus.KNOWN_DRIVE_CONNECTED || syncHelper.archiveState.value.isArchiving) {
+                    _isCheckingConnection.value = false
                 }
 
                 previousStatus = newStatus
@@ -135,15 +149,23 @@ class OtgConnectionManager(
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
         prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
 
+        _isCheckingConnection.value = true
         scope.launch {
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
-            _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
+            val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+            _status.value = newStatus
             updateArchiveSize()
-            if (!syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
+            } else {
+                _isCheckingConnection.value = false
             }
         }
+    }
+
+    fun setCheckingConnection(value: Boolean) {
+        _isCheckingConnection.value = value
     }
 
     fun showLocalFolderPrompt() {
@@ -190,14 +212,21 @@ class OtgConnectionManager(
 
     /** Called from BroadcastReceiver when physical USB connection changes. */
     fun onPhysicalConnectionChanged() {
+        _isCheckingConnection.value = true
         scope.launch {
             val wasConnected = _physicalConnected.value
             val isConnected = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             _physicalConnected.value = isConnected
-            _status.value = withContext(Dispatchers.IO) { computeDriveStatus() }
-            // Сбрасываем флаг только при реальном подключении флешки (когда была отключена и стала подключена)
+            val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+            _status.value = newStatus
             if (_otgDirectoryUri.value == null && isConnected && !wasConnected) {
                 firstLaunchHandled = false
+            }
+            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+                syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                refreshCacheStats()
+            } else {
+                _isCheckingConnection.value = false
             }
         }
     }

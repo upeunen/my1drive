@@ -85,7 +85,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             prefs = prefs,
             previewCache = previewCache,
             scope = viewModelScope,
-            onOperationComplete = { otgManager.updateArchiveSize() },
+            onOperationComplete = {
+                otgManager.updateArchiveSize()
+                otgManager.setCheckingConnection(false)
+            },
             onArchiveSuccess = { items ->
                 _selectedIds.value = emptySet()
                 deleteDeviceItems(items)
