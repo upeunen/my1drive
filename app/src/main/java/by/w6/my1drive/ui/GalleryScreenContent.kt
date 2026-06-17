@@ -46,6 +46,18 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.SdStorage
+import androidx.compose.runtime.mutableStateMapOf
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
@@ -114,6 +126,17 @@ fun PhotosRoute(
         isOtgConnected = isOtgConnected, onItemClick = onItemClick, onItemLongClick = onItemLongClick)
 }
 
+private data class MonthGroup(
+    val monthIndex: Int,
+    val monthName: String,
+    val items: List<MediaItem>
+)
+
+private data class YearGroup(
+    val year: Int,
+    val months: List<MonthGroup>
+)
+
 @Composable
 fun ArchiveRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
@@ -127,6 +150,54 @@ fun ArchiveRoute(
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+
+    // 1. Извлекаем плоский список архивных медиафайлов
+    val archivedItems = remember(archivedGroupedItems) {
+        archivedGroupedItems.filterIsInstance<GalleryItem.Media>().map { it.item }
+    }
+
+    // 2. Группируем архивные медиафайлы по Годам и Месяцам
+    val yearGroups = remember(archivedItems, sortMode) {
+        archivedItems.groupBy { item ->
+            val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                item.dateArchived ?: item.dateModified
+            } else {
+                item.dateModified
+            }
+            val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
+            cal.get(Calendar.YEAR)
+        }.map { (year, yearItems) ->
+            val monthGroups = yearItems.groupBy { item ->
+                val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                    item.dateArchived ?: item.dateModified
+                } else {
+                    item.dateModified
+                }
+                val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
+                cal.get(Calendar.MONTH)
+            }.map { (monthIdx, monthItems) ->
+                val sampleTimestamp = (monthItems.firstOrNull()?.run {
+                    if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) dateArchived ?: dateModified else dateModified
+                } ?: 0L) * 1000
+                
+                val monthName = SimpleDateFormat("LLLL", Locale.getDefault()).format(Date(sampleTimestamp))
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+                MonthGroup(
+                    monthIndex = monthIdx,
+                    monthName = monthName,
+                    items = monthItems
+                )
+            }.sortedByDescending { it.monthIndex }
+
+            YearGroup(
+                year = year,
+                months = monthGroups
+            )
+        }.sortedByDescending { it.year }
+    }
+
+    val expandedMonths = remember { mutableStateMapOf<String, Boolean>() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -189,14 +260,125 @@ fun ArchiveRoute(
         }
 
         Box(modifier = Modifier.weight(1f)) {
-            PhotosGridTab(
-                groupedItems = archivedGroupedItems,
-                selectedIds = selectedIds,
-                imageLoader = imageLoader,
-                isOtgConnected = isOtgConnected,
-                onItemClick = onItemClick,
-                onItemLongClick = onItemLongClick
-            )
+            if (yearGroups.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.SdStorage,
+                            contentDescription = stringResource(R.string.empty_category),
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.LightGray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.empty_category),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    yearGroups.forEach { yearGroup ->
+                        // 1. Заголовок года
+                        item(key = "year_${yearGroup.year}") {
+                            Text(
+                                text = yearGroup.year.toString(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                            )
+                        }
+
+                        // 2. Месяцы в этом году
+                        yearGroup.months.forEach { monthGroup ->
+                            val monthKey = "${yearGroup.year}_${monthGroup.monthIndex}"
+                            val isExpanded = expandedMonths[monthKey] ?: false
+
+                            // Карточка месяца (кнопка-аккордеон)
+                            item(key = "month_header_$monthKey") {
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    ),
+                                    onClick = {
+                                        expandedMonths[monthKey] = !isExpanded
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = monthGroup.monthName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "${monthGroup.items.size} элементов",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 3. Сетка фотографий (если раскрыто)
+                            if (isExpanded) {
+                                val chunkedItems = monthGroup.items.chunked(3)
+                                items(chunkedItems, key = { chunk -> "chunk_${chunk.first().id}" }) { rowItems ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        for (i in 0 until 3) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                            ) {
+                                                if (i < rowItems.size) {
+                                                    val mediaItem = rowItems[i]
+                                                    val isSelected = selectedIds.contains(mediaItem.id)
+                                                    GooglePhotosGridItem(
+                                                        item = mediaItem,
+                                                        isSelected = isSelected,
+                                                        imageLoader = imageLoader,
+                                                        isOtgConnected = isOtgConnected,
+                                                        onClick = { onItemClick(mediaItem) },
+                                                        onLongClick = { onItemLongClick(mediaItem) }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
