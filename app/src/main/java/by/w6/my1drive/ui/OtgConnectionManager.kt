@@ -153,17 +153,14 @@ class OtgConnectionManager(
                 wasPhysicalConnected = otgPluggedIn
 
                 // Trigger silent sync when transitioning to KNOWN_DRIVE_CONNECTED
-                // ONLY if the database cache is currently empty (e.g. first connection, new installation or cleared cache)
+                // on connection transition
                 if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED &&
                     previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED &&
                     !syncHelper.archiveState.value.isArchiving &&
                     !syncHelper.isSilentSyncing
                 ) {
-                    val isDbEmpty = withContext(Dispatchers.IO) { db.mediaDao().getCount() == 0 }
-                    if (isDbEmpty) {
-                        syncHelper.silentSyncArchive(_otgDirectoryUri.value)
-                        refreshCacheStats()
-                    }
+                    syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                    refreshCacheStats()
                 }
 
                 firstCheck = false
@@ -279,11 +276,8 @@ class OtgConnectionManager(
             }
             _isCheckingConnection.value = false
             if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
-                val isDbEmpty = withContext(Dispatchers.IO) { db.mediaDao().getCount() == 0 }
-                if (isDbEmpty) {
-                    syncHelper.silentSyncArchive(_otgDirectoryUri.value)
-                    refreshCacheStats()
-                }
+                syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                refreshCacheStats()
             }
         }
     }

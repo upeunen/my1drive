@@ -49,7 +49,8 @@ fun SettingsTab(
     isLocalFolder: Boolean = false,
     currentArchiveSize: Long = 0L,
     isLimitActive: Boolean = true,
-    onShowDebugLogs: () -> Unit = {}
+    onShowDebugLogs: () -> Unit = {},
+    onSyncArchive: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -105,9 +106,23 @@ fun SettingsTab(
         }
 
         Spacer(Modifier.height(12.dp))
-        Button(onClick = onSelectOtgDirectory) {
-            Text(if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
-                else stringResource(R.string.select_otg_folder))
+        Row {
+            Button(onClick = onSelectOtgDirectory) {
+                Text(if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
+                    else stringResource(R.string.select_otg_folder))
+            }
+            if (isOtgConnected && otgDirectoryDisplayName != null) {
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = onSyncArchive,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Text(stringResource(R.string.sync_archive_title))
+                }
+            }
         }
 
         Spacer(Modifier.height(16.dp))

@@ -62,6 +62,7 @@ fun GooglePhotosGridItem(
     isSelected: Boolean,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
+    isArchiving: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -180,7 +181,7 @@ fun GooglePhotosGridItem(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(if (isArchivedOffline) 0.5f else 1.0f)
+                        .alpha(if (isArchivedOffline || isArchiving) 0.5f else 1.0f)
                 )
             }
             // Green/Red dot indicator for original availability (archived items only)
@@ -242,6 +243,22 @@ fun GooglePhotosGridItem(
                         .size(22.dp)
                         .background(Color.White, CircleShape)
                 )
+            }
+
+            // Archiving background preloader overlay
+            if (isArchiving) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp
+                    )
+                }
             }
         }
     }

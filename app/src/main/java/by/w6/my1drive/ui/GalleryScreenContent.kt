@@ -143,8 +143,10 @@ fun PhotosRoute(
     isOtgConnected: Boolean, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
+    val archivingItemIds by viewModel.archivingItemIds.collectAsState()
     PhotosGridTab(groupedItems = groupedItems, selectedIds = selectedIds, imageLoader = imageLoader,
-        isOtgConnected = isOtgConnected, onItemClick = onItemClick, onItemLongClick = onItemLongClick)
+        isOtgConnected = isOtgConnected, archivingItemIds = archivingItemIds,
+        onItemClick = onItemClick, onItemLongClick = onItemLongClick)
 }
 
 private data class MonthGroup(
@@ -165,6 +167,7 @@ fun ArchiveRoute(
 ) {
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val sortMode by viewModel.archiveSortMode.collectAsState()
+    val archivingItemIds by viewModel.archivingItemIds.collectAsState()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -400,9 +403,11 @@ fun ArchiveRoute(
                                                 if (i < rowItems.size) {
                                                     val mediaItem = rowItems[i]
                                                     val isSelected = selectedIds.contains(mediaItem.id)
+                                                    val isArchiving = archivingItemIds.contains(mediaItem.id)
                                                     GooglePhotosGridItem(
                                                         item = mediaItem,
                                                         isSelected = isSelected,
+                                                        isArchiving = isArchiving,
                                                         imageLoader = imageLoader,
                                                         isOtgConnected = isOtgConnected,
                                                         onClick = { onItemClick(mediaItem) },
@@ -537,7 +542,8 @@ fun GalleryScreenContent(
     onSetShowOtgGuide: (Boolean) -> Unit,
     previewCacheManager: PreviewCacheManager,
     archiveState: ArchiveState = ArchiveState(),
-    restoreState: RestoreState = RestoreState()
+    restoreState: RestoreState = RestoreState(),
+    onSyncArchive: () -> Unit = {}
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val context = LocalContext.current
@@ -665,7 +671,8 @@ fun GalleryScreenContent(
                             isLocalFolder = viewModel.isOtgLocalFolder(),
                             currentArchiveSize = physicalArchiveSize,
                             isLimitActive = viewModel.isLimitActive,
-                            onShowDebugLogs = { showDebugLogsDialog = true }
+                            onShowDebugLogs = { showDebugLogsDialog = true },
+                            onSyncArchive = onSyncArchive
                         )
                     }
                 }
@@ -744,6 +751,31 @@ fun GalleryScreenContent(
             )
         }
 
+        val syncState by viewModel.syncState.collectAsState()
+        syncState?.let { stateMessage ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSync() },
+                title = { Text(stringResource(R.string.sync_archive_title)) },
+                text = {
+                    Column {
+                        Text(stateMessage)
+                        if (!stateMessage.contains("Синхронизация завершена") && !stateMessage.contains("Ошибка синхронизации")) {
+                            Spacer(Modifier.height(16.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                                strokeCap = StrokeCap.Round
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissSync() }) {
+                        Text(stringResource(R.string.btn_close))
+                    }
+                }
+            )
+        }
+
         val showFirstLaunch by viewModel.otgManager.showFirstLaunchDialog.collectAsState()
         if (showFirstLaunch) {
             val isUsbPhysical by viewModel.otgManager.physicalConnected.collectAsState()
@@ -757,7 +789,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val showLocalFolder by viewModel.otgManager.showLocalFolderDialog.collectAsState()
+                val showLocalFolder by viewModel.otgManager.showLocalFolderDialog.collectAsState()
         val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
         if (showLocalFolder) {
             LocalFolderDialog(
@@ -766,6 +798,19 @@ fun GalleryScreenContent(
                     onSelectDeviceDirectory()
                 },
                 onDismiss = { viewModel.otgManager.dismissLocalFolderDialog() }
+            )
+        }
+
+        val showArchiveFolderAccess by viewModel.showArchiveFolderAccessDialog.collectAsState()
+        val archiveFolderPath by viewModel.archiveAccessFolderPath.collectAsState()
+        if (showArchiveFolderAccess && archiveFolderPath != null) {
+            ArchiveFolderAccessDialog(
+                folderPath = archiveFolderPath!!,
+                onSelectFolder = {
+                    viewModel.confirmArchiveFolderAccess()
+                    onSelectDeviceDirectory()
+                },
+                onDismiss = { viewModel.dismissArchiveFolderAccessDialog() }
             )
         }
 

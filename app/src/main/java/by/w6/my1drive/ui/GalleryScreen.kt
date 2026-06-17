@@ -145,7 +145,8 @@ fun GalleryScreen(
             onSetShowOtgGuide = { showOtgGuideDialog = it },
             previewCacheManager = previewCache,
             archiveState = archiveState,
-            restoreState = restoreState
+            restoreState = restoreState,
+            onSyncArchive = { viewModel.syncArchive() }
         )
     }
 }

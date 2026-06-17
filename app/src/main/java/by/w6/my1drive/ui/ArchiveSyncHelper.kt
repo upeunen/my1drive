@@ -55,12 +55,41 @@ class ArchiveSyncHelper(
     private val _autoSyncAddedCount = MutableStateFlow(0)
         val autoSyncAddedCount: StateFlow<Int> = _autoSyncAddedCount.asStateFlow()
 
+    private val _archivingItemIds = MutableStateFlow<Set<String>>(emptySet())
+    val archivingItemIds: StateFlow<Set<String>> = _archivingItemIds.asStateFlow()
+
     var isSilentSyncing = false
 
     private val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
     private val PREF_MISSING_FILES_HASH = "missing_files_hash"
 
     // ─── Silent auto-sync ───
+
+    /**
+     * Silent auto-sync:
+     * 1. Копирует все записи из JSON (источник истины на OTG) в Room на устройстве.
+     * 2. Сканирует файлы на флешке, добавляет в JSON и Room те, что ещё не учтены.
+     *
+     * Это гарантирует, что после createNewArchive / переустановки приложения
+     * все ранее заархивированные файлы появятся в интерфейсе.
+     */
+    private var actionCount = 0
+
+    fun incrementActionCount() {
+        actionCount++
+        DebugLogBuffer.log("ArchiveSyncHelper", "Incremented actionCount to $actionCount")
+        if (actionCount == 1 || actionCount % 10 == 1) {
+            val savedUriString = prefs.getString("otg_directory_uri", null)
+            if (savedUriString != null) {
+                try {
+                    val uri = Uri.parse(savedUriString)
+                    silentSyncArchive(uri)
+                } catch (e: Exception) {
+                    DebugLogBuffer.log("ArchiveSyncHelper", "Failed to parse saved OTG URI for periodic sync: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
 
     /**
      * Silent auto-sync:
@@ -82,35 +111,97 @@ class ArchiveSyncHelper(
 
                         // ── Шаг 1: Чтение JSON метаданных ──
                         val jsonEntries = metadataStore.readMetadata(uri)
+                        if (jsonEntries == null) {
+                            DebugLogBuffer.log(logTag, "Metadata file exists but failed to read/parse. Skipping Room sync to prevent data loss.")
+                            return@withLock
+                        }
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
                         val metadataExists = metadataStore.metadataExists(uri)
-                        if (jsonEntries.isEmpty() && !metadataExists) {
-                            DebugLogBuffer.log(logTag, "No metadata file found on OTG. Skipping Room database sync to preserve cache.")
+                        val dir = DocumentFile.fromTreeUri(application, uri)
+                        val physicalFiles = if (dir != null && dir.exists()) {
+                            dir.listFiles().filter {
+                                !it.isDirectory && it.name != null &&
+                                it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
+                            }
+                        } else emptyList()
+
+                        DebugLogBuffer.log(logTag, "Metadata exists: $metadataExists. Physical files found: ${physicalFiles.size}")
+
+                        if (jsonEntries.isEmpty() && !metadataExists && physicalFiles.isEmpty()) {
+                            DebugLogBuffer.log(logTag, "No metadata file and no physical files found on OTG. Skipping Room database sync to preserve cache.")
                             return@withLock
                         }
 
+                        // ── Шаг 1.5: Сканирование физической папки на флешке ──
+                        val validJsonEntries = jsonEntries.toMutableList()
+                        var jsonChanged = false
+
+                        if (dir != null && dir.exists()) {
+                            val files = physicalFiles
+
+                            val knownNamesMap = jsonEntries.associateBy { it.displayName.lowercase() }
+                            val knownHashes = jsonEntries.map { it.hash }.toHashSet()
+
+                            for (file in files) {
+                                val name = file.name ?: continue
+                                val entry = knownNamesMap[name.lowercase()]
+                                if (entry != null) {
+                                    continue
+                                }
+
+                                DebugLogBuffer.log(logTag, "Scanning detected new physical file: $name. Calculating SHA-256...")
+                                val hash = try {
+                                    archiveUtil.calculateSha256(file.uri)
+                                } catch (e: Exception) {
+                                    DebugLogBuffer.log(logTag, "Failed to read/hash $name: ${e.message}")
+                                    continue
+                                }
+
+                                if (hash !in knownHashes) {
+                                    val mime = file.type ?: "image/jpeg"
+                                    val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
+                                    val newEntry = JsonEntry(
+                                        hash = hash,
+                                        displayName = name,
+                                        mimeType = mime,
+                                        size = file.length(),
+                                        dateModified = file.lastModified() / 1000,
+                                        originalRelativePath = defaultPath,
+                                        duration = null,
+                                        dateArchived = System.currentTimeMillis() / 1000
+                                    )
+                                    validJsonEntries.add(newEntry)
+                                    knownHashes.add(hash)
+                                    jsonChanged = true
+                                    DebugLogBuffer.log(logTag, "Scanned and added new file to metadata: $name (hash=$hash)")
+                                }
+                            }
+
+
+                            if (jsonChanged) {
+                                metadataStore.writeMetadata(uri, validJsonEntries)
+                                DebugLogBuffer.log(logTag, "Saved updated metadata JSON with new scanned files")
+                            }
+                        }
+
                         // ── Шаг 2: Синхронизация Room с JSON данными ──
-                        val finalHashes = jsonEntries.map { it.hash }.toSet()
+                        val finalHashes = validJsonEntries.map { it.hash }.toSet()
                         var roomModified = false
                         var insertedToRoom = 0
 
-                        val treeDocId = try {
-                            DocumentsContract.getTreeDocumentId(uri)
-                        } catch (e: Exception) {
-                            DebugLogBuffer.log(logTag, "Failed to get tree document ID: ${e.localizedMessage}")
-                            ""
+                        // Map physical files by (lowercase name, size) to their actual DocumentFile URIs.
+                        // This avoids retrieving treeDocumentId (which throws exceptions for subfolders)
+                        // and ensures that even manually scanned files resolve to valid content URIs.
+                        val physicalUrisMap = physicalFiles.associate { 
+                            ((it.name ?: "").lowercase() to it.length()) to it.uri.toString() 
                         }
 
-                        for (entry in jsonEntries) {
+                        for (entry in validJsonEntries) {
                             val existing = db.mediaDao().getById(entry.hash)
                             if (existing == null) {
-                                val otgFileUri = if (treeDocId.isNotEmpty()) {
-                                    val childDocId = if (treeDocId.endsWith("/")) "$treeDocId${entry.displayName}" else "$treeDocId/${entry.displayName}"
-                                    DocumentsContract.buildDocumentUriUsingTree(uri, childDocId).toString()
-                                } else {
-                                    ""
-                                }
+                                val key = (entry.displayName.lowercase()) to entry.size
+                                val otgFileUri = physicalUrisMap[key] ?: ""
 
                                 db.mediaDao().insert(MediaEntity(
                                     id = entry.hash,
@@ -127,13 +218,21 @@ class ArchiveSyncHelper(
                                 insertedToRoom++
                                 roomModified = true
                             } else {
-                                // Если запись есть, но её имя или метаданные изменились в JSON, обновим их, сохраняя старый otgUri и thumbnailPath
-                                if (existing.displayName != entry.displayName || existing.size != entry.size || existing.dateModified != entry.dateModified) {
+                                // Resolve the otgUri directly from the physical file scan to heal any invalid database entries.
+                                val key = (entry.displayName.lowercase()) to entry.size
+                                val resolvedUri = physicalUrisMap[key] ?: existing.otgUri ?: ""
+
+                                if (existing.displayName != entry.displayName || 
+                                    existing.size != entry.size || 
+                                    existing.dateModified != entry.dateModified ||
+                                    existing.otgUri != resolvedUri
+                                ) {
                                     db.mediaDao().insert(existing.copy(
                                         displayName = entry.displayName,
                                         mimeType = entry.mimeType,
                                         size = entry.size,
                                         dateModified = entry.dateModified,
+                                        otgUri = resolvedUri,
                                         duration = entry.duration,
                                         originalRelativePath = entry.originalRelativePath,
                                         dateArchived = entry.dateArchived
@@ -226,7 +325,7 @@ class ArchiveSyncHelper(
                     // Source of truth: JSON metadata on the OTG drive
                     val jsonEntries = withContext(Dispatchers.IO) {
                         metadataStore.readMetadata(uri)
-                    }.toMutableList()
+                    }?.toMutableList() ?: mutableListOf()
 
                     val physicalFilesMap = files.associateBy { (it.name?.lowercase() ?: "") to it.length() }
                     var jsonChanged = false
@@ -389,6 +488,7 @@ class ArchiveSyncHelper(
     fun startArchiving(items: List<MediaItem>, targetUri: Uri) {
         DebugLogBuffer.log("ArchiveSyncHelper", "startArchiving: items=${items.size}, targetUri=$targetUri, isArchiveJobRunning=$isArchiveJobRunning")
         if (items.isEmpty()) return
+        _archivingItemIds.value = _archivingItemIds.value + items.map { it.id }
         archiveQueue.add(items to targetUri)
         _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
         if (!isArchiveJobRunning) {
@@ -422,40 +522,45 @@ class ArchiveSyncHelper(
             val skipped = mutableListOf<Pair<MediaItem, String>>()
             val errors = mutableListOf<Pair<MediaItem, String>>()
 
-            for ((index, item) in items.withIndex()) {
-                DebugLogBuffer.log(logTag, "Processing queue item [${index + 1}/${items.size}]: ${item.displayName}")
-                _archiveState.value = _archiveState.value.copy(
-                    currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = ""
-                )
-                var success: ArchivedInfo? = null
-                var itemErr: String? = null
-                var isSkipped = false; var skipReason = ""
+            try {
+                for ((index, item) in items.withIndex()) {
+                    DebugLogBuffer.log(logTag, "Processing queue item [${index + 1}/${items.size}]: ${item.displayName}")
+                    _archiveState.value = _archiveState.value.copy(
+                        currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = ""
+                    )
+                    var success: ArchivedInfo? = null
+                    var itemErr: String? = null
+                    var isSkipped = false; var skipReason = ""
 
-                archiveUtil.copyAndVerifyItem(item, targetUri).collect { result ->
-                    when (result) {
-                        is CopyVerifyResult.Progress -> _archiveState.value = _archiveState.value.copy(
-                            currentStep = result.step,
-                            progressFraction = (index.toFloat() + result.progressFraction) / items.size
-                        )
-                        is CopyVerifyResult.Success -> success = ArchivedInfo(result.item, result.hash, result.otgUri, result.thumbnailPath)
-                        is CopyVerifyResult.Skipped -> { isSkipped = true; skipReason = result.message }
-                        is CopyVerifyResult.Error -> itemErr = result.message
+                    archiveUtil.copyAndVerifyItem(item, targetUri).collect { result ->
+                        when (result) {
+                            is CopyVerifyResult.Progress -> _archiveState.value = _archiveState.value.copy(
+                                currentStep = result.step,
+                                progressFraction = (index.toFloat() + result.progressFraction) / items.size
+                            )
+                            is CopyVerifyResult.Success -> success = ArchivedInfo(result.item, result.hash, result.otgUri, result.thumbnailPath)
+                            is CopyVerifyResult.Skipped -> { isSkipped = true; skipReason = result.message }
+                            is CopyVerifyResult.Error -> itemErr = result.message
+                        }
                     }
+                    when {
+                        success != null -> {
+                            copied.add(success)
+                            DebugLogBuffer.log(logTag, "Item success: ${item.displayName}")
+                        }
+                        isSkipped -> {
+                            skipped.add(item to skipReason)
+                            DebugLogBuffer.log(logTag, "Item skipped: ${item.displayName}. Reason: $skipReason")
+                        }
+                        itemErr != null -> {
+                            errors.add(item to itemErr)
+                            DebugLogBuffer.log(logTag, "Item failed: ${item.displayName}. Error: $itemErr")
+                        }
+                    }
+                    _archivingItemIds.value = _archivingItemIds.value - item.id
                 }
-                when {
-                    success != null -> {
-                        copied.add(success)
-                        DebugLogBuffer.log(logTag, "Item success: ${item.displayName}")
-                    }
-                    isSkipped -> {
-                        skipped.add(item to skipReason)
-                        DebugLogBuffer.log(logTag, "Item skipped: ${item.displayName}. Reason: $skipReason")
-                    }
-                    itemErr != null -> {
-                        errors.add(item to itemErr)
-                        DebugLogBuffer.log(logTag, "Item failed: ${item.displayName}. Error: $itemErr")
-                    }
-                }
+            } finally {
+                _archivingItemIds.value = _archivingItemIds.value - items.map { it.id }.toSet()
             }
 
             val skippedFiles = skipped.map { (item, reason) -> item.displayName to reason }

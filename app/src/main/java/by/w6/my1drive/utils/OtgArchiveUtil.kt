@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.security.MessageDigest
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
+import java.io.File
 
 sealed class CopyVerifyResult {
     data class Progress(val displayName: String, val step: String, val progressFraction: Float) : CopyVerifyResult()
@@ -124,11 +128,18 @@ class OtgArchiveUtil(private val context: Context) {
                 return@flow
             }
 
-            // Thumbnail is NOT generated at archive time.
-            // It will be loaded on-demand by OtgThumbnailFetcher when the user views the file.
+            // Pre-cache thumbnail before original is deleted from device
+            val precachedPath = try {
+                precacheThumbnail(item, srcHash)
+            } catch (ex: Exception) {
+                DebugLogBuffer.log(logTag, "Error in precacheThumbnail: ${ex.localizedMessage}")
+                null
+            }
+            DebugLogBuffer.log(logTag, "Precached thumbnail path: $precachedPath")
+
             success = true
             DebugLogBuffer.log(logTag, "Successfully archived ${item.displayName}")
-            emit(CopyVerifyResult.Success(item, srcHash, destUri.toString(), thumbnailPath = null))
+            emit(CopyVerifyResult.Success(item, srcHash, destUri.toString(), thumbnailPath = precachedPath))
         } catch (e: Exception) {
             DebugLogBuffer.log(logTag, "Error copying ${item.displayName}: ${e.javaClass.name} - ${e.localizedMessage}")
             val sw = java.io.StringWriter()
@@ -424,5 +435,81 @@ class OtgArchiveUtil(private val context: Context) {
             } catch (_: Exception) {}
         }
         return null
+    }
+
+    private fun precacheThumbnail(item: MediaItem, hash: String): String? {
+        val previewDir = File(context.filesDir, "my1drive_previews")
+        if (!previewDir.exists()) {
+            previewDir.mkdirs()
+            try {
+                File(previewDir, ".nomedia").createNewFile()
+            } catch (_: Exception) {}
+        }
+        val cacheFile = File(previewDir, "$hash.my1d")
+        
+        // If already cached, just return the path
+        if (cacheFile.exists() && cacheFile.length() > 0) {
+            return cacheFile.absolutePath
+        }
+
+        val bitmap = try {
+            if (item.mimeType.startsWith("video/")) {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(context, item.uri)
+                    retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } finally {
+                    retriever.release()
+                }
+            } else {
+                val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.contentResolver.openInputStream(item.uri)?.use { input ->
+                    BitmapFactory.decodeStream(input, null, boundsOpts)
+                }
+                val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 256)
+                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+                context.contentResolver.openInputStream(item.uri)?.use { input ->
+                    BitmapFactory.decodeStream(input, null, decodeOpts)
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgArchiveUtil", "Failed to generate thumbnail for precache: ${e.localizedMessage}")
+            null
+        }
+
+        if (bitmap == null) return null
+
+        try {
+            cacheFile.outputStream().buffered().use { out ->
+                val scaled = scaleBitmap(bitmap, 256)
+                scaled.compress(Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                if (scaled !== bitmap) scaled.recycle()
+            }
+            bitmap.recycle()
+            return cacheFile.absolutePath
+        } catch (e: Exception) {
+            cacheFile.delete()
+            bitmap.recycle()
+            DebugLogBuffer.log("OtgArchiveUtil", "Failed to write precached thumbnail: ${e.localizedMessage}")
+            return null
+        }
+    }
+
+    private fun scaleBitmap(src: Bitmap, maxDim: Int): Bitmap {
+        val w = src.width
+        val h = src.height
+        if (w <= maxDim && h <= maxDim) return src
+        val scale = maxDim.toFloat() / maxOf(w, h)
+        return Bitmap.createScaledBitmap(src, (w * scale).toInt(), (h * scale).toInt(), true)
+    }
+
+    private fun calculateSampleSize(width: Int, height: Int, reqSize: Int): Int {
+        var size = 1
+        if (width > reqSize || height > reqSize) {
+            val halfW = width / 2
+            val halfH = height / 2
+            while (halfW / size >= reqSize && halfH / size >= reqSize) size *= 2
+        }
+        return size
     }
 }

@@ -35,6 +35,7 @@ fun PhotosGridTab(
     selectedIds: Set<String>,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
+    archivingItemIds: Set<String> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit
 ) {
@@ -83,11 +84,13 @@ fun PhotosGridTab(
                     is GalleryItem.Header -> DateCategoryHeader(title = item.title)
                     is GalleryItem.Media -> {
                         val isSelected = selectedIds.contains(item.item.id)
+                        val isArchiving = archivingItemIds.contains(item.item.id)
                         GooglePhotosGridItem(
                             item = item.item,
                             isSelected = isSelected,
                             imageLoader = imageLoader,
                             isOtgConnected = isOtgConnected,
+                            isArchiving = isArchiving,
                             onClick = { onItemClick(item.item) },
                             onLongClick = { onItemLongClick(item.item) }
                         )

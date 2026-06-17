@@ -90,8 +90,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 otgManager.setCheckingConnection(false)
             },
             onArchiveSuccess = { items ->
-                _selectedIds.value = emptySet()
                 deleteDeviceItems(items)
+                syncHelper.incrementActionCount()
             }
         )
     }
@@ -176,6 +176,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val isOtgConnected: StateFlow<Boolean> = _isOtgConnected.asStateFlow()
 
     val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
+    val archivingItemIds: StateFlow<Set<String>> = syncHelper.archivingItemIds
     val restoreState = MutableStateFlow(RestoreState())
     val syncState: StateFlow<String?> = syncHelper.syncState
 
@@ -204,6 +205,123 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _showCreateFolderDialog = MutableStateFlow(false)
     val showCreateFolderDialog = _showCreateFolderDialog.asStateFlow()
+
+    private var pendingArchiveTask: Pair<List<MediaItem>, Uri>? = null
+    private val missingFoldersQueue = mutableListOf<String>()
+
+    private fun getLevel1Folder(relativePath: String?): String {
+        if (relativePath.isNullOrEmpty()) return ""
+        val clean = relativePath.trim('/', '\\').replace('\\', '/')
+        return clean.substringBefore('/')
+    }
+
+    private fun hasPermissionForFolder(context: Context, folderName: String): Boolean {
+        if (folderName.isEmpty()) return false
+        val persisted = context.contentResolver.persistedUriPermissions
+        return persisted.any { perm ->
+            if (perm.uri.authority == "com.android.externalstorage.documents") {
+                try {
+                    val docId = DocumentsContract.getTreeDocumentId(perm.uri)
+                    val volumeId = docId.substringBefore(":", "primary")
+                    val path = docId.substringAfter(":", "").trim('/', '\\')
+                    val segments = path.split('/', '\\').filter { it.isNotEmpty() }
+                    if (volumeId.equals("primary", ignoreCase = true)) {
+                        if (segments.isEmpty()) {
+                            true
+                        } else {
+                            segments.first().equals(folderName, ignoreCase = true)
+                        }
+                    } else {
+                        false
+                    }
+                } catch (e: Exception) {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun requestNextFolderPermission() {
+        if (missingFoldersQueue.isNotEmpty()) {
+            val nextFolder = missingFoldersQueue.first()
+            showArchiveFolderAccessDialog(nextFolder)
+        } else {
+            val task = pendingArchiveTask
+            if (task != null) {
+                // Clear selection for these items immediately as archiving starts
+                _selectedIds.value = _selectedIds.value - task.first.map { it.id }.toSet()
+                syncHelper.startArchiving(task.first, task.second)
+                pendingArchiveTask = null
+            }
+        }
+    }
+
+    fun onFolderPermissionGranted(uri: Uri) {
+        if (missingFoldersQueue.isNotEmpty()) {
+            val folder = missingFoldersQueue.removeAt(0)
+            DebugLogBuffer.log("GalleryViewModel", "Permission granted for folder: $folder. Remaining: ${missingFoldersQueue.size}")
+            requestNextFolderPermission()
+        }
+    }
+
+    fun onFolderPermissionCancelled() {
+        missingFoldersQueue.clear()
+        pendingArchiveTask = null
+        _showArchiveFolderAccessDialog.value = false
+        _archiveAccessFolderPath.value = null
+        DebugLogBuffer.log("GalleryViewModel", "Folder permission request cancelled. Aborting archiving task.")
+    }
+
+    private fun findMatchingTreeUriForFile(context: Context, relativePath: String?): Uri? {
+        val folderName = getLevel1Folder(relativePath)
+        if (folderName.isEmpty()) return null
+        val persisted = context.contentResolver.persistedUriPermissions
+        val matchedPerm = persisted.firstOrNull { perm ->
+            if (perm.uri.authority == "com.android.externalstorage.documents") {
+                try {
+                    val docId = DocumentsContract.getTreeDocumentId(perm.uri)
+                    val volumeId = docId.substringBefore(":", "primary")
+                    val path = docId.substringAfter(":", "").trim('/', '\\')
+                    val segments = path.split('/', '\\').filter { it.isNotEmpty() }
+                    if (volumeId.equals("primary", ignoreCase = true)) {
+                        segments.isEmpty() || segments.first().equals(folderName, ignoreCase = true)
+                    } else {
+                        false
+                    }
+                } catch (e: Exception) {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+        return matchedPerm?.uri
+    }
+
+        // ─── Archive folder access dialog ───
+
+        private val _showArchiveFolderAccessDialog = MutableStateFlow(false)
+        val showArchiveFolderAccessDialog: StateFlow<Boolean> = _showArchiveFolderAccessDialog.asStateFlow()
+
+        private val _archiveAccessFolderPath = MutableStateFlow<String?>(null)
+        val archiveAccessFolderPath: StateFlow<String?> = _archiveAccessFolderPath.asStateFlow()
+
+                fun showArchiveFolderAccessDialog(folderPath: String) {
+            _archiveAccessFolderPath.value = folderPath
+            _pendingDeviceFolderToRequest.value = folderPath
+            _showArchiveFolderAccessDialog.value = true
+        }
+
+        fun dismissArchiveFolderAccessDialog() {
+            onFolderPermissionCancelled()
+        }
+
+        fun confirmArchiveFolderAccess() {
+            _showArchiveFolderAccessDialog.value = false
+            // После подтверждения откроется SAF через коллбэк в MainActivity
+        }
 
         // ─── Init ───
 
@@ -270,6 +388,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun setDeviceDirectory(uri: Uri) {
         otgManager.onDeviceUriSelected(uri)
+        onFolderPermissionGranted(uri)
     }
 
     fun dismissUnknownDriveDialog() {
@@ -343,8 +462,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 return
             }
         }
-        syncHelper.startArchiving(selected, targetUri)
-        // Размер архива пересчитается в колбэке onOperationComplete
+
+        val context = getApplication<Application>()
+        val uniqueFolders = selected.map { getLevel1Folder(it.originalRelativePath) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        val missingFolders = uniqueFolders.filter { !hasPermissionForFolder(context, it) }
+
+        if (missingFolders.isNotEmpty()) {
+            pendingArchiveTask = selected to targetUri
+            missingFoldersQueue.clear()
+            missingFoldersQueue.addAll(missingFolders)
+            requestNextFolderPermission()
+        } else {
+            // Clear selection for these items immediately
+            _selectedIds.value = _selectedIds.value - selected.map { it.id }.toSet()
+            syncHelper.startArchiving(selected, targetUri)
+        }
     }
 
     fun archiveSingleItem(item: MediaItem, targetUri: Uri) {
@@ -357,8 +492,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 return
             }
         }
-        syncHelper.startArchiving(listOf(item), targetUri)
-        // Размер архива пересчитается в колбэке onOperationComplete
+
+        val context = getApplication<Application>()
+        val folder = getLevel1Folder(item.originalRelativePath)
+        if (folder.isNotEmpty() && !hasPermissionForFolder(context, folder)) {
+            pendingArchiveTask = listOf(item) to targetUri
+            missingFoldersQueue.clear()
+            missingFoldersQueue.add(folder)
+            requestNextFolderPermission()
+        } else {
+            // Clear selection for this item immediately
+            _selectedIds.value = _selectedIds.value - item.id
+            syncHelper.startArchiving(listOf(item), targetUri)
+        }
     }
     fun restoreSingleItem(item: MediaItem) {
         startRestoring(listOf(item), null)
@@ -391,6 +537,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _selectedIds.value = emptySet()
         deleteDeviceItems(items.filter { it.status == MediaStatus.ON_DEVICE })
         deleteArchivedItems(items.filter { it.status == MediaStatus.ARCHIVED_OTG })
+        syncHelper.incrementActionCount()
     }
 
     fun dismissDelete() { _pendingDelete.value = null }
@@ -482,45 +629,42 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private fun deleteDeviceItems(items: List<MediaItem>) {
         if (items.isEmpty()) return
         val context = getApplication<Application>()
-        val deviceUri = _deviceDirectoryUri.value
-
-        if (deviceUri != null) {
-            val remainingItems = mutableListOf<MediaItem>()
-            var anyDeleted = false
-            for (item in items) {
-                val doc = findFileInTree(context, deviceUri, item.originalRelativePath, item.displayName)
-                if (doc != null && doc.exists() && doc.delete()) {
-                    anyDeleted = true
-                    // Scan the file path so MediaStore removes it
-                    val externalDir = android.os.Environment.getExternalStorageDirectory()
-                    val relPath = item.originalRelativePath?.trim('/', '\\') ?: ""
-                    val fileOnDisk = if (relPath.isNotEmpty()) {
-                        java.io.File(externalDir, "$relPath/${item.displayName}")
-                    } else {
-                        java.io.File(externalDir, item.displayName)
-                    }
-                    android.media.MediaScannerConnection.scanFile(
-                        context,
-                        arrayOf(fileOnDisk.absolutePath),
-                        arrayOf(item.mimeType)
-                    ) { _, _ ->
-                        viewModelScope.launch {
-                            repository.refresh()
-                        }
-                    }
+        val remainingItems = mutableListOf<MediaItem>()
+        var anyDeleted = false
+        for (item in items) {
+            val treeUri = findMatchingTreeUriForFile(context, item.originalRelativePath)
+            val doc = if (treeUri != null) {
+                findFileInTree(context, treeUri, item.originalRelativePath, item.displayName)
+            } else null
+            if (doc != null && doc.exists() && doc.delete()) {
+                anyDeleted = true
+                // Scan the file path so MediaStore removes it
+                val externalDir = android.os.Environment.getExternalStorageDirectory()
+                val relPath = item.originalRelativePath?.trim('/', '\\') ?: ""
+                val fileOnDisk = if (relPath.isNotEmpty()) {
+                    java.io.File(externalDir, "$relPath/${item.displayName}")
                 } else {
-                    remainingItems.add(item)
+                    java.io.File(externalDir, item.displayName)
                 }
+                android.media.MediaScannerConnection.scanFile(
+                    context,
+                    arrayOf(fileOnDisk.absolutePath),
+                    arrayOf(item.mimeType)
+                ) { _, _ ->
+                    viewModelScope.launch {
+                        repository.refresh()
+                    }
+                }
+            } else {
+                remainingItems.add(item)
             }
-            if (anyDeleted && remainingItems.isEmpty()) {
-                // All items were deleted via SAF
-                return
-            }
-            if (remainingItems.isNotEmpty()) {
-                fallbackDeleteDeviceItems(remainingItems)
-            }
-        } else {
-            fallbackDeleteDeviceItems(items)
+        }
+        if (anyDeleted && remainingItems.isEmpty()) {
+            // All items were deleted via SAF
+            return
+        }
+        if (remainingItems.isNotEmpty()) {
+            fallbackDeleteDeviceItems(remainingItems)
         }
     }
 
@@ -656,6 +800,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")
             restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = finalError)
             otgManager.updateArchiveSize()
+            syncHelper.incrementActionCount()
         }
     }
 
@@ -671,6 +816,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             deleteArchivedItems(listOf(item))
         }
+        syncHelper.incrementActionCount()
     }
 
     // ─── Create folder ───

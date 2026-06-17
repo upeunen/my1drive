@@ -163,7 +163,10 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Папка устройства успешно выбрана!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(this, "Ошибка доступа к папке: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                viewModel.onFolderPermissionCancelled()
             }
+        } else {
+            viewModel.onFolderPermissionCancelled()
         }
     }
 

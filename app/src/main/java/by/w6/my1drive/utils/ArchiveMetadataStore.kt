@@ -70,21 +70,21 @@ class ArchiveMetadataStore(private val context: Context) {
 
     /**
      * Read all entries from the metadata file on the OTG drive.
-     * Returns empty list if file doesn't exist or is corrupt.
+     * Returns empty list if file doesn't exist, and null if it fails to read/parse.
      */
-    suspend fun readMetadata(otgUri: Uri): List<JsonEntry> = withContext(Dispatchers.IO) {
+    suspend fun readMetadata(otgUri: Uri): List<JsonEntry>? = withContext(Dispatchers.IO) {
         try {
-            val dir = DocumentFile.fromTreeUri(context, otgUri) ?: return@withContext emptyList()
+            val dir = DocumentFile.fromTreeUri(context, otgUri) ?: return@withContext null
             val file = dir.findFile(METADATA_FILE_NAME) ?: return@withContext emptyList()
 
-            val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext emptyList()
+            val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext null
             val jsonString = inputStream.bufferedReader().use { it.readText() }
 
             val root = JSONObject(jsonString)
             val version = root.optInt("version", 0)
-            if (version != JSON_VERSION) return@withContext emptyList()
+            if (version != JSON_VERSION) return@withContext null
 
-            val filesArray = root.optJSONArray("files") ?: return@withContext emptyList()
+            val filesArray = root.optJSONArray("files") ?: return@withContext null
             val entries = mutableListOf<JsonEntry>()
             for (i in 0 until filesArray.length()) {
                 val entry = JsonEntry.fromJson(filesArray.getJSONObject(i))
@@ -92,7 +92,7 @@ class ArchiveMetadataStore(private val context: Context) {
             }
             entries
         } catch (e: Exception) {
-            emptyList()
+            null
         }
     }
 
@@ -131,7 +131,7 @@ class ArchiveMetadataStore(private val context: Context) {
      */
     suspend fun addEntry(otgUri: Uri, entry: JsonEntry) = withContext(Dispatchers.IO) {
         try {
-            val entries = readMetadata(otgUri).toMutableList()
+            val entries = readMetadata(otgUri)?.toMutableList() ?: mutableListOf()
             // Replace if exists, else add
             val existingIndex = entries.indexOfFirst { it.hash == entry.hash }
             if (existingIndex >= 0) {
@@ -148,7 +148,7 @@ class ArchiveMetadataStore(private val context: Context) {
      */
     suspend fun addEntries(otgUri: Uri, newEntries: List<JsonEntry>) = withContext(Dispatchers.IO) {
         try {
-            val entries = readMetadata(otgUri).toMutableList()
+            val entries = readMetadata(otgUri)?.toMutableList() ?: mutableListOf()
             val existingHashes = entries.map { it.hash }.toHashSet()
             val toAdd = newEntries.filter { it.hash !in existingHashes }
             if (toAdd.isEmpty()) return@withContext
@@ -162,7 +162,7 @@ class ArchiveMetadataStore(private val context: Context) {
      */
     suspend fun removeEntry(otgUri: Uri, hash: String) = withContext(Dispatchers.IO) {
         try {
-            val entries = readMetadata(otgUri).toMutableList()
+            val entries = readMetadata(otgUri)?.toMutableList() ?: mutableListOf()
             if (entries.removeAll { it.hash == hash }) {
                 writeMetadata(otgUri, entries)
             }
