@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.net.Uri
 import android.widget.Toast
@@ -58,6 +58,12 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import java.io.File
 import java.util.Locale
+import android.content.Context
+import android.media.ExifInterface
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun InfoDialog(
@@ -71,6 +77,10 @@ fun InfoDialog(
         String.format(Locale.US, "%.2f MB", item.size.toFloat() / (1024 * 1024))
     }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var exifData by remember { mutableStateOf<Map<String, String>?>(null) }
+    var isLoadingExif by remember { mutableStateOf(false) }
+    var showExifSection by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -260,6 +270,110 @@ fun InfoDialog(
                         fontSize = 10.sp
                     )
                 }
+
+                if (!item.isVideo) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val isOtgOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
+                    
+                    if (showExifSection) {
+                        Text(
+                            text = "Метаданные EXIF",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        
+                        if (isLoadingExif) {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                            )
+                        } else if (exifData != null) {
+                            val data = exifData!!
+                            if (data.isEmpty()) {
+                                Text(
+                                    text = "EXIF-данные отсутствуют в этом файле",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            } else {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        data.forEach { (key, value) ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = key,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = Color.Gray,
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                                Text(
+                                                    text = value,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    textAlign = TextAlign.End,
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        TextButton(
+                            onClick = {
+                                if (isOtgOffline) return@TextButton
+                                if (exifData == null) {
+                                    isLoadingExif = true
+                                    showExifSection = true
+                                    scope.launch {
+                                        val data = withContext(Dispatchers.IO) {
+                                            val uriToRead = if (item.status == MediaStatus.ARCHIVED_OTG) {
+                                                item.otgUri?.let { Uri.parse(it) }
+                                            } else {
+                                                item.uri
+                                            }
+                                            if (uriToRead != null) {
+                                                readExifMetadata(context, uriToRead)
+                                            } else {
+                                                emptyMap()
+                                            }
+                                        }
+                                        exifData = data
+                                        isLoadingExif = false
+                                    }
+                                } else {
+                                    showExifSection = !showExifSection
+                                }
+                            },
+                            enabled = !isOtgOffline
+                        ) {
+                            Text(
+                                text = if (isOtgOffline) "EXIF недоступен (OTG отключен)"
+                                       else if (showExifSection) "Скрыть EXIF"
+                                       else "Показать EXIF"
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -275,4 +389,60 @@ fun InfoDialog(
         }
     )
 
+}
+
+private fun readExifMetadata(context: Context, uri: Uri): Map<String, String> {
+    val metadata = mutableMapOf<String, String>()
+    try {
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val exifInterface = ExifInterface(inputStream)
+            
+            val make = exifInterface.getAttribute(ExifInterface.TAG_MAKE)
+            val model = exifInterface.getAttribute(ExifInterface.TAG_MODEL)
+            if (!model.isNullOrEmpty()) {
+                val fullModel = if (!make.isNullOrEmpty() && !model.startsWith(make)) "$make $model" else model
+                metadata["Камера"] = fullModel.trim()
+            }
+            
+            val dateTime = exifInterface.getAttribute(ExifInterface.TAG_DATETIME)
+            if (!dateTime.isNullOrEmpty()) {
+                metadata["Дата съёмки"] = dateTime
+            }
+            
+            val aperture = exifInterface.getAttribute(ExifInterface.TAG_F_NUMBER)
+            if (!aperture.isNullOrEmpty()) {
+                metadata["Диафрагма"] = "f/$aperture"
+            }
+            
+            val shutterSpeed = exifInterface.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)
+            if (!shutterSpeed.isNullOrEmpty()) {
+                val speed = shutterSpeed.toDoubleOrNull()
+                metadata["Выдержка"] = if (speed != null && speed < 1.0) {
+                    "1/${(1.0 / speed).toInt()}"
+                } else {
+                    "$shutterSpeed с"
+                }
+            }
+            
+            val iso = exifInterface.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)
+            if (!iso.isNullOrEmpty()) {
+                metadata["ISO"] = iso
+            }
+            
+            val focalLength = exifInterface.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)
+            if (!focalLength.isNullOrEmpty()) {
+                val focalDouble = focalLength.substringBefore("/").toDoubleOrNull()
+                metadata["Фокусное расстояние"] = "${focalDouble ?: focalLength} мм"
+            }
+            
+            val width = exifInterface.getAttribute(ExifInterface.TAG_IMAGE_WIDTH)
+            val height = exifInterface.getAttribute(ExifInterface.TAG_IMAGE_LENGTH)
+            if (!width.isNullOrEmpty() && !height.isNullOrEmpty()) {
+                metadata["Разрешение"] = "${width}x${height}"
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return metadata
 }
