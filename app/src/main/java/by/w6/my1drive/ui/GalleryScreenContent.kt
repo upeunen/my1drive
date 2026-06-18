@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -1110,6 +1111,82 @@ fun GalleryScreenContent(
 }
 
 @Composable
+fun SelectionHelperChip(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    shape: Shape,
+    enabled: Boolean = true,
+    isRightAligned: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (enabled) {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+    }
+    val contentColor = if (enabled) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+    }
+    val iconColor = if (enabled) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+    }
+
+    Box(
+        modifier = modifier
+            .height(30.dp)
+            .clip(shape)
+            .background(containerColor)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = if (isRightAligned) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isRightAligned) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(14.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun SelectionHelperPanel(
     firstSelectedItem: MediaItem?,
     visibleItems: List<MediaItem>,
@@ -1146,29 +1223,20 @@ fun SelectionHelperPanel(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Chip 1: Все
-                    AssistChip(
+                    SelectionHelperChip(
+                        text = "Все",
+                        icon = Icons.Outlined.CheckCircleOutline,
                         onClick = {
                             val allIds = visibleItems.map { it.id }
                             onSelectItems(allIds)
                         },
-                        label = { Text("Все", style = MaterialTheme.typography.labelSmall) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.CheckCircleOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        },
                         shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_RIGHT),
-                        modifier = Modifier.weight(1f).height(30.dp),
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            leadingIconContentColor = MaterialTheme.colorScheme.primary
-                        )
+                        modifier = Modifier.weight(1f)
                     )
                     // Chip 2: С этой датой
-                    AssistChip(
+                    SelectionHelperChip(
+                        text = "С датой",
+                        icon = Icons.Outlined.CalendarToday,
                         enabled = hasSelected,
                         onClick = {
                             if (firstSelectedItem != null) {
@@ -1182,22 +1250,9 @@ fun SelectionHelperPanel(
                                 onSelectItems(matching)
                             }
                         },
-                        label = { Text("С датой", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.CalendarToday,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        },
                         shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_LEFT),
-                        modifier = Modifier.weight(1f).height(30.dp),
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
-                            trailingIconContentColor = MaterialTheme.colorScheme.primary
-                        )
+                        isRightAligned = true,
+                        modifier = Modifier.weight(1f)
                     )
                 }
                 Row(
@@ -1205,7 +1260,9 @@ fun SelectionHelperPanel(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Chip 3: В этой папке
-                    AssistChip(
+                    SelectionHelperChip(
+                        text = "В папке",
+                        icon = Icons.Outlined.Folder,
                         enabled = hasFolder,
                         onClick = {
                             if (firstSelectedItem != null) {
@@ -1214,41 +1271,17 @@ fun SelectionHelperPanel(
                                 onSelectItems(matching)
                             }
                         },
-                        label = { Text("В папке", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Folder,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        },
                         shape = ConcaveCutoutShape(CutoutCorner.TOP_RIGHT),
-                        modifier = Modifier.weight(1f).height(30.dp),
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
-                            leadingIconContentColor = MaterialTheme.colorScheme.primary
-                        )
+                        modifier = Modifier.weight(1f)
                     )
                     // Chip 4: Выбрать диапазон
-                    AssistChip(
+                    SelectionHelperChip(
+                        text = "Диапазон",
+                        icon = Icons.Outlined.DateRange,
                         onClick = onSelectDateRangeClick,
-                        label = { Text("Диапазон", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.DateRange,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        },
                         shape = ConcaveCutoutShape(CutoutCorner.TOP_LEFT),
-                        modifier = Modifier.weight(1f).height(30.dp),
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            trailingIconContentColor = MaterialTheme.colorScheme.primary
-                        )
+                        isRightAligned = true,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }

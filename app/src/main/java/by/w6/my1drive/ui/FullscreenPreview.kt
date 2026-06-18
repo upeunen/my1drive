@@ -6,6 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
@@ -403,43 +406,25 @@ private fun ImagePage(
     var zoomOffsetX by remember { mutableStateOf(0f) }
     var zoomOffsetY by remember { mutableStateOf(0f) }
 
+    var dragAmountY by remember { mutableStateOf(0f) }
+    val draggableState = rememberDraggableState { delta ->
+        dragAmountY += delta
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(zoomScale) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val downEvent = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        var totalDragY = 0f
-                        var isVerticalSwipe = false
-                        var isMultiTouch = false
-                        val startY = downEvent.position.y
-                        val startX = downEvent.position.x
-
-                        do {
-                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                            if (event.changes.size > 1) {
-                                isMultiTouch = true
-                            }
-                            val change = event.changes.firstOrNull { it.id == downEvent.id }
-                            if (change != null) {
-                                val currentY = change.position.y
-                                val currentX = change.position.x
-                                val dy = currentY - startY
-                                val dx = currentX - startX
-                                if (abs(dy) > abs(dx) && abs(dy) > 20f) {
-                                    isVerticalSwipe = true
-                                }
-                                totalDragY = dy
-                            }
-                        } while (event.changes.any { it.pressed })
-
-                        if (!isMultiTouch && isVerticalSwipe && totalDragY < -120f && zoomScale == 1f) {
-                            onShowInfo(item)
-                        }
+            .draggable(
+                state = draggableState,
+                orientation = Orientation.Vertical,
+                enabled = (zoomScale == 1f),
+                onDragStarted = { dragAmountY = 0f },
+                onDragStopped = { velocity ->
+                    if (dragAmountY < -150f) {
+                        onShowInfo(item)
                     }
                 }
-            }
+            )
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val firstDown = awaitFirstDown()
@@ -594,43 +579,24 @@ private fun VideoPage(
         onDispose { exoPlayer.release() }
     }
 
+    var dragAmountY by remember { mutableStateOf(0f) }
+    val draggableState = rememberDraggableState { delta ->
+        dragAmountY += delta
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val downEvent = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        var totalDragY = 0f
-                        var isVerticalSwipe = false
-                        var isMultiTouch = false
-                        val startY = downEvent.position.y
-                        val startX = downEvent.position.x
-
-                        do {
-                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                            if (event.changes.size > 1) {
-                                isMultiTouch = true
-                            }
-                            val change = event.changes.firstOrNull { it.id == downEvent.id }
-                            if (change != null) {
-                                val currentY = change.position.y
-                                val currentX = change.position.x
-                                val dy = currentY - startY
-                                val dx = currentX - startX
-                                if (abs(dy) > abs(dx) && abs(dy) > 20f) {
-                                    isVerticalSwipe = true
-                                }
-                                totalDragY = dy
-                            }
-                        } while (event.changes.any { it.pressed })
-
-                        if (!isMultiTouch && isVerticalSwipe && totalDragY < -120f) {
-                            onShowInfo(item)
-                        }
+            .draggable(
+                state = draggableState,
+                orientation = Orientation.Vertical,
+                onDragStarted = { dragAmountY = 0f },
+                onDragStopped = { velocity ->
+                    if (dragAmountY < -150f) {
+                        onShowInfo(item)
                     }
                 }
-            }
+            )
     ) {
         AndroidView(
             factory = { ctx ->
