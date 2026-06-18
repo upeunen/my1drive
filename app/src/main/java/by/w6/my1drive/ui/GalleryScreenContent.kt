@@ -44,6 +44,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +59,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.aspectRatio
@@ -1143,21 +1151,16 @@ fun SelectionHelperPanel(
                             val allIds = visibleItems.map { it.id }
                             onSelectItems(allIds)
                         },
-                        label = { Text("Все", style = MaterialTheme.typography.labelMedium) },
+                        label = { Text("Все", style = MaterialTheme.typography.labelSmall) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.CheckCircleOutline,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         },
-                        shape = RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomStart = 16.dp,
-                            bottomEnd = 28.dp
-                        ),
-                        modifier = Modifier.weight(1f),
+                        shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_RIGHT),
+                        modifier = Modifier.weight(1f).height(30.dp),
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1175,30 +1178,25 @@ fun SelectionHelperPanel(
                                     val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
                                     cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                                             cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
-                                }.map { it.id }
+                                } .map { it.id }
                                 onSelectItems(matching)
                             }
                         },
-                        label = { Text("С датой", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingIcon = {
+                        label = { Text("С датой", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        trailingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.CalendarToday,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         },
-                        shape = RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomStart = 28.dp,
-                            bottomEnd = 16.dp
-                        ),
-                        modifier = Modifier.weight(1f),
+                        shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_LEFT),
+                        modifier = Modifier.weight(1f).height(30.dp),
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
-                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                            trailingIconContentColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -1212,25 +1210,20 @@ fun SelectionHelperPanel(
                         onClick = {
                             if (firstSelectedItem != null) {
                                 val targetPath = firstSelectedItem.originalRelativePath
-                                val matching = visibleItems.filter { it.originalRelativePath == targetPath }.map { it.id }
+                                val matching = visibleItems.filter { it.originalRelativePath == targetPath } .map { it.id }
                                 onSelectItems(matching)
                             }
                         },
-                        label = { Text("В папке", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        label = { Text("В папке", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.Folder,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         },
-                        shape = RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 28.dp,
-                            bottomStart = 16.dp,
-                            bottomEnd = 16.dp
-                        ),
-                        modifier = Modifier.weight(1f),
+                        shape = ConcaveCutoutShape(CutoutCorner.TOP_RIGHT),
+                        modifier = Modifier.weight(1f).height(30.dp),
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1241,25 +1234,20 @@ fun SelectionHelperPanel(
                     // Chip 4: Выбрать диапазон
                     AssistChip(
                         onClick = onSelectDateRangeClick,
-                        label = { Text("Диапазон", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingIcon = {
+                        label = { Text("Диапазон", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        trailingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.DateRange,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         },
-                        shape = RoundedCornerShape(
-                            topStart = 28.dp,
-                            topEnd = 16.dp,
-                            bottomStart = 16.dp,
-                            bottomEnd = 16.dp
-                        ),
-                        modifier = Modifier.weight(1f),
+                        shape = ConcaveCutoutShape(CutoutCorner.TOP_LEFT),
+                        modifier = Modifier.weight(1f).height(30.dp),
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                            trailingIconContentColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -1269,7 +1257,7 @@ fun SelectionHelperPanel(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                     .border(3.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     .clickable { onClearSelection() },
                 contentAlignment = Alignment.Center
@@ -1277,11 +1265,163 @@ fun SelectionHelperPanel(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Снять выделение",
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp)
                 )
             }
         }
+    }
+}
+
+enum class CutoutCorner {
+    TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
+}
+
+class ConcaveCutoutShape(
+    val cutoutCorner: CutoutCorner,
+    val outerRadius: Dp = 12.dp,
+    val cutoutRadius: Dp = 26.dp
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val path = Path()
+        val w = size.width
+        val h = size.height
+        val rOuter = with(density) { outerRadius.toPx() }
+        val rCut = with(density) { cutoutRadius.toPx() }
+
+        when (cutoutCorner) {
+            CutoutCorner.BOTTOM_RIGHT -> {
+                path.moveTo(0f, rOuter)
+                path.arcTo(
+                    rect = Rect(0f, 0f, rOuter * 2, rOuter * 2),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(w - rOuter, 0f)
+                path.arcTo(
+                    rect = Rect(w - rOuter * 2, 0f, w, rOuter * 2),
+                    startAngleDegrees = 270f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(w, h - rCut)
+                path.arcTo(
+                    rect = Rect(w - rCut, h - rCut, w + rCut, h + rCut),
+                    startAngleDegrees = 270f,
+                    sweepAngleDegrees = -90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(rOuter, h)
+                path.arcTo(
+                    rect = Rect(0f, h - rOuter * 2, rOuter * 2, h),
+                    startAngleDegrees = 90f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.close()
+            }
+            CutoutCorner.BOTTOM_LEFT -> {
+                path.moveTo(rOuter, 0f)
+                path.lineTo(w - rOuter, 0f)
+                path.arcTo(
+                    rect = Rect(w - rOuter * 2, 0f, w, rOuter * 2),
+                    startAngleDegrees = 270f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(w, h - rOuter)
+                path.arcTo(
+                    rect = Rect(w - rOuter * 2, h - rOuter * 2, w, h),
+                    startAngleDegrees = 0f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(rCut, h)
+                path.arcTo(
+                    rect = Rect(-rCut, h - rCut, rCut, h + rCut),
+                    startAngleDegrees = 0f,
+                    sweepAngleDegrees = -90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(0f, rOuter)
+                path.arcTo(
+                    rect = Rect(0f, 0f, rOuter * 2, rOuter * 2),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.close()
+            }
+            CutoutCorner.TOP_RIGHT -> {
+                path.moveTo(0f, rOuter)
+                path.arcTo(
+                    rect = Rect(0f, 0f, rOuter * 2, rOuter * 2),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(w - rCut, 0f)
+                path.arcTo(
+                    rect = Rect(w - rCut, -rCut, w + rCut, rCut),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = -90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(w, h - rOuter)
+                path.arcTo(
+                    rect = Rect(w - rOuter * 2, h - rOuter * 2, w, h),
+                    startAngleDegrees = 0f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(rOuter, h)
+                path.arcTo(
+                    rect = Rect(0f, h - rOuter * 2, rOuter * 2, h),
+                    startAngleDegrees = 90f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.close()
+            }
+            CutoutCorner.TOP_LEFT -> {
+                path.moveTo(rCut, 0f)
+                path.lineTo(w - rOuter, 0f)
+                path.arcTo(
+                    rect = Rect(w - rOuter * 2, 0f, w, rOuter * 2),
+                    startAngleDegrees = 270f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(w, h - rOuter)
+                path.arcTo(
+                    rect = Rect(w - rOuter * 2, h - rOuter * 2, w, h),
+                    startAngleDegrees = 0f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(rOuter, h)
+                path.arcTo(
+                    rect = Rect(0f, h - rOuter * 2, rOuter * 2, h),
+                    startAngleDegrees = 90f,
+                    sweepAngleDegrees = 90f,
+                    forceMoveTo = false
+                )
+                path.lineTo(0f, rCut)
+                path.arcTo(
+                    rect = Rect(-rCut, -rCut, rCut, rCut),
+                    startAngleDegrees = 90f,
+                    sweepAngleDegrees = -90f,
+                    forceMoveTo = false
+                )
+                path.close()
+            }
+        }
+        return Outline.Generic(path)
     }
 }
 
