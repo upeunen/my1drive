@@ -30,6 +30,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +69,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InfoDialog(
     item: MediaItem,
@@ -82,10 +87,26 @@ fun InfoDialog(
     var isLoadingExif by remember { mutableStateOf(false) }
     var showExifSection by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Info,
                     contentDescription = null,
@@ -93,255 +114,224 @@ fun InfoDialog(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.file_info_title), fontWeight = FontWeight.Bold)
+                Text(
+                    text = stringResource(R.string.file_info_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
-        },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
-                // ── Preview thumbnail ──
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 200.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF1A1A2A))
-                        .then(
-                            if (item.status == MediaStatus.ON_DEVICE || item.status == MediaStatus.ARCHIVED_OTG)
-                                Modifier.pointerInput(Unit) {
-                                    awaitPointerEventScope {
+
+            // ── Preview thumbnail ──
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF1A1A2A))
+                    .then(
+                        if (item.status == MediaStatus.ON_DEVICE || item.status == MediaStatus.ARCHIVED_OTG)
+                            Modifier.pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                                         while (true) {
-                                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                            while (true) {
-                                                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                                val change = event.changes.firstOrNull { it.id == down.id }
-                                                if (change == null || !change.pressed) {
-                                                    onOpenFullscreen()
-                                                    break
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            else Modifier
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (item.isVideo) {
-                        // For videos, show thumbnail with play overlay
-                        val videoThumbUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.thumbnailPath != null) {
-                            Uri.fromFile(File(item.thumbnailPath))
-                        } else {
-                            item.uri
-                        }
-                        AsyncImage(
-                            model = videoThumbUri,
-                            imageLoader = imageLoader,
-                            contentDescription = item.displayName,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                        )
-                        Icon(
-                            imageVector = Icons.Default.PlayCircle,
-                            contentDescription = "Video",
-                            tint = Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.size(48.dp)
-                        )
-                    } else {
-                        val imageModel: Any = if (item.status == MediaStatus.ARCHIVED_OTG && item.hash != null) {
-                            OtgThumbnailRequest(
-                                otgUri = item.otgUri ?: "",
-                                hash = item.hash,
-                                mimeType = item.mimeType,
-                                isConnected = isOtgConnected,
-                                existingCachePath = item.thumbnailPath
-                            )
-                        } else {
-                            item.uri
-                        }
-                        AsyncImage(
-                            model = imageModel,
-                            imageLoader = imageLoader,
-                            contentDescription = item.displayName,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // ── Location status chip ──
-                val (locationText, locationColor) = when {
-                    item.status == MediaStatus.ON_DEVICE -> Pair(
-                        stringResource(R.string.info_location_device),
-                        Color(0xFF4CAF50)
-                    )
-                    isOtgConnected -> Pair(
-                        stringResource(R.string.info_location_otg),
-                        MaterialTheme.colorScheme.primary
-                    )
-                    else -> Pair(
-                        stringResource(R.string.info_location_otg_disconnected),
-                        Color(0xFFFF9800)
-                    )
-                }
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = locationColor.copy(alpha = 0.12f)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = locationText,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        color = locationColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // ── File details ──
-                InfoRow(label = stringResource(R.string.info_name, ""), value = item.displayName)
-                InfoRow(label = stringResource(R.string.info_type, ""), value = item.mimeType)
-                InfoRow(label = stringResource(R.string.info_size, ""), value = sizeMb)
-
-                item.originalRelativePath?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    InfoRow(label = stringResource(R.string.info_original_folder), value = it)
-                }
-
-                // ── Path to original (OTG URI) ──
-                item.otgUri?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.info_otg_path),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // ── Preview cache path ──
-                item.thumbnailPath?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.info_preview_path),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // ── SHA-256 ──
-                item.hash?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = stringResource(R.string.info_sha256), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp
-                    )
-                }
-
-                if (!item.isVideo) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    val isOtgOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
-                    
-                    if (showExifSection) {
-                        Text(
-                            text = "Метаданные EXIF",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                        
-                        if (isLoadingExif) {
-                            androidx.compose.material3.LinearProgressIndicator(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                            )
-                        } else if (exifData != null) {
-                            val data = exifData!!
-                            if (data.isEmpty()) {
-                                Text(
-                                    text = "EXIF-данные отсутствуют в этом файле",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            } else {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        data.forEach { (key, value) ->
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text(
-                                                    text = key,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = Color.Gray,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                Text(
-                                                    text = value,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    textAlign = TextAlign.End,
-                                                    modifier = Modifier.weight(1f)
-                                                )
+                                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                            val change = event.changes.firstOrNull { it.id == down.id }
+                                            if (change == null || !change.pressed) {
+                                                onOpenFullscreen()
+                                                break
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (item.isVideo) {
+                    val videoThumbUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.thumbnailPath != null) {
+                        Uri.fromFile(File(item.thumbnailPath))
+                    } else {
+                        item.uri
                     }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        TextButton(
+                    AsyncImage(
+                        model = videoThumbUri,
+                        imageLoader = imageLoader,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.PlayCircle,
+                        contentDescription = "Video",
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else {
+                    val imageModel: Any = if (item.status == MediaStatus.ARCHIVED_OTG && item.hash != null) {
+                        OtgThumbnailRequest(
+                            otgUri = item.otgUri ?: "",
+                            hash = item.hash,
+                            mimeType = item.mimeType,
+                            isConnected = isOtgConnected,
+                            existingCachePath = item.thumbnailPath
+                        )
+                    } else {
+                        item.uri
+                    }
+                    AsyncImage(
+                        model = imageModel,
+                        imageLoader = imageLoader,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Location status chip ──
+            val (locationText, locationColor) = when {
+                item.status == MediaStatus.ON_DEVICE -> Pair(
+                    stringResource(R.string.info_location_device),
+                    Color(0xFF4CAF50)
+                )
+                isOtgConnected -> Pair(
+                    stringResource(R.string.info_location_otg),
+                    MaterialTheme.colorScheme.primary
+                )
+                else -> Pair(
+                    stringResource(R.string.info_location_otg_disconnected),
+                    Color(0xFFFF9800)
+                )
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = locationColor.copy(alpha = 0.12f)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = locationText,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = locationColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── File details ──
+            InfoRow(label = stringResource(R.string.info_name, ""), value = item.displayName)
+            InfoRow(label = stringResource(R.string.info_type, ""), value = item.mimeType)
+            InfoRow(label = stringResource(R.string.info_size, ""), value = sizeMb)
+
+            item.originalRelativePath?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                InfoRow(label = stringResource(R.string.info_original_folder), value = it)
+            }
+
+            // ── Path to original (OTG URI) ──
+            item.otgUri?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.info_otg_path),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // ── Preview cache path ──
+            item.thumbnailPath?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.info_preview_path),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // EXIF section
+            val isOtgOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    if (showExifSection && exifData != null) {
+                        Text(
+                            text = "Данные EXIF",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        val dataMap = exifData!!
+                        if (dataMap.isEmpty()) {
+                            Text(
+                                text = "EXIF теги отсутствуют или файл не содержит метаданных",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        } else {
+                            dataMap.forEach { (key, value) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = key,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        text = value,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.weight(1f).padding(start = 16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Button(
                             onClick = {
-                                if (isOtgOffline) return@TextButton
-                                if (exifData == null) {
+                                if (exifData == null && !isLoadingExif) {
                                     isLoadingExif = true
                                     showExifSection = true
                                     scope.launch {
@@ -364,7 +354,8 @@ fun InfoDialog(
                                     showExifSection = !showExifSection
                                 }
                             },
-                            enabled = !isOtgOffline
+                            enabled = !isOtgOffline,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = if (isOtgOffline) "EXIF недоступен (OTG отключен)"
@@ -375,32 +366,35 @@ fun InfoDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
-            if (canOpen) {
-                Button(onClick = {
-                    onOpenFullscreen()
-                    onDismiss()
-                }) {
-                    Text("Открыть")
-                }
-            } else {
-                Button(onClick = onDismiss) {
-                    Text(stringResource(R.string.btn_close))
-                }
-            }
-        },
-        dismissButton = {
-            val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
-            if (canOpen) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.btn_close))
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
+                if (canOpen) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.btn_close))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        onOpenFullscreen()
+                        onDismiss()
+                    }) {
+                        Text("Открыть")
+                    }
+                } else {
+                    Button(onClick = onDismiss) {
+                        Text(stringResource(R.string.btn_close))
+                    }
                 }
             }
         }
-    )
-
+    }
 }
 
 private fun readExifMetadata(context: Context, uri: Uri): Map<String, String> {

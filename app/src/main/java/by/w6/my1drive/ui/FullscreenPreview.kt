@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.input.pointer.PointerEventPass
 import android.content.Context
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -191,7 +192,12 @@ fun FullscreenPreview(
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     val item = previewItems.getOrNull(page) ?: return@HorizontalPager
-                    PagerPage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected)
+                    PagerPage(
+                        item = item,
+                        imageLoader = imageLoader,
+                        isOtgConnected = isOtgConnected,
+                        onShowInfo = onShowInfo
+                    )
                 }
             }
 
@@ -361,16 +367,26 @@ fun FullscreenPreview(
 }
 
 @Composable
-private fun PagerPage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected: Boolean) {
+private fun PagerPage(
+    item: MediaItem,
+    imageLoader: ImageLoader,
+    isOtgConnected: Boolean,
+    onShowInfo: (MediaItem) -> Unit
+) {
     if (item.isVideo) {
-        VideoPage(item = item, isOtgConnected = isOtgConnected)
+        VideoPage(item = item, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo)
     } else {
-        ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected)
+        ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo)
     }
 }
 
 @Composable
-private fun ImagePage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected: Boolean) {
+private fun ImagePage(
+    item: MediaItem,
+    imageLoader: ImageLoader,
+    isOtgConnected: Boolean,
+    onShowInfo: (MediaItem) -> Unit
+) {
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (isOtgConnected && item.otgUri != null) {
             Uri.parse(item.otgUri)
@@ -390,6 +406,40 @@ private fun ImagePage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected:
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(zoomScale) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val downEvent = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        var totalDragY = 0f
+                        var isVerticalSwipe = false
+                        var isMultiTouch = false
+                        val startY = downEvent.position.y
+                        val startX = downEvent.position.x
+
+                        do {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            if (event.changes.size > 1) {
+                                isMultiTouch = true
+                            }
+                            val change = event.changes.firstOrNull { it.id == downEvent.id }
+                            if (change != null) {
+                                val currentY = change.position.y
+                                val currentX = change.position.x
+                                val dy = currentY - startY
+                                val dx = currentX - startX
+                                if (abs(dy) > abs(dx) && abs(dy) > 20f) {
+                                    isVerticalSwipe = true
+                                }
+                                totalDragY = dy
+                            }
+                        } while (event.changes.any { it.pressed })
+
+                        if (!isMultiTouch && isVerticalSwipe && totalDragY < -120f && zoomScale == 1f) {
+                            onShowInfo(item)
+                        }
+                    }
+                }
+            }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val firstDown = awaitFirstDown()
@@ -492,7 +542,11 @@ private fun ImagePage(item: MediaItem, imageLoader: ImageLoader, isOtgConnected:
 
 @UnstableApi
 @Composable
-private fun VideoPage(item: MediaItem, isOtgConnected: Boolean) {
+private fun VideoPage(
+    item: MediaItem,
+    isOtgConnected: Boolean,
+    onShowInfo: (MediaItem) -> Unit
+) {
     val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     if (isOffline) {
         Box(
@@ -540,22 +594,61 @@ private fun VideoPage(item: MediaItem, isOtgConnected: Boolean) {
         onDispose { exoPlayer.release() }
     }
 
-    AndroidView(
-        factory = { ctx ->
-            TouchInterceptingFrameLayout(ctx).apply {
-                val playerView = PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = true
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val downEvent = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        var totalDragY = 0f
+                        var isVerticalSwipe = false
+                        var isMultiTouch = false
+                        val startY = downEvent.position.y
+                        val startX = downEvent.position.x
+
+                        do {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            if (event.changes.size > 1) {
+                                isMultiTouch = true
+                            }
+                            val change = event.changes.firstOrNull { it.id == downEvent.id }
+                            if (change != null) {
+                                val currentY = change.position.y
+                                val currentX = change.position.x
+                                val dy = currentY - startY
+                                val dx = currentX - startX
+                                if (abs(dy) > abs(dx) && abs(dy) > 20f) {
+                                    isVerticalSwipe = true
+                                }
+                                totalDragY = dy
+                            }
+                        } while (event.changes.any { it.pressed })
+
+                        if (!isMultiTouch && isVerticalSwipe && totalDragY < -120f) {
+                            onShowInfo(item)
+                        }
+                    }
                 }
-                playerView.layoutParams = FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                )
-                addView(playerView)
             }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                TouchInterceptingFrameLayout(ctx).apply {
+                    val playerView = PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = true
+                    }
+                    playerView.layoutParams = FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                    addView(playerView)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
 
 private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(context) {
