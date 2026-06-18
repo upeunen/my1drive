@@ -278,6 +278,10 @@ fun ArchiveRoute(
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
     val restoringItemIds by viewModel.restoringItemIds.collectAsState()
     val copiedItemIds by viewModel.copiedItemIds.collectAsState()
+    val isSilentSyncing by viewModel.isSilentSyncingFlow.collectAsState()
+    val archiveState by viewModel.archiveState.collectAsState()
+    val restoreState by viewModel.restoreState.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -352,61 +356,83 @@ fun ArchiveRoute(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        val currentSyncState = syncState
+        val isManualSyncing = currentSyncState != null &&
+                !currentSyncState.contains("Синхронизация завершена") &&
+                !currentSyncState.contains("Ошибка синхронизации")
+        val isOperationRunning = isSilentSyncing || archiveState.isArchiving || restoreState.isRestoring || isManualSyncing
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Сортировка: ",
-                style = MaterialTheme.typography.bodySmall,
-                color = onSurfaceVariantColor
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Row(
-                modifier = Modifier
-                    .background(
-                        color = surfaceVariantColor,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(2.dp)
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
             ) {
-                val buttonModifier = { active: Boolean, targetMode: ArchiveSortMode ->
-                    Modifier
+                if (isOperationRunning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Сортировка: ",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onSurfaceVariantColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier
                         .background(
-                            color = if (active) primaryColor else transparentColor,
-                            shape = RoundedCornerShape(14.dp)
+                            color = surfaceVariantColor,
+                            shape = RoundedCornerShape(16.dp)
                         )
-                        .clickable {
-                            viewModel.setArchiveSortMode(targetMode)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                }
-
-                Box(
-                    modifier = buttonModifier(sortMode == ArchiveSortMode.BY_PHOTO_DATE, ArchiveSortMode.BY_PHOTO_DATE),
-                    contentAlignment = Alignment.Center
+                        .padding(2.dp)
                 ) {
-                    Text(
-                        text = "Дата фото",
-                        color = if (sortMode == ArchiveSortMode.BY_PHOTO_DATE) onPrimaryColor else onSurfaceVariantColor,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    val buttonModifier = { active: Boolean, targetMode: ArchiveSortMode ->
+                        Modifier
+                            .background(
+                                color = if (active) primaryColor else transparentColor,
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .clickable {
+                                viewModel.setArchiveSortMode(targetMode)
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    }
 
-                Box(
-                    modifier = buttonModifier(sortMode == ArchiveSortMode.BY_ARCHIVE_DATE, ArchiveSortMode.BY_ARCHIVE_DATE),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Дата архивации",
-                        color = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) onPrimaryColor else onSurfaceVariantColor,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Box(
+                        modifier = buttonModifier(sortMode == ArchiveSortMode.BY_PHOTO_DATE, ArchiveSortMode.BY_PHOTO_DATE),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Дата фото",
+                            color = if (sortMode == ArchiveSortMode.BY_PHOTO_DATE) onPrimaryColor else onSurfaceVariantColor,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = buttonModifier(sortMode == ArchiveSortMode.BY_ARCHIVE_DATE, ArchiveSortMode.BY_ARCHIVE_DATE),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Дата архивации",
+                            color = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) onPrimaryColor else onSurfaceVariantColor,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

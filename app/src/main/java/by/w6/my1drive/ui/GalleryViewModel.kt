@@ -254,6 +254,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private var pendingRestoreItems: List<MediaItem> = emptyList()
     var isSilentSyncing get() = syncHelper.isSilentSyncing; set(v) { syncHelper.isSilentSyncing = v }
+    val isSilentSyncingFlow: StateFlow<Boolean> = syncHelper.isSilentSyncingFlow
 
     private val _cacheStats = MutableStateFlow(Pair(0L, 0))
     val cacheStats = _cacheStats.asStateFlow()

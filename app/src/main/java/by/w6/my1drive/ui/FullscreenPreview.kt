@@ -62,8 +62,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -405,6 +408,7 @@ private fun ImagePage(
     var zoomScale by remember { mutableStateOf(1f) }
     var zoomOffsetX by remember { mutableStateOf(0f) }
     var zoomOffsetY by remember { mutableStateOf(0f) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     var dragAmountY by remember { mutableStateOf(0f) }
     val draggableState = rememberDraggableState { delta ->
@@ -414,6 +418,7 @@ private fun ImagePage(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { containerSize = it }
             .draggable(
                 state = draggableState,
                 orientation = Orientation.Vertical,
@@ -444,8 +449,12 @@ private fun ImagePage(
                             zoomOffsetY = 0f
                         } else {
                             zoomScale = 3f
-                            zoomOffsetX = (tapOffset.x * 2f).coerceIn(-1000f, 1000f)
-                            zoomOffsetY = (tapOffset.y * 2f).coerceIn(-1000f, 1000f)
+                            val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
+                            val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
+                            val targetX = (w / 2f) - 3f * tapOffset.x
+                            val targetY = (h / 2f) - 3f * tapOffset.y
+                            zoomOffsetX = targetX.coerceIn(-2f * w, 0f)
+                            zoomOffsetY = targetY.coerceIn(-2f * h, 0f)
                         }
                         // Consume the rest of the second tap
                         val up = awaitPointerEvent()
@@ -488,11 +497,14 @@ private fun ImagePage(
                                     }
                                     zoomScale = newScale
 
+                                    val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
+                                    val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
+
                                     if (zoomScale > 1f) {
-                                        val maxPanX = (zoomScale - 1f) * 500f
-                                        val maxPanY = (zoomScale - 1f) * 500f
-                                        zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, maxPanX)
-                                        zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, maxPanY)
+                                        val maxPanX = (zoomScale - 1f) * w
+                                        val maxPanY = (zoomScale - 1f) * h
+                                        zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, 0f)
+                                        zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, 0f)
                                     } else {
                                         zoomOffsetX = 0f
                                         zoomOffsetY = 0f
@@ -511,7 +523,8 @@ private fun ImagePage(
                 scaleX = zoomScale,
                 scaleY = zoomScale,
                 translationX = zoomOffsetX,
-                translationY = zoomOffsetY
+                translationY = zoomOffsetY,
+                transformOrigin = TransformOrigin(0f, 0f)
             ),
         contentAlignment = Alignment.Center
     ) {

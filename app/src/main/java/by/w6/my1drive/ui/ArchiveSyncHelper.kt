@@ -61,7 +61,11 @@ class ArchiveSyncHelper(
     private val _copiedItemIds = MutableStateFlow<Set<String>>(emptySet())
     val copiedItemIds: StateFlow<Set<String>> = _copiedItemIds.asStateFlow()
 
-    var isSilentSyncing = false
+    private val _isSilentSyncing = MutableStateFlow(false)
+    val isSilentSyncingFlow: StateFlow<Boolean> = _isSilentSyncing.asStateFlow()
+    var isSilentSyncing: Boolean
+        get() = _isSilentSyncing.value
+        set(value) { _isSilentSyncing.value = value }
 
     private val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
     private val PREF_MISSING_FILES_HASH = "missing_files_hash"
