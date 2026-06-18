@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -180,8 +181,21 @@ fun SettingsTab(
                     style = MaterialTheme.typography.titleSmall
                 )
                 Spacer(Modifier.height(6.dp))
+                val versionName = remember(context) {
+                    try {
+                        val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        }
+                        packageInfo.versionName ?: "12.0-my1drive"
+                    } catch (e: Exception) {
+                        "12.0-my1drive"
+                    }
+                }
                 Text(
-                    text = "Версия: 1.0.0 (Первая версия)",
+                    text = "Версия: $versionName",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

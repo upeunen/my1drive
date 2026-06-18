@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,9 +37,11 @@ fun PhotosGridTab(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
     archivingItemIds: Set<String> = emptySet(),
+    copiedItemIds: Set<String> = emptySet(),
     gridColumnsCount: Int = 3,
     onItemClick: (MediaItem) -> Unit,
-    onItemLongClick: (MediaItem) -> Unit
+    onItemLongClick: (MediaItem) -> Unit,
+    onSelectItems: (Collection<String>, Boolean) -> Unit = { _, _ -> }
 ) {
     if (groupedItems.isEmpty()) {
         Box(
@@ -82,16 +85,44 @@ fun PhotosGridTab(
                 }
             ) { item ->
                 when (item) {
-                    is GalleryItem.Header -> DateCategoryHeader(title = item.title)
+                    is GalleryItem.Header -> {
+                        val headerIndex = groupedItems.indexOf(item)
+                        val itemsUnderHeader = remember(groupedItems, headerIndex) {
+                            val list = mutableListOf<MediaItem>()
+                            if (headerIndex >= 0) {
+                                for (i in (headerIndex + 1) until groupedItems.size) {
+                                    val next = groupedItems[i]
+                                    if (next is GalleryItem.Header) break
+                                    if (next is GalleryItem.Media) {
+                                        list.add(next.item)
+                                    }
+                                }
+                            }
+                            list
+                        }
+                        val allSelected = remember(selectedIds, itemsUnderHeader) {
+                            itemsUnderHeader.isNotEmpty() && itemsUnderHeader.all { selectedIds.contains(it.id) }
+                        }
+                        DateCategoryHeader(
+                            title = item.title,
+                            isSelectionMode = selectedIds.isNotEmpty(),
+                            isSelected = allSelected,
+                            onToggleSelection = {
+                                onSelectItems(itemsUnderHeader.map { it.id }, !allSelected)
+                            }
+                        )
+                    }
                     is GalleryItem.Media -> {
                         val isSelected = selectedIds.contains(item.item.id)
                         val isArchiving = archivingItemIds.contains(item.item.id)
+                        val isCopied = copiedItemIds.contains(item.item.id)
                         GooglePhotosGridItem(
                             item = item.item,
                             isSelected = isSelected,
                             imageLoader = imageLoader,
                             isOtgConnected = isOtgConnected,
                             isArchiving = isArchiving,
+                            isCopied = isCopied,
                             onClick = { onItemClick(item.item) },
                             onLongClick = { onItemLongClick(item.item) }
                         )

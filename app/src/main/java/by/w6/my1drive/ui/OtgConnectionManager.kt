@@ -33,7 +33,8 @@ class OtgConnectionManager(
     private val db: by.w6.my1drive.data.local.AppDatabase,
     private val syncHelper: ArchiveSyncHelper,
     private val scope: CoroutineScope,
-    private val refreshCacheStats: () -> Unit = {}
+    private val refreshCacheStats: () -> Unit = {},
+    private val isBusy: () -> Boolean = { false }
 ) {
     companion object {
         private const val PREF_OTG_URI = "otg_directory_uri"
@@ -333,6 +334,10 @@ class OtgConnectionManager(
                 unknownDriveDialogHandled = false
                 DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
+        }
+
+        if (isBusy()) {
+            return DriveStatus.KNOWN_DRIVE_CONNECTED
         }
 
         return try {

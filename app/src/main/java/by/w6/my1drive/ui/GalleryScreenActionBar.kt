@@ -13,12 +13,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,41 +44,51 @@ fun GalleryScreenActionBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TextButton(
+        FilledTonalButton(
             onClick = { if (deleteEnabled) onDelete() },
             enabled = deleteEnabled,
-            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            ),
+            modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
         ) {
-            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.action_delete), fontSize = 13.sp)
+            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
         }
 
         if (!isArchiveTab) {
-            Button(
+            FilledTonalButton(
                 onClick = onArchive,
                 enabled = isOtgConnected && otgDirectoryUri != null,
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
             ) {
-                Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.archive_on_otg), fontSize = 14.sp)
+                Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
             }
         } else {
-            Button(
+            FilledTonalButton(
                 onClick = onRestore,
                 enabled = isOtgConnected && otgDirectoryUri != null,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
-                shape = RoundedCornerShape(20.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
             ) {
-                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.restore_from_otg), fontSize = 14.sp)
+                Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
             }
         }
     }
 }
-

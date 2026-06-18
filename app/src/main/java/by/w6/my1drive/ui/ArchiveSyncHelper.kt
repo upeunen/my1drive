@@ -58,6 +58,9 @@ class ArchiveSyncHelper(
     private val _archivingItemIds = MutableStateFlow<Set<String>>(emptySet())
     val archivingItemIds: StateFlow<Set<String>> = _archivingItemIds.asStateFlow()
 
+    private val _copiedItemIds = MutableStateFlow<Set<String>>(emptySet())
+    val copiedItemIds: StateFlow<Set<String>> = _copiedItemIds.asStateFlow()
+
     var isSilentSyncing = false
 
     private val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
@@ -506,6 +509,7 @@ class ArchiveSyncHelper(
             }
         } finally {
             isArchiveJobRunning = false
+            _copiedItemIds.value = emptySet()
         }
     }
 
@@ -522,6 +526,7 @@ class ArchiveSyncHelper(
             val skipped = mutableListOf<Pair<MediaItem, String>>()
             val errors = mutableListOf<Pair<MediaItem, String>>()
 
+            _copiedItemIds.value = emptySet()
             try {
                 for ((index, item) in items.withIndex()) {
                     DebugLogBuffer.log(logTag, "Processing queue item [${index + 1}/${items.size}]: ${item.displayName}")
@@ -546,6 +551,7 @@ class ArchiveSyncHelper(
                     when {
                         success != null -> {
                             copied.add(success)
+                            _copiedItemIds.value = _copiedItemIds.value + item.id
                             DebugLogBuffer.log(logTag, "Item success: ${item.displayName}")
                         }
                         isSkipped -> {

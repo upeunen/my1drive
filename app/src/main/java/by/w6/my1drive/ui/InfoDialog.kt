@@ -377,11 +377,23 @@ fun InfoDialog(
             }
         },
         confirmButton = {
-            if (item.status == MediaStatus.ON_DEVICE) {
-                Button(onClick = { onOpenFullscreen() }) {
-                    Text(stringResource(R.string.btn_close))
+            val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
+            if (canOpen) {
+                Button(onClick = {
+                    onOpenFullscreen()
+                    onDismiss()
+                }) {
+                    Text("Открыть")
                 }
             } else {
+                Button(onClick = onDismiss) {
+                    Text(stringResource(R.string.btn_close))
+                }
+            }
+        },
+        dismissButton = {
+            val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
+            if (canOpen) {
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.btn_close))
                 }

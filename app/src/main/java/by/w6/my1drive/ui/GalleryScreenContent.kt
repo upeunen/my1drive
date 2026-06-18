@@ -3,6 +3,7 @@ package by.w6.my1drive.ui
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -16,15 +17,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -152,6 +158,7 @@ fun PhotosRoute(
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val sortMode by viewModel.deviceSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
+    val copiedItemIds by viewModel.copiedItemIds.collectAsState()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -225,9 +232,17 @@ fun PhotosRoute(
             imageLoader = imageLoader,
             isOtgConnected = isOtgConnected,
             archivingItemIds = archivingItemIds,
+            copiedItemIds = copiedItemIds,
             gridColumnsCount = gridColumnsCount,
             onItemClick = onItemClick,
-            onItemLongClick = onItemLongClick
+            onItemLongClick = onItemLongClick,
+            onSelectItems = { ids, select ->
+                if (select) {
+                    viewModel.selectItems(ids)
+                } else {
+                    viewModel.deselectItems(ids)
+                }
+            }
         )
     }
 }
@@ -253,6 +268,7 @@ fun ArchiveRoute(
     val sortMode by viewModel.archiveSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
     val restoringItemIds by viewModel.restoringItemIds.collectAsState()
+    val copiedItemIds by viewModel.copiedItemIds.collectAsState()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -449,7 +465,7 @@ fun ArchiveRoute(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = monthGroup.monthName,
                                                 style = MaterialTheme.typography.titleMedium,
@@ -461,10 +477,36 @@ fun ArchiveRoute(
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
-                                        Icon(
-                                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                            contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            if (selectedIds.isNotEmpty()) {
+                                                val allSelected = monthGroup.items.isNotEmpty() && monthGroup.items.all { selectedIds.contains(it.id) }
+                                                IconButton(
+                                                     onClick = {
+                                                         val ids = monthGroup.items.map { it.id }
+                                                         if (allSelected) {
+                                                             viewModel.deselectItems(ids)
+                                                         } else {
+                                                             viewModel.selectItems(ids)
+                                                         }
+                                                     },
+                                                     modifier = Modifier.size(24.dp)
+                                                 ) {
+                                                     Icon(
+                                                         imageVector = if (allSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircleOutline,
+                                                         contentDescription = "Выбрать все за месяц",
+                                                         tint = if (allSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                         modifier = Modifier.size(24.dp)
+                                                     )
+                                                 }
+                                            }
+                                            Icon(
+                                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -490,10 +532,12 @@ fun ArchiveRoute(
                                                     val isSelected = selectedIds.contains(mediaItem.id)
                                                     val isArchiving = archivingItemIds.contains(mediaItem.id)
                                                     val isRestoring = restoringItemIds.contains(mediaItem.id)
+                                                    val isCopied = copiedItemIds.contains(mediaItem.id)
                                                     GooglePhotosGridItem(
                                                         item = mediaItem,
                                                         isSelected = isSelected,
                                                         isArchiving = isArchiving || isRestoring,
+                                                        isCopied = isCopied,
                                                         imageLoader = imageLoader,
                                                         isOtgConnected = isOtgConnected,
                                                         onClick = { onItemClick(mediaItem) },
@@ -641,7 +685,6 @@ fun GalleryScreenContent(
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val mediaItems by viewModel.mediaItems.collectAsState()
     val gridColumnsCount by viewModel.gridColumnsCount.collectAsState()
-    var showDateRangePicker by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -655,30 +698,6 @@ fun GalleryScreenContent(
                 gridColumnsCount = gridColumnsCount,
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
-
-            AnimatedVisibility(
-                visible = selectedIds.isNotEmpty(),
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                val visibleItems = remember(currentScreenRoute, mediaItems) {
-                    if (currentScreenRoute == "photos") {
-                        mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
-                    } else {
-                        mediaItems.filter {
-                            it.status == MediaStatus.ARCHIVED_OTG &&
-                            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
-                        }
-                    }
-                }
-                val firstSelectedItem = mediaItems.firstOrNull { it.id in selectedIds }
-                SelectionHelperPanel(
-                    firstSelectedItem = firstSelectedItem,
-                    visibleItems = visibleItems,
-                    onSelectItems = { ids -> viewModel.selectItems(ids) },
-                    onSelectDateRangeClick = { showDateRangePicker = true }
-                )
-            }
 
             // Прогресс-панель архивации/восстановления
             if (archiveState.isArchiving) {
@@ -1079,33 +1098,6 @@ fun GalleryScreenContent(
         if (showDebugLogsDialog) {
             DebugLogsDialog(onDismiss = { showDebugLogsDialog = false })
         }
-
-        if (showDateRangePicker) {
-            val visibleItems = remember(currentScreenRoute, mediaItems) {
-                if (currentScreenRoute == "photos") {
-                    mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
-                } else {
-                    mediaItems.filter {
-                        it.status == MediaStatus.ARCHIVED_OTG &&
-                        (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
-                    }
-                }
-            }
-            DateRangePickerDialog(
-                onDismiss = { showDateRangePicker = false },
-                onDateRangeSelected = { startMillis, endMillis ->
-                    showDateRangePicker = false
-                    if (startMillis != null && endMillis != null) {
-                        val startSec = startMillis / 1000
-                        val endSec = (endMillis / 1000) + 86399
-                        val matching = visibleItems.filter { item ->
-                            item.dateModified in startSec..endSec
-                        }.map { it.id }
-                        viewModel.selectItems(matching)
-                    }
-                }
-            )
-        }
     }
 }
 
@@ -1114,108 +1106,182 @@ fun SelectionHelperPanel(
     firstSelectedItem: MediaItem?,
     visibleItems: List<MediaItem>,
     onSelectItems: (Collection<String>) -> Unit,
-    onSelectDateRangeClick: () -> Unit
+    onSelectDateRangeClick: () -> Unit,
+    onClearSelection: () -> Unit
 ) {
-    Row(
+    val hasSelected = firstSelectedItem != null
+    val hasFolder = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty()
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Chip 0: Выбрать все
-        AssistChip(
-            onClick = {
-                val allIds = visibleItems.map { it.id }
-                onSelectItems(allIds)
-            },
-            label = { Text("Выбрать все", style = MaterialTheme.typography.labelMedium) },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.CheckCircleOutline,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            },
-            shape = RoundedCornerShape(16.dp),
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            )
+        Text(
+            text = "ВЫДЕЛИТЬ",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 2.dp)
         )
-
-        val hasSelected = firstSelectedItem != null
-
-        // Chip 1: Все с этой датой
-        AssistChip(
-            enabled = hasSelected,
-            onClick = {
-                if (firstSelectedItem != null) {
-                    val targetDate = firstSelectedItem.dateModified
-                    val cal1 = Calendar.getInstance().apply { timeInMillis = targetDate * 1000 }
-                    val matching = visibleItems.filter { item ->
-                        val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
-                        cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
-                    }.map { it.id }
-                    onSelectItems(matching)
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Chip 1: Все
+                    AssistChip(
+                        onClick = {
+                            val allIds = visibleItems.map { it.id }
+                            onSelectItems(allIds)
+                        },
+                        label = { Text("Все", style = MaterialTheme.typography.labelMedium) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircleOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = 16.dp,
+                            bottomEnd = 28.dp
+                        ),
+                        modifier = Modifier.weight(1f),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    // Chip 2: С этой датой
+                    AssistChip(
+                        enabled = hasSelected,
+                        onClick = {
+                            if (firstSelectedItem != null) {
+                                val targetDate = firstSelectedItem.dateModified
+                                val cal1 = Calendar.getInstance().apply { timeInMillis = targetDate * 1000 }
+                                val matching = visibleItems.filter { item ->
+                                    val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
+                                    cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                                            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+                                }.map { it.id }
+                                onSelectItems(matching)
+                            }
+                        },
+                        label = { Text("С датой", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarToday,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = 28.dp,
+                            bottomEnd = 16.dp
+                        ),
+                        modifier = Modifier.weight(1f),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
                 }
-            },
-            label = { Text("Все с этой датой", style = MaterialTheme.typography.labelMedium) },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.CalendarToday,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            },
-            shape = RoundedCornerShape(16.dp),
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            )
-        )
-
-        // Chip 2: Все в этой папке
-        val hasFolder = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty()
-        AssistChip(
-            enabled = hasFolder,
-            onClick = {
-                if (firstSelectedItem != null) {
-                    val targetPath = firstSelectedItem.originalRelativePath
-                    val matching = visibleItems.filter { it.originalRelativePath == targetPath }.map { it.id }
-                    onSelectItems(matching)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Chip 3: В этой папке
+                    AssistChip(
+                        enabled = hasFolder,
+                        onClick = {
+                            if (firstSelectedItem != null) {
+                                val targetPath = firstSelectedItem.originalRelativePath
+                                val matching = visibleItems.filter { it.originalRelativePath == targetPath }.map { it.id }
+                                onSelectItems(matching)
+                            }
+                        },
+                        label = { Text("В папке", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 28.dp,
+                            bottomStart = 16.dp,
+                            bottomEnd = 16.dp
+                        ),
+                        modifier = Modifier.weight(1f),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    // Chip 4: Выбрать диапазон
+                    AssistChip(
+                        onClick = onSelectDateRangeClick,
+                        label = { Text("Диапазон", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(
+                            topStart = 28.dp,
+                            topEnd = 16.dp,
+                            bottomStart = 16.dp,
+                            bottomEnd = 16.dp
+                        ),
+                        modifier = Modifier.weight(1f),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
                 }
-            },
-            label = { Text("Все в этой папке", style = MaterialTheme.typography.labelMedium) },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.Folder,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            },
-            shape = RoundedCornerShape(16.dp),
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            )
-        )
+            }
 
-        // Chip 3: Выбрать диапазон
-        AssistChip(
-            onClick = onSelectDateRangeClick,
-            label = { Text("Выбрать диапазон", style = MaterialTheme.typography.labelMedium) },
-            leadingIcon = {
+            // Central circular button for clear/cancel selection (TV-remote style)
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                    .border(3.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    .clickable { onClearSelection() },
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    imageVector = Icons.Outlined.DateRange,
-                    contentDescription = null,
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Снять выделение",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.size(18.dp)
                 )
-            },
-            shape = RoundedCornerShape(16.dp),
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            )
-        )
+            }
+        }
     }
 }
 

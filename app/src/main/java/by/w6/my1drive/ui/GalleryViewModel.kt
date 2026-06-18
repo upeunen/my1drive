@@ -79,7 +79,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             db = db,
             syncHelper = syncHelper,
             scope = viewModelScope,
-            refreshCacheStats = { refreshCacheStats() }
+            refreshCacheStats = { refreshCacheStats() },
+            isBusy = {
+                syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
+            }
         )
     }
 
@@ -228,6 +231,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
     val archivingItemIds: StateFlow<Set<String>> = syncHelper.archivingItemIds
+    val copiedItemIds: StateFlow<Set<String>> = syncHelper.copiedItemIds
     val restoreState = MutableStateFlow(RestoreState())
     val syncState: StateFlow<String?> = syncHelper.syncState
 
@@ -499,6 +503,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun clearSelection() { _selectedIds.value = emptySet() }
     fun selectItems(itemIds: Collection<String>) {
         _selectedIds.value = _selectedIds.value.toMutableSet().apply { addAll(itemIds) }
+    }
+    fun deselectItems(itemIds: Collection<String>) {
+        _selectedIds.value = _selectedIds.value.toMutableSet().apply { removeAll(itemIds.toSet()) }
     }
 
     // ─── Sync & Archive delegated ───

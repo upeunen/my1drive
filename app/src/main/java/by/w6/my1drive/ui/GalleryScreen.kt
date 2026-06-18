@@ -1,9 +1,15 @@
 package by.w6.my1drive.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import by.w6.my1drive.domain.model.MediaStatus
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -15,6 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -47,8 +55,10 @@ fun GalleryScreen(
     val archiveState by viewModel.archiveState.collectAsState()
     val restoreState by viewModel.restoreState.collectAsState()
     val showRestorePicker = restoreRequest != null
+    val mediaItems by viewModel.mediaItems.collectAsState()
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
+    var showDateRangePicker by remember { mutableStateOf(false) }
     var selectionOriginRoute by remember { mutableStateOf<String?>(null) }
     var activePreviewState by remember { mutableStateOf<FullscreenState?>(null) }
     var showInfoDialogItem by remember { mutableStateOf<MediaItem?>(null) }
@@ -101,52 +111,116 @@ fun GalleryScreen(
                     currentScreenRoute = route
                 }
             )
-        },
-        floatingActionButton = {
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            GalleryScreenContent(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                selectedIds = selectedIds,
+                otgDirectoryUri = otgDirectoryUri,
+                isOtgConnected = isOtgConnected,
+                hasPartialAccess = hasPartialAccess,
+                currentScreenRoute = currentScreenRoute,
+                missingFilesNotification = missingFilesNotification,
+                autoSyncAddedCount = autoSyncAddedCount,
+                activePreviewState = activePreviewState,
+                showInfoDialogItem = showInfoDialogItem,
+                showOtgGuideDialog = showOtgGuideDialog,
+                imageLoader = imageLoader,
+                viewModel = viewModel,
+                onSelectOtgDirectory = onSelectOtgDirectory,
+                onSelectDeviceDirectory = onSelectDeviceDirectory,
+                onRequestFullAccess = onRequestFullAccess,
+                onOpenSettings = onOpenSettings,
+                onClearSelection = { viewModel.clearSelection() },
+                onSetActivePreview = { state -> activePreviewState = state },
+                onSetShowInfoDialog = { showInfoDialogItem = it },
+                onSetShowOtgGuide = { showOtgGuideDialog = it },
+                previewCacheManager = previewCache,
+                archiveState = archiveState,
+                restoreState = restoreState,
+                onSyncArchive = { viewModel.syncArchive() }
+            )
+
             if (selectedIds.isNotEmpty() && currentScreenRoute != "settings") {
+                val visibleItems = remember(currentScreenRoute, mediaItems) {
+                    if (currentScreenRoute == "photos") {
+                        mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
+                    } else {
+                        mediaItems.filter {
+                            it.status == MediaStatus.ARCHIVED_OTG &&
+                            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+                        }
+                    }
+                }
+                val firstSelectedItem = remember(selectedIds, mediaItems) {
+                    mediaItems.firstOrNull { it.id in selectedIds }
+                }
+
                 Card(
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    GalleryScreenActionBar(
-                        isArchiveTab = currentScreenRoute == "archive",
-                        isOtgConnected = isOtgConnected,
-                        otgDirectoryUri = otgDirectoryUri,
-                        onDelete = { viewModel.requestDeleteSelected() },
-                        onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
-                        onRestore = { viewModel.requestRestore() }
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth()
+                        .padding(bottom = paddingValues.calculateBottomPadding()),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
                     )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp)
+                    ) {
+                        SelectionHelperPanel(
+                            firstSelectedItem = firstSelectedItem,
+                            visibleItems = visibleItems,
+                            onSelectItems = { ids -> viewModel.selectItems(ids) },
+                            onSelectDateRangeClick = { showDateRangePicker = true },
+                            onClearSelection = { viewModel.clearSelection() }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+                        )
+                        GalleryScreenActionBar(
+                            isArchiveTab = currentScreenRoute == "archive",
+                            isOtgConnected = isOtgConnected,
+                            otgDirectoryUri = otgDirectoryUri,
+                            onDelete = { viewModel.requestDeleteSelected() },
+                            onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
+                            onRestore = { viewModel.requestRestore() }
+                        )
+                    }
                 }
             }
         }
-    ) { paddingValues ->
-        GalleryScreenContent(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            selectedIds = selectedIds,
-            otgDirectoryUri = otgDirectoryUri,
-            isOtgConnected = isOtgConnected,
-            hasPartialAccess = hasPartialAccess,
-            currentScreenRoute = currentScreenRoute,
-            missingFilesNotification = missingFilesNotification,
-            autoSyncAddedCount = autoSyncAddedCount,
-            activePreviewState = activePreviewState,
-            showInfoDialogItem = showInfoDialogItem,
-            showOtgGuideDialog = showOtgGuideDialog,
-            imageLoader = imageLoader,
-            viewModel = viewModel,
-            onSelectOtgDirectory = onSelectOtgDirectory,
-            onSelectDeviceDirectory = onSelectDeviceDirectory,
-            onRequestFullAccess = onRequestFullAccess,
-            onOpenSettings = onOpenSettings,
-            onClearSelection = { viewModel.clearSelection() },
-            onSetActivePreview = { state -> activePreviewState = state },
-            onSetShowInfoDialog = { showInfoDialogItem = it },
-            onSetShowOtgGuide = { showOtgGuideDialog = it },
-            previewCacheManager = previewCache,
-            archiveState = archiveState,
-            restoreState = restoreState,
-            onSyncArchive = { viewModel.syncArchive() }
+    }
+
+    if (showDateRangePicker) {
+        val visibleItems = remember(currentScreenRoute, mediaItems) {
+            if (currentScreenRoute == "photos") {
+                mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
+            } else {
+                mediaItems.filter {
+                    it.status == MediaStatus.ARCHIVED_OTG &&
+                    (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+                }
+            }
+        }
+        DateRangePickerDialog(
+            onDismiss = { showDateRangePicker = false },
+            onDateRangeSelected = { startMillis, endMillis ->
+                showDateRangePicker = false
+                if (startMillis != null && endMillis != null) {
+                    val startSec = startMillis / 1000
+                    val endSec = (endMillis / 1000) + 86399
+                    val matching = visibleItems.filter { item ->
+                        item.dateModified in startSec..endSec
+                    }.map { it.id }
+                    viewModel.selectItems(matching)
+                }
+            }
         )
     }
 }

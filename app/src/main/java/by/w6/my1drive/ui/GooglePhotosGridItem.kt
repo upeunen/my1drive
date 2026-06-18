@@ -70,6 +70,7 @@ fun GooglePhotosGridItem(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
     isArchiving: Boolean = false,
+    isCopied: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -192,7 +193,7 @@ fun GooglePhotosGridItem(
                     onError = { isImageLoading = false },
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(if (item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected && !isArchiving) 0.5f else 1.0f)
+                        .alpha(if (isCopied || (item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected && !isArchiving)) 0.5f else 1.0f)
                 )
                 if (isImageLoading) {
                     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")

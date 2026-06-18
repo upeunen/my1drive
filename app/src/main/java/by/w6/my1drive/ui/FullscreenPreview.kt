@@ -104,7 +104,12 @@ fun FullscreenPreview(
     var isNavigatingBack by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
-    val currentItem = if (previewItems.isNotEmpty()) previewItems[pagerState.currentPage] else return
+    val currentItem = if (previewItems.isNotEmpty()) {
+        val safeIndex = pagerState.currentPage.coerceIn(0, previewItems.size - 1)
+        previewItems[safeIndex]
+    } else {
+        return
+    }
 
     BackHandler {
         if (!isNavigatingBack) {
@@ -185,7 +190,7 @@ fun FullscreenPreview(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
-                    val item = previewItems[page]
+                    val item = previewItems.getOrNull(page) ?: return@HorizontalPager
                     PagerPage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected)
                 }
             }
