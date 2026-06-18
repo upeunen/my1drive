@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.graphics.StrokeCap
@@ -631,6 +632,7 @@ fun GalleryScreenContent(
     onSyncArchive: () -> Unit = {}
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
+    val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
@@ -818,7 +820,13 @@ fun GalleryScreenContent(
                 onShowInfo = { item -> onSetShowInfoDialog(item) },
                 onDeleteImmediate = { item -> viewModel.deleteSingleItemImmediate(item) },
                 onArchiveSingle = { item, uri -> viewModel.archiveSingleItem(item, uri) },
-                onRestoreSingle = { item -> viewModel.restoreSingleItem(item) }
+                onRestoreSingle = { item -> viewModel.restoreSingleItem(item) },
+                onShare = { item ->
+                    viewModel.shareMediaItem(item, context) { errMsg ->
+                        Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
+                    }
+                },
+                isSharingPreparing = isSharingPreparing
             )
         }
 
@@ -931,13 +939,44 @@ fun GalleryScreenContent(
 
         val showUnreadableOtg by viewModel.otgManager.showUnreadableOtgDialog.collectAsState()
         if (showUnreadableOtg) {
+            var showWhy by remember { mutableStateOf(false) }
             AlertDialog(
-                onDismissRequest = { viewModel.otgManager.dismissUnreadableOtgDialog() },
+                onDismissRequest = {
+                    viewModel.otgManager.dismissUnreadableOtgDialog()
+                    showWhy = false
+                },
                 title = { Text(stringResource(R.string.unreadable_otg_title), fontWeight = FontWeight.Bold) },
-                text = { Text(stringResource(R.string.unreadable_otg_msg)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(R.string.unreadable_otg_msg))
+                        
+                        if (!showWhy) {
+                            Text(
+                                text = stringResource(R.string.unreadable_otg_why_link),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    textDecoration = TextDecoration.Underline,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                modifier = Modifier
+                                    .clickable { showWhy = true }
+                                    .padding(vertical = 4.dp)
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.unreadable_otg_explanation),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 confirmButton = {
-                    Button(onClick = { viewModel.otgManager.dismissUnreadableOtgDialog() }) {
-                        Text("ОК")
+                    Button(onClick = {
+                        viewModel.otgManager.dismissUnreadableOtgDialog()
+                        showWhy = false
+                    }) {
+                        Text(stringResource(R.string.btn_ok))
                     }
                 }
             )

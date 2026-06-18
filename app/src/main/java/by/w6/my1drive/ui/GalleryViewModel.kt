@@ -38,6 +38,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.core.content.FileProvider
+import java.io.File
 
 private const val PREFS_NAME = "my1drive_prefs"
 private const val PREF_ASK_RESTORE_PATH = "ask_restore_path"
@@ -252,6 +254,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _cacheStats = MutableStateFlow(Pair(0L, 0))
     val cacheStats = _cacheStats.asStateFlow()
 
+    private val _isSharingPreparing = MutableStateFlow(false)
+    val isSharingPreparing = _isSharingPreparing.asStateFlow()
+
     private val _showCreateFolderDialog = MutableStateFlow(false)
     val showCreateFolderDialog = _showCreateFolderDialog.asStateFlow()
 
@@ -425,6 +430,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
         // Start the polling loop
         otgManager.start(savedUri, savedDeviceUri)
+
+        // Clean up temporary shared folder on start
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val sharedTempDir = File(application.cacheDir, "shared_temp")
+                if (sharedTempDir.exists() && sharedTempDir.isDirectory) {
+                    sharedTempDir.deleteRecursively()
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     fun updateOtgStatus(isStartup: Boolean = false) {
@@ -930,5 +945,71 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun getArchivedSize(): Long {
         return physicalArchiveSize.value
+    }
+
+    fun shareMediaItem(item: MediaItem, context: Context, onError: (String) -> Unit) {
+        if (item.status == MediaStatus.ON_DEVICE) {
+            try {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = item.mimeType
+                    putExtra(Intent.EXTRA_STREAM, item.uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Поделиться"))
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Ошибка при отправке файла")
+            }
+        } else if (item.status == MediaStatus.ARCHIVED_OTG) {
+            val otgUriStr = item.otgUri
+            if (otgUriStr == null) {
+                onError("Ссылка на файл в архиве отсутствует")
+                return
+            }
+            if (!isOtgConnected.value) {
+                onError("USB-накопитель отключен")
+                return
+            }
+
+            _isSharingPreparing.value = true
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val otgUri = Uri.parse(otgUriStr)
+                    val inputStream = context.contentResolver.openInputStream(otgUri)
+                        ?: throw Exception("Не удалось открыть файл на накопителе")
+
+                    val sharedTempDir = File(context.cacheDir, "shared_temp")
+                    if (!sharedTempDir.exists()) {
+                        sharedTempDir.mkdirs()
+                    }
+                    val tempFile = File(sharedTempDir, item.displayName)
+                    
+                    inputStream.use { input ->
+                        tempFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    val fileUri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        tempFile
+                    )
+
+                    _isSharingPreparing.value = false
+
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = item.mimeType
+                        putExtra(Intent.EXTRA_STREAM, fileUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Поделиться"))
+                } catch (e: Exception) {
+                    _isSharingPreparing.value = false
+                    viewModelScope.launch(Dispatchers.Main) {
+                        onError(e.localizedMessage ?: "Ошибка при подготовке файла из архива")
+                    }
+                }
+            }
+        }
     }
 }

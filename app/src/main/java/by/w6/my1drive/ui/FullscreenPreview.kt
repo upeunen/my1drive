@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -90,7 +91,9 @@ fun FullscreenPreview(
     onShowInfo: (MediaItem) -> Unit,
     onDeleteImmediate: (MediaItem) -> Unit,
     onArchiveSingle: (MediaItem, Uri) -> Unit,
-    onRestoreSingle: (MediaItem) -> Unit
+    onRestoreSingle: (MediaItem) -> Unit,
+    onShare: (MediaItem) -> Unit,
+    isSharingPreparing: Boolean
 ) {
     var previewItems by remember(state.items) { mutableStateOf(state.items.toMutableList()) }
     val pagerState = rememberPagerState(
@@ -223,6 +226,16 @@ fun FullscreenPreview(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    IconButton(
+                        onClick = { onShare(currentItem) },
+                        enabled = currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = if (currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)) Color.White else Color.White.copy(alpha = 0.4f)
+                        )
+                    }
                     IconButton(onClick = { onShowInfo(currentItem) }) {
                         Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
                     }
@@ -314,7 +327,7 @@ fun FullscreenPreview(
             // ─── Navigating back indicator ───
         }
 
-        if (isNavigatingBack) {
+        if (isNavigatingBack || isSharingPreparing) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -322,10 +335,21 @@ fun FullscreenPreview(
                     .clickable(enabled = true) { },
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(48.dp)
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    if (isSharingPreparing) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Подготовка файла...",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
     }

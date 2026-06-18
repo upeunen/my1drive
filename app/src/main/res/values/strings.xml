@@ -186,6 +186,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="preloader_please_wait">Подождите, пожалуйста.\nПроцесс может занять от нескольких секунд до пары минут.</string>
 
     <!-- Unreadable OTG warning -->
-    <string name="unreadable_otg_title">Storage Unreadable</string>
-    <string name="unreadable_otg_msg">The storage device is unreadable. Try formatting it using your smartphone\'s built-in tools.</string>
+    <string name="unreadable_otg_title">USB Device Detected</string>
+    <string name="unreadable_otg_msg">The device is physically connected, but the Android operating system failed to mount it as storage.\n\nTry reconnecting the drive or checking the connection reliability.</string>
+    <string name="unreadable_otg_why_link">Why is the storage unreadable?</string>
+    <string name="unreadable_otg_explanation">Possible reasons:\n• Unsupported file system (e.g. NTFS). Android works best with FAT32 or exFAT.\n• Insufficient power supply or a low-quality OTG adapter.\n\nHow to fix it:\nYou can try formatting the USB drive to a supported format (FAT32/exFAT) using your smartphone\'s system storage settings.\n\nWarning: formatting will erase all data on the drive.</string>
 </resources>

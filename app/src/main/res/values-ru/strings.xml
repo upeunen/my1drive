@@ -185,7 +185,9 @@
         <string name="preloader_detecting_drive">Определение накопителя…</string>
         <string name="preloader_please_wait">Подождите, пожалуйста.\nПроцесс может занять от нескольких секунд до пары минут.</string>
 
-        <!-- Unreadable OTG warning -->
-        <string name="unreadable_otg_title">Носитель не читается</string>
-        <string name="unreadable_otg_msg">Носитель не читается. Попробуйте его отформатировать средствами вашего смартфона.</string>
-    </resources>
+    <!-- Unreadable OTG warning -->
+    <string name="unreadable_otg_title">Обнаружено USB-устройство</string>
+    <string name="unreadable_otg_msg">Устройство подключено физически, но операционной системе Android не удалось смонтировать его как накопитель.\n\nПопробуйте переподключить флешку или проверить надежность соединения.</string>
+    <string name="unreadable_otg_why_link">Почему носитель не читается?</string>
+    <string name="unreadable_otg_explanation">Возможные причины:\n• Неподдерживаемая файловая система (например, NTFS). Android лучше всего работает с FAT32 или exFAT.\n• Недостаточно питания для накопителя или некачественный OTG-переходник.\n\nКак это исправить:\nВы можете попробовать отформатировать флешку в поддерживаемый формат (FAT32/exFAT) средствами вашего смартфона в системных настройках памяти.\n\nПредупреждение: форматирование сотрет все данные с накопителя.</string>
+</resources>
