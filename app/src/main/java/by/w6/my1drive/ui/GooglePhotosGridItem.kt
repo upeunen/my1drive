@@ -192,7 +192,7 @@ fun GooglePhotosGridItem(
                     onError = { isImageLoading = false },
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(if (item.status == MediaStatus.ARCHIVED_OTG && !isArchiving) 0.5f else 1.0f)
+                        .alpha(if (item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected && !isArchiving) 0.5f else 1.0f)
                 )
                 if (isImageLoading) {
                     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
@@ -261,18 +261,7 @@ fun GooglePhotosGridItem(
                     }
                 }
             }
-            // Storage status icon (Top Right)
-            Icon(
-                imageVector = if (item.status == MediaStatus.ON_DEVICE) Icons.Default.CloudOff else Icons.Default.CloudDone,
-                contentDescription = null,
-                tint = if (item.status == MediaStatus.ON_DEVICE) Color.White.copy(alpha = 0.7f) else Color(0xFF4CAF50),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp)
-                    .size(16.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                    .padding(2.dp)
-            )
+            // Storage status icon removed
             // Selection badge
             if (isSelected) {
                 Box(
