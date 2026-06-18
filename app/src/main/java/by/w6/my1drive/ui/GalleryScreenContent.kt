@@ -636,6 +636,7 @@ fun GalleryScreenContent(
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
+    var showEjectConfirmDialog by remember { mutableStateOf(false) }
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val mediaItems by viewModel.mediaItems.collectAsState()
@@ -650,6 +651,7 @@ fun GalleryScreenContent(
                 otgUriSet = otgDirectoryUri != null,
                 onClearSelection = onClearSelection,
                 onSelectOtgClick = onSelectOtgDirectory,
+                onEjectClick = { showEjectConfirmDialog = true },
                 gridColumnsCount = gridColumnsCount,
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
@@ -934,6 +936,31 @@ fun GalleryScreenContent(
             UnknownDriveDialog(
                 onCreateNew = { viewModel.createNewArchive() },
                 onDismiss = { viewModel.dismissUnknownDriveDialog() }
+            )
+        }
+
+        if (showEjectConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showEjectConfirmDialog = false },
+                title = { Text("Извлечь накопитель?", fontWeight = FontWeight.Bold) },
+                text = { Text("Вы уверены, что хотите отключить USB-накопитель в приложении? Для возобновления работы потребуется выбрать папку заново.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showEjectConfirmDialog = false
+                            viewModel.ejectOtg()
+                            Toast.makeText(context, context.getString(R.string.eject_success_toast), Toast.LENGTH_LONG).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Извлечь")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEjectConfirmDialog = false }) {
+                        Text("Отмена")
+                    }
+                }
             )
         }
 

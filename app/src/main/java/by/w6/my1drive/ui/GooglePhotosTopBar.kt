@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Eject
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ fun GooglePhotosTopBar(
     otgUriSet: Boolean,
     onClearSelection: () -> Unit,
     onSelectOtgClick: () -> Unit,
+    onEjectClick: () -> Unit,
     gridColumnsCount: Int = 3,
     onToggleGridColumns: () -> Unit = {}
 ) {
@@ -64,6 +66,15 @@ fun GooglePhotosTopBar(
                     contentDescription = "Toggle Grid Columns",
                     tint = MaterialTheme.colorScheme.onBackground
                 )
+            }
+            if (isOtgConnected && otgUriSet) {
+                IconButton(onClick = onEjectClick) {
+                    Icon(
+                        imageVector = Icons.Default.Eject,
+                        contentDescription = "Safe Eject",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
             }
             IconButton(onClick = onSelectOtgClick) {
                 Icon(
