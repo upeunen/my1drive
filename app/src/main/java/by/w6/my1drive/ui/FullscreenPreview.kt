@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -310,7 +312,7 @@ fun FullscreenPreview(
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
+                            Text("Удалить", fontSize = 13.sp, maxLines = 1, softWrap = false)
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -330,7 +332,9 @@ fun FullscreenPreview(
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
+                                Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("В архив", fontSize = 13.sp, maxLines = 1, softWrap = false)
                             }
                         } else {
                             Button(
@@ -343,7 +347,9 @@ fun FullscreenPreview(
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
+                                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Вернуть", fontSize = 13.sp, maxLines = 1, softWrap = false)
                             }
                         }
                     }
