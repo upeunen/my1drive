@@ -847,12 +847,17 @@ fun GalleryScreenContent(
         showInfoDialogItem?.let { item ->
             InfoDialog(item = item, imageLoader = imageLoader ?: return@let, isOtgConnected = isOtgConnected,
                 onOpenFullscreen = {
-                    // Open fullscreen from info: just this single item
-                    onSetActivePreview(FullscreenState(
-                        items = listOf(item),
-                        initialIndex = 0,
-                        sourceTab = SourceTab.PHOTOS
-                    ))
+                    if (activePreviewState == null) {
+                        // Open fullscreen from info: just this single item
+                        onSetActivePreview(FullscreenState(
+                            items = listOf(item),
+                            initialIndex = 0,
+                            sourceTab = if (currentScreenRoute == "archive") SourceTab.ARCHIVE else SourceTab.PHOTOS
+                        ))
+                    } else {
+                        // Already in fullscreen, just close the properties dialog so we can continue swiping
+                        onSetShowInfoDialog(null)
+                    }
                 }, onDismiss = { onSetShowInfoDialog(null) })
         }
 
@@ -1180,7 +1185,7 @@ fun SelectionHelperChip(
             if (isRightAligned) {
                 Text(
                     text = text,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.15f),
                     color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1202,7 +1207,7 @@ fun SelectionHelperChip(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = text,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.15f),
                     color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

@@ -34,6 +34,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -102,6 +105,9 @@ fun FullscreenPreview(
     onShare: (MediaItem) -> Unit,
     isSharingPreparing: Boolean
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     var previewItems by remember(state.items) { mutableStateOf(state.items.toMutableList()) }
     val pagerState = rememberPagerState(
         initialPage = state.initialIndex.coerceIn(0, (previewItems.size - 1).coerceAtLeast(0)),
@@ -202,7 +208,8 @@ fun FullscreenPreview(
                         item = item,
                         imageLoader = imageLoader,
                         isOtgConnected = isOtgConnected,
-                        onShowInfo = onShowInfo
+                        onShowInfo = onShowInfo,
+                        onClose = onClose
                     )
                 }
             }
@@ -224,7 +231,7 @@ fun FullscreenPreview(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(start = if (isLandscape) 180.dp else 0.dp)) {
                         Text(
                             text = when (state.sourceTab) {
                                 SourceTab.PHOTOS -> stringResource(R.string.preview_source_device)
@@ -259,54 +266,53 @@ fun FullscreenPreview(
                 }
             }
 
-            // ─── Bottom bar ───
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                            startY = 0f,
-                            endY = Float.POSITIVE_INFINITY
+            if (isLandscape) {
+                // ─── Left side bar (Landscape) ───
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(180.dp)
+                        .align(Alignment.CenterStart)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)
+                            )
                         )
-                    )
-                    .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(start = 16.dp, end = 16.dp, top = 80.dp, bottom = 16.dp)
                 ) {
-                    val hintText = if (!currentItem.isVideo) {
-                        stringResource(R.string.preview_hint_swipe) + " • " + stringResource(R.string.preview_hint_zoom)
-                    } else {
-                        stringResource(R.string.preview_hint_swipe)
-                    }
-                    Text(
-                        text = hintText,
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.fillMaxHeight(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        val hintText = if (!currentItem.isVideo) {
+                            stringResource(R.string.preview_hint_swipe) + "\n•\n" + stringResource(R.string.preview_hint_zoom)
+                        } else {
+                            stringResource(R.string.preview_hint_swipe)
+                        }
+                        Text(
+                            text = hintText,
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+
                         Button(
                             onClick = { deleteCurrentItem(currentItem) },
                             shape = RoundedCornerShape(24.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.White.copy(alpha = 0.15f),
                                 contentColor = Color.White
-                            )
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         if (currentItem.status == MediaStatus.ON_DEVICE) {
                             Button(
@@ -320,7 +326,8 @@ fun FullscreenPreview(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White.copy(alpha = 0.15f),
                                     contentColor = Color.White
-                                )
+                                ),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
                             }
@@ -332,9 +339,92 @@ fun FullscreenPreview(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White.copy(alpha = 0.15f),
                                     contentColor = Color.White
-                                )
+                                ),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ─── Bottom bar (Portrait) ───
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY
+                            )
+                        )
+                        .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val hintText = if (!currentItem.isVideo) {
+                            stringResource(R.string.preview_hint_swipe) + " • " + stringResource(R.string.preview_hint_zoom)
+                        } else {
+                            stringResource(R.string.preview_hint_swipe)
+                        }
+                        Text(
+                            text = hintText,
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = { deleteCurrentItem(currentItem) },
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White.copy(alpha = 0.15f),
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
+                            }
+
+                            if (currentItem.status == MediaStatus.ON_DEVICE) {
+                                Button(
+                                    onClick = {
+                                        otgDirectoryUri?.let { uri ->
+                                            archiveCurrentItem(currentItem, uri)
+                                        }
+                                    },
+                                    enabled = isOtgConnected && otgDirectoryUri != null,
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White.copy(alpha = 0.15f),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
+                                }
+                            } else {
+                                Button(
+                                    onClick = { restoreCurrentItem(currentItem) },
+                                    enabled = isOtgConnected,
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White.copy(alpha = 0.15f),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
+                                }
                             }
                         }
                     }
@@ -377,12 +467,13 @@ private fun PagerPage(
     item: MediaItem,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
-    onShowInfo: (MediaItem) -> Unit
+    onShowInfo: (MediaItem) -> Unit,
+    onClose: () -> Unit
 ) {
     if (item.isVideo) {
-        VideoPage(item = item, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo)
+        VideoPage(item = item, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo, onClose = onClose)
     } else {
-        ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo)
+        ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo, onClose = onClose)
     }
 }
 
@@ -391,7 +482,8 @@ private fun ImagePage(
     item: MediaItem,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
-    onShowInfo: (MediaItem) -> Unit
+    onShowInfo: (MediaItem) -> Unit,
+    onClose: () -> Unit
 ) {
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (isOtgConnected && item.otgUri != null) {
@@ -427,6 +519,8 @@ private fun ImagePage(
                 onDragStopped = { velocity ->
                     if (dragAmountY < -150f) {
                         onShowInfo(item)
+                    } else if (dragAmountY > 150f) {
+                        onClose()
                     }
                 }
             )
@@ -543,7 +637,8 @@ private fun ImagePage(
 private fun VideoPage(
     item: MediaItem,
     isOtgConnected: Boolean,
-    onShowInfo: (MediaItem) -> Unit
+    onShowInfo: (MediaItem) -> Unit,
+    onClose: () -> Unit
 ) {
     val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     if (isOffline) {
@@ -607,6 +702,8 @@ private fun VideoPage(
                 onDragStopped = { velocity ->
                     if (dragAmountY < -150f) {
                         onShowInfo(item)
+                    } else if (dragAmountY > 150f) {
+                        onClose()
                     }
                 }
             )
@@ -655,6 +752,9 @@ private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(conte
                         return true
                     }
                 }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                parent.requestDisallowInterceptTouchEvent(false)
             }
         }
         return super.onInterceptTouchEvent(ev)
