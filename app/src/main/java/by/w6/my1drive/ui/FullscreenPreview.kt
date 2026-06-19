@@ -50,6 +50,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.animation.core.Animatable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -502,27 +503,19 @@ private fun ImagePage(
     var zoomOffsetY by remember { mutableStateOf(0f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    var dragAmountY by remember { mutableStateOf(0f) }
-    val draggableState = rememberDraggableState { delta ->
-        dragAmountY += delta
-    }
+    val swipeOffsetY = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { containerSize = it }
-            .draggable(
-                state = draggableState,
-                orientation = Orientation.Vertical,
-                enabled = (zoomScale == 1f),
-                onDragStarted = { dragAmountY = 0f },
-                onDragStopped = { velocity ->
-                    if (dragAmountY < -150f) {
-                        onShowInfo(item)
-                    } else if (dragAmountY > 150f) {
-                        onClose()
-                    }
-                }
+            .graphicsLayer(
+                translationY = swipeOffsetY.value,
+                scaleX = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
+                scaleY = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
+                alpha = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1200f)).coerceIn(0.1f, 1f) else 1f,
+                transformOrigin = TransformOrigin(0.5f, 0.5f)
             )
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -556,79 +549,145 @@ private fun ImagePage(
                     }
 
                     if (!wasDoubleTap) {
-                        // Track multi-touch gestures (zoom + pan)
                         var zoom = 1f
                         var pan = Offset.Zero
                         var pastTouchSlop = false
                         val touchSlop = viewConfiguration.touchSlop
 
+                        // For tracking single-finger vertical swipe when scale is 1f
+                        var swipeDirectionDetected = false
+                        var isVerticalSwipe = false
+                        var accumulatedDragY = 0f
+                        var accumulatedDragX = 0f
+                        var isMultitouchHappened = false
+
                         do {
                             val event = awaitPointerEvent()
                             val canceled = event.changes.any { it.isConsumed }
                             if (!canceled) {
-                                val zoomChange = event.calculateZoom()
-                                val panChange = event.calculatePan()
-
-                                if (!pastTouchSlop) {
-                                    zoom *= zoomChange
-                                    pan += panChange
-                                    val panMotion = pan.getDistance()
-                                    val zoomMotion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
-                                    if (event.changes.size > 1 || zoomScale > 1f) {
-                                        if (zoomMotion > touchSlop || panMotion > touchSlop) {
-                                            pastTouchSlop = true
-                                        }
-                                    }
+                                val pointerCount = event.changes.count { it.pressed }
+                                if (pointerCount > 1) {
+                                    isMultitouchHappened = true
+                                    isVerticalSwipe = false
+                                    scope.launch { swipeOffsetY.snapTo(0f) }
                                 }
 
-                                if (pastTouchSlop) {
-                                    val centroid = event.calculateCentroid(useCurrent = false)
-                                    val newScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
-                                    if (newScale != zoomScale) {
-                                        val scaleChange = newScale / zoomScale
-                                        zoomOffsetX = centroid.x - scaleChange * (centroid.x - zoomOffsetX)
-                                        zoomOffsetY = centroid.y - scaleChange * (centroid.y - zoomOffsetY)
+                                if (zoomScale == 1f && !isMultitouchHappened) {
+                                    // Handle single-finger swipe/scroll detection
+                                    val change = event.changes.firstOrNull()
+                                    if (change != null && change.pressed) {
+                                        val positionChange = change.position - change.previousPosition
+                                        accumulatedDragY += positionChange.y
+                                        accumulatedDragX += positionChange.x
+
+                                        if (!swipeDirectionDetected) {
+                                            if (abs(accumulatedDragY) > touchSlop || abs(accumulatedDragX) > touchSlop) {
+                                                swipeDirectionDetected = true
+                                                if (abs(accumulatedDragY) > abs(accumulatedDragX)) {
+                                                    isVerticalSwipe = true
+                                                }
+                                            }
+                                        }
+
+                                        if (isVerticalSwipe) {
+                                            change.consume()
+                                            scope.launch {
+                                                val delta = if (positionChange.y < 0) positionChange.y * 0.7f else positionChange.y
+                                                swipeOffsetY.snapTo(swipeOffsetY.value + delta)
+                                            }
+                                        }
                                     }
-                                    zoomScale = newScale
+                                } else {
+                                    // Track multi-touch gestures (zoom + pan)
+                                    val zoomChange = event.calculateZoom()
+                                    val panChange = event.calculatePan()
 
-                                    val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
-                                    val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
-
-                                    if (zoomScale > 1f) {
-                                        val maxPanX = (zoomScale - 1f) * w
-                                        val maxPanY = (zoomScale - 1f) * h
-                                        zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, 0f)
-                                        zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, 0f)
-                                    } else {
-                                        zoomOffsetX = 0f
-                                        zoomOffsetY = 0f
+                                    if (!pastTouchSlop) {
+                                        zoom *= zoomChange
+                                        pan += panChange
+                                        val panMotion = pan.getDistance()
+                                        val zoomMotion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
+                                        if (event.changes.size > 1 || zoomScale > 1f) {
+                                            if (zoomMotion > touchSlop || panMotion > touchSlop) {
+                                                pastTouchSlop = true
+                                            }
+                                        }
                                     }
 
-                                    event.changes.forEach {
-                                        if (it.positionChanged()) it.consume()
+                                    if (pastTouchSlop) {
+                                        val centroid = event.calculateCentroid(useCurrent = false)
+                                        val newScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+                                        if (newScale != zoomScale) {
+                                            val scaleChange = newScale / zoomScale
+                                            zoomOffsetX = centroid.x - scaleChange * (centroid.x - zoomOffsetX)
+                                            zoomOffsetY = centroid.y - scaleChange * (centroid.y - zoomOffsetY)
+                                        }
+                                        zoomScale = newScale
+
+                                        val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
+                                        val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
+
+                                        if (zoomScale > 1f) {
+                                            val maxPanX = (zoomScale - 1f) * w
+                                            val maxPanY = (zoomScale - 1f) * h
+                                            zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, 0f)
+                                            zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, 0f)
+                                        } else {
+                                            zoomOffsetX = 0f
+                                            zoomOffsetY = 0f
+                                        }
+
+                                        event.changes.forEach {
+                                            if (it.positionChanged()) it.consume()
+                                        }
                                     }
                                 }
                             }
                         } while (!canceled && event.changes.any { it.pressed })
+
+                        // When gesture ends:
+                        if (isVerticalSwipe && !isMultitouchHappened && zoomScale == 1f) {
+                            val threshold = 350f
+                            if (swipeOffsetY.value < -threshold) {
+                                // Swipe up -> show info
+                                onShowInfo(item)
+                                scope.launch { swipeOffsetY.animateTo(0f) }
+                            } else if (swipeOffsetY.value > threshold) {
+                                // Swipe down -> close
+                                onClose()
+                            } else {
+                                // Snap back smoothly
+                                scope.launch { swipeOffsetY.animateTo(0f) }
+                            }
+                        } else {
+                            // Snap back if multitouch happened
+                            scope.launch { swipeOffsetY.animateTo(0f) }
+                        }
                     }
                 }
-            }
-            .graphicsLayer(
-                scaleX = zoomScale,
-                scaleY = zoomScale,
-                translationX = zoomOffsetX,
-                translationY = zoomOffsetY,
-                transformOrigin = TransformOrigin(0f, 0f)
-            ),
+            },
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = imageUri,
-            imageLoader = imageLoader,
-            contentDescription = item.displayName,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = zoomScale,
+                    scaleY = zoomScale,
+                    translationX = zoomOffsetX,
+                    translationY = zoomOffsetY,
+                    transformOrigin = TransformOrigin(0f, 0f)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = imageUri,
+                imageLoader = imageLoader,
+                contentDescription = item.displayName,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 

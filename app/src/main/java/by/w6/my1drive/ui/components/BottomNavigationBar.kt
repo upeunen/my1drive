@@ -71,3 +71,51 @@ fun BottomNavigationBar(
         }
     }
 }
+
+@Composable
+fun SideNavigationBar(
+    currentRoute: String,
+    onNavigate: (String) -> Unit
+) {
+    val items = listOf(
+        Screen.Photos,
+        Screen.Archive,
+        Screen.Settings
+    )
+
+    val deviceTabName = remember {
+        val manufacturer = Build.MANUFACTURER
+        val model = Build.MODEL
+        val cleanModel = model.replace(Regex("[^a-zA-Z\\s]"), "").replace(Regex("\\s+"), " ").trim()
+        val cleanManufacturer = manufacturer.replace(Regex("[^a-zA-Z\\s]"), "").replace(Regex("\\s+"), " ").trim()
+        val modelFirstWord = cleanModel.split(" ").firstOrNull() ?: ""
+        val name = if (modelFirstWord.length > 2) {
+            modelFirstWord
+        } else {
+            cleanManufacturer.split(" ").firstOrNull() ?: ""
+        }
+        if (name.isNotEmpty()) {
+            name.lowercase().replaceFirstChar { it.uppercase() }
+        } else {
+            "Устройство"
+        }
+    }
+
+    androidx.compose.material3.NavigationRail {
+        items.forEach { screen ->
+            val isSelected = currentRoute == screen.route
+            val title = if (screen == Screen.Photos) deviceTabName else stringResource(screen.titleResId)
+            androidx.compose.material3.NavigationRailItem(
+                selected = isSelected,
+                onClick = { onNavigate(screen.route) },
+                icon = {
+                    Icon(
+                        imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+                        contentDescription = title
+                    )
+                },
+                label = { Text(title) }
+            )
+        }
+    }
+}

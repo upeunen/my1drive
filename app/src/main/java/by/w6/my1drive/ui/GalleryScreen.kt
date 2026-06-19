@@ -29,6 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.ui.components.BottomNavigationBar
+import by.w6.my1drive.ui.components.SideNavigationBar
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
 import coil.decode.VideoFrameDecoder
@@ -56,6 +61,9 @@ fun GalleryScreen(
     val restoreState by viewModel.restoreState.collectAsState()
     val showRestorePicker = restoreRequest != null
     val mediaItems by viewModel.mediaItems.collectAsState()
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var currentScreenRoute by remember { mutableStateOf("photos") }
     var showDateRangePicker by remember { mutableStateOf(false) }
@@ -99,98 +107,120 @@ fun GalleryScreen(
 
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(
-                currentRoute = currentScreenRoute,
-                onNavigate = { route ->
-                    if (activePreviewState != null) {
-                        activePreviewState = null
+            if (!isLandscape) {
+                BottomNavigationBar(
+                    currentRoute = currentScreenRoute,
+                    onNavigate = { route ->
+                        if (activePreviewState != null) {
+                            activePreviewState = null
+                        }
+                        if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
+                            viewModel.clearSelection()
+                        }
+                        currentScreenRoute = route
                     }
-                    if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
-                        viewModel.clearSelection()
-                    }
-                    currentScreenRoute = route
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            GalleryScreenContent(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-                selectedIds = selectedIds,
-                otgDirectoryUri = otgDirectoryUri,
-                isOtgConnected = isOtgConnected,
-                hasPartialAccess = hasPartialAccess,
-                currentScreenRoute = currentScreenRoute,
-                missingFilesNotification = missingFilesNotification,
-                autoSyncAddedCount = autoSyncAddedCount,
-                activePreviewState = activePreviewState,
-                showInfoDialogItem = showInfoDialogItem,
-                showOtgGuideDialog = showOtgGuideDialog,
-                imageLoader = imageLoader,
-                viewModel = viewModel,
-                onSelectOtgDirectory = onSelectOtgDirectory,
-                onSelectDeviceDirectory = onSelectDeviceDirectory,
-                onRequestFullAccess = onRequestFullAccess,
-                onOpenSettings = onOpenSettings,
-                onClearSelection = { viewModel.clearSelection() },
-                onSetActivePreview = { state -> activePreviewState = state },
-                onSetShowInfoDialog = { showInfoDialogItem = it },
-                onSetShowOtgGuide = { showOtgGuideDialog = it },
-                previewCacheManager = previewCache,
-                archiveState = archiveState,
-                restoreState = restoreState,
-                onSyncArchive = { viewModel.syncArchive() }
-            )
+        Row(modifier = Modifier.fillMaxSize()) {
+            if (isLandscape) {
+                SideNavigationBar(
+                    currentRoute = currentScreenRoute,
+                    onNavigate = { route ->
+                        if (activePreviewState != null) {
+                            activePreviewState = null
+                        }
+                        if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
+                            viewModel.clearSelection()
+                        }
+                        currentScreenRoute = route
+                    }
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                GalleryScreenContent(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    selectedIds = selectedIds,
+                    otgDirectoryUri = otgDirectoryUri,
+                    isOtgConnected = isOtgConnected,
+                    hasPartialAccess = hasPartialAccess,
+                    currentScreenRoute = currentScreenRoute,
+                    missingFilesNotification = missingFilesNotification,
+                    autoSyncAddedCount = autoSyncAddedCount,
+                    activePreviewState = activePreviewState,
+                    showInfoDialogItem = showInfoDialogItem,
+                    showOtgGuideDialog = showOtgGuideDialog,
+                    imageLoader = imageLoader,
+                    viewModel = viewModel,
+                    onSelectOtgDirectory = onSelectOtgDirectory,
+                    onSelectDeviceDirectory = onSelectDeviceDirectory,
+                    onRequestFullAccess = onRequestFullAccess,
+                    onOpenSettings = onOpenSettings,
+                    onClearSelection = { viewModel.clearSelection() },
+                    onSetActivePreview = { state -> activePreviewState = state },
+                    onSetShowInfoDialog = { showInfoDialogItem = it },
+                    onSetShowOtgGuide = { showOtgGuideDialog = it },
+                    previewCacheManager = previewCache,
+                    archiveState = archiveState,
+                    restoreState = restoreState,
+                    onSyncArchive = { viewModel.syncArchive() }
+                )
 
-            if (selectedIds.isNotEmpty() && currentScreenRoute != "settings") {
-                val visibleItems = remember(currentScreenRoute, mediaItems) {
-                    if (currentScreenRoute == "photos") {
-                        mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
-                    } else {
-                        mediaItems.filter {
-                            it.status == MediaStatus.ARCHIVED_OTG &&
-                            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+                if (selectedIds.isNotEmpty() && currentScreenRoute != "settings") {
+                    val visibleItems = remember(currentScreenRoute, mediaItems) {
+                        if (currentScreenRoute == "photos") {
+                            mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
+                        } else {
+                            mediaItems.filter {
+                                it.status == MediaStatus.ARCHIVED_OTG &&
+                                (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+                            }
                         }
                     }
-                }
-                val firstSelectedItem = remember(selectedIds, mediaItems) {
-                    mediaItems.firstOrNull { it.id in selectedIds }
-                }
+                    val firstSelectedItem = remember(selectedIds, mediaItems) {
+                        mediaItems.firstOrNull { it.id in selectedIds }
+                    }
 
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .fillMaxWidth()
-                        .padding(bottom = paddingValues.calculateBottomPadding()),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp)
+                    Card(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                            .padding(bottom = paddingValues.calculateBottomPadding()),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                        )
                     ) {
-                        SelectionHelperPanel(
-                            firstSelectedItem = firstSelectedItem,
-                            visibleItems = visibleItems,
-                            onSelectItems = { ids -> viewModel.selectItems(ids) },
-                            onSelectDateRangeClick = { showDateRangePicker = true },
-                            onClearSelection = { viewModel.clearSelection() }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                        )
-                        GalleryScreenActionBar(
-                            isArchiveTab = currentScreenRoute == "archive",
-                            isOtgConnected = isOtgConnected,
-                            otgDirectoryUri = otgDirectoryUri,
-                            onDelete = { viewModel.requestDeleteSelected() },
-                            onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
-                            onRestore = { viewModel.requestRestore() }
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp)
+                        ) {
+                            SelectionHelperPanel(
+                                firstSelectedItem = firstSelectedItem,
+                                visibleItems = visibleItems,
+                                onSelectItems = { ids -> viewModel.selectItems(ids) },
+                                onSelectDateRangeClick = { showDateRangePicker = true },
+                                onClearSelection = { viewModel.clearSelection() }
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+                            )
+                            GalleryScreenActionBar(
+                                isArchiveTab = currentScreenRoute == "archive",
+                                isOtgConnected = isOtgConnected,
+                                otgDirectoryUri = otgDirectoryUri,
+                                onDelete = { viewModel.requestDeleteSelected() },
+                                onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
+                                onRestore = { viewModel.requestRestore() }
+                            )
+                        }
                     }
                 }
             }
