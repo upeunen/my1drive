@@ -281,6 +281,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "onCreate called")
 
         val crashLogFile = File(filesDir, "crash_log.txt")
 
@@ -479,6 +480,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "onResume called")
         updatePermissionStates()
 
         viewModel.updateOtgStatus(isStartup = true)
