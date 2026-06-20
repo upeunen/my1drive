@@ -1027,7 +1027,10 @@ fun GalleryScreenContent(
         val showUnknownDrive by viewModel.otgManager.showUnknownDriveDialog.collectAsState()
         if (showUnknownDrive) {
             UnknownDriveDialog(
-                onCreateNew = { viewModel.createNewArchive() },
+                onCreateNew = {
+                    viewModel.createNewArchive()
+                    onSetShowOtgGuide(true)
+                },
                 onDismiss = { viewModel.dismissUnknownDriveDialog() }
             )
         }
