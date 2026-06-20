@@ -139,10 +139,15 @@ class MainActivity : ComponentActivity() {
                                 val documentId = DocumentsContract.getDocumentId(subDir.uri)
                                 finalUri = DocumentsContract.buildTreeDocumentUri(uri.authority, documentId)
                                 autoCreatedFolderName = folderName
+                            } else {
+                                throw Exception("Не удалось создать папку $folderName в корне диска. Пожалуйста, создайте или выберите любую папку на накопителе вручную.")
                             }
                         }
                     }
                 } catch (e: Exception) {
+                    if (e.message?.contains("Пожалуйста, создайте") == true) {
+                        throw e
+                    }
                     // Fallback to original uri
                 }
 
