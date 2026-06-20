@@ -78,6 +78,9 @@ fun GooglePhotosGridItem(
     var showContextMenu by remember { mutableStateOf(false) }
     var contextMenuItem by remember { mutableStateOf<MediaItem?>(null) }
     val scale by animateFloatAsState(targetValue = if (isSelected) 0.93f else 1.0f, label = "Scale")
+    val selectionBorderWidth by animateFloatAsState(targetValue = if (isSelected) 3f else 0f, label = "SelectionBorderWidth")
+    val overlayAlpha by animateFloatAsState(targetValue = if (isSelected) 0.25f else 0.0f, label = "OverlayAlpha")
+    val checkmarkScale by animateFloatAsState(targetValue = if (isSelected) 1.0f else 0.0f, label = "CheckmarkScale")
     val isArchivedOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     val isArchivedOnline = item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected
     val hasCachedPreview = item.hasCachedPreview
@@ -100,7 +103,7 @@ fun GooglePhotosGridItem(
             .aspectRatio(1f)
             .scale(scale)
             .border(
-                width = if (isSelected) 3.dp else 0.dp,
+                width = selectionBorderWidth.dp,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                 shape = RoundedCornerShape(8.dp)
             )
@@ -213,19 +216,27 @@ fun GooglePhotosGridItem(
                     )
                 }
             }
-            // Green/Red dot indicator for original availability (archived items only)
+            // Cloud status indicator with Glassmorphism and white/black border
             if (item.status == MediaStatus.ARCHIVED_OTG) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(6.dp)
-                        .size(12.dp)
+                        .size(24.dp)
                         .background(
-                            color = if (isOtgConnected) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            color = Color.Black.copy(alpha = 0.5f),
                             shape = CircleShape
                         )
-                        .border(1.5.dp, Color.White, CircleShape)
-                )
+                        .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isOtgConnected) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                        contentDescription = if (isOtgConnected) "On OTG (Connected)" else "On OTG (Disconnected)",
+                        tint = if (isOtgConnected) Color(0xFF4CAF50) else Color(0xFFB0BEC5),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
             // Video play badge
             if (item.isVideo && !(isArchivedOffline && !hasCachedPreview)) {
@@ -263,13 +274,15 @@ fun GooglePhotosGridItem(
                 }
             }
             // Storage status icon removed
-            // Selection badge
-            if (isSelected) {
+            // Selection badge with smooth animations
+            if (overlayAlpha > 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.25f))
+                        .background(Color.Black.copy(alpha = overlayAlpha))
                 )
+            }
+            if (checkmarkScale > 0f) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
@@ -278,6 +291,7 @@ fun GooglePhotosGridItem(
                         .align(Alignment.TopStart)
                         .padding(6.dp)
                         .size(22.dp)
+                        .scale(checkmarkScale)
                         .background(Color.White, CircleShape)
                 )
             }

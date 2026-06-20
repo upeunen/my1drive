@@ -14,7 +14,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 12
-        versionName = "12.0-my1drive"
+        versionName = "2.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

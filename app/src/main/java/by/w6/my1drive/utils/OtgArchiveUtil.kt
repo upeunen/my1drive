@@ -204,9 +204,27 @@ class OtgArchiveUtil(private val context: Context) {
                 file.uri
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Write via MediaStore to original relative path
-                val relativePath = item.originalRelativePath ?: run {
+                var relativePath = item.originalRelativePath ?: run {
                     if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
                 }
+                
+                // Bypassing Android restriction: MediaStore does not allow primary directory "Android"
+                if (relativePath.startsWith("Android/", ignoreCase = true) || relativePath.equals("Android", ignoreCase = true)) {
+                    val fallbackRoot = if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
+                    val subPath = relativePath.substringAfter("Android/media/", "").trim('/', '\\')
+                    relativePath = if (subPath.isNotEmpty()) {
+                        "$fallbackRoot$subPath"
+                    } else {
+                        val subPathAlt = relativePath.substringAfter("Android/", "").trim('/', '\\')
+                        if (subPathAlt.isNotEmpty()) {
+                            "$fallbackRoot$subPathAlt"
+                        } else {
+                            fallbackRoot
+                        }
+                    }
+                    DebugLogBuffer.log(logTag, "Remapped blocked Android relative path to: $relativePath")
+                }
+
                 DebugLogBuffer.log(logTag, "Restoring via MediaStore to original path: $relativePath")
                 val collection = if (item.mimeType.startsWith("video/")) {
                     MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)

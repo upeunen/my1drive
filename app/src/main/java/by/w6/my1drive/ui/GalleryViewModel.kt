@@ -233,6 +233,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val copiedItemIds: StateFlow<Set<String>> = syncHelper.copiedItemIds
     val restoreState = MutableStateFlow(RestoreState())
     val syncState: StateFlow<String?> = syncHelper.syncState
+    val syncProgressState: StateFlow<SyncProgressState> = syncHelper.syncProgressState
 
     private val _showLimitReachedDialog = MutableStateFlow(false)
     val showLimitReachedDialog = _showLimitReachedDialog.asStateFlow()
@@ -270,24 +271,32 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private fun getLevel1Folder(relativePath: String?): String {
         if (relativePath.isNullOrEmpty()) return ""
         val clean = relativePath.trim('/', '\\').replace('\\', '/')
+        if (clean.startsWith("Android/", ignoreCase = true) || clean.equals("Android", ignoreCase = true)) {
+            return "Android/media"
+        }
         return clean.substringBefore('/')
     }
 
     private fun hasPermissionForFolder(context: Context, folderName: String): Boolean {
         if (folderName.isEmpty()) return false
         val persisted = context.contentResolver.persistedUriPermissions
+        val reqSegments = folderName.split('/', '\\').filter { it.isNotEmpty() }
         return persisted.any { perm ->
             if (perm.uri.authority == "com.android.externalstorage.documents") {
                 try {
                     val docId = DocumentsContract.getTreeDocumentId(perm.uri)
                     val volumeId = docId.substringBefore(":", "primary")
                     val path = docId.substringAfter(":", "").trim('/', '\\')
-                    val segments = path.split('/', '\\').filter { it.isNotEmpty() }
+                    val permSegments = path.split('/', '\\').filter { it.isNotEmpty() }
                     if (volumeId.equals("primary", ignoreCase = true)) {
-                        if (segments.isEmpty()) {
+                        if (permSegments.isEmpty()) {
                             true
+                        } else if (permSegments.size <= reqSegments.size) {
+                            permSegments.indices.all { i ->
+                                permSegments[i].equals(reqSegments[i], ignoreCase = true)
+                            }
                         } else {
-                            segments.first().equals(folderName, ignoreCase = true)
+                            false
                         }
                     } else {
                         false
@@ -336,15 +345,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val folderName = getLevel1Folder(relativePath)
         if (folderName.isEmpty()) return null
         val persisted = context.contentResolver.persistedUriPermissions
+        val reqSegments = folderName.split('/', '\\').filter { it.isNotEmpty() }
         val matchedPerm = persisted.firstOrNull { perm ->
             if (perm.uri.authority == "com.android.externalstorage.documents") {
                 try {
                     val docId = DocumentsContract.getTreeDocumentId(perm.uri)
                     val volumeId = docId.substringBefore(":", "primary")
                     val path = docId.substringAfter(":", "").trim('/', '\\')
-                    val segments = path.split('/', '\\').filter { it.isNotEmpty() }
+                    val permSegments = path.split('/', '\\').filter { it.isNotEmpty() }
                     if (volumeId.equals("primary", ignoreCase = true)) {
-                        segments.isEmpty() || segments.first().equals(folderName, ignoreCase = true)
+                        if (permSegments.isEmpty()) {
+                            true
+                        } else if (permSegments.size <= reqSegments.size) {
+                            permSegments.indices.all { i ->
+                                permSegments[i].equals(reqSegments[i], ignoreCase = true)
+                            }
+                        } else {
+                            false
+                        }
                     } else {
                         false
                     }

@@ -53,7 +53,10 @@ class ArchiveSyncHelper(
     val missingFilesNotification: StateFlow<List<String>?> = _missingFilesNotification.asStateFlow()
 
     private val _autoSyncAddedCount = MutableStateFlow(0)
-        val autoSyncAddedCount: StateFlow<Int> = _autoSyncAddedCount.asStateFlow()
+    val autoSyncAddedCount: StateFlow<Int> = _autoSyncAddedCount.asStateFlow()
+
+    private val _syncProgressState = MutableStateFlow(SyncProgressState())
+    val syncProgressState: StateFlow<SyncProgressState> = _syncProgressState.asStateFlow()
 
     private val _archivingItemIds = MutableStateFlow<Set<String>>(emptySet())
     val archivingItemIds: StateFlow<Set<String>> = _archivingItemIds.asStateFlow()
@@ -318,7 +321,14 @@ class ArchiveSyncHelper(
     fun syncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
         scope.launch {
-            _syncState.value = "Синхронизация: поиск файлов на OTG..."
+            _syncProgressState.value = SyncProgressState(
+                isSyncing = true,
+                currentFileName = "Поиск файлов на OTG...",
+                progressFraction = 0f,
+                totalFiles = 0,
+                currentFileIndex = 0
+            )
+            _syncState.value = null
             operationMutex.withLock {
                 try {
                     val dir = DocumentFile.fromTreeUri(application, uri)
@@ -329,14 +339,14 @@ class ArchiveSyncHelper(
                         it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
                     }
                     if (files.isEmpty()) {
+                        _syncProgressState.value = SyncProgressState(isSyncing = false)
                         _syncState.value = "Синхронизация завершена: файлов нет."
                         return@withLock
                     }
 
                     var synced = 0; var skipped = 0
                     val logSb = StringBuilder()
-                        .appendLine("=== Sync Archive Log ===")
-                        .appendLine("Total files found: ${files.size}")
+                    logSb.appendLine("Total files found: ${files.size}")
 
                     // Source of truth: JSON metadata on the OTG drive
                     val jsonEntries = withContext(Dispatchers.IO) {
@@ -373,16 +383,23 @@ class ArchiveSyncHelper(
 
                     withContext(Dispatchers.IO) {
                         for ((idx, file) in files.withIndex()) {
-                            if (file.isDirectory) { logSb.appendLine("Skipping directory: ${file.name}"); continue }
+                            if (file.isDirectory) continue
                             val name = file.name ?: continue
                             val length = file.length()
+
+                            _syncProgressState.value = SyncProgressState(
+                                isSyncing = true,
+                                currentFileName = name,
+                                progressFraction = idx.toFloat() / files.size,
+                                totalFiles = files.size,
+                                currentFileIndex = idx + 1
+                            )
 
                             // Если файл с таким именем и размером уже есть в JSON, то его хэш и метаданные уже известны.
                             // Проверяем наличие в локальной БД Room, при необходимости восстанавливаем запись.
                             val key = (name.lowercase()) to length
                             val entry = knownNamesAndSizesMap[key]
                             if (entry != null) {
-                                logSb.appendLine("Already exists (skipped hash): $name")
                                 val otgFileUri = file.uri.toString()
                                 if (db.mediaDao().getById(entry.hash) == null) {
                                     db.mediaDao().insert(MediaEntity(
@@ -400,7 +417,6 @@ class ArchiveSyncHelper(
                                 continue
                             }
 
-                            _syncState.value = "Обрабатывается: $name (${idx + 1} из ${files.size})"
                             val hash = try { archiveUtil.calculateSha256(file.uri) } catch (e: Exception) {
                                 logSb.appendLine("Failed to read/hash $name: ${e.message}"); skipped++; continue
                             }
@@ -421,9 +437,8 @@ class ArchiveSyncHelper(
                                 validJsonEntries.add(entry)
                                 knownHashes.add(hash)
                                 synced++
-                                logSb.appendLine("Imported new file: $name (hash=$hash)")
                             } else {
-                                logSb.appendLine("Already exists: $name (hash=$hash)")
+                                skipped++
                             }
                         }
                     }
@@ -476,10 +491,11 @@ class ArchiveSyncHelper(
 
                     repository.refresh()
 
-                    logSb.appendLine("Sync completed: imported $synced, skipped $skipped")
-                    _syncState.value = logSb.toString()
-                    DebugLogBuffer.log("ManualSync", logSb.toString())
+                    _syncProgressState.value = SyncProgressState(isSyncing = false)
+                    _syncState.value = "Синхронизация завершена.\n\nИмпортировано новых файлов: $synced\nПропущено/проверено: ${files.size - synced}"
+                    DebugLogBuffer.log("ManualSync", "Sync complete: imported $synced, total ${files.size}")
                 } catch (e: Exception) {
+                    _syncProgressState.value = SyncProgressState(isSyncing = false)
                     val errorMsg = "Ошибка синхронизации: ${e.localizedMessage}"
                     _syncState.value = errorMsg
                     DebugLogBuffer.log("ManualSync", "Exception in manual sync: ${e.localizedMessage}")

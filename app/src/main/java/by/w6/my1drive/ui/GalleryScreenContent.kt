@@ -107,6 +107,7 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Sync
 
 @Composable
 fun UnknownDriveBanner() {
@@ -282,6 +283,7 @@ fun ArchiveRoute(
     val archiveState by viewModel.archiveState.collectAsState()
     val restoreState by viewModel.restoreState.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
+    val syncProgressState by viewModel.syncProgressState.collectAsState()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -356,10 +358,7 @@ fun ArchiveRoute(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        val currentSyncState = syncState
-        val isManualSyncing = currentSyncState != null &&
-                !currentSyncState.contains("Синхронизация завершена") &&
-                !currentSyncState.contains("Ошибка синхронизации")
+        val isManualSyncing = syncProgressState.isSyncing
         val isOperationRunning = isSilentSyncing || archiveState.isArchiving || restoreState.isRestoring || isManualSyncing
 
         Row(
@@ -708,6 +707,7 @@ fun GalleryScreenContent(
     previewCacheManager: PreviewCacheManager,
     archiveState: ArchiveState = ArchiveState(),
     restoreState: RestoreState = RestoreState(),
+    syncProgressState: SyncProgressState = SyncProgressState(),
     onSyncArchive: () -> Unit = {}
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
@@ -734,7 +734,7 @@ fun GalleryScreenContent(
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
 
-            // Прогресс-панель архивации/восстановления
+            // Прогресс-панель архивации/восстановления/синхронизации
             if (archiveState.isArchiving) {
                 val queue = if (archiveState.pendingQueueSize > 0) " (+${archiveState.pendingQueueSize} в очереди)" else ""
                 ProgressPanel(
@@ -756,6 +756,16 @@ fun GalleryScreenContent(
                     progressFraction = restoreState.progressFraction,
                     icon = Icons.Default.CloudDownload,
                     statusText = mapStepToText(restoreState.currentStep)
+                )
+            } else if (syncProgressState.isSyncing) {
+                ProgressPanel(
+                    title = "Синхронизация архива",
+                    fileName = syncProgressState.currentFileName,
+                    currentIndex = syncProgressState.currentFileIndex,
+                    totalFiles = syncProgressState.totalFiles,
+                    progressFraction = syncProgressState.progressFraction,
+                    icon = Icons.Default.Sync,
+                    statusText = if (syncProgressState.totalFiles > 0) "Вычисление хэшей..." else "Поиск файлов..."
                 )
             }
 
@@ -932,21 +942,10 @@ fun GalleryScreenContent(
             AlertDialog(
                 onDismissRequest = { viewModel.dismissSync() },
                 title = { Text(stringResource(R.string.sync_archive_title)) },
-                text = {
-                    Column {
-                        Text(stateMessage)
-                        if (!stateMessage.contains("Синхронизация завершена") && !stateMessage.contains("Ошибка синхронизации")) {
-                            Spacer(Modifier.height(16.dp))
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.CenterHorizontally),
-                                strokeCap = StrokeCap.Round
-                            )
-                        }
-                    }
-                },
+                text = { Text(stateMessage) },
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSync() }) {
-                        Text(stringResource(R.string.btn_close))
+                        Text("ОК")
                     }
                 }
             )

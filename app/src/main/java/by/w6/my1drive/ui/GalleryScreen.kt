@@ -14,6 +14,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,6 +66,7 @@ fun GalleryScreen(
     val restoreRequest by viewModel.restoreRequest.collectAsState()
     val archiveState by viewModel.archiveState.collectAsState()
     val restoreState by viewModel.restoreState.collectAsState()
+    val syncProgressState by viewModel.syncProgressState.collectAsState()
     val showRestorePicker = restoreRequest != null
     val mediaItems by viewModel.mediaItems.collectAsState()
 
@@ -168,34 +176,43 @@ fun GalleryScreen(
                     previewCacheManager = previewCache,
                     archiveState = archiveState,
                     restoreState = restoreState,
+                    syncProgressState = syncProgressState,
                     onSyncArchive = { viewModel.syncArchive() }
                 )
 
-                if (selectedIds.isNotEmpty() && currentScreenRoute != "settings") {
-                    val visibleItems = remember(currentScreenRoute, mediaItems) {
-                        if (currentScreenRoute == "photos") {
-                            mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
-                        } else {
-                            mediaItems.filter {
-                                it.status == MediaStatus.ARCHIVED_OTG &&
-                                (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
-                            }
+                val visibleItems = remember(currentScreenRoute, mediaItems) {
+                    if (currentScreenRoute == "photos") {
+                        mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
+                    } else {
+                        mediaItems.filter {
+                            it.status == MediaStatus.ARCHIVED_OTG &&
+                            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
                         }
                     }
-                    val firstSelectedItem = remember(selectedIds, mediaItems) {
-                        mediaItems.firstOrNull { it.id in selectedIds }
-                    }
+                }
+                val firstSelectedItem = remember(selectedIds, mediaItems) {
+                    mediaItems.firstOrNull { it.id in selectedIds }
+                }
 
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = selectedIds.isNotEmpty() && currentScreenRoute != "settings",
+                    enter = slideInVertically(
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    ) { it } + fadeIn(),
+                    exit = slideOutVertically(
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    ) { it } + fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
                     Card(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .fillMaxWidth()
                             .padding(bottom = paddingValues.calculateBottomPadding()),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(28.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                         )
                     ) {
                         Column(

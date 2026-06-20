@@ -45,6 +45,14 @@ data class RestoreState(
     val error: String? = null
 )
 
+data class SyncProgressState(
+    val isSyncing: Boolean = false,
+    val currentFileName: String = "",
+    val progressFraction: Float = 0f,
+    val totalFiles: Int = 0,
+    val currentFileIndex: Int = 0
+)
+
 data class ArchivedInfo(
     val item: MediaItem,
     val hash: String,
