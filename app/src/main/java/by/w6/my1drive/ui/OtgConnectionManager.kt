@@ -380,7 +380,7 @@ class OtgConnectionManager(
         return try {
             val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
             storageManager.storageVolumes.any { volume ->
-                volume.isRemovable && volume.state == Environment.MEDIA_MOUNTED
+                !volume.isPrimary && volume.state == Environment.MEDIA_MOUNTED
             }
         } catch (e: Exception) {
             false

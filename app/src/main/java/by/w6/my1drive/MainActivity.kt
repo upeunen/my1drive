@@ -247,7 +247,7 @@ class MainActivity : ComponentActivity() {
     private fun otgStorageRootUri(context: Context): Uri? {
         val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager ?: return null
         for (volume in storageManager.storageVolumes) {
-            if (volume.isRemovable && volume.state == android.os.Environment.MEDIA_MOUNTED) {
+            if (!volume.isPrimary && volume.state == android.os.Environment.MEDIA_MOUNTED) {
                 val uuid = volume.uuid
                 if (uuid != null) {
                     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
