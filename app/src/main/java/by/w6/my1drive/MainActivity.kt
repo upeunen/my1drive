@@ -230,18 +230,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun selectOtgFolder() {
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: start")
         val currentOtgUri = viewModel.otgDirectoryUri.value
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: currentOtgUri=$currentOtgUri")
         val initialUri = when {
             currentOtgUri != null -> currentOtgUri
             else -> {
                 val otgRoot = otgStorageRootUri(this)
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: otgRoot=$otgRoot")
                 if (otgRoot == null) {
                     Toast.makeText(this, "Внешний носитель не найден. Выберите папку на устройстве.", Toast.LENGTH_LONG).show()
                 }
                 otgRoot ?: phoneStorageRootUri()
             }
         }
-        otgFolderLauncher.launch(initialUri)
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launching with initialUri=$initialUri")
+        try {
+            otgFolderLauncher.launch(initialUri)
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch executed")
+        } catch (e: Exception) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed: ${e.localizedMessage}")
+        }
     }
 
     private fun otgStorageRootUri(context: Context): Uri? {
