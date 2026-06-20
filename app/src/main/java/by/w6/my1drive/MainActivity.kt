@@ -78,9 +78,19 @@ class MainActivity : ComponentActivity() {
         /** Returns true if the URI points to a non-primary (removable) storage volume */
     private fun isRemovableStorageUri(uri: Uri): Boolean {
         val path = uri.path ?: return false
+        // Try /document/ segment first (for subfolder URIs from DocumentFile.createDirectory)
+        val docSegment = path.substringAfter("/document/", "")
+        if (docSegment.isNotEmpty()) {
+            val rawId = docSegment.substringBefore(":")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) {
+                return !rawId.equals("primary", ignoreCase = true)
+            }
+        }
+        // Fallback to /tree/ segment
         val treeSegment = path.substringAfter("/tree/", "")
         if (treeSegment.isEmpty()) return false
         val rawId = treeSegment.substringBefore(":")
+        if (rawId.contains("/")) return false // garbled parse, can't determine
         return !rawId.equals("primary", ignoreCase = true)
     }
 
@@ -126,7 +136,8 @@ class MainActivity : ComponentActivity() {
                             val folderName = "Arhiv-$formattedName"
                             val subDir = documentFile.findFile(folderName) ?: documentFile.createDirectory(folderName)
                             if (subDir != null) {
-                                finalUri = subDir.uri
+                                val documentId = DocumentsContract.getDocumentId(subDir.uri)
+                                finalUri = DocumentsContract.buildTreeDocumentUri(uri.authority, documentId)
                                 autoCreatedFolderName = folderName
                             }
                         }

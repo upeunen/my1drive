@@ -173,6 +173,7 @@ class OtgConnectionManager(
 
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri) {
+        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")
         _otgDirectoryUri.value = uri
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
         prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
@@ -180,7 +181,10 @@ class OtgConnectionManager(
         _isCheckingConnection.value = true
         scope.launch {
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            val extractedVolId = extractVolumeId(uri)
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: extractedVolumeId=$extractedVolId, physicalConnected=${_physicalConnected.value}")
             val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: computedStatus=$newStatus")
             _status.value = newStatus
             updateArchiveSize()
             _isCheckingConnection.value = false
@@ -323,16 +327,27 @@ class OtgConnectionManager(
         val isPhysicallyConnected = isOtgUriPhysicallyConnected(savedUri)
 
         if (!isPhysicallyConnected) {
-            return if (isAnyOtgDrivePresent()) {
-                if (!unknownDriveDialogHandled) {
-                    _showUnknownDriveDialog.value = true
-                    unknownDriveDialogHandled = true
-                }
-                DriveStatus.UNKNOWN_DRIVE_CONNECTED
+            // Fallback: UUID-based check may fail for document URIs (e.g. subfolder URIs
+            // from DocumentFile.createDirectory on Samsung devices). Try DocumentFile access directly.
+            val fallbackConnected = try {
+                val docFile = DocumentFile.fromTreeUri(application, savedUri)
+                docFile != null && docFile.exists() && docFile.canRead()
+            } catch (_: Exception) { false }
+
+            if (fallbackConnected) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "UUID check failed but DocumentFile fallback succeeded for $savedUri")
             } else {
-                _showUnknownDriveDialog.value = false
-                unknownDriveDialogHandled = false
-                DriveStatus.KNOWN_DRIVE_DISCONNECTED
+                return if (isAnyOtgDrivePresent()) {
+                    if (!unknownDriveDialogHandled) {
+                        _showUnknownDriveDialog.value = true
+                        unknownDriveDialogHandled = true
+                    }
+                    DriveStatus.UNKNOWN_DRIVE_CONNECTED
+                } else {
+                    _showUnknownDriveDialog.value = false
+                    unknownDriveDialogHandled = false
+                    DriveStatus.KNOWN_DRIVE_DISCONNECTED
+                }
             }
         }
 
@@ -372,13 +387,43 @@ class OtgConnectionManager(
         }
     }
 
+    /**
+     * Extract the volume UUID from a SAF URI.
+     * Handles both simple tree URIs and document URIs inside tree URIs:
+     *  - content://.../tree/UUID%3A              → UUID
+     *  - content://.../tree/UUID%3A/document/UUID%3ASubfolder → UUID
+     *  - content://.../tree/UUID%3ASubfolder      → UUID
+     *
+     * On Samsung devices, DocumentFile.createDirectory() returns a document URI
+     * inside the tree, so we must handle the /document/ segment.
+     */
+    private fun extractVolumeId(uri: Uri): String? {
+        val path = uri.path ?: return null
+
+        // Try /document/ segment first (more specific, for subfolder URIs)
+        val docSegment = path.substringAfter("/document/", "")
+        if (docSegment.isNotEmpty()) {
+            val rawId = docSegment.substringBefore(":")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
+        }
+
+        // Fallback to /tree/ segment
+        val treeSegment = path.substringAfter("/tree/", "")
+        if (treeSegment.isNotEmpty()) {
+            val rawId = treeSegment.substringBefore(":")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
+        }
+
+        return null
+    }
+
     private fun isOtgUriPhysicallyConnected(uri: Uri): Boolean {
         try {
-            val path = uri.path ?: return false
-            val treeSegment = path.substringAfter("/tree/", "")
-            if (treeSegment.isEmpty()) return false
-            val rawId = treeSegment.substringBefore(":")
-            if (rawId.isEmpty()) return false
+            val rawId = extractVolumeId(uri)
+            if (rawId == null) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "extractVolumeId returned null for URI: $uri (path=${uri.path})")
+                return false
+            }
 
             val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
             val volumes = storageManager.storageVolumes
@@ -393,7 +438,10 @@ class OtgConnectionManager(
                     return volume.state == Environment.MEDIA_MOUNTED
                 }
             }
+
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Volume UUID '$rawId' not found among mounted volumes. Available: ${volumes.map { "${it.uuid}/${it.state}" }}")
         } catch (e: Exception) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "isOtgUriPhysicallyConnected exception: ${e.localizedMessage}")
             e.printStackTrace()
         }
         return false
