@@ -56,7 +56,13 @@ fun GalleryScreenActionBar(
         ) {
             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
+            Text(
+                text = stringResource(R.string.preview_delete),
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                softWrap = false
+            )
         }
 
         if (!isArchiveTab) {
@@ -72,7 +78,13 @@ fun GalleryScreenActionBar(
             ) {
                 Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
+                Text(
+                    text = stringResource(R.string.preview_archive),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         } else {
             FilledTonalButton(
@@ -87,7 +99,13 @@ fun GalleryScreenActionBar(
             ) {
                 Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
+                Text(
+                    text = stringResource(R.string.preview_restore),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     }

@@ -136,7 +136,10 @@ fun SettingsTab(
                     ) {
                         Text(
                             text = if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
-                                else stringResource(R.string.select_otg_folder)
+                                else stringResource(R.string.select_otg_folder),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
                         )
                     }
                     if (isOtgConnected && otgDirectoryDisplayName != null) {
@@ -149,7 +152,12 @@ fun SettingsTab(
                             ),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(stringResource(R.string.sync_archive_title))
+                            Text(
+                                text = stringResource(R.string.sync_archive_title),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
                         }
                     }
                 }
@@ -288,7 +296,12 @@ fun SettingsTab(
                 ) {
                     Icon(Icons.Default.CleaningServices, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.clear_thumb_cache))
+                    Text(
+                        text = stringResource(R.string.clear_thumb_cache),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -306,7 +319,12 @@ fun SettingsTab(
                 ) {
                     Icon(Icons.Default.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Просмотр логов отладки")
+                    Text(
+                        text = "Просмотр логов отладки",
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -357,7 +375,12 @@ fun SettingsTab(
                 ) {
                     Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.btn_open_settings))
+                    Text(
+                        text = stringResource(R.string.btn_open_settings),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
                 }
             }
         }

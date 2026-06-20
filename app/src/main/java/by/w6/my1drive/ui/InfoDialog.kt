@@ -360,7 +360,10 @@ fun InfoDialog(
                             Text(
                                 text = if (isOtgOffline) "EXIF недоступен (OTG отключен)"
                                        else if (showExifSection) "Скрыть EXIF"
-                                       else "Показать EXIF"
+                                       else "Показать EXIF",
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                softWrap = false
                             )
                         }
                     }
@@ -378,18 +381,33 @@ fun InfoDialog(
                 val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
                 if (canOpen) {
                     TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.btn_close))
+                        Text(
+                            text = stringResource(R.string.btn_close),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
                         onOpenFullscreen()
                         onDismiss()
                     }) {
-                        Text("Открыть")
+                        Text(
+                            text = "Открыть",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 } else {
                     Button(onClick = onDismiss) {
-                        Text(stringResource(R.string.btn_close))
+                        Text(
+                            text = stringResource(R.string.btn_close),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             }

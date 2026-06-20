@@ -139,8 +139,8 @@ fun PartialAccessBanner(onGrantFullAccess: () -> Unit, onOpenSettings: () -> Uni
             Text(stringResource(R.string.partial_access_banner_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onGrantFullAccess, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.btn_grant_full_access), maxLines = 1) }
-                OutlinedButton(onClick = onOpenSettings, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.btn_open_settings), maxLines = 1) }
+                Button(onClick = onGrantFullAccess, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.btn_grant_full_access), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false) }
+                OutlinedButton(onClick = onOpenSettings, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.btn_open_settings), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false) }
             }
         }
     }
@@ -597,7 +597,7 @@ fun MissingFilesDialog(missingNames: List<String>, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.auto_sync_missing_title), fontWeight = FontWeight.Bold) },
         text = { Text(stringResource(R.string.auto_sync_missing_msg, missingNames.joinToString("\n"))) },
-        confirmButton = { Button(onClick = onDismiss) { Text(stringResource(R.string.btn_ok)) } }
+        confirmButton = { Button(onClick = onDismiss) { Text(text = stringResource(R.string.btn_ok), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false) } }
     )
 }
 
@@ -620,12 +620,22 @@ fun UnknownDriveDialog(
         },
         confirmButton = {
             Button(onClick = onCreateNew) {
-                Text("Создать новый")
+                Text(
+                    text = "Создать новый",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Закрыть")
+                Text(
+                    text = "Закрыть",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     )
@@ -670,12 +680,22 @@ fun DeleteConfirmDialog(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text(if (pendingDelete.size == 1) stringResource(R.string.btn_delete_otg) else stringResource(R.string.action_delete_all))
+                Text(
+                    text = if (pendingDelete.size == 1) stringResource(R.string.btn_delete_otg) else stringResource(R.string.action_delete_all),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.btn_cancel))
+                Text(
+                    text = stringResource(R.string.btn_cancel),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     )
@@ -918,7 +938,12 @@ fun GalleryScreenContent(
                 text = { Text(err) },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissArchiveError() }) {
-                        Text("ОК")
+                        Text(
+                            text = "ОК",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             )
@@ -931,7 +956,12 @@ fun GalleryScreenContent(
                 text = { Text(err) },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissRestoreError() }) {
-                        Text("ОК")
+                        Text(
+                            text = "ОК",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             )
@@ -945,7 +975,12 @@ fun GalleryScreenContent(
                 text = { Text(stateMessage) },
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSync() }) {
-                        Text("ОК")
+                        Text(
+                            text = "ОК",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             )
@@ -1011,12 +1046,22 @@ fun GalleryScreenContent(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Извлечь")
+                        Text(
+                            text = "Извлечь",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showEjectConfirmDialog = false }) {
-                        Text("Отмена")
+                        Text(
+                            text = "Отмена",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             )
@@ -1061,7 +1106,12 @@ fun GalleryScreenContent(
                         viewModel.otgManager.dismissUnreadableOtgDialog()
                         showWhy = false
                     }) {
-                        Text(stringResource(R.string.btn_ok))
+                        Text(
+                            text = stringResource(R.string.btn_ok),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             )
@@ -1075,14 +1125,24 @@ fun GalleryScreenContent(
                 text = { Text("Вы достигли лимита бесплатной версии в 128 МБ. Для продолжения архивации необходимо приобрести PRO версию либо удалить часть фото из архива.") },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissLimitReachedDialog() }) {
-                        Text("ОК")
+                        Text(
+                            text = "ОК",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         Toast.makeText(context, "Покупка PRO версии временно недоступна", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Купить PRO")
+                        Text(
+                            text = "Купить PRO",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             )
@@ -1503,12 +1563,22 @@ fun DateRangePickerDialog(
                     onDateRangeSelected(state.selectedStartDateMillis, state.selectedEndDateMillis)
                 }
             ) {
-                Text("Выбрать")
+                Text(
+                    text = "Выбрать",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(
+                    text = "Отмена",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     ) {

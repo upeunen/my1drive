@@ -192,7 +192,12 @@ fun DisconnectedOtgInfoDialog(
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("ОК")
+                Text(
+                    text = "ОК",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     )

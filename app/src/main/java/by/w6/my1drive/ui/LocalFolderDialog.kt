@@ -62,12 +62,22 @@ fun LocalFolderDialog(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("Предоставить доступ")
+                Text(
+                    text = "Предоставить доступ",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Пропустить")
+                Text(
+                    text = "Пропустить",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     )

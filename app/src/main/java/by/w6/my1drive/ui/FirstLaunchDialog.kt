@@ -81,12 +81,22 @@ fun FirstLaunchDialog(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text(stringResource(R.string.welcome_btn_start))
+                Text(
+                    text = stringResource(R.string.welcome_btn_start),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.welcome_btn_close))
+                Text(
+                    text = stringResource(R.string.welcome_btn_close),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
             }
         }
     )

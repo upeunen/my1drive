@@ -166,7 +166,13 @@ fun DebugLogsDialog(
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Копировать", fontSize = 13.sp)
+                            Text(
+                                text = "Копировать",
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
                         }
                         
                         // Clear Button
@@ -180,7 +186,13 @@ fun DebugLogsDialog(
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Очистить", fontSize = 13.sp)
+                            Text(
+                                text = "Очистить",
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
                         }
                     }
                     
@@ -188,7 +200,12 @@ fun DebugLogsDialog(
                     Button(
                         onClick = onDismiss
                     ) {
-                        Text("Закрыть")
+                        Text(
+                            text = "Закрыть",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
                     }
                 }
             }
