@@ -80,23 +80,6 @@ class ArchiveSyncHelper(
      * Это гарантирует, что после createNewArchive / переустановки приложения
      * все ранее заархивированные файлы появятся в интерфейсе.
      */
-    private var actionCount = 0
-
-    fun incrementActionCount() {
-        actionCount++
-        DebugLogBuffer.log("ArchiveSyncHelper", "Incremented actionCount to $actionCount")
-        if (actionCount == 1 || actionCount % 10 == 1) {
-            val savedUriString = prefs.getString("otg_directory_uri", null)
-            if (savedUriString != null) {
-                try {
-                    val uri = Uri.parse(savedUriString)
-                    silentSyncArchive(uri)
-                } catch (e: Exception) {
-                    DebugLogBuffer.log("ArchiveSyncHelper", "Failed to parse saved OTG URI for periodic sync: ${e.localizedMessage}")
-                }
-            }
-        }
-    }
 
     /**
      * Silent auto-sync:

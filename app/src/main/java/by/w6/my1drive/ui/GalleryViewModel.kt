@@ -101,7 +101,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             },
             onArchiveSuccess = { items ->
                 deleteDeviceItems(items)
-                syncHelper.incrementActionCount()
             }
         )
     }
@@ -609,7 +608,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _selectedIds.value = emptySet()
         deleteDeviceItems(items.filter { it.status == MediaStatus.ON_DEVICE })
         deleteArchivedItems(items.filter { it.status == MediaStatus.ARCHIVED_OTG })
-        syncHelper.incrementActionCount()
     }
 
     fun dismissDelete() { _pendingDelete.value = null }
@@ -877,7 +875,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")
                 restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = finalError)
                 otgManager.updateArchiveSize()
-                syncHelper.incrementActionCount()
             } finally {
                 _restoringItemIds.value = emptySet()
             }
@@ -896,7 +893,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             deleteArchivedItems(listOf(item))
         }
-        syncHelper.incrementActionCount()
     }
 
     // ─── Create folder ───
