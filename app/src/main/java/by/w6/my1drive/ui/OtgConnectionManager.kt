@@ -378,14 +378,36 @@ class OtgConnectionManager(
 
     /** Checks if any removable (OTG) drive is physically connected. */
     private fun isAnyOtgDrivePresent(): Boolean {
-        return try {
-            val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
-            storageManager.storageVolumes.any { volume ->
-                !volume.isPrimary && volume.state == Environment.MEDIA_MOUNTED
+        // Fallback 1: check storageVolumes
+        try {
+            val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+            if (storageManager != null) {
+                val hasOtg = storageManager.storageVolumes.any { volume ->
+                    !volume.isPrimary && volume.state == Environment.MEDIA_MOUNTED
+                }
+                if (hasOtg) return true
             }
-        } catch (e: Exception) {
-            false
-        }
+        } catch (_: Exception) {}
+
+        // Fallback 2: scan /storage directory directly (highly reliable on Samsung/custom ROMs)
+        try {
+            val storageDir = java.io.File("/storage")
+            if (storageDir.exists() && storageDir.isDirectory) {
+                val files = storageDir.listFiles()
+                if (files != null) {
+                    for (file in files) {
+                        if (file.isDirectory && file.canRead()) {
+                            val name = file.name.lowercase()
+                            if (name != "emulated" && name != "self" && name != "sdcard") {
+                                return true
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        return false
     }
 
     /**
@@ -426,12 +448,18 @@ class OtgConnectionManager(
                 return false
             }
 
+            if (rawId.equals("primary", ignoreCase = true)) {
+                return java.io.File("/storage/emulated/0").exists()
+            }
+
+            // Direct filesystem check (extremely reliable, bypasses StorageManager bugs)
+            val directFile = java.io.File("/storage/$rawId")
+            if (directFile.exists() && directFile.isDirectory && directFile.canRead()) {
+                return true
+            }
+
             val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return false
             val volumes = storageManager.storageVolumes
-
-            if (rawId.equals("primary", ignoreCase = true)) {
-                return volumes.firstOrNull { it.isPrimary }?.state == Environment.MEDIA_MOUNTED
-            }
 
             for (volume in volumes) {
                 val volUuid = volume.uuid
