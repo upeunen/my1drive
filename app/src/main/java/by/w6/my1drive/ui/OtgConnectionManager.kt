@@ -315,7 +315,7 @@ class OtgConnectionManager(
         _showUnknownDriveDialog.value = false
         // Сбросить флаги, чтобы при подключённой флешке снова показать приветствие
         wasPhysicalConnected = false
-        firstLaunchHandled = false
+        firstLaunchHandled = true
         unknownDriveDialogHandled = false
     }
 

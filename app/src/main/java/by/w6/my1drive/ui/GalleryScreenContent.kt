@@ -1029,7 +1029,7 @@ fun GalleryScreenContent(
             UnknownDriveDialog(
                 onCreateNew = {
                     viewModel.createNewArchive()
-                    onSetShowOtgGuide(true)
+                    onSelectOtgDirectory()
                 },
                 onDismiss = { viewModel.dismissUnknownDriveDialog() }
             )
