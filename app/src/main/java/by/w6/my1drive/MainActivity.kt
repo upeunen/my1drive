@@ -331,43 +331,63 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Button(
                                     onClick = {
-                                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                        val clip = android.content.ClipData.newPlainText("Crash Log", crashContent)
-                                        clipboard.setPrimaryClip(clip)
-                                        Toast.makeText(this@MainActivity, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Copy Log")
-                                }
-                                Button(
-                                    onClick = {
                                         try {
                                             crashLogFile.delete()
-                                            deleteDatabase("my1drive.db")
-                                            val dbFile = getDatabasePath("my1drive.db")
-                                            try { File(dbFile.path + "-wal").delete() } catch (_: Exception) {}
-                                            try { File(dbFile.path + "-shm").delete() } catch (_: Exception) {}
-                                            getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
-                                                .edit()
-                                                .clear()
-                                                .commit()
                                             val intent = Intent(this@MainActivity, MainActivity::class.java).apply {
                                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                             }
                                             startActivity(intent)
                                             Runtime.getRuntime().exit(0)
                                         } catch (e: Exception) {
-                                            Toast.makeText(this@MainActivity, "Reset failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(this@MainActivity, "Restart failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
                                         }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Continue")
+                                }
+                                Button(
+                                    onClick = {
+                                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        val clip = android.content.ClipData.newPlainText("Crash Log", crashContent)
+                                        clipboard.setPrimaryClip(clip)
+                                        Toast.makeText(this@MainActivity, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                                     },
                                     modifier = Modifier.weight(1f),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error
+                                        containerColor = MaterialTheme.colorScheme.secondary
                                     )
                                 ) {
-                                    Text("Reset App")
+                                    Text("Copy Log")
                                 }
+                            }
+                            Button(
+                                onClick = {
+                                    try {
+                                        crashLogFile.delete()
+                                        deleteDatabase("my1drive.db")
+                                        val dbFile = getDatabasePath("my1drive.db")
+                                        try { File(dbFile.path + "-wal").delete() } catch (_: Exception) {}
+                                        try { File(dbFile.path + "-shm").delete() } catch (_: Exception) {}
+                                        getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+                                            .edit()
+                                            .clear()
+                                            .commit()
+                                        val intent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                        }
+                                        startActivity(intent)
+                                        Runtime.getRuntime().exit(0)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(this@MainActivity, "Reset failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Reset App")
                             }
                         }
                     }
@@ -447,11 +467,7 @@ class MainActivity : ComponentActivity() {
             viewModel.refresh()
         }
 
-                val receiverFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.RECEIVER_EXPORTED
-        } else {
-            0
-        }
+                val receiverFlags = ContextCompat.RECEIVER_EXPORTED
 
         val filter = IntentFilter().apply {
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
