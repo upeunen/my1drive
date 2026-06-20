@@ -117,10 +117,36 @@ class ArchiveSyncHelper(
                         DebugLogBuffer.log(logTag, "Start silentSyncArchive: targetUri=$uri")
 
                         // ── Шаг 1: Чтение JSON метаданных ──
-                        val jsonEntries = metadataStore.readMetadata(uri)
+                        var jsonEntries = metadataStore.readMetadata(uri)
                         if (jsonEntries == null) {
-                            DebugLogBuffer.log(logTag, "Metadata file exists but failed to read/parse. Skipping Room sync to prevent data loss.")
-                            return@withLock
+                            DebugLogBuffer.log(logTag, "Metadata file exists but failed to read/parse.")
+                            
+                            // Check if Room has cached items for this drive
+                            val roomEntities = db.mediaDao().getAllSync().filter { !it.otgUri.isNullOrEmpty() }
+                            if (roomEntities.isNotEmpty()) {
+                                DebugLogBuffer.log(logTag, "Local Room cache has ${roomEntities.size} entries. Attempting to restore metadata file from Room...")
+                                val restoredEntries = roomEntities.map { entity ->
+                                    JsonEntry(
+                                        hash = entity.id,
+                                        displayName = entity.displayName,
+                                        mimeType = entity.mimeType,
+                                        size = entity.size,
+                                        dateModified = entity.dateModified,
+                                        originalRelativePath = entity.originalRelativePath,
+                                        duration = entity.duration,
+                                        dateArchived = entity.dateArchived
+                                    )
+                                }
+                                metadataStore.writeMetadata(uri, restoredEntries)
+                                DebugLogBuffer.log(logTag, "Metadata file successfully rebuilt from Room cache.")
+                                jsonEntries = metadataStore.readMetadata(uri)
+                            }
+                            
+                            if (jsonEntries == null) {
+                                DebugLogBuffer.log(logTag, "Failed to restore metadata from Room. Halting sync to prevent data loss.")
+                                _syncState.value = "Индекс архива на накопителе поврежден, а локальный кэш пуст. Для возобновления работы запустите синхронизацию в настройках для восстановления индекса."
+                                return@withLock
+                            }
                         }
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 

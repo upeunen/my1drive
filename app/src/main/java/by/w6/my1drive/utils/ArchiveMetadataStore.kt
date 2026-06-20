@@ -103,11 +103,7 @@ class ArchiveMetadataStore(private val context: Context) {
         try {
             val dir = DocumentFile.fromTreeUri(context, otgUri) ?: return@withContext
 
-            // Delete existing metadata file if present
-            val existing = dir.findFile(METADATA_FILE_NAME)
-            if (existing != null) existing.delete()
-
-            val newFile = dir.createFile("application/json", METADATA_FILE_NAME) ?: return@withContext
+            val file = dir.findFile(METADATA_FILE_NAME) ?: dir.createFile("application/json", METADATA_FILE_NAME) ?: return@withContext
 
             val filesArray = JSONArray()
             for (entry in entries) {
@@ -119,7 +115,7 @@ class ArchiveMetadataStore(private val context: Context) {
                 put("files", filesArray)
             }
 
-            context.contentResolver.openOutputStream(newFile.uri)?.use { output ->
+            context.contentResolver.openOutputStream(file.uri, "rwt")?.use { output ->
                 output.write(root.toString(2).toByteArray(Charsets.UTF_8))
             }
         } catch (_: Exception) { }
@@ -131,7 +127,7 @@ class ArchiveMetadataStore(private val context: Context) {
      */
     suspend fun addEntry(otgUri: Uri, entry: JsonEntry) = withContext(Dispatchers.IO) {
         try {
-            val entries = readMetadata(otgUri)?.toMutableList() ?: mutableListOf()
+            val entries = readMetadata(otgUri)?.toMutableList() ?: throw Exception("metadata_read_failed")
             // Replace if exists, else add
             val existingIndex = entries.indexOfFirst { it.hash == entry.hash }
             if (existingIndex >= 0) {
@@ -148,7 +144,7 @@ class ArchiveMetadataStore(private val context: Context) {
      */
     suspend fun addEntries(otgUri: Uri, newEntries: List<JsonEntry>) = withContext(Dispatchers.IO) {
         try {
-            val entries = readMetadata(otgUri)?.toMutableList() ?: mutableListOf()
+            val entries = readMetadata(otgUri)?.toMutableList() ?: throw Exception("metadata_read_failed")
             val existingHashes = entries.map { it.hash }.toHashSet()
             val toAdd = newEntries.filter { it.hash !in existingHashes }
             if (toAdd.isEmpty()) return@withContext
@@ -162,7 +158,7 @@ class ArchiveMetadataStore(private val context: Context) {
      */
     suspend fun removeEntry(otgUri: Uri, hash: String) = withContext(Dispatchers.IO) {
         try {
-            val entries = readMetadata(otgUri)?.toMutableList() ?: mutableListOf()
+            val entries = readMetadata(otgUri)?.toMutableList() ?: throw Exception("metadata_read_failed")
             if (entries.removeAll { it.hash == hash }) {
                 writeMetadata(otgUri, entries)
             }
