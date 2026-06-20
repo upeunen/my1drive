@@ -108,6 +108,7 @@ class OtgConnectionManager(
 
                 if (!otgPluggedIn) {
                     unknownDriveDialogHandled = false
+                    firstLaunchHandled = false
                 }
 
                 // Show preloader only when transitioning from physically disconnected to connected, or at startup
