@@ -771,23 +771,35 @@ private fun VideoPage(
         onDispose { exoPlayer.release() }
     }
 
-    var dragAmountY by remember { mutableStateOf(0f) }
-    val draggableState = rememberDraggableState { delta ->
-        dragAmountY += delta
-    }
+    val swipeOffsetY = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .graphicsLayer(
+                translationY = swipeOffsetY.value,
+                scaleX = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
+                scaleY = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
+                alpha = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1200f)).coerceIn(0.1f, 1f) else 1f
+            )
             .draggable(
-                state = draggableState,
+                state = rememberDraggableState { delta ->
+                    scope.launch {
+                        swipeOffsetY.snapTo(swipeOffsetY.value + delta)
+                    }
+                },
                 orientation = Orientation.Vertical,
-                onDragStarted = { dragAmountY = 0f },
+                onDragStarted = { },
                 onDragStopped = { velocity ->
-                    if (dragAmountY < -150f) {
+                    val threshold = 350f
+                    if (swipeOffsetY.value < -threshold) {
                         onShowInfo(item)
-                    } else if (dragAmountY > 150f) {
+                        scope.launch { swipeOffsetY.animateTo(0f) }
+                    } else if (swipeOffsetY.value > threshold) {
                         onClose()
+                    } else {
+                        scope.launch { swipeOffsetY.animateTo(0f) }
                     }
                 }
             )
@@ -818,48 +830,18 @@ private fun VideoPage(
 }
 
 private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(context) {
-    private var startX = 0f
-    private var startY = 0f
-    private var isHorizontalDrag = false
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.action) {
+        when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                startX = ev.x
-                startY = ev.y
-                isHorizontalDrag = false
-                parent.requestDisallowInterceptTouchEvent(true)
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = ev.x - startX
-                val dy = ev.y - startY
-                // Do not intercept if touch is in bottom 20% (SeekBar area)
-                if (ev.y < height * 0.8f) {
-                    if (abs(dx) > touchSlop && abs(dx) > abs(dy)) {
-                        isHorizontalDrag = true
-                        parent.requestDisallowInterceptTouchEvent(false)
-                        return true
-                    }
+                // Only disallow Compose interception if touching the bottom 20% (Player Controls)
+                if (ev.y > height * 0.8f) {
+                    parent.requestDisallowInterceptTouchEvent(true)
+                } else {
+                    parent.requestDisallowInterceptTouchEvent(false)
                 }
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                parent.requestDisallowInterceptTouchEvent(false)
             }
         }
         return super.onInterceptTouchEvent(ev)
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (isHorizontalDrag) {
-            return false
-        }
-        return super.onTouchEvent(event)
-    }
-
-    override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
-        super.requestDisallowInterceptTouchEvent(disallowIntercept)
-        parent?.requestDisallowInterceptTouchEvent(disallowIntercept)
     }
 }
 
