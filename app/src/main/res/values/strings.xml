@@ -161,6 +161,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="preview_will_be_deleted">Will be deleted on close ✓</string>
     <string name="preview_archive">Archive</string>
     <string name="preview_restore">Restore</string>
+    <string name="preview_share">Share</string>
     <string name="preview_hint_swipe">Swipe down to close</string>
     <string name="preview_hint_zoom">Pinch to zoom</string>
     <string name="deleted_on_close_toast">Deleted %1$d file(s)</string>

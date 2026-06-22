@@ -235,7 +235,12 @@ fun GalleryScreen(
                                 otgDirectoryUri = otgDirectoryUri,
                                 onDelete = { viewModel.requestDeleteSelected() },
                                 onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
-                                onRestore = { viewModel.requestRestore() }
+                                onRestore = { viewModel.requestRestore() },
+                                onShare = {
+                                    viewModel.shareSelectedItems(context) { errMsg ->
+                                        Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
+                                    }
+                                }
                             )
                         }
                     }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -33,7 +34,8 @@ fun GalleryScreenActionBar(
     otgDirectoryUri: Uri?,
     onDelete: () -> Unit,
     onArchive: () -> Unit,
-    onRestore: () -> Unit
+    onRestore: () -> Unit,
+    onShare: () -> Unit = {}
 ) {
     val deleteEnabled = if (isArchiveTab) isOtgConnected else true
 
@@ -44,20 +46,20 @@ fun GalleryScreenActionBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Share button — always first, always enabled
         FilledTonalButton(
-            onClick = { if (deleteEnabled) onDelete() },
-            enabled = deleteEnabled,
+            onClick = onShare,
             shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.8f),
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
             ),
             modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
         ) {
-            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                text = stringResource(R.string.preview_delete),
+                text = stringResource(R.string.preview_share),
                 fontSize = 13.sp,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -65,6 +67,7 @@ fun GalleryScreenActionBar(
             )
         }
 
+        // Archive / Restore button
         if (!isArchiveTab) {
             FilledTonalButton(
                 onClick = onArchive,
@@ -107,6 +110,28 @@ fun GalleryScreenActionBar(
                     softWrap = false
                 )
             }
+        }
+
+        // Delete button — last
+        FilledTonalButton(
+            onClick = { if (deleteEnabled) onDelete() },
+            enabled = deleteEnabled,
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            ),
+            modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+        ) {
+            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(R.string.preview_delete),
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                softWrap = false
+            )
         }
     }
 }

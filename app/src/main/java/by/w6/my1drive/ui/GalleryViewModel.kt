@@ -1069,4 +1069,93 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    fun shareSelectedItems(context: Context, onError: (String) -> Unit) {
+        val selected = mediaItems.value.filter { it.id in _selectedIds.value }
+        if (selected.isEmpty()) return
+
+        val onDeviceItems = selected.filter { it.status == MediaStatus.ON_DEVICE }
+        val archivedItems  = selected.filter { it.status == MediaStatus.ARCHIVED_OTG }
+
+        if (archivedItems.isEmpty()) {
+            // All on-device — share directly without copying
+            val uris = ArrayList(onDeviceItems.map { it.uri })
+            val mimeType = commonMimeType(onDeviceItems)
+            val intent = if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).apply {
+                    type = onDeviceItems.first().mimeType
+                    putExtra(Intent.EXTRA_STREAM, uris.first())
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = mimeType
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            }
+            try {
+                context.startActivity(Intent.createChooser(intent, context.getString(R.string.preview_share)))
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Ошибка при отправке файлов")
+            }
+        } else {
+            // Some files are in OTG archive — need to copy to cache first
+            if (!isOtgConnected.value) {
+                onError("USB-накопитель отключен")
+                return
+            }
+            _isSharingPreparing.value = true
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
+                    val uris = ArrayList<Uri>()
+
+                    // Add on-device items directly (no copy needed)
+                    onDeviceItems.forEach { uris.add(it.uri) }
+
+                    // Copy archived items from OTG to cache
+                    for (item in archivedItems) {
+                        val otgUri = Uri.parse(item.otgUri ?: continue)
+                        val inputStream = context.contentResolver.openInputStream(otgUri) ?: continue
+                        val tempFile = File(sharedTempDir, item.displayName)
+                        inputStream.use { input ->
+                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        uris.add(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile))
+                    }
+
+                    _isSharingPreparing.value = false
+
+                    val mimeType = commonMimeType(selected)
+                    val intent = if (uris.size == 1) {
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = selected.first().mimeType
+                            putExtra(Intent.EXTRA_STREAM, uris.first())
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    } else {
+                        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            type = mimeType
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    }
+                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.preview_share)))
+                } catch (e: Exception) {
+                    _isSharingPreparing.value = false
+                    viewModelScope.launch(Dispatchers.Main) {
+                        onError(e.localizedMessage ?: "Ошибка при подготовке файлов для отправки")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun commonMimeType(items: List<MediaItem>): String {
+        return when {
+            items.all { it.mimeType.startsWith("image/") } -> "image/*"
+            items.all { it.mimeType.startsWith("video/") } -> "video/*"
+            else -> "*/*"
+        }
+    }
 }
