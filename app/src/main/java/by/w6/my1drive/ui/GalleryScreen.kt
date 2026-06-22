@@ -177,7 +177,8 @@ fun GalleryScreen(
                     archiveState = archiveState,
                     restoreState = restoreState,
                     syncProgressState = syncProgressState,
-                    onSyncArchive = { viewModel.syncArchive() }
+                    onSyncArchive = { viewModel.syncArchive() },
+                    onSelectDateRangeClick = { showDateRangePicker = true }
                 )
 
                 val visibleItems = remember(currentScreenRoute, mediaItems) {
@@ -215,34 +216,13 @@ fun GalleryScreen(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                         )
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp)
-                        ) {
-                            SelectionHelperPanel(
-                                firstSelectedItem = firstSelectedItem,
-                                visibleItems = visibleItems,
-                                onSelectItems = { ids -> viewModel.selectItems(ids) },
-                                onSelectDateRangeClick = { showDateRangePicker = true },
-                                onClearSelection = { viewModel.clearSelection() }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                            )
-                            GalleryScreenActionBar(
-                                isArchiveTab = currentScreenRoute == "archive",
-                                isOtgConnected = isOtgConnected,
-                                otgDirectoryUri = otgDirectoryUri,
-                                onDelete = { viewModel.requestDeleteSelected() },
-                                onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
-                                onRestore = { viewModel.requestRestore() },
-                                onShare = {
-                                    viewModel.shareSelectedItems(context) { errMsg ->
-                                        Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
-                                    }
-                                }
-                            )
-                        }
+                        GalleryScreenActionBar(
+                            isArchiveTab = currentScreenRoute == "archive",
+                            isOtgConnected = isOtgConnected,
+                            otgDirectoryUri = otgDirectoryUri,
+                            onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
+                            onRestore = { viewModel.requestRestore() }
+                        )
                     }
                 }
             }

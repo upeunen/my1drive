@@ -85,6 +85,10 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
@@ -728,7 +732,8 @@ fun GalleryScreenContent(
     archiveState: ArchiveState = ArchiveState(),
     restoreState: RestoreState = RestoreState(),
     syncProgressState: SyncProgressState = SyncProgressState(),
-    onSyncArchive: () -> Unit = {}
+    onSyncArchive: () -> Unit = {},
+    onSelectDateRangeClick: () -> Unit = {}
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
@@ -741,18 +746,113 @@ fun GalleryScreenContent(
     val mediaItems by viewModel.mediaItems.collectAsState()
     val gridColumnsCount by viewModel.gridColumnsCount.collectAsState()
 
+    // Selection group chips state
+    var isGroupExpanded by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(selectedIds) {
+        if (selectedIds.isEmpty()) isGroupExpanded = false
+    }
+
+    val deleteEnabled = if (currentScreenRoute == "archive") isOtgConnected else true
+
+    val visibleItemsForChips = remember(currentScreenRoute, mediaItems) {
+        if (currentScreenRoute == "photos") {
+            mediaItems.filter { it.status == by.w6.my1drive.domain.model.MediaStatus.ON_DEVICE }
+        } else {
+            mediaItems.filter { it.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG }
+        }
+    }
+    val firstSelectedItem = remember(selectedIds, mediaItems) {
+        mediaItems.firstOrNull { it.id in selectedIds }
+    }
+
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             GooglePhotosTopBar(
                 selectedCount = selectedIds.size,
                 isOtgConnected = isOtgConnected,
                 otgUriSet = otgDirectoryUri != null,
+                isGroupExpanded = isGroupExpanded,
+                deleteEnabled = deleteEnabled,
                 onClearSelection = onClearSelection,
                 onSelectOtgClick = onSelectOtgDirectory,
                 onEjectClick = { showEjectConfirmDialog = true },
+                onGroupClick = { isGroupExpanded = !isGroupExpanded },
+                onShare = {
+                    viewModel.shareSelectedItems(context) { errMsg ->
+                        android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onDelete = { viewModel.requestDeleteSelected() },
                 gridColumnsCount = gridColumnsCount,
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
+
+            // Expandable group chips row
+            AnimatedVisibility(
+                visible = isGroupExpanded && selectedIds.isNotEmpty(),
+                enter = slideInVertically(spring(stiffness = Spring.StiffnessMediumLow)) { -it } + fadeIn(),
+                exit = slideOutVertically(spring(stiffness = Spring.StiffnessMediumLow)) { -it } + fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Все
+                    androidx.compose.material3.AssistChip(
+                        onClick = {
+                            viewModel.selectItems(visibleItemsForChips.map { it.id })
+                            isGroupExpanded = false
+                        },
+                        label = { Text("Все") }
+                    )
+                    // С датой
+                    androidx.compose.material3.AssistChip(
+                        onClick = {
+                            if (firstSelectedItem != null) {
+                                val targetDate = firstSelectedItem.dateModified
+                                val cal1 = java.util.Calendar.getInstance().apply { timeInMillis = targetDate * 1000 }
+                                val matching = visibleItemsForChips.filter { item ->
+                                    val cal2 = java.util.Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
+                                    cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR) &&
+                                        cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
+                                }.map { it.id }
+                                viewModel.selectItems(matching)
+                            }
+                            isGroupExpanded = false
+                        },
+                        enabled = firstSelectedItem != null,
+                        label = { Text("С датой") }
+                    )
+                    // В папке
+                    androidx.compose.material3.AssistChip(
+                        onClick = {
+                            if (firstSelectedItem != null) {
+                                val path = firstSelectedItem.originalRelativePath
+                                val matching = visibleItemsForChips
+                                    .filter { it.originalRelativePath == path }
+                                    .map { it.id }
+                                viewModel.selectItems(matching)
+                            }
+                            isGroupExpanded = false
+                        },
+                        enabled = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty(),
+                        label = { Text("В папке") }
+                    )
+                    // Диапазон
+                    androidx.compose.material3.AssistChip(
+                        onClick = {
+                            onSelectDateRangeClick()
+                            isGroupExpanded = false
+                        },
+                        label = { Text("Диапазон") }
+                    )
+                }
+            }
 
             // Прогресс-панель архивации/восстановления/синхронизации
             if (archiveState.isArchiving) {
