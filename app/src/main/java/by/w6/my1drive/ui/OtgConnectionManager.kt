@@ -77,6 +77,9 @@ class OtgConnectionManager(
     private val _isCheckingConnection = MutableStateFlow(false)
     val isCheckingConnection: StateFlow<Boolean> = _isCheckingConnection.asStateFlow()
 
+    private val _showEjectSuccessDialog = MutableStateFlow(false)
+    val showEjectSuccessDialog: StateFlow<Boolean> = _showEjectSuccessDialog.asStateFlow()
+
     // ─── Internal state ───
 
     private var driveErrorCount = 0
@@ -85,6 +88,7 @@ class OtgConnectionManager(
     /** Флаг: приветственный диалог уже был показан в этой сессии (или был отклонён). */
     private var firstLaunchHandled = false
     private var unknownDriveDialogHandled = false
+    private var isEjectedButStillPluggedIn = false
 
     // ─── Public API ───
 
@@ -112,6 +116,10 @@ class OtgConnectionManager(
                 if (!otgPluggedIn) {
                     unknownDriveDialogHandled = false
                     firstLaunchHandled = false
+                    if (isEjectedButStillPluggedIn) {
+                        isEjectedButStillPluggedIn = false
+                        _showEjectSuccessDialog.value = false
+                    }
                 }
 
                 // Show preloader only when transitioning from physically disconnected to connected, or at startup
@@ -142,7 +150,7 @@ class OtgConnectionManager(
                 // а OTG-флешка физически подключена. Показывается один раз за сессию
                 // (до dismiss или выбора папки).
                 // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
-                if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null) {
+                if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null && !isEjectedButStillPluggedIn) {
                     _showFirstLaunchDialog.value = true
                     firstLaunchHandled = true
                 }
@@ -232,30 +240,22 @@ class OtgConnectionManager(
 
     /** Called when user explicitly ejects / removes the drive reference. */
     fun onEject() {
-        _otgDirectoryUri.value?.let { uri ->
-            try {
-                application.contentResolver.releasePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            } catch (_: Exception) {}
-        }
-        _deviceDirectoryUri.value?.let { uri ->
-            try {
-                application.contentResolver.releasePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            } catch (_: Exception) {}
-        }
-        _otgDirectoryUri.value = null
-        _deviceDirectoryUri.value = null
-        prefs.edit().remove(PREF_OTG_URI).remove(PREF_DEVICE_URI).apply()
-        _status.value = DriveStatus.NO_URI_CONFIGURED
-        _archiveSize.value = 0L
+        // Do NOT release permissions or clear URIs! We want to remember the drive.
+        // We just mark it as logically disconnected until physical replug.
+        isEjectedButStillPluggedIn = true
+        _showEjectSuccessDialog.value = true
         _showUnreadableOtgDialog.value = false
-        // Сбрасываем флаг, чтобы при следующем подключении флешки диалог показался снова
-        firstLaunchHandled = false
+
+        // Update the status so the UI thinks it's disconnected immediately
+        scope.launch {
+            _status.value = DriveStatus.KNOWN_DRIVE_DISCONNECTED
+            _archiveSize.value = 0L
+        }
+    }
+
+    fun dismissEjectSuccessDialog() {
+        _showEjectSuccessDialog.value = false
+        isEjectedButStillPluggedIn = false
     }
 
     /** Called from BroadcastReceiver when physical USB connection changes. */
@@ -341,6 +341,10 @@ class OtgConnectionManager(
     // ─── Internal helpers ───
 
     private suspend fun computeDriveStatus(): DriveStatus {
+        if (isEjectedButStillPluggedIn) {
+            return DriveStatus.KNOWN_DRIVE_DISCONNECTED
+        }
+
         val savedUri = _otgDirectoryUri.value ?: return DriveStatus.NO_URI_CONFIGURED
 
         val isPhysicallyConnected = isOtgUriPhysicallyConnected(savedUri)

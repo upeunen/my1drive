@@ -1161,7 +1161,6 @@ fun GalleryScreenContent(
                         onClick = {
                             showEjectConfirmDialog = false
                             viewModel.ejectOtg()
-                            Toast.makeText(context, context.getString(R.string.eject_success_toast), Toast.LENGTH_LONG).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
@@ -1181,6 +1180,26 @@ fun GalleryScreenContent(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
                         )
+                    }
+                }
+            )
+        }
+
+        val showEjectSuccess by viewModel.showEjectSuccessDialog.collectAsState()
+        if (showEjectSuccess) {
+            AlertDialog(
+                onDismissRequest = { viewModel.otgManager.dismissEjectSuccessDialog() },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Можно извлекать", fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = { Text(stringResource(R.string.eject_success_toast)) },
+                confirmButton = {
+                    Button(onClick = { viewModel.otgManager.dismissEjectSuccessDialog() }) {
+                        Text(stringResource(R.string.btn_ok), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
                     }
                 }
             )

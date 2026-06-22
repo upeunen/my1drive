@@ -238,6 +238,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _showLimitReachedDialog = MutableStateFlow(false)
     val showLimitReachedDialog = _showLimitReachedDialog.asStateFlow()
 
+    val showEjectSuccessDialog: StateFlow<Boolean> = otgManager.showEjectSuccessDialog
+
     val isLimitActive = IS_LIMIT_ACTIVE
 
     private val _physicalArchiveSize = MutableStateFlow(0L)
@@ -266,6 +268,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val showCreateFolderDialog = _showCreateFolderDialog.asStateFlow()
 
     private var pendingArchiveTask: Pair<List<MediaItem>, Uri>? = null
+    private var pendingDeleteTask: List<MediaItem>? = null
     private val missingFoldersQueue = mutableListOf<String>()
 
     private fun getFolderToRequest(relativePath: String?): String {
@@ -346,12 +349,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val nextFolder = missingFoldersQueue.first()
             showArchiveFolderAccessDialog(nextFolder)
         } else {
-            val task = pendingArchiveTask
-            if (task != null) {
+            val archiveTask = pendingArchiveTask
+            if (archiveTask != null) {
                 // Clear selection for these items immediately as archiving starts
-                _selectedIds.value = _selectedIds.value - task.first.map { it.id }.toSet()
-                syncHelper.startArchiving(task.first, task.second)
+                _selectedIds.value = _selectedIds.value - archiveTask.first.map { it.id }.toSet()
+                syncHelper.startArchiving(archiveTask.first, archiveTask.second)
                 pendingArchiveTask = null
+            }
+            val deleteTask = pendingDeleteTask
+            if (deleteTask != null) {
+                val itemsToDelete = deleteTask
+                pendingDeleteTask = null
+                deleteDeviceItems(itemsToDelete.filter { it.status == MediaStatus.ON_DEVICE })
+                deleteArchivedItems(itemsToDelete.filter { it.status == MediaStatus.ARCHIVED_OTG })
             }
         }
     }
@@ -367,9 +377,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun onFolderPermissionCancelled() {
         missingFoldersQueue.clear()
         pendingArchiveTask = null
+        pendingDeleteTask = null
         _showArchiveFolderAccessDialog.value = false
         _archiveAccessFolderPath.value = null
-        DebugLogBuffer.log("GalleryViewModel", "Folder permission request cancelled. Aborting archiving task.")
+        DebugLogBuffer.log("GalleryViewModel", "Folder permission request cancelled. Aborting task.")
     }
 
     private fun findMatchingTreeUriForFile(context: Context, relativePath: String?): Uri? {
@@ -659,8 +670,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val items = _pendingDelete.value ?: return
         _pendingDelete.value = null
         _selectedIds.value = emptySet()
-        deleteDeviceItems(items.filter { it.status == MediaStatus.ON_DEVICE })
-        deleteArchivedItems(items.filter { it.status == MediaStatus.ARCHIVED_OTG })
+        startDeletingWithPermissionCheck(items)
     }
 
     fun dismissDelete() { _pendingDelete.value = null }
@@ -941,10 +951,28 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     // ─── Immediate Delete (fullscreen preview) ───
 
     fun deleteSingleItemImmediate(item: MediaItem) {
-        if (item.status == MediaStatus.ON_DEVICE) {
-            deleteDeviceItems(listOf(item))
+        startDeletingWithPermissionCheck(listOf(item))
+    }
+
+    private fun startDeletingWithPermissionCheck(items: List<MediaItem>) {
+        val context = getApplication<Application>()
+        val deviceItems = items.filter { it.status == MediaStatus.ON_DEVICE }
+        val archivedItems = items.filter { it.status == MediaStatus.ARCHIVED_OTG }
+        
+        val uniqueFolders = deviceItems.map { getFolderToRequest(it.originalRelativePath) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+            
+        val missingFolders = uniqueFolders.filter { !hasPermissionForFolder(context, it) }
+
+        if (missingFolders.isNotEmpty()) {
+            pendingDeleteTask = items
+            missingFoldersQueue.clear()
+            missingFoldersQueue.addAll(missingFolders)
+            requestNextFolderPermission()
         } else {
-            deleteArchivedItems(listOf(item))
+            deleteDeviceItems(deviceItems)
+            deleteArchivedItems(archivedItems)
         }
     }
 
