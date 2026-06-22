@@ -99,7 +99,7 @@
 
     <!-- Статус накопителя -->
     <string name="drive_unknown_connected">🔴 Архив не найден на этом носителе</string>
-    <string name="drive_known_disconnected">🔴 OTG накопитель отключён</string>
+    <string name="drive_known_disconnected">Архив не подключен</string>
     <string name="drive_known_connected">🟢 Накопитель архива подключён</string>
     <!-- Автосинхронизация -->
     <string name="auto_sync_missing_title">Файлы исчезли из архива!</string>
