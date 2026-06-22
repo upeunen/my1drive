@@ -211,6 +211,7 @@ fun FullscreenPreview(
                         item = item,
                         imageLoader = imageLoader,
                         isOtgConnected = isOtgConnected,
+                        isActive = (pagerState.currentPage == page),
                         onShowInfo = onShowInfo,
                         onClose = onClose
                     )
@@ -474,11 +475,12 @@ private fun PagerPage(
     item: MediaItem,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
+    isActive: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit
 ) {
     if (item.isVideo) {
-        VideoPage(item = item, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo, onClose = onClose)
+        VideoPage(item = item, isOtgConnected = isOtgConnected, isActive = isActive, onShowInfo = onShowInfo, onClose = onClose)
     } else {
         ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo, onClose = onClose)
     }
@@ -702,6 +704,7 @@ private fun ImagePage(
 private fun VideoPage(
     item: MediaItem,
     isOtgConnected: Boolean,
+    isActive: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit
 ) {
@@ -744,8 +747,12 @@ private fun VideoPage(
             val mediaItem = androidx.media3.common.MediaItem.fromUri(videoUri)
             setMediaItem(mediaItem)
             prepare()
-            playWhenReady = true
+            playWhenReady = isActive
         }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(isActive, videoUri) {
+        exoPlayer.playWhenReady = isActive
     }
 
     DisposableEffect(videoUri) {
@@ -785,6 +792,12 @@ private fun VideoPage(
                         FrameLayout.LayoutParams.MATCH_PARENT
                     )
                     addView(playerView)
+                }
+            },
+            update = { frameLayout ->
+                val playerView = frameLayout.getChildAt(0) as PlayerView
+                if (playerView.player != exoPlayer) {
+                    playerView.player = exoPlayer
                 }
             },
             modifier = Modifier.fillMaxSize()

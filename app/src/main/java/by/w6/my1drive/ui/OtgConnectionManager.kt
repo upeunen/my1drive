@@ -59,6 +59,9 @@ class OtgConnectionManager(
     private val _showUnreadableOtgDialog = MutableStateFlow(false)
     val showUnreadableOtgDialog: StateFlow<Boolean> = _showUnreadableOtgDialog.asStateFlow()
 
+    private val _showWriteProtectedRootDialog = MutableStateFlow(false)
+    val showWriteProtectedRootDialog: StateFlow<Boolean> = _showWriteProtectedRootDialog.asStateFlow()
+
     private val _archiveSize = MutableStateFlow(0L)
     val archiveSize: StateFlow<Long> = _archiveSize.asStateFlow()
 
@@ -99,7 +102,7 @@ class OtgConnectionManager(
             var unreadableOtgDialogHandled = false
             while (true) {
                 val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
-                val otgPluggedIn = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                val otgPluggedIn = usbPhysicallyConnected || withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
 
                 if (!usbPhysicallyConnected) {
@@ -219,6 +222,14 @@ class OtgConnectionManager(
         _showUnreadableOtgDialog.value = false
     }
 
+    fun showWriteProtectedRootDialog() {
+        _showWriteProtectedRootDialog.value = true
+    }
+
+    fun dismissWriteProtectedRootDialog() {
+        _showWriteProtectedRootDialog.value = false
+    }
+
     /** Called when user explicitly ejects / removes the drive reference. */
     fun onEject() {
         _otgDirectoryUri.value?.let { uri ->
@@ -255,7 +266,7 @@ class OtgConnectionManager(
         }
         scope.launch {
             val wasConnected = _physicalConnected.value
-            val firstCheck = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            val firstCheck = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() || isAnyOtgDrivePresent() }
             
             var isConnected = firstCheck
             if (!firstCheck && !wasConnected) {
@@ -306,10 +317,16 @@ class OtgConnectionManager(
      * until overwritten by reading the JSON metadata from the newly attached drive.
      */
     fun createNewArchive() {
+        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "createNewArchive: start")
         _otgDirectoryUri.value = null
         prefs.edit().remove(PREF_OTG_URI).apply()
         scope.launch(Dispatchers.IO) {
-            db.clearAllTables()
+            try {
+                db.clearAllTables()
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "createNewArchive: db tables cleared")
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "createNewArchive: db clear error: ${e.localizedMessage}")
+            }
         }
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
@@ -318,6 +335,7 @@ class OtgConnectionManager(
         wasPhysicalConnected = false
         firstLaunchHandled = true
         unknownDriveDialogHandled = false
+        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "createNewArchive: end")
     }
 
     // ─── Internal helpers ───
