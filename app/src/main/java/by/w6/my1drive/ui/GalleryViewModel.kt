@@ -268,13 +268,44 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private var pendingArchiveTask: Pair<List<MediaItem>, Uri>? = null
     private val missingFoldersQueue = mutableListOf<String>()
 
-    private fun getLevel1Folder(relativePath: String?): String {
+    private fun getFolderToRequest(relativePath: String?): String {
         if (relativePath.isNullOrEmpty()) return ""
         val clean = relativePath.trim('/', '\\').replace('\\', '/')
-        if (clean.startsWith("Android/", ignoreCase = true) || clean.equals("Android", ignoreCase = true)) {
-            return "Android/media"
+        val segments = clean.split('/').filter { it.isNotEmpty() }
+        if (segments.isEmpty()) return ""
+
+        // If the path starts with Android, any subdirectory other than Android/media (like Android/data or Android/obb) is blocked.
+        // If it starts with Android/media, we can request Android/media or a subfolder of it.
+        if (segments.first().equals("Android", ignoreCase = true)) {
+            if (segments.size >= 2 && segments[1].equals("media", ignoreCase = true)) {
+                if (segments.size > 2) {
+                    val parentSegments = segments.dropLast(1)
+                    val parentPath = parentSegments.joinToString("/")
+                    if (parentPath.equals("Android/media", ignoreCase = true)) {
+                        return "Android/media"
+                    }
+                    return parentPath
+                } else {
+                    return "Android/media"
+                }
+            } else {
+                return "Android/media"
+            }
         }
-        return clean.substringBefore('/')
+
+        // If there is only 1 segment (e.g. "DCIM", "Pictures", "MyFolder"), parent would be root, which is blocked.
+        // So request the folder itself.
+        if (segments.size == 1) {
+            return segments.first()
+        }
+
+        // If there are multiple segments, one level higher is dropLast(1)
+        val parentSegments = segments.dropLast(1)
+        val parentPath = parentSegments.joinToString("/")
+        if (parentPath.isEmpty() || parentPath.equals("Android", ignoreCase = true)) {
+            return segments.first()
+        }
+        return parentPath
     }
 
     private fun hasPermissionForFolder(context: Context, folderName: String): Boolean {
@@ -342,7 +373,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun findMatchingTreeUriForFile(context: Context, relativePath: String?): Uri? {
-        val folderName = getLevel1Folder(relativePath)
+        val folderName = getFolderToRequest(relativePath)
         if (folderName.isEmpty()) return null
         val persisted = context.contentResolver.persistedUriPermissions
         val reqSegments = folderName.split('/', '\\').filter { it.isNotEmpty() }
@@ -503,9 +534,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
         // ─── OTG folder ───
 
+    fun showWriteProtectedRootDialog() { otgManager.showWriteProtectedRootDialog() }
+    fun dismissWriteProtectedRootDialog() { otgManager.dismissWriteProtectedRootDialog() }
+
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)
-        if (otgManager.deviceDirectoryUri.value == null) {
+        val context = getApplication<Application>()
+        if (!hasPermissionForFolder(context, "DCIM")) {
             _pendingDeviceFolderToRequest.value = "DCIM"
             otgManager.showLocalFolderPrompt()
         }
@@ -553,7 +588,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val context = getApplication<Application>()
-        val uniqueFolders = selected.map { getLevel1Folder(it.originalRelativePath) }
+        val uniqueFolders = selected.map { getFolderToRequest(it.originalRelativePath) }
             .filter { it.isNotEmpty() }
             .toSet()
 
@@ -583,7 +618,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val context = getApplication<Application>()
-        val folder = getLevel1Folder(item.originalRelativePath)
+        val folder = getFolderToRequest(item.originalRelativePath)
         if (folder.isNotEmpty() && !hasPermissionForFolder(context, folder)) {
             pendingArchiveTask = listOf(item) to targetUri
             missingFoldersQueue.clear()

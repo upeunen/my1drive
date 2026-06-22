@@ -1029,7 +1029,7 @@ fun GalleryScreenContent(
             UnknownDriveDialog(
                 onCreateNew = {
                     viewModel.createNewArchive()
-                    onSelectOtgDirectory()
+                    onSetShowOtgGuide(true)
                 },
                 onDismiss = { viewModel.dismissUnknownDriveDialog() }
             )
@@ -1116,6 +1116,19 @@ fun GalleryScreenContent(
                             softWrap = false
                         )
                     }
+                }
+            )
+        }
+
+        val showWriteProtectedRoot by viewModel.otgManager.showWriteProtectedRootDialog.collectAsState()
+        if (showWriteProtectedRoot) {
+            WriteProtectedRootDialog(
+                onRetry = {
+                    viewModel.dismissWriteProtectedRootDialog()
+                    onSelectOtgDirectory()
+                },
+                onDismiss = {
+                    viewModel.dismissWriteProtectedRootDialog()
                 }
             )
         }
