@@ -1032,7 +1032,8 @@ fun GalleryScreenContent(
                         Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
                     }
                 },
-                isSharingPreparing = isSharingPreparing
+                isSharingPreparing = isSharingPreparing,
+                isArchiving = archiveState.isArchiving
             )
         }
 

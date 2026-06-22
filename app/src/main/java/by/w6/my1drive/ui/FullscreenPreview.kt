@@ -41,6 +41,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
@@ -106,7 +107,8 @@ fun FullscreenPreview(
     onArchiveSingle: (MediaItem, Uri) -> Unit,
     onRestoreSingle: (MediaItem) -> Unit,
     onShare: (MediaItem) -> Unit,
-    isSharingPreparing: Boolean
+    isSharingPreparing: Boolean,
+    isArchiving: Boolean
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -266,6 +268,16 @@ fun FullscreenPreview(
                     }
                     IconButton(onClick = { onShowInfo(currentItem) }) {
                         Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
+                    }
+                    if (isArchiving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp).padding(end = 8.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                     }
                 }
             }
