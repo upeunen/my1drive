@@ -881,6 +881,7 @@ private fun VideoPage(
     }
 
     val context = LocalContext.current
+    var lastReportedVisibility by remember { mutableStateOf(false) }
     val videoUri = if (item.status == MediaStatus.ARCHIVED_OTG && item.otgUri != null) {
         Uri.parse(item.otgUri)
     } else {
@@ -946,7 +947,9 @@ private fun VideoPage(
                         controllerAutoShow = false
                         hideController()
                         setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
-                            onControllerVisibilityChanged(visibility == android.view.View.VISIBLE)
+                            val visible = visibility == android.view.View.VISIBLE
+                            lastReportedVisibility = visible
+                            onControllerVisibilityChanged(visible)
                         })
                     }
                     playerView.layoutParams = FrameLayout.LayoutParams(
@@ -961,8 +964,8 @@ private fun VideoPage(
                 if (playerView.player != exoPlayer) {
                     playerView.player = exoPlayer
                 }
-                val controllerVisible = playerView.isControllerFullyVisible
-                if (showOverlays != controllerVisible) {
+                if (showOverlays != lastReportedVisibility) {
+                    lastReportedVisibility = showOverlays
                     if (showOverlays) {
                         playerView.showController()
                     } else {
