@@ -81,6 +81,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -278,9 +279,6 @@ fun FullscreenPreview(
                             if (!isZoomed) {
                                 showOverlays = !showOverlays
                             }
-                        },
-                        onControllerVisibilityChanged = { visible ->
-                            showOverlays = visible
                         },
                         onZoomScaleChanged = { zoomed ->
                             isZoomed = zoomed
@@ -588,7 +586,6 @@ private fun PagerPage(
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
-    onControllerVisibilityChanged: (Boolean) -> Unit,
     onZoomScaleChanged: (Boolean) -> Unit
 ) {
     if (item.isVideo) {
@@ -599,7 +596,7 @@ private fun PagerPage(
             showOverlays = showOverlays,
             onShowInfo = onShowInfo,
             onClose = onClose,
-            onControllerVisibilityChanged = onControllerVisibilityChanged
+            onTap = onTap
         )
     } else {
         ImagePage(
@@ -851,7 +848,7 @@ private fun VideoPage(
     showOverlays: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
-    onControllerVisibilityChanged: (Boolean) -> Unit
+    onTap: () -> Unit
 ) {
     val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     if (isOffline) {
@@ -916,6 +913,13 @@ private fun VideoPage(
                 scaleY = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
                 alpha = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1200f)).coerceIn(0.1f, 1f) else 1f
             )
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        onTap()
+                    }
+                )
+            }
             .draggable(
                 state = rememberDraggableState { delta ->
                     scope.launch {
@@ -944,10 +948,9 @@ private fun VideoPage(
                         player = exoPlayer
                         useController = true
                         controllerAutoShow = false
+                        controllerHideOnTouch = false
+                        controllerShowTimeoutMs = 0
                         hideController()
-                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
-                            onControllerVisibilityChanged(visibility == android.view.View.VISIBLE)
-                        })
                     }
                     playerView.layoutParams = FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,
