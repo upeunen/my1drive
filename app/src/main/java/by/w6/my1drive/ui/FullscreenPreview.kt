@@ -475,7 +475,7 @@ fun FullscreenPreview(
                                     endY = Float.POSITIVE_INFINITY
                                 )
                             )
-                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
+                            .padding(start = 16.dp, end = 16.dp, bottom = if (currentItem.isVideo) 110.dp else 48.dp)
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
