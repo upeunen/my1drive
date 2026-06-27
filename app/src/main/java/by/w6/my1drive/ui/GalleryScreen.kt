@@ -113,20 +113,22 @@ fun GalleryScreen(
         }
     }
 
+    val navigateToTab: (String) -> Unit = { route ->
+        if (activePreviewState != null) {
+            activePreviewState = null
+        }
+        if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
+            viewModel.clearSelection()
+        }
+        currentScreenRoute = route
+    }
+
     Scaffold(
         bottomBar = {
             if (!isLandscape) {
                 BottomNavigationBar(
                     currentRoute = currentScreenRoute,
-                    onNavigate = { route ->
-                        if (activePreviewState != null) {
-                            activePreviewState = null
-                        }
-                        if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
-                            viewModel.clearSelection()
-                        }
-                        currentScreenRoute = route
-                    }
+                    onNavigate = navigateToTab
                 )
             }
         }
@@ -135,15 +137,7 @@ fun GalleryScreen(
             if (isLandscape) {
                 SideNavigationBar(
                     currentRoute = currentScreenRoute,
-                    onNavigate = { route ->
-                        if (activePreviewState != null) {
-                            activePreviewState = null
-                        }
-                        if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
-                            viewModel.clearSelection()
-                        }
-                        currentScreenRoute = route
-                    }
+                    onNavigate = navigateToTab
                 )
             }
             Box(
@@ -178,7 +172,8 @@ fun GalleryScreen(
                     restoreState = restoreState,
                     syncProgressState = syncProgressState,
                     onSyncArchive = { viewModel.syncArchive() },
-                    onSelectDateRangeClick = { showDateRangePicker = true }
+                    onSelectDateRangeClick = { showDateRangePicker = true },
+                    onNavigate = navigateToTab
                 )
 
                 val visibleItems = remember(currentScreenRoute, mediaItems) {

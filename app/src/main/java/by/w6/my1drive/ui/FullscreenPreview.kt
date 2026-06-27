@@ -53,6 +53,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.Animatable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -112,6 +119,8 @@ fun FullscreenPreview(
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    var showOverlays by remember { mutableStateOf(false) }
 
     var previewItems by remember(state.items) { mutableStateOf(state.items.toMutableList()) }
     val pagerState = rememberPagerState(
@@ -215,207 +224,139 @@ fun FullscreenPreview(
                         isOtgConnected = isOtgConnected,
                         isActive = (pagerState.currentPage == page),
                         onShowInfo = onShowInfo,
-                        onClose = onClose
+                        onClose = onClose,
+                        onTap = { showOverlays = !showOverlays },
+                        onControllerVisibilityChanged = { visible ->
+                            showOverlays = visible
+                        }
                     )
                 }
             }
 
             // ─── Top bar ───
-            Box(
+            AnimatedVisibility(
+                visible = showOverlays,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
-                        )
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .statusBarsPadding()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                            )
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .statusBarsPadding()
                 ) {
-                    Column(modifier = Modifier.weight(1f).padding(start = if (isLandscape) 180.dp else 0.dp)) {
-                        Text(
-                            text = when (state.sourceTab) {
-                                SourceTab.PHOTOS -> stringResource(R.string.preview_source_device)
-                                SourceTab.ARCHIVE -> stringResource(R.string.tab_archive)
-                            },
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = currentItem.displayName,
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(
-                        onClick = { onShare(currentItem) },
-                        enabled = currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
-                            tint = if (currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)) Color.White else Color.White.copy(alpha = 0.4f)
-                        )
-                    }
-                    IconButton(onClick = { onShowInfo(currentItem) }) {
-                        Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
-                    }
-                    if (isArchiving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp).padding(end = 8.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Column(modifier = Modifier.weight(1f).padding(start = if (isLandscape) 180.dp else 0.dp)) {
+                            Text(
+                                text = when (state.sourceTab) {
+                                    SourceTab.PHOTOS -> stringResource(R.string.preview_source_device)
+                                    SourceTab.ARCHIVE -> stringResource(R.string.tab_archive)
+                                },
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = currentItem.displayName,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        IconButton(
+                            onClick = { onShare(currentItem) },
+                            enabled = currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = if (currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)) Color.White else Color.White.copy(alpha = 0.4f)
+                            )
+                        }
+                        IconButton(onClick = { onShowInfo(currentItem) }) {
+                            Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
+                        }
+                        if (isArchiving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp).padding(end = 8.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        IconButton(onClick = onClose) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        }
                     }
                 }
             }
 
             if (isLandscape) {
                 // ─── Left side bar (Landscape) ───
-                Box(
+                AnimatedVisibility(
+                    visible = showOverlays,
+                    enter = fadeIn() + slideInHorizontally(initialOffsetX = { -it }),
+                    exit = fadeOut() + slideOutHorizontally(targetOffsetX = { -it }),
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(180.dp)
                         .align(Alignment.CenterStart)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)
-                            )
-                        )
-                        .padding(start = 16.dp, end = 16.dp, top = 80.dp, bottom = 16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxHeight(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        val hintText = if (!currentItem.isVideo) {
-                            stringResource(R.string.preview_hint_swipe) + "\n•\n" + stringResource(R.string.preview_hint_zoom)
-                        } else {
-                            stringResource(R.string.preview_hint_swipe)
-                        }
-                        Text(
-                            text = hintText,
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 11.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(
-                            onClick = { deleteCurrentItem(currentItem) },
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White.copy(alpha = 0.15f),
-                                contentColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Удалить", fontSize = 13.sp, maxLines = 1, softWrap = false)
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        if (currentItem.status == MediaStatus.ON_DEVICE) {
-                            Button(
-                                onClick = {
-                                    otgDirectoryUri?.let { uri ->
-                                        archiveCurrentItem(currentItem, uri)
-                                    }
-                                },
-                                enabled = isOtgConnected && otgDirectoryUri != null,
-                                shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White.copy(alpha = 0.15f),
-                                    contentColor = Color.White
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("В архив", fontSize = 13.sp, maxLines = 1, softWrap = false)
-                            }
-                        } else {
-                            Button(
-                                onClick = { restoreCurrentItem(currentItem) },
-                                enabled = isOtgConnected,
-                                shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White.copy(alpha = 0.15f),
-                                    contentColor = Color.White
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Вернуть", fontSize = 13.sp, maxLines = 1, softWrap = false)
-                            }
-                        }
-                    }
-                }
-            } else {
-                // ─── Bottom bar (Portrait) ───
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)
+                                )
                             )
-                        )
-                        .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(start = 16.dp, end = 16.dp, top = 80.dp, bottom = 16.dp)
                     ) {
-                        val hintText = if (!currentItem.isVideo) {
-                            stringResource(R.string.preview_hint_swipe) + " • " + stringResource(R.string.preview_hint_zoom)
-                        } else {
-                            stringResource(R.string.preview_hint_swipe)
-                        }
-                        Text(
-                            text = hintText,
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 11.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.fillMaxHeight(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            val hintText = if (!currentItem.isVideo) {
+                                stringResource(R.string.preview_hint_swipe) + "\n•\n" + stringResource(R.string.preview_hint_zoom)
+                            } else {
+                                stringResource(R.string.preview_hint_swipe)
+                            }
+                            Text(
+                                text = hintText,
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+
                             Button(
                                 onClick = { deleteCurrentItem(currentItem) },
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White.copy(alpha = 0.15f),
                                     contentColor = Color.White
-                                )
+                                ),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
+                                Text("Удалить", fontSize = 13.sp, maxLines = 1, softWrap = false)
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
 
                             if (currentItem.status == MediaStatus.ON_DEVICE) {
                                 Button(
@@ -429,9 +370,12 @@ fun FullscreenPreview(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color.White.copy(alpha = 0.15f),
                                         contentColor = Color.White
-                                    )
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
+                                    Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("В архив", fontSize = 13.sp, maxLines = 1, softWrap = false)
                                 }
                             } else {
                                 Button(
@@ -441,9 +385,102 @@ fun FullscreenPreview(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color.White.copy(alpha = 0.15f),
                                         contentColor = Color.White
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Вернуть", fontSize = 13.sp, maxLines = 1, softWrap = false)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ─── Bottom bar (Portrait) ───
+                AnimatedVisibility(
+                    visible = showOverlays,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            val hintText = if (!currentItem.isVideo) {
+                                stringResource(R.string.preview_hint_swipe) + " • " + stringResource(R.string.preview_hint_zoom)
+                            } else {
+                                stringResource(R.string.preview_hint_swipe)
+                            }
+                            Text(
+                                text = hintText,
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = { deleteCurrentItem(currentItem) },
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White.copy(alpha = 0.15f),
+                                        contentColor = Color.White
                                     )
                                 ) {
-                                    Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
+                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.preview_delete), fontSize = 13.sp)
+                                }
+
+                                if (currentItem.status == MediaStatus.ON_DEVICE) {
+                                    Button(
+                                        onClick = {
+                                            otgDirectoryUri?.let { uri ->
+                                                archiveCurrentItem(currentItem, uri)
+                                            }
+                                        },
+                                        enabled = isOtgConnected && otgDirectoryUri != null,
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.White.copy(alpha = 0.15f),
+                                            contentColor = Color.White
+                                        )
+                                    ) {
+                                        Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { restoreCurrentItem(currentItem) },
+                                        enabled = isOtgConnected,
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.White.copy(alpha = 0.15f),
+                                            contentColor = Color.White
+                                        )
+                                    ) {
+                                        Text(stringResource(R.string.preview_restore), fontSize = 13.sp)
+                                    }
                                 }
                             }
                         }
@@ -489,12 +526,28 @@ private fun PagerPage(
     isOtgConnected: Boolean,
     isActive: Boolean,
     onShowInfo: (MediaItem) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onTap: () -> Unit,
+    onControllerVisibilityChanged: (Boolean) -> Unit
 ) {
     if (item.isVideo) {
-        VideoPage(item = item, isOtgConnected = isOtgConnected, isActive = isActive, onShowInfo = onShowInfo, onClose = onClose)
+        VideoPage(
+            item = item,
+            isOtgConnected = isOtgConnected,
+            isActive = isActive,
+            onShowInfo = onShowInfo,
+            onClose = onClose,
+            onControllerVisibilityChanged = onControllerVisibilityChanged
+        )
     } else {
-        ImagePage(item = item, imageLoader = imageLoader, isOtgConnected = isOtgConnected, onShowInfo = onShowInfo, onClose = onClose)
+        ImagePage(
+            item = item,
+            imageLoader = imageLoader,
+            isOtgConnected = isOtgConnected,
+            onShowInfo = onShowInfo,
+            onClose = onClose,
+            onTap = onTap
+        )
     }
 }
 
@@ -504,7 +557,8 @@ private fun ImagePage(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     onShowInfo: (MediaItem) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onTap: () -> Unit
 ) {
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (isOtgConnected && item.otgUri != null) {
@@ -682,6 +736,9 @@ private fun ImagePage(
                         } else {
                             // Snap back if multitouch happened
                             scope.launch { swipeOffsetY.animateTo(0f) }
+                            if (!swipeDirectionDetected && !isMultitouchHappened) {
+                                onTap()
+                            }
                         }
                     }
                 }
@@ -718,7 +775,8 @@ private fun VideoPage(
     isOtgConnected: Boolean,
     isActive: Boolean,
     onShowInfo: (MediaItem) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onControllerVisibilityChanged: (Boolean) -> Unit
 ) {
     val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     if (isOffline) {
@@ -810,6 +868,10 @@ private fun VideoPage(
                     val playerView = PlayerView(ctx).apply {
                         player = exoPlayer
                         useController = true
+                        hideController()
+                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                            onControllerVisibilityChanged(visibility == android.view.View.VISIBLE)
+                        })
                     }
                     playerView.layoutParams = FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,

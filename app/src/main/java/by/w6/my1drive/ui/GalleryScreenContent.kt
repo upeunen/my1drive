@@ -748,7 +748,8 @@ fun GalleryScreenContent(
     restoreState: RestoreState = RestoreState(),
     syncProgressState: SyncProgressState = SyncProgressState(),
     onSyncArchive: () -> Unit = {},
-    onSelectDateRangeClick: () -> Unit = {}
+    onSelectDateRangeClick: () -> Unit = {},
+    onNavigate: (String) -> Unit = {}
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
@@ -760,6 +761,29 @@ fun GalleryScreenContent(
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val mediaItems by viewModel.mediaItems.collectAsState()
     val gridColumnsCount by viewModel.gridColumnsCount.collectAsState()
+
+    var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showChangeFolderConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangeFolderConfirmDialog = false },
+            title = { Text("Сменить папку архива?", fontWeight = FontWeight.Bold) },
+            text = { Text("Смена папки архива может нарушить текущую синхронизацию. Вы уверены, что хотите продолжить?") },
+            confirmButton = {
+                Button(onClick = {
+                    showChangeFolderConfirmDialog = false
+                    onSelectOtgDirectory()
+                }) {
+                    Text("Сменить", maxLines = 1, softWrap = false)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangeFolderConfirmDialog = false }) {
+                    Text("Отмена", maxLines = 1, softWrap = false)
+                }
+            }
+        )
+    }
 
     // Selection group chips state
     var isGroupExpanded by remember { mutableStateOf(false) }
@@ -789,7 +813,6 @@ fun GalleryScreenContent(
                 isGroupExpanded = isGroupExpanded,
                 deleteEnabled = deleteEnabled,
                 onClearSelection = onClearSelection,
-                onSelectOtgClick = onSelectOtgDirectory,
                 onEjectClick = { showEjectConfirmDialog = true },
                 onGroupClick = { isGroupExpanded = !isGroupExpanded },
                 onShare = {
@@ -911,79 +934,103 @@ fun GalleryScreenContent(
             if (otgDirectoryUri == null) OtgRequiredBanner()
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when (currentScreenRoute) {
-                    "photos" -> PhotosRoute(
-                        viewModel = viewModel,
-                        selectedIds = selectedIds,
-                        imageLoader = imageLoader,
-                        isOtgConnected = isOtgConnected,
-                        gridColumnsCount = gridColumnsCount,
-                        onItemClick = { item ->
-                            if (selectedIds.isNotEmpty()) {
-                                viewModel.toggleSelection(item.id)
-                            } else {
-                                val grouped = viewModel.groupedMediaItems.value
-                                val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
-                                val index = allMediaItems.indexOfFirst { it.id == item.id }
-                                if (index >= 0) {
-                                    onSetActivePreview(FullscreenState(
-                                        items = allMediaItems,
-                                        initialIndex = index,
-                                        sourceTab = SourceTab.PHOTOS
-                                    ))
-                                }
-                            }
-                        },
-                        onItemLongClick = { item -> viewModel.toggleSelection(item.id) }
-                    )
-                    "archive" -> ArchiveRoute(
-                        viewModel = viewModel,
-                        selectedIds = selectedIds,
-                        imageLoader = imageLoader,
-                        isOtgConnected = isOtgConnected,
-                        gridColumnsCount = gridColumnsCount,
-                        onItemClick = { item ->
-                            if (isOtgConnected) {
+                val pages = listOf("photos", "archive", "settings")
+                val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                    initialPage = pages.indexOf(currentScreenRoute).coerceAtLeast(0),
+                    pageCount = { pages.size }
+                )
+
+                androidx.compose.runtime.LaunchedEffect(currentScreenRoute) {
+                    val targetPage = pages.indexOf(currentScreenRoute)
+                    if (targetPage >= 0 && targetPage != pagerState.currentPage) {
+                        pagerState.animateScrollToPage(targetPage)
+                    }
+                }
+
+                androidx.compose.runtime.LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+                    if (!pagerState.isScrollInProgress) {
+                        onNavigate(pages[pagerState.currentPage])
+                    }
+                }
+
+                androidx.compose.foundation.pager.HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    when (pages.getOrNull(page)) {
+                        "photos" -> PhotosRoute(
+                            viewModel = viewModel,
+                            selectedIds = selectedIds,
+                            imageLoader = imageLoader,
+                            isOtgConnected = isOtgConnected,
+                            gridColumnsCount = gridColumnsCount,
+                            onItemClick = { item ->
                                 if (selectedIds.isNotEmpty()) {
                                     viewModel.toggleSelection(item.id)
                                 } else {
-                                    val grouped = viewModel.archivedGroupedItems.value
+                                    val grouped = viewModel.groupedMediaItems.value
                                     val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
                                     val index = allMediaItems.indexOfFirst { it.id == item.id }
                                     if (index >= 0) {
                                         onSetActivePreview(FullscreenState(
                                             items = allMediaItems,
                                             initialIndex = index,
-                                            sourceTab = SourceTab.ARCHIVE
+                                            sourceTab = SourceTab.PHOTOS
                                         ))
                                     }
                                 }
-                            } else {
-                                showDisconnectedOtgItemInfo = item
-                            }
-                        },
-                        onItemLongClick = { item ->
-                            if (isOtgConnected) {
-                                viewModel.toggleSelection(item.id)
-                            } else {
-                                Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
-                            }
-                        })
-                    "settings" -> {
-                        val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
-                        SettingsTab(
-                            onSelectOtgDirectory = onSelectOtgDirectory,
-                            onClearCache = { viewModel.clearPreviewCache() },
-                            isOtgConnected = isOtgConnected,
-                            otgDirectoryDisplayName = viewModel.getOtgDirectoryDisplayName(),
-                            cacheSize = previewCacheManager.getCacheSize(),
-                            cacheFilesCount = previewCacheManager.getCacheFileCount(),
-                            isLocalFolder = viewModel.isOtgLocalFolder(),
-                            currentArchiveSize = physicalArchiveSize,
-                            isLimitActive = viewModel.isLimitActive,
-                            onShowDebugLogs = { showDebugLogsDialog = true },
-                            onSyncArchive = onSyncArchive
+                            },
+                            onItemLongClick = { item -> viewModel.toggleSelection(item.id) }
                         )
+                        "archive" -> ArchiveRoute(
+                            viewModel = viewModel,
+                            selectedIds = selectedIds,
+                            imageLoader = imageLoader,
+                            isOtgConnected = isOtgConnected,
+                            gridColumnsCount = gridColumnsCount,
+                            onItemClick = { item ->
+                                if (isOtgConnected) {
+                                    if (selectedIds.isNotEmpty()) {
+                                        viewModel.toggleSelection(item.id)
+                                    } else {
+                                        val grouped = viewModel.archivedGroupedItems.value
+                                        val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
+                                        val index = allMediaItems.indexOfFirst { it.id == item.id }
+                                        if (index >= 0) {
+                                            onSetActivePreview(FullscreenState(
+                                                items = allMediaItems,
+                                                initialIndex = index,
+                                                sourceTab = SourceTab.ARCHIVE
+                                            ))
+                                        }
+                                    }
+                                } else {
+                                    showDisconnectedOtgItemInfo = item
+                                }
+                            },
+                            onItemLongClick = { item ->
+                                if (isOtgConnected) {
+                                    viewModel.toggleSelection(item.id)
+                                } else {
+                                    Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
+                                }
+                            })
+                        "settings" -> {
+                            val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
+                            SettingsTab(
+                                onSelectOtgDirectory = { showChangeFolderConfirmDialog = true },
+                                onClearCache = { viewModel.clearPreviewCache() },
+                                isOtgConnected = isOtgConnected,
+                                otgDirectoryDisplayName = viewModel.getOtgDirectoryDisplayName(),
+                                cacheSize = previewCacheManager.getCacheSize(),
+                                cacheFilesCount = previewCacheManager.getCacheFileCount(),
+                                isLocalFolder = viewModel.isOtgLocalFolder(),
+                                currentArchiveSize = physicalArchiveSize,
+                                isLimitActive = viewModel.isLimitActive,
+                                onShowDebugLogs = { showDebugLogsDialog = true },
+                                onSyncArchive = onSyncArchive
+                            )
+                        }
                     }
                 }
             }

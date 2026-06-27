@@ -44,7 +44,6 @@ fun GooglePhotosTopBar(
     isGroupExpanded: Boolean = false,
     deleteEnabled: Boolean = true,
     onClearSelection: () -> Unit,
-    onSelectOtgClick: () -> Unit,
     onEjectClick: () -> Unit,
     onGroupClick: () -> Unit = {},
     onShare: () -> Unit = {},
@@ -191,13 +190,6 @@ fun GooglePhotosTopBar(
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
-            }
-            IconButton(onClick = onSelectOtgClick) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
             }
         }
     }
