@@ -978,18 +978,11 @@ private fun VideoPage(
 }
 
 private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(context) {
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                // Only disallow Compose interception if touching the bottom 20% (Player Controls)
-                if (ev.y > height * 0.8f) {
-                    parent.requestDisallowInterceptTouchEvent(true)
-                } else {
-                    parent.requestDisallowInterceptTouchEvent(false)
-                }
-            }
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.y <= height * 0.8f) {
+            return false // Let Compose handle it
         }
-        return super.onInterceptTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
     }
 }
 
