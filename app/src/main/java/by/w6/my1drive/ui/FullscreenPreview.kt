@@ -18,6 +18,9 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import android.content.Context
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.widget.FrameLayout
@@ -121,12 +124,57 @@ fun FullscreenPreview(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var showOverlays by remember { mutableStateOf(false) }
+    var isZoomed by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val activity = remember(context) {
+        var ctx = context
+        while (ctx is android.content.ContextWrapper) {
+            if (ctx is android.app.Activity) break
+            ctx = ctx.baseContext
+        }
+        ctx as? android.app.Activity
+    }
 
     var previewItems by remember(state.items) { mutableStateOf(state.items.toMutableList()) }
     val pagerState = rememberPagerState(
         initialPage = state.initialIndex.coerceIn(0, (previewItems.size - 1).coerceAtLeast(0)),
         pageCount = { previewItems.size }
     )
+
+    // Auto-hide overlays after 3.5 seconds of inactivity
+    androidx.compose.runtime.LaunchedEffect(showOverlays, pagerState.currentPage) {
+        if (showOverlays) {
+            delay(3500)
+            showOverlays = false
+        }
+    }
+
+    // Reset overlays on swipe
+    androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
+        showOverlays = false
+    }
+
+    // Immersive Mode (System UI toggling)
+    androidx.compose.runtime.LaunchedEffect(showOverlays) {
+        val window = activity?.window ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        if (showOverlays) {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    // Restore System UI when closed
+    DisposableEffect(Unit) {
+        onDispose {
+            val window = activity?.window ?: return@onDispose
+            val controller = WindowCompat.getInsetsController(window, window.decorView)
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 
     var isNavigatingBack by remember { mutableStateOf(false) }
 
@@ -225,9 +273,19 @@ fun FullscreenPreview(
                         isActive = (pagerState.currentPage == page),
                         onShowInfo = onShowInfo,
                         onClose = onClose,
-                        onTap = { showOverlays = !showOverlays },
+                        onTap = {
+                            if (!isZoomed) {
+                                showOverlays = !showOverlays
+                            }
+                        },
                         onControllerVisibilityChanged = { visible ->
                             showOverlays = visible
+                        },
+                        onZoomScaleChanged = { zoomed ->
+                            isZoomed = zoomed
+                            if (zoomed) {
+                                showOverlays = false
+                            }
                         }
                     )
                 }
@@ -528,7 +586,8 @@ private fun PagerPage(
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
-    onControllerVisibilityChanged: (Boolean) -> Unit
+    onControllerVisibilityChanged: (Boolean) -> Unit,
+    onZoomScaleChanged: (Boolean) -> Unit
 ) {
     if (item.isVideo) {
         VideoPage(
@@ -546,7 +605,8 @@ private fun PagerPage(
             isOtgConnected = isOtgConnected,
             onShowInfo = onShowInfo,
             onClose = onClose,
-            onTap = onTap
+            onTap = onTap,
+            onZoomScaleChanged = onZoomScaleChanged
         )
     }
 }
@@ -558,7 +618,8 @@ private fun ImagePage(
     isOtgConnected: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    onZoomScaleChanged: (Boolean) -> Unit
 ) {
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (isOtgConnected && item.otgUri != null) {
@@ -579,6 +640,10 @@ private fun ImagePage(
 
     val swipeOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+
+    androidx.compose.runtime.LaunchedEffect(zoomScale) {
+        onZoomScaleChanged(zoomScale > 1f)
+    }
 
     Box(
         modifier = Modifier
