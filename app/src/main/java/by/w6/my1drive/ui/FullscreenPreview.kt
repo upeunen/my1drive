@@ -937,6 +937,7 @@ private fun VideoPage(
                     val playerView = PlayerView(ctx).apply {
                         player = exoPlayer
                         useController = true
+                        controllerAutoShow = false
                         hideController()
                         setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
                             onControllerVisibilityChanged(visibility == android.view.View.VISIBLE)
@@ -954,10 +955,13 @@ private fun VideoPage(
                 if (playerView.player != exoPlayer) {
                     playerView.player = exoPlayer
                 }
-                if (showOverlays) {
-                    playerView.showController()
-                } else {
-                    playerView.hideController()
+                val controllerVisible = playerView.isControllerFullyVisible
+                if (showOverlays != controllerVisible) {
+                    if (showOverlays) {
+                        playerView.showController()
+                    } else {
+                        playerView.hideController()
+                    }
                 }
             },
             modifier = Modifier.fillMaxSize()
