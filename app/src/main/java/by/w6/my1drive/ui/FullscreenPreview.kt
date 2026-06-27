@@ -271,6 +271,7 @@ fun FullscreenPreview(
                         imageLoader = imageLoader,
                         isOtgConnected = isOtgConnected,
                         isActive = (pagerState.currentPage == page),
+                        showOverlays = showOverlays,
                         onShowInfo = onShowInfo,
                         onClose = onClose,
                         onTap = {
@@ -583,6 +584,7 @@ private fun PagerPage(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     isActive: Boolean,
+    showOverlays: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
@@ -594,6 +596,7 @@ private fun PagerPage(
             item = item,
             isOtgConnected = isOtgConnected,
             isActive = isActive,
+            showOverlays = showOverlays,
             onShowInfo = onShowInfo,
             onClose = onClose,
             onControllerVisibilityChanged = onControllerVisibilityChanged
@@ -839,6 +842,7 @@ private fun VideoPage(
     item: MediaItem,
     isOtgConnected: Boolean,
     isActive: Boolean,
+    showOverlays: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onControllerVisibilityChanged: (Boolean) -> Unit
@@ -949,6 +953,11 @@ private fun VideoPage(
                 val playerView = frameLayout.getChildAt(0) as PlayerView
                 if (playerView.player != exoPlayer) {
                     playerView.player = exoPlayer
+                }
+                if (showOverlays) {
+                    playerView.showController()
+                } else {
+                    playerView.hideController()
                 }
             },
             modifier = Modifier.fillMaxSize()
