@@ -644,6 +644,10 @@ private fun ImagePage(
     val swipeOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
+    var lastTapTime by remember { mutableStateOf(0L) }
+    var lastTapPosition by remember { mutableStateOf(Offset.Zero) }
+    var tapJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
     androidx.compose.runtime.LaunchedEffect(zoomScale) {
         onZoomScaleChanged(zoomScale > 1f)
     }
@@ -662,150 +666,152 @@ private fun ImagePage(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val firstDown = awaitFirstDown()
-                    var wasDoubleTap = false
+                    val tapPosition = firstDown.position
+                    val tapTime = System.currentTimeMillis()
 
-                    // Check for double tap: wait a bit for a second tap
-                    val secondDown = withTimeoutOrNull(250L) {
-                        awaitFirstDown(requireUnconsumed = false)
-                    }
-                    if (secondDown != null) {
-                        // Double tap detected
-                        wasDoubleTap = true
-                        val tapOffset = secondDown.position
-                        if (zoomScale > 1f) {
-                            zoomScale = 1f
-                            zoomOffsetX = 0f
-                            zoomOffsetY = 0f
-                        } else {
-                            zoomScale = 3f
-                            val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
-                            val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
-                            val targetX = (w / 2f) - 3f * tapOffset.x
-                            val targetY = (h / 2f) - 3f * tapOffset.y
-                            zoomOffsetX = targetX.coerceIn(-2f * w, 0f)
-                            zoomOffsetY = targetY.coerceIn(-2f * h, 0f)
-                        }
-                        // Consume the rest of the second tap
-                        val up = awaitPointerEvent()
-                        up.changes.forEach { if (it.pressed) it.consume() }
-                    }
+                    var zoom = 1f
+                    var pan = Offset.Zero
+                    var pastTouchSlop = false
+                    val touchSlop = viewConfiguration.touchSlop
 
-                    if (!wasDoubleTap) {
-                        var zoom = 1f
-                        var pan = Offset.Zero
-                        var pastTouchSlop = false
-                        val touchSlop = viewConfiguration.touchSlop
+                    // For tracking single-finger vertical swipe when scale is 1f
+                    var swipeDirectionDetected = false
+                    var isVerticalSwipe = false
+                    var accumulatedDragY = 0f
+                    var accumulatedDragX = 0f
+                    var isMultitouchHappened = false
 
-                        // For tracking single-finger vertical swipe when scale is 1f
-                        var swipeDirectionDetected = false
-                        var isVerticalSwipe = false
-                        var accumulatedDragY = 0f
-                        var accumulatedDragX = 0f
-                        var isMultitouchHappened = false
-
-                        do {
-                            val event = awaitPointerEvent()
-                            val canceled = event.changes.any { it.isConsumed }
-                            if (!canceled) {
-                                val pointerCount = event.changes.count { it.pressed }
-                                if (pointerCount > 1) {
-                                    isMultitouchHappened = true
-                                    isVerticalSwipe = false
-                                    scope.launch { swipeOffsetY.snapTo(0f) }
-                                }
-
-                                if (zoomScale == 1f && !isMultitouchHappened) {
-                                    // Handle single-finger swipe/scroll detection
-                                    val change = event.changes.firstOrNull()
-                                    if (change != null && change.pressed) {
-                                        val positionChange = change.position - change.previousPosition
-                                        accumulatedDragY += positionChange.y
-                                        accumulatedDragX += positionChange.x
-
-                                        if (!swipeDirectionDetected) {
-                                            if (abs(accumulatedDragY) > touchSlop || abs(accumulatedDragX) > touchSlop) {
-                                                swipeDirectionDetected = true
-                                                if (abs(accumulatedDragY) > abs(accumulatedDragX)) {
-                                                    isVerticalSwipe = true
-                                                }
-                                            }
-                                        }
-
-                                        if (isVerticalSwipe) {
-                                            change.consume()
-                                            scope.launch {
-                                                val delta = if (positionChange.y < 0) positionChange.y * 0.7f else positionChange.y
-                                                swipeOffsetY.snapTo(swipeOffsetY.value + delta)
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // Track multi-touch gestures (zoom + pan)
-                                    val zoomChange = event.calculateZoom()
-                                    val panChange = event.calculatePan()
-
-                                    if (!pastTouchSlop) {
-                                        zoom *= zoomChange
-                                        pan += panChange
-                                        val panMotion = pan.getDistance()
-                                        val zoomMotion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
-                                        if (event.changes.size > 1 || zoomScale > 1f) {
-                                            if (zoomMotion > touchSlop || panMotion > touchSlop) {
-                                                pastTouchSlop = true
-                                            }
-                                        }
-                                    }
-
-                                    if (pastTouchSlop) {
-                                        val centroid = event.calculateCentroid(useCurrent = false)
-                                        val newScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
-                                        if (newScale != zoomScale) {
-                                            val scaleChange = newScale / zoomScale
-                                            zoomOffsetX = centroid.x - scaleChange * (centroid.x - zoomOffsetX)
-                                            zoomOffsetY = centroid.y - scaleChange * (centroid.y - zoomOffsetY)
-                                        }
-                                        zoomScale = newScale
-
-                                        val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
-                                        val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
-
-                                        if (zoomScale > 1f) {
-                                            val maxPanX = (zoomScale - 1f) * w
-                                            val maxPanY = (zoomScale - 1f) * h
-                                            zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, 0f)
-                                            zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, 0f)
-                                        } else {
-                                            zoomOffsetX = 0f
-                                            zoomOffsetY = 0f
-                                        }
-
-                                        event.changes.forEach {
-                                            if (it.positionChanged()) it.consume()
-                                        }
-                                    }
-                                }
+                    do {
+                        val event = awaitPointerEvent()
+                        val canceled = event.changes.any { it.isConsumed }
+                        if (!canceled) {
+                            val pointerCount = event.changes.count { it.pressed }
+                            if (pointerCount > 1) {
+                                isMultitouchHappened = true
+                                isVerticalSwipe = false
+                                scope.launch { swipeOffsetY.snapTo(0f) }
                             }
-                        } while (!canceled && event.changes.any { it.pressed })
 
-                        // When gesture ends:
-                        if (isVerticalSwipe && !isMultitouchHappened && zoomScale == 1f) {
-                            val threshold = 350f
-                            if (swipeOffsetY.value < -threshold) {
-                                // Swipe up -> show info
-                                onShowInfo(item)
-                                scope.launch { swipeOffsetY.animateTo(0f) }
-                            } else if (swipeOffsetY.value > threshold) {
-                                // Swipe down -> close
-                                onClose()
+                            if (zoomScale == 1f && !isMultitouchHappened) {
+                                // Handle single-finger swipe/scroll detection
+                                val change = event.changes.firstOrNull()
+                                if (change != null && change.pressed) {
+                                    val positionChange = change.position - change.previousPosition
+                                    accumulatedDragY += positionChange.y
+                                    accumulatedDragX += positionChange.x
+
+                                    if (!swipeDirectionDetected) {
+                                        if (abs(accumulatedDragY) > touchSlop || abs(accumulatedDragX) > touchSlop) {
+                                            swipeDirectionDetected = true
+                                            if (abs(accumulatedDragY) > abs(accumulatedDragX)) {
+                                                isVerticalSwipe = true
+                                            }
+                                        }
+                                    }
+
+                                    if (isVerticalSwipe) {
+                                        change.consume()
+                                        scope.launch {
+                                            val delta = if (positionChange.y < 0) positionChange.y * 0.7f else positionChange.y
+                                            swipeOffsetY.snapTo(swipeOffsetY.value + delta)
+                                        }
+                                    }
+                                }
                             } else {
-                                // Snap back smoothly
-                                scope.launch { swipeOffsetY.animateTo(0f) }
+                                // Track multi-touch gestures (zoom + pan)
+                                val zoomChange = event.calculateZoom()
+                                val panChange = event.calculatePan()
+
+                                if (!pastTouchSlop) {
+                                    zoom *= zoomChange
+                                    pan += panChange
+                                    val panMotion = pan.getDistance()
+                                    val zoomMotion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
+                                    if (event.changes.size > 1 || zoomScale > 1f) {
+                                        if (zoomMotion > touchSlop || panMotion > touchSlop) {
+                                            pastTouchSlop = true
+                                        }
+                                    }
+                                }
+
+                                if (pastTouchSlop) {
+                                    val centroid = event.calculateCentroid(useCurrent = false)
+                                    val newScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+                                    if (newScale != zoomScale) {
+                                        val scaleChange = newScale / zoomScale
+                                        zoomOffsetX = centroid.x - scaleChange * (centroid.x - zoomOffsetX)
+                                        zoomOffsetY = centroid.y - scaleChange * (centroid.y - zoomOffsetY)
+                                    }
+                                    zoomScale = newScale
+
+                                    val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
+                                    val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
+
+                                    if (zoomScale > 1f) {
+                                        val maxPanX = (zoomScale - 1f) * w
+                                        val maxPanY = (zoomScale - 1f) * h
+                                        zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, 0f)
+                                        zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, 0f)
+                                    } else {
+                                        zoomOffsetX = 0f
+                                        zoomOffsetY = 0f
+                                    }
+
+                                    event.changes.forEach {
+                                        if (it.positionChanged()) it.consume()
+                                    }
+                                }
                             }
-                        } else {
-                            // Snap back if multitouch happened
+                        }
+                    } while (!canceled && event.changes.any { it.pressed })
+
+                    // When gesture ends:
+                    if (isVerticalSwipe && !isMultitouchHappened && zoomScale == 1f) {
+                        val threshold = 350f
+                        if (swipeOffsetY.value < -threshold) {
+                            // Swipe up -> show info
+                            onShowInfo(item)
                             scope.launch { swipeOffsetY.animateTo(0f) }
-                            if (!swipeDirectionDetected && !isMultitouchHappened) {
-                                onTap()
+                        } else if (swipeOffsetY.value > threshold) {
+                            // Swipe down -> close
+                            onClose()
+                        } else {
+                            // Snap back smoothly
+                            scope.launch { swipeOffsetY.animateTo(0f) }
+                        }
+                    } else {
+                        // Snap back if multitouch happened
+                        scope.launch { swipeOffsetY.animateTo(0f) }
+                        if (!swipeDirectionDetected && !isMultitouchHappened) {
+                            val diffTime = tapTime - lastTapTime
+                            val diffPos = (tapPosition - lastTapPosition).getDistance()
+                            val doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout().toLong()
+
+                            if (diffTime < doubleTapTimeout && diffPos < 100f) {
+                                tapJob?.cancel()
+                                lastTapTime = 0L
+
+                                if (zoomScale > 1f) {
+                                    zoomScale = 1f
+                                    zoomOffsetX = 0f
+                                    zoomOffsetY = 0f
+                                } else {
+                                    zoomScale = 3f
+                                    val w = if (containerSize.width > 0) containerSize.width.toFloat() else 1080f
+                                    val h = if (containerSize.height > 0) containerSize.height.toFloat() else 1920f
+                                    val targetX = (w / 2f) - 3f * tapPosition.x
+                                    val targetY = (h / 2f) - 3f * tapPosition.y
+                                    zoomOffsetX = targetX.coerceIn(-2f * w, 0f)
+                                    zoomOffsetY = targetY.coerceIn(-2f * h, 0f)
+                                }
+                            } else {
+                                lastTapTime = tapTime
+                                lastTapPosition = tapPosition
+                                tapJob?.cancel()
+                                tapJob = scope.launch {
+                                    delay(doubleTapTimeout)
+                                    onTap()
+                                }
                             }
                         }
                     }
