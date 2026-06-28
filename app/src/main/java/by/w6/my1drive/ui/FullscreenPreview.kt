@@ -44,6 +44,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -125,6 +127,7 @@ fun FullscreenPreview(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var showOverlays by remember { mutableStateOf(false) }
+    var isPinned by remember { mutableStateOf(false) }
     var isZoomed by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -143,17 +146,19 @@ fun FullscreenPreview(
         pageCount = { previewItems.size }
     )
 
-    // Auto-hide overlays after 3.5 seconds of inactivity
-    androidx.compose.runtime.LaunchedEffect(showOverlays, pagerState.currentPage) {
-        if (showOverlays) {
+    // Auto-hide overlays after 3.5 seconds of inactivity (only if not pinned)
+    androidx.compose.runtime.LaunchedEffect(showOverlays, pagerState.currentPage, isPinned) {
+        if (showOverlays && !isPinned) {
             delay(3500)
             showOverlays = false
         }
     }
 
-    // Reset overlays on swipe
+    // Reset overlays on swipe (only if not pinned)
     androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
-        showOverlays = false
+        if (!isPinned) {
+            showOverlays = false
+        }
     }
 
     // Immersive Mode (System UI toggling)
@@ -276,7 +281,7 @@ fun FullscreenPreview(
                         onShowInfo = onShowInfo,
                         onClose = onClose,
                         onTap = {
-                            if (!isZoomed) {
+                            if (!isZoomed && !isPinned) {
                                 showOverlays = !showOverlays
                             }
                         },
@@ -341,6 +346,13 @@ fun FullscreenPreview(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
                                 tint = if (currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)) Color.White else Color.White.copy(alpha = 0.4f)
+                            )
+                        }
+                        IconButton(onClick = { isPinned = !isPinned }) {
+                            Icon(
+                                imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                                contentDescription = "Pin overlays",
+                                tint = if (isPinned) Color(0xFF64B5F6) else Color.White
                             )
                         }
                         IconButton(onClick = { onShowInfo(currentItem) }) {
