@@ -5,6 +5,14 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -182,7 +190,8 @@ fun OtgRequiredBanner() {
 @Composable
 fun PhotosRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
-    isOtgConnected: Boolean, gridColumnsCount: Int = 3, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
+    isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
+    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val sortMode by viewModel.deviceSortMode.collectAsState()
@@ -263,6 +272,7 @@ fun PhotosRoute(
             archivingItemIds = archivingItemIds,
             copiedItemIds = copiedItemIds,
             gridColumnsCount = gridColumnsCount,
+            actionBarHeightPx = actionBarHeightPx,
             onItemClick = onItemClick,
             onItemLongClick = onItemLongClick,
             onSelectItems = { ids, select ->
@@ -291,7 +301,8 @@ private data class YearGroup(
 @Composable
 fun ArchiveRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
-    isOtgConnected: Boolean, gridColumnsCount: Int = 3, onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
+    isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
+    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val sortMode by viewModel.archiveSortMode.collectAsState()
@@ -303,6 +314,13 @@ fun ArchiveRoute(
     val restoreState by viewModel.restoreState.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
     val syncProgressState by viewModel.syncProgressState.collectAsState()
+
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val currentSelectedIds by androidx.compose.runtime.rememberUpdatedState(selectedIds)
+    val currentActionBarHeightPx by androidx.compose.runtime.rememberUpdatedState(actionBarHeightPx)
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -478,9 +496,12 @@ fun ArchiveRoute(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned { containerCoordinates = it }
                 ) {
                     yearGroups.forEach { yearGroup ->
                         // 1. Заголовок года
@@ -586,6 +607,7 @@ fun ArchiveRoute(
                                                     val isArchiving = archivingItemIds.contains(mediaItem.id)
                                                     val isRestoring = restoringItemIds.contains(mediaItem.id)
                                                     val isCopied = copiedItemIds.contains(mediaItem.id)
+                                                    var itemCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
                                                     GooglePhotosGridItem(
                                                         item = mediaItem,
                                                         isSelected = isSelected,
@@ -593,7 +615,55 @@ fun ArchiveRoute(
                                                         isCopied = isCopied,
                                                         imageLoader = imageLoader,
                                                         isOtgConnected = isOtgConnected,
-                                                        onClick = { onItemClick(mediaItem) },
+                                                        modifier = Modifier.onGloballyPositioned { itemCoordinates = it },
+                                                        onClick = {
+                                                            onItemClick(mediaItem)
+                                                            val itemCoords = itemCoordinates
+                                                            val containerCoords = containerCoordinates
+                                                            if (itemCoords != null && containerCoords != null && itemCoords.isAttached && containerCoords.isAttached) {
+                                                                val itemBounds = itemCoords.boundsInWindow()
+                                                                val containerBounds = containerCoords.boundsInWindow()
+                                                                val itemTop = itemBounds.top
+                                                                val itemBottom = itemBounds.bottom
+                                                                val itemHeight = itemBounds.height
+                                                                val containerTop = containerBounds.top
+                                                                var containerBottom = containerBounds.bottom
+                                                                
+                                                                if (currentSelectedIds.isNotEmpty()) {
+                                                                    containerBottom -= currentActionBarHeightPx
+                                                                }
+                                                                
+                                                                val hiddenTop = containerTop - itemTop
+                                                                val hiddenBottom = itemBottom - containerBottom
+                                                                val thirdOfHeight = itemHeight / 3f
+                                                                
+                                                                if (hiddenTop > thirdOfHeight || hiddenBottom > thirdOfHeight) {
+                                                                    coroutineScope.launch {
+                                                                        kotlinx.coroutines.delay(150)
+                                                                        if (itemCoords.isAttached && containerCoords.isAttached) {
+                                                                            val itemBoundsNew = itemCoords.boundsInWindow()
+                                                                            val containerBoundsNew = containerCoords.boundsInWindow()
+                                                                            val itemTopNew = itemBoundsNew.top
+                                                                            val itemBottomNew = itemBoundsNew.bottom
+                                                                            val itemHeightNew = itemBoundsNew.height
+                                                                            val containerTopNew = containerBoundsNew.top
+                                                                            var containerBottomNew = containerBoundsNew.bottom
+                                                                            if (currentSelectedIds.isNotEmpty()) {
+                                                                                containerBottomNew -= currentActionBarHeightPx
+                                                                            }
+                                                                            val hiddenTopNew = containerTopNew - itemTopNew
+                                                                            val hiddenBottomNew = itemBottomNew - containerBottomNew
+                                                                            val thirdOfHeightNew = itemHeightNew / 3f
+                                                                            if (hiddenTopNew > thirdOfHeightNew) {
+                                                                                listState.animateScrollBy(-hiddenTopNew)
+                                                                            } else if (hiddenBottomNew > thirdOfHeightNew) {
+                                                                                listState.animateScrollBy(hiddenBottomNew)
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
                                                         onLongClick = { onItemLongClick(mediaItem) }
                                                     )
                                                 }
@@ -700,7 +770,11 @@ fun DeleteConfirmDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text(
-                    text = if (pendingDelete.size == 1) stringResource(R.string.btn_delete_otg) else stringResource(R.string.action_delete_all),
+                    text = if (pendingDelete.size == 1) {
+                        if (isArchiveTab) stringResource(R.string.btn_delete_otg) else stringResource(R.string.btn_delete_file)
+                    } else {
+                        stringResource(R.string.action_delete_all)
+                    },
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -747,6 +821,7 @@ fun GalleryScreenContent(
     archiveState: ArchiveState = ArchiveState(),
     restoreState: RestoreState = RestoreState(),
     syncProgressState: SyncProgressState = SyncProgressState(),
+    actionBarHeightPx: Float = 0f,
     onSyncArchive: () -> Unit = {},
     onSelectDateRangeClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {}
@@ -964,6 +1039,7 @@ fun GalleryScreenContent(
                             imageLoader = imageLoader,
                             isOtgConnected = isOtgConnected,
                             gridColumnsCount = gridColumnsCount,
+                            actionBarHeightPx = actionBarHeightPx,
                             onItemClick = { item ->
                                 if (selectedIds.isNotEmpty()) {
                                     viewModel.toggleSelection(item.id)
@@ -988,6 +1064,7 @@ fun GalleryScreenContent(
                             imageLoader = imageLoader,
                             isOtgConnected = isOtgConnected,
                             gridColumnsCount = gridColumnsCount,
+                            actionBarHeightPx = actionBarHeightPx,
                             onItemClick = { item ->
                                 if (isOtgConnected) {
                                     if (selectedIds.isNotEmpty()) {
@@ -1823,11 +1900,6 @@ fun ProgressPanel(
     icon: ImageVector,
     statusText: String? = null
 ) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = progressFraction.coerceIn(0f, 1f),
-        animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
-        label = "Progress"
-    )
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val cardPulseAlpha by infiniteTransition.animateFloat(
@@ -1901,7 +1973,7 @@ fun ProgressPanel(
             }
             Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
-                progress = { animatedProgress },
+                progress = { progressFraction.coerceIn(0f, 1f) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),

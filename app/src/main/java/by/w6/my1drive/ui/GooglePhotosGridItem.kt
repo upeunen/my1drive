@@ -71,6 +71,7 @@ fun GooglePhotosGridItem(
     isOtgConnected: Boolean = true,
     isArchiving: Boolean = false,
     isCopied: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -98,7 +99,7 @@ fun GooglePhotosGridItem(
         item.uri
     }
     Card(
-        modifier = Modifier
+        modifier = modifier
             .padding(3.dp)
             .aspectRatio(1f)
             .scale(scale)

@@ -2,6 +2,9 @@ package by.w6.my1drive.ui
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -269,7 +272,8 @@ fun FullscreenPreview(
             Box(modifier = Modifier.fillMaxSize()) {
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    key = { page -> previewItems.getOrNull(page)?.id ?: page }
                 ) { page ->
                     val item = previewItems.getOrNull(page) ?: return@HorizontalPager
                     PagerPage(
@@ -281,7 +285,7 @@ fun FullscreenPreview(
                         onShowInfo = onShowInfo,
                         onClose = onClose,
                         onTap = {
-                            if (!isZoomed && !isPinned) {
+                            if (!isPinned) {
                                 showOverlays = !showOverlays
                             }
                         },
@@ -645,9 +649,9 @@ private fun ImagePage(
         item.uri
     }
 
-    var zoomScale by remember { mutableStateOf(1f) }
-    var zoomOffsetX by remember { mutableStateOf(0f) }
-    var zoomOffsetY by remember { mutableStateOf(0f) }
+    var zoomScale by remember(item.id) { mutableStateOf(1f) }
+    var zoomOffsetX by remember(item.id) { mutableStateOf(0f) }
+    var zoomOffsetY by remember(item.id) { mutableStateOf(0f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     val swipeOffsetY = remember { Animatable(0f) }
@@ -907,6 +911,27 @@ private fun VideoPage(
 
     androidx.compose.runtime.LaunchedEffect(isActive, videoUri) {
         exoPlayer.playWhenReady = isActive
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, exoPlayer) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    exoPlayer.pause()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (isActive) {
+                        exoPlayer.play()
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     DisposableEffect(videoUri) {

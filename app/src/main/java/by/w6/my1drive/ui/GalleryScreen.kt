@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +70,7 @@ fun GalleryScreen(
     val syncProgressState by viewModel.syncProgressState.collectAsState()
     val showRestorePicker = restoreRequest != null
     val mediaItems by viewModel.mediaItems.collectAsState()
+    var actionBarHeightPx by remember { mutableStateOf(0f) }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -171,6 +173,7 @@ fun GalleryScreen(
                     archiveState = archiveState,
                     restoreState = restoreState,
                     syncProgressState = syncProgressState,
+                    actionBarHeightPx = if (selectedIds.isNotEmpty()) actionBarHeightPx else 0f,
                     onSyncArchive = { viewModel.syncArchive() },
                     onSelectDateRangeClick = { showDateRangePicker = true },
                     onNavigate = navigateToTab
@@ -204,7 +207,10 @@ fun GalleryScreen(
                         modifier = Modifier
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .fillMaxWidth()
-                            .padding(bottom = paddingValues.calculateBottomPadding()),
+                            .padding(bottom = paddingValues.calculateBottomPadding())
+                            .onGloballyPositioned { coordinates ->
+                                actionBarHeightPx = coordinates.size.height.toFloat()
+                            },
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         shape = RoundedCornerShape(28.dp),
                         colors = CardDefaults.cardColors(
