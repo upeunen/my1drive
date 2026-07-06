@@ -166,6 +166,7 @@ fun GalleryScreen(
                     onRequestFullAccess = onRequestFullAccess,
                     onOpenSettings = onOpenSettings,
                     onClearSelection = { viewModel.clearSelection() },
+                    onToggleSelection = { viewModel.toggleSelection(it) },
                     onSetActivePreview = { state -> activePreviewState = state },
                     onSetShowInfoDialog = { showInfoDialogItem = it },
                     onSetShowOtgGuide = { showOtgGuideDialog = it },

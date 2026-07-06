@@ -49,6 +49,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -117,6 +119,8 @@ fun FullscreenPreview(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
+    selectedIds: Set<String> = emptySet(),
+    onToggleSelection: (String) -> Unit = {},
     onClose: () -> Unit,
     onShowInfo: (MediaItem) -> Unit,
     onDeleteImmediate: (MediaItem) -> Unit,
@@ -294,6 +298,9 @@ fun FullscreenPreview(
                             if (zoomed) {
                                 showOverlays = false
                             }
+                        },
+                        onLongPress = {
+                            onToggleSelection(item.id)
                         }
                     )
                 }
@@ -340,6 +347,14 @@ fun FullscreenPreview(
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        val isSelected = selectedIds.contains(currentItem.id)
+                        IconButton(onClick = { onToggleSelection(currentItem.id) }) {
+                            Icon(
+                                imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircleOutline,
+                                contentDescription = "Toggle Selection",
+                                tint = if (isSelected) Color(0xFF64B5F6) else Color.White
                             )
                         }
                         IconButton(
@@ -602,7 +617,8 @@ private fun PagerPage(
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
-    onZoomScaleChanged: (Boolean) -> Unit
+    onZoomScaleChanged: (Boolean) -> Unit,
+    onLongPress: () -> Unit
 ) {
     if (item.isVideo) {
         VideoPage(
@@ -612,7 +628,8 @@ private fun PagerPage(
             showOverlays = showOverlays,
             onShowInfo = onShowInfo,
             onClose = onClose,
-            onTap = onTap
+            onTap = onTap,
+            onLongPress = onLongPress
         )
     } else {
         ImagePage(
@@ -622,7 +639,8 @@ private fun PagerPage(
             onShowInfo = onShowInfo,
             onClose = onClose,
             onTap = onTap,
-            onZoomScaleChanged = onZoomScaleChanged
+            onZoomScaleChanged = onZoomScaleChanged,
+            onLongPress = onLongPress
         )
     }
 }
@@ -635,7 +653,8 @@ private fun ImagePage(
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
-    onZoomScaleChanged: (Boolean) -> Unit
+    onZoomScaleChanged: (Boolean) -> Unit,
+    onLongPress: () -> Unit
 ) {
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (isOtgConnected && item.otgUri != null) {
@@ -682,6 +701,13 @@ private fun ImagePage(
                     val tapPosition = firstDown.position
                     val tapTime = System.currentTimeMillis()
 
+                    var longPressTriggered = false
+                    val longPressJob = scope.launch {
+                        delay(500)
+                        longPressTriggered = true
+                        onLongPress()
+                    }
+
                     var zoom = 1f
                     var pan = Offset.Zero
                     var pastTouchSlop = false
@@ -699,6 +725,12 @@ private fun ImagePage(
                         val canceled = event.changes.any { it.isConsumed }
                         if (!canceled) {
                             val pointerCount = event.changes.count { it.pressed }
+                            val totalDragX = event.changes.firstOrNull()?.let { abs(it.position.x - tapPosition.x) } ?: 0f
+                            val totalDragY = event.changes.firstOrNull()?.let { abs(it.position.y - tapPosition.y) } ?: 0f
+                            if (pointerCount > 1 || totalDragX > touchSlop || totalDragY > touchSlop) {
+                                longPressJob.cancel()
+                            }
+
                             if (pointerCount > 1) {
                                 isMultitouchHappened = true
                                 isVerticalSwipe = false
@@ -779,6 +811,7 @@ private fun ImagePage(
                     } while (!canceled && event.changes.any { it.pressed })
 
                     // When gesture ends:
+                    longPressJob.cancel()
                     if (isVerticalSwipe && !isMultitouchHappened && zoomScale == 1f) {
                         val threshold = 350f
                         if (swipeOffsetY.value < -threshold) {
@@ -792,7 +825,7 @@ private fun ImagePage(
                             // Snap back smoothly
                             scope.launch { swipeOffsetY.animateTo(0f) }
                         }
-                    } else {
+                    } else if (!longPressTriggered) {
                         // Snap back if multitouch happened
                         scope.launch { swipeOffsetY.animateTo(0f) }
                         if (!swipeDirectionDetected && !isMultitouchHappened) {
@@ -827,6 +860,9 @@ private fun ImagePage(
                                 }
                             }
                         }
+                    } else {
+                        // Just snap back swipe Offset if long press was triggered
+                        scope.launch { swipeOffsetY.animateTo(0f) }
                     }
                 }
             },
@@ -864,7 +900,8 @@ private fun VideoPage(
     showOverlays: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    onLongPress: () -> Unit
 ) {
     val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     if (isOffline) {
@@ -954,6 +991,9 @@ private fun VideoPage(
                 detectTapGestures(
                     onTap = {
                         onTap()
+                    },
+                    onLongPress = {
+                        onLongPress()
                     }
                 )
             }

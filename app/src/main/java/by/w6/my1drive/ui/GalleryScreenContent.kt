@@ -814,6 +814,7 @@ fun GalleryScreenContent(
     onRequestFullAccess: () -> Unit,
     onOpenSettings: () -> Unit,
     onClearSelection: () -> Unit,
+    onToggleSelection: (String) -> Unit = {},
     onSetActivePreview: (FullscreenState?) -> Unit,
     onSetShowInfoDialog: (MediaItem?) -> Unit,
     onSetShowOtgGuide: (Boolean) -> Unit,
@@ -1144,6 +1145,8 @@ fun GalleryScreenContent(
                 imageLoader = imageLoader ?: return@let,
                 isOtgConnected = isOtgConnected,
                 otgDirectoryUri = otgDirectoryUri,
+                selectedIds = selectedIds,
+                onToggleSelection = onToggleSelection,
                 onClose = {
                     onSetActivePreview(null)
                 },
