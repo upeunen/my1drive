@@ -93,6 +93,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -138,6 +140,7 @@ fun FullscreenPreview(
     var isZoomed by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val activity = remember(context) {
         var ctx = context
         while (ctx is android.content.ContextWrapper) {
@@ -300,6 +303,7 @@ fun FullscreenPreview(
                             }
                         },
                         onLongPress = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onToggleSelection(item.id)
                         }
                     )
@@ -354,7 +358,7 @@ fun FullscreenPreview(
                             Icon(
                                 imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircleOutline,
                                 contentDescription = "Toggle Selection",
-                                tint = if (isSelected) Color(0xFF64B5F6) else Color.White
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.White
                             )
                         }
                         IconButton(
