@@ -66,6 +66,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
@@ -288,7 +290,9 @@ fun FullscreenPreview(
                         imageLoader = imageLoader,
                         isOtgConnected = isOtgConnected,
                         isActive = (pagerState.currentPage == page),
+                        isSelected = selectedIds.contains(item.id),
                         showOverlays = showOverlays,
+                        pagerState = pagerState,
                         onShowInfo = onShowInfo,
                         onClose = onClose,
                         onTap = {
@@ -580,6 +584,25 @@ fun FullscreenPreview(
                 }
             }
 
+            // ─── Floating Mini Selection Badge ───
+            val currentItemIsSelected = selectedIds.contains(currentItem.id)
+            AnimatedVisibility(
+                visible = currentItemIsSelected && !showOverlays,
+                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, end = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
             // ─── Navigating back indicator ───
         }
 
@@ -617,7 +640,9 @@ private fun PagerPage(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     isActive: Boolean,
+    isSelected: Boolean,
     showOverlays: Boolean,
+    pagerState: androidx.compose.foundation.pager.PagerState,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
@@ -629,6 +654,7 @@ private fun PagerPage(
             item = item,
             isOtgConnected = isOtgConnected,
             isActive = isActive,
+            isSelected = isSelected,
             showOverlays = showOverlays,
             onShowInfo = onShowInfo,
             onClose = onClose,
@@ -640,6 +666,8 @@ private fun PagerPage(
             item = item,
             imageLoader = imageLoader,
             isOtgConnected = isOtgConnected,
+            isSelected = isSelected,
+            pagerState = pagerState,
             onShowInfo = onShowInfo,
             onClose = onClose,
             onTap = onTap,
@@ -654,12 +682,22 @@ private fun ImagePage(
     item: MediaItem,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
+    isSelected: Boolean,
+    pagerState: androidx.compose.foundation.pager.PagerState,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
     onZoomScaleChanged: (Boolean) -> Unit,
     onLongPress: () -> Unit
 ) {
+    val selectionScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isSelected) 0.96f else 1.0f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        ),
+        label = "selectionScale"
+    )
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (isOtgConnected && item.otgUri != null) {
             Uri.parse(item.otgUri)
@@ -799,8 +837,18 @@ private fun ImagePage(
                                     if (zoomScale > 1f) {
                                         val maxPanX = (zoomScale - 1f) * w
                                         val maxPanY = (zoomScale - 1f) * h
-                                        zoomOffsetX = (zoomOffsetX + panChange.x).coerceIn(-maxPanX, 0f)
+                                        val targetOffsetX = zoomOffsetX + panChange.x
+                                        val excessX = when {
+                                            targetOffsetX < -maxPanX -> targetOffsetX - (-maxPanX)
+                                            targetOffsetX > 0f -> targetOffsetX
+                                            else -> 0f
+                                        }
+                                        zoomOffsetX = targetOffsetX.coerceIn(-maxPanX, 0f)
                                         zoomOffsetY = (zoomOffsetY + panChange.y).coerceIn(-maxPanY, 0f)
+
+                                        if (excessX != 0f) {
+                                            pagerState.dispatchRawDelta(-excessX)
+                                        }
                                     } else {
                                         zoomOffsetX = 0f
                                         zoomOffsetY = 0f
@@ -816,6 +864,11 @@ private fun ImagePage(
 
                     // When gesture ends:
                     longPressJob.cancel()
+                    if (zoomScale > 1f && pagerState.currentPageOffsetFraction != 0f) {
+                        scope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage)
+                        }
+                    }
                     if (isVerticalSwipe && !isMultitouchHappened && zoomScale == 1f) {
                         val threshold = 350f
                         if (swipeOffsetY.value < -threshold) {
@@ -876,8 +929,8 @@ private fun ImagePage(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(
-                    scaleX = zoomScale,
-                    scaleY = zoomScale,
+                    scaleX = zoomScale * selectionScale,
+                    scaleY = zoomScale * selectionScale,
                     translationX = zoomOffsetX,
                     translationY = zoomOffsetY,
                     transformOrigin = TransformOrigin(0f, 0f)
@@ -901,12 +954,21 @@ private fun VideoPage(
     item: MediaItem,
     isOtgConnected: Boolean,
     isActive: Boolean,
+    isSelected: Boolean,
     showOverlays: Boolean,
     onShowInfo: (MediaItem) -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
     onLongPress: () -> Unit
 ) {
+    val selectionScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isSelected) 0.96f else 1.0f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        ),
+        label = "selectionScale"
+    )
     val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     if (isOffline) {
         Box(
@@ -987,8 +1049,8 @@ private fun VideoPage(
             .fillMaxSize()
             .graphicsLayer(
                 translationY = swipeOffsetY.value,
-                scaleX = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
-                scaleY = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f,
+                scaleX = (if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f) * selectionScale,
+                scaleY = (if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1500f).coerceIn(0f, 0.3f)) else 1f) * selectionScale,
                 alpha = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1200f)).coerceIn(0.1f, 1f) else 1f
             )
             .pointerInput(Unit) {
