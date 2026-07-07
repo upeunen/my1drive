@@ -246,29 +246,28 @@ class MainActivity : ComponentActivity() {
         val isPhysConnected = viewModel.otgManager.physicalConnected.value
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: isPhysConnected=$isPhysConnected")
 
-        val initialUri = run {
-            val otgRoot = otgStorageRootUri(this)
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: otgRoot=$otgRoot")
-            if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using otgRoot (removable)")
-                otgRoot
-            } else if (isPhysConnected) {
-                // USB физически подключён, но не удалось определить его корень.
-                // Передаём null, чтобы SAF сам показал выбор тома (пользователь увидит USB).
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: USB connected but no root found — launching null")
-                null
-            } else {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: USB not connected — launching phoneStorageRootUri")
-                phoneStorageRootUri()
-            }
+        val otgRoot = otgStorageRootUri(this)
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: otgRoot=$otgRoot")
+        
+        if (otgRoot == null && !isPhysConnected) {
+            Toast.makeText(this, "Пожалуйста, сначала подключите USB-флешку к телефону", Toast.LENGTH_LONG).show()
+            return
         }
+
+        val initialUri = if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using otgRoot (removable)")
+            otgRoot
+        } else {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: no root found — launching null")
+            null
+        }
+
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launching with initialUri=$initialUri")
         try {
             otgFolderLauncher.launch(initialUri)
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch executed")
         } catch (e: Exception) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed: ${e.localizedMessage}")
-            // Крайний fallback — null
             try {
                 otgFolderLauncher.launch(null)
             } catch (_: Exception) {}
