@@ -102,16 +102,6 @@ fun OtgGuideDialog(
                     softWrap = false
                 )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(R.string.btn_cancel),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
         }
     )
 }

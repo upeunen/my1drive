@@ -94,84 +94,70 @@ class MainActivity : ComponentActivity() {
                 return !rawId.equals("primary", ignoreCase = true)
             }
 
+    private fun handleOtgFolderSelected(uri: Uri) {
+        try {
+            var autoCreatedFolderName: String? = null
+            try {
+                val treeDocId = DocumentsContract.getTreeDocumentId(uri)
+                val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
+                if (pathSegment.isEmpty()) {
+                    val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri)
+                    if (documentFile != null && documentFile.exists()) {
+                        val folderName = by.w6.my1drive.utils.OtgFolderResolver.getAutoCreatedFolderName(this)
+                        try {
+                            val subDir = documentFile.findFile(folderName) ?: documentFile.createDirectory(folderName)
+                            if (subDir != null) {
+                                autoCreatedFolderName = folderName
+                            } else {
+                                viewModel.showWriteProtectedRootDialog()
+                                return
+                            }
+                        } catch (_: Exception) {
+                            viewModel.showWriteProtectedRootDialog()
+                            return
+                        }
+                    } else {
+                        viewModel.showWriteProtectedRootDialog()
+                        return
+                    }
+                }
+            } catch (_: Exception) {
+                // Fallback
+            }
+
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            contentResolver.takePersistableUriPermission(uri, takeFlags)
+            viewModel.setOtgDirectory(uri)
+        
+            if (autoCreatedFolderName != null) {
+                Toast.makeText(this, "Вы не выбрали папку, я создал для вас папку $autoCreatedFolderName, чтобы не создавать беспорядок на носителе", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, getString(R.string.otg_folder_selected_toast), Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.otg_folder_error_toast, e.localizedMessage), Toast.LENGTH_LONG).show()
+        }
+    }
+
     private val otgFolderLauncher = registerForActivityResult(
             ActivityResultContracts.OpenDocumentTree()
         ) { uri ->
             if (uri != null) {
-                // Больше не блокируем выбор внутренней памяти, но предупреждаем.
-                val isRemovable = isRemovableStorageUri(uri)
-                val isPhysConnected = viewModel.otgManager.physicalConnected.value
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgFolderLauncher: uri=$uri, isRemovable=$isRemovable, isPhysConnected=$isPhysConnected")
-                if (!isRemovable) {
-                    Toast.makeText(this, "Вы выбрали папку на устройстве телефона. Для работы с USB-флешкой выберите её в боковом меню SAF.", Toast.LENGTH_LONG).show()
-                }
-                try {
-                    var finalUri = uri
-                    var autoCreatedFolderName: String? = null
-                    try {
-                        val treeDocId = DocumentsContract.getTreeDocumentId(uri)
-                        val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
-                        if (pathSegment.isEmpty()) {
-                            val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri)
-                            if (documentFile != null && documentFile.exists()) {
-                                val manufacturer = Build.MANUFACTURER
-                                val model = Build.MODEL
-                                val cleanModel = model.replace(Regex("[^a-zA-Z0-9\\s]"), "").replace(Regex("\\s+"), " ").trim()
-                                val cleanManufacturer = manufacturer.replace(Regex("[^a-zA-Z0-9\\s]"), "").replace(Regex("\\s+"), " ").trim()
-                                val segments = cleanModel.split(" ")
-                                val first = segments.getOrNull(0) ?: ""
-                                val second = segments.getOrNull(1) ?: ""
-                                val secondContainsDigit = second.any { it.isDigit() }
-                                val name = if (first.length > 2) {
-                                    if (second.isNotEmpty() && (second.matches(Regex("\\d+")) || (second.length <= 3 && secondContainsDigit))) {
-                                        first + second
-                                        } else {
-                                            first
-                                        }
-                                } else {
-                                    cleanManufacturer.split(" ").firstOrNull() ?: ""
-                                }
-                                val formattedName = if (name.isNotEmpty()) {
-                                    name.lowercase().replaceFirstChar { it.uppercase() }
-                                } else {
-                                    "Device"
-                                }
-                                val folderName = "Arhiv-$formattedName"
-                                try {
-                                    val subDir = documentFile.findFile(folderName) ?: documentFile.createDirectory(folderName)
-                                    if (subDir != null) {
-                                        val documentId = DocumentsContract.getDocumentId(subDir.uri)
-                                        finalUri = DocumentsContract.buildTreeDocumentUri(uri.authority, documentId)
-                                        autoCreatedFolderName = folderName
-                                    } else {
-                                        viewModel.showWriteProtectedRootDialog()
-                                        return@registerForActivityResult
-                                    }
-                                } catch (_: Exception) {
-                                    viewModel.showWriteProtectedRootDialog()
-                                    return@registerForActivityResult
-                                }
-                            }
-                        }
-                    } catch (_: Exception) {
-                        // Fallback to original uri
-                    }
-
-                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    contentResolver.takePersistableUriPermission(uri, takeFlags)
-                    viewModel.setOtgDirectory(finalUri)
-                
-                    if (autoCreatedFolderName != null) {
-                        Toast.makeText(this, "Вы не выбрали папку, я создал для вас папку $autoCreatedFolderName, чтобы не создавать беспорядок на носителе", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(this, getString(R.string.otg_folder_selected_toast), Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(this, getString(R.string.otg_folder_error_toast, e.localizedMessage), Toast.LENGTH_LONG).show()
-                }
+                handleOtgFolderSelected(uri)
             }
         }
+
+    private val otgFolderDirectLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uri = result.data?.data
+            if (uri != null) {
+                handleOtgFolderSelected(uri)
+            }
+        }
+    }
 
     private val deviceFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -248,35 +234,55 @@ class MainActivity : ComponentActivity() {
         val isPhysConnected = viewModel.otgManager.physicalConnected.value
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: isPhysConnected=$isPhysConnected")
 
-        val initialUri = when {
-            currentOtgUri != null -> {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri")
-                currentOtgUri
-            }
-            else -> {
-                val otgRoot = otgStorageRootUri(this)
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: otgRoot=$otgRoot")
-                if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
-                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using otgRoot (removable)")
-                    otgRoot
-                } else if (isPhysConnected) {
-                    // USB физически подключён, но не удалось определить его корень.
-                    // Передаём null, чтобы SAF сам показал выбор тома (пользователь увидит USB).
-                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: USB connected but no root found — launching null")
-                    null
-                } else {
-                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: USB not connected — launching phoneStorageRootUri")
-                    phoneStorageRootUri()
+        // 1. If we already have a saved URI, launch with it as initial hint
+        if (currentOtgUri != null) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri")
+            try {
+                otgFolderLauncher.launch(currentOtgUri)
+                return
+            } catch (_: Exception) {}
+        }
+
+        // 2. If physical volume is connected, try launching the StorageVolume direct intent first (API 29+)
+        if (isPhysConnected) {
+            val sm = getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager
+            val volumes = try {
+                @Suppress("DEPRECATION")
+                sm?.storageVolumes ?: emptyList()
+            } catch (_: Exception) { emptyList() }
+            
+            for (volume in volumes) {
+                if (!volume.isPrimary && volume.state == android.os.Environment.MEDIA_MOUNTED) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            val intent = volume.createOpenDocumentTreeIntent()
+                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launching direct intent from volume")
+                            otgFolderDirectLauncher.launch(intent)
+                            return
+                        } catch (e: Exception) {
+                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: failed direct launch: ${e.localizedMessage}")
+                        }
+                    }
                 }
             }
         }
-        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launching with initialUri=$initialUri")
+
+        // 3. Fallback: try manual URI resolution
+        val otgRoot = otgStorageRootUri(this)
+        val initialUri = when {
+            otgRoot != null && isRemovableStorageUri(otgRoot) -> {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using manual otgRoot")
+                otgRoot
+            }
+            else -> {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: manual root null or not removable, using phone storage")
+                phoneStorageRootUri()
+            }
+        }
+        
         try {
             otgFolderLauncher.launch(initialUri)
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch executed")
         } catch (e: Exception) {
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed: ${e.localizedMessage}")
-            // Крайний fallback — null
             try {
                 otgFolderLauncher.launch(null)
             } catch (_: Exception) {}
@@ -291,6 +297,18 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) { return null }
             for (volume in volumes) {
                 if (!volume.isPrimary && volume.state == android.os.Environment.MEDIA_MOUNTED) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            val intent = volume.createOpenDocumentTreeIntent()
+                            val uri = intent.getParcelableExtra<Uri>(DocumentsContract.EXTRA_INITIAL_URI)
+                            if (uri != null) {
+                                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: extracted initial uri from volume intent: $uri")
+                                return uri
+                            }
+                        } catch (e: Exception) {
+                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: failed to get intent from volume: ${e.localizedMessage}")
+                        }
+                    }
                     var uuid = volume.uuid
                     val volDirectory = volume.directory
                     by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: volume uuid=$uuid, directory=$volDirectory")
@@ -303,11 +321,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     if (uuid != null) {
-                        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            DocumentsContract.buildRootUri("com.android.externalstorage.documents", uuid)
-                        } else {
-                            Uri.parse("content://com.android.externalstorage.documents/tree/$uuid%3A")
-                        }
+                        return DocumentsContract.buildTreeDocumentUri("com.android.externalstorage.documents", "$uuid:")
                     }
                 }
             }

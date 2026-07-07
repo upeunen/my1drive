@@ -1028,8 +1028,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val uri = otgManager.otgDirectoryUri.value ?: return null
         val context = getApplication<Application>()
         return try {
-            val docFile = DocumentFile.fromTreeUri(context, uri)
-            docFile?.name ?: Uri.decode(uri.toString().substringAfterLast("/"))
+            val archiveDir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, uri, createIfNotExist = false)
+            archiveDir?.name ?: DocumentFile.fromTreeUri(context, uri)?.name ?: Uri.decode(uri.toString().substringAfterLast("/"))
         } catch (e: Exception) {
             Uri.decode(uri.toString().substringAfterLast("/"))
         }

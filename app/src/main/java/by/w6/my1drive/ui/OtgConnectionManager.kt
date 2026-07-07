@@ -498,11 +498,10 @@ class OtgConnectionManager(
         return false
     }
 
-    /** Calculates physical file sizes on the OTG drive (excluding metadata files). */
     private fun calculateArchiveSize(): Long {
         val uri = _otgDirectoryUri.value ?: return 0L
         return try {
-            val dir = DocumentFile.fromTreeUri(application, uri)
+            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
             if (dir != null && dir.exists()) {
                 dir.listFiles()
                     .filter { !it.isDirectory && it.name != ".my1drive_uuid" }

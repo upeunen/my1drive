@@ -141,7 +141,7 @@ class ArchiveSyncHelper(
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
                         val metadataExists = metadataStore.metadataExists(uri)
-                        val dir = DocumentFile.fromTreeUri(application, uri)
+                        val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                         val physicalFiles = if (dir != null && dir.exists()) {
                             dir.listFiles().filter {
                                 !it.isDirectory && it.name != null &&
@@ -335,7 +335,7 @@ class ArchiveSyncHelper(
             _syncState.value = null
             operationMutex.withLock {
                 try {
-                    val dir = DocumentFile.fromTreeUri(application, uri)
+                    val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                     if (dir == null || !dir.exists()) throw Exception("Не удалось получить доступ к OTG накопителю")
 
                     val files = dir.listFiles().filter {

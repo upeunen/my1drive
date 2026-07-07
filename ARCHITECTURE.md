@@ -176,3 +176,14 @@ graph TD
 4. **Ленивая генерация превью:** Превью файлов на флешке **никогда** не генерируются при архивации. Только при непосредственном отображении в сетке галереи через [OtgThumbnailFetcher](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/OtgThumbnailFetcher.kt).
 5. **Потокобезопасность:** Все тяжелые расчеты (SHA-256, I/O потоки, сжатие картинок) должны запускаться исключительно на пуле потоков `Dispatchers.IO`.
 6. **Размер файлов:** Не допускайте разрастания кодовой базы в одном файле. Если класс UI/ViewModel превышает 400 строк, выносите логику в хелперы (например, [ArchiveSyncHelper](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/ui/ArchiveSyncHelper.kt)).
+
+---
+
+## 📜 История версий архитектуры (Architecture Version Log)
+
+### Версия v1.0.1
+* **Изменения**: Исправлен сброс авторизации SAF и ошибки доступа (`SecurityException`) при монтировании архива на съемном накопителе (OTG).
+* **Архитектурные детали**:
+  - Введён новый класс [OtgFolderResolver](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/OtgFolderResolver.kt) для динамического получения архивной папки `Arhiv-<DeviceName>` на базе Tree URI родительского тома, на который выданы постоянные права.
+  - В [MainActivity](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/MainActivity.kt) и Preferences сохраняется строго корневой Tree URI флешки (а не URI созданной папки), что гарантирует валидность persisted permissions.
+  - Компоненты файлового I/O ([ArchiveMetadataStore](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/ArchiveMetadataStore.kt), [ArchiveSyncHelper](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/ui/ArchiveSyncHelper.kt), [OtgArchiveUtil](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/OtgArchiveUtil.kt)) теперь резолвят путь архива через `OtgFolderResolver`.

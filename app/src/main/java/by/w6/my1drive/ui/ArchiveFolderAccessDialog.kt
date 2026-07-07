@@ -51,7 +51,7 @@ fun ArchiveFolderAccessDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { /* Не позволяем закрывать диалог кнопкой Назад или кликом снаружи */ },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -106,16 +106,6 @@ fun ArchiveFolderAccessDialog(
             ) {
                 Text(
                     text = "Предоставить доступ",
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = "Пропустить",
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false

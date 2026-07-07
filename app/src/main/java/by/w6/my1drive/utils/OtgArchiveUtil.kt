@@ -50,7 +50,7 @@ class OtgArchiveUtil(private val context: Context) {
                 return@flow
             }
 
-            val dir = DocumentFile.fromTreeUri(context, targetDirUri)
+            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, targetDirUri, createIfNotExist = true)
                 ?: throw Exception("otg_access_failed")
 
             val existingFile = dir.findFile(item.displayName)
