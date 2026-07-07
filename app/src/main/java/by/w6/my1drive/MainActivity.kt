@@ -98,10 +98,12 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.OpenDocumentTree()
         ) { uri ->
             if (uri != null) {
+                // Больше не блокируем выбор внутренней памяти, но предупреждаем.
                 val isRemovable = isRemovableStorageUri(uri)
+                val isPhysConnected = viewModel.otgManager.physicalConnected.value
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgFolderLauncher: uri=$uri, isRemovable=$isRemovable, isPhysConnected=$isPhysConnected")
                 if (!isRemovable) {
-                    Toast.makeText(this, "Выбор папки на устройстве телефона запрещен. Для архивации выберите USB-накопитель (OTG).", Toast.LENGTH_LONG).show()
-                    return@registerForActivityResult
+                    Toast.makeText(this, "Вы выбрали папку на устройстве телефона. Для работы с USB-флешкой выберите её в боковом меню SAF.", Toast.LENGTH_LONG).show()
                 }
                 try {
                     var finalUri = uri
@@ -246,28 +248,35 @@ class MainActivity : ComponentActivity() {
         val isPhysConnected = viewModel.otgManager.physicalConnected.value
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: isPhysConnected=$isPhysConnected")
 
-        val otgRoot = otgStorageRootUri(this)
-        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: otgRoot=$otgRoot")
-        
-        if (otgRoot == null && !isPhysConnected) {
-            Toast.makeText(this, "Пожалуйста, сначала подключите USB-флешку к телефону", Toast.LENGTH_LONG).show()
-            return
+        val initialUri = when {
+            currentOtgUri != null -> {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri")
+                currentOtgUri
+            }
+            else -> {
+                val otgRoot = otgStorageRootUri(this)
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: otgRoot=$otgRoot")
+                if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
+                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using otgRoot (removable)")
+                    otgRoot
+                } else if (isPhysConnected) {
+                    // USB физически подключён, но не удалось определить его корень.
+                    // Передаём null, чтобы SAF сам показал выбор тома (пользователь увидит USB).
+                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: USB connected but no root found — launching null")
+                    null
+                } else {
+                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: USB not connected — launching phoneStorageRootUri")
+                    phoneStorageRootUri()
+                }
+            }
         }
-
-        val initialUri = if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using otgRoot (removable)")
-            otgRoot
-        } else {
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: no root found — launching null")
-            null
-        }
-
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launching with initialUri=$initialUri")
         try {
             otgFolderLauncher.launch(initialUri)
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch executed")
         } catch (e: Exception) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed: ${e.localizedMessage}")
+            // Крайний fallback — null
             try {
                 otgFolderLauncher.launch(null)
             } catch (_: Exception) {}
@@ -294,7 +303,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     if (uuid != null) {
-                        return DocumentsContract.buildTreeDocumentUri("com.android.externalstorage.documents", "$uuid:")
+                        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            DocumentsContract.buildRootUri("com.android.externalstorage.documents", uuid)
+                        } else {
+                            Uri.parse("content://com.android.externalstorage.documents/tree/$uuid%3A")
+                        }
                     }
                 }
             }
