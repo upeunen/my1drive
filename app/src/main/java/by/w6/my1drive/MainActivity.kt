@@ -301,11 +301,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     if (uuid != null) {
-                        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            DocumentsContract.buildRootUri("com.android.externalstorage.documents", uuid)
-                        } else {
-                            Uri.parse("content://com.android.externalstorage.documents/tree/$uuid%3A")
-                        }
+                        return DocumentsContract.buildTreeDocumentUri("com.android.externalstorage.documents", "$uuid:")
                     }
                 }
             }
