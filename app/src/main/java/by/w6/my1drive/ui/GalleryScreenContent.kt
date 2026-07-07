@@ -1105,6 +1105,7 @@ fun GalleryScreenContent(
                                 isLocalFolder = viewModel.isOtgLocalFolder(),
                                 currentArchiveSize = physicalArchiveSize,
                                 isLimitActive = viewModel.isLimitActive,
+                                vpsManager = viewModel.vpsManager,
                                 onShowDebugLogs = { showDebugLogsDialog = true },
                                 onSyncArchive = onSyncArchive
                             )

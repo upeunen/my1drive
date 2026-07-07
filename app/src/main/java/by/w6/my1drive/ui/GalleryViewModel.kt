@@ -3,6 +3,7 @@ package by.w6.my1drive.ui
 import android.app.Application
 import android.app.RecoverableSecurityException
 import android.content.Context
+import android.widget.Toast
 import android.content.Intent
 import android.content.IntentSender
 import android.net.Uri
@@ -71,6 +72,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val previewCache = PreviewCacheManager(application, db.mediaDao())
     private val metadataStore = ArchiveMetadataStore(application)
+    val vpsManager = by.w6.my1drive.utils.VpsConnectionManager(application)
 
             val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
@@ -574,6 +576,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     // ─── Sync & Archive delegated ───
 
+    fun isVpsEnabled(): Boolean = vpsManager.isVpsEnabled()
     fun silentSyncArchive() { syncHelper.silentSyncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissMissingFilesNotification() { syncHelper.dismissMissingFilesNotification() }
     fun dismissAutoSyncAddedCount() { syncHelper.dismissAutoSyncAddedCount() }
@@ -585,6 +588,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (selected.isEmpty()) {
             DebugLogBuffer.log("GalleryViewModel", "startArchiving: selected list is empty, aborting.")
             return
+        }
+
+        if (vpsManager.isVpsEnabled()) {
+            val limitGb = vpsManager.getVpsLimitGb()
+            val limitBytes = limitGb.toLong() * 1024 * 1024 * 1024
+            val archivedItemsSize = mediaItems.value.filter { it.status == MediaStatus.ARCHIVED_OTG }.sumOf { it.size }
+            val newSelectionSize = selected.sumOf { it.size }
+            if (archivedItemsSize + newSelectionSize > limitBytes) {
+                Toast.makeText(getApplication(), "Превышен настроенный лимит VPS (${limitGb} ГБ). Архивирование отменено.", Toast.LENGTH_LONG).show()
+                return
+            }
         }
 
         if (IS_LIMIT_ACTIVE) {
@@ -618,6 +632,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun archiveSingleItem(item: MediaItem, targetUri: Uri) {
+        if (vpsManager.isVpsEnabled()) {
+            val limitGb = vpsManager.getVpsLimitGb()
+            val limitBytes = limitGb.toLong() * 1024 * 1024 * 1024
+            val archivedItemsSize = mediaItems.value.filter { it.status == MediaStatus.ARCHIVED_OTG }.sumOf { it.size }
+            if (archivedItemsSize + item.size > limitBytes) {
+                Toast.makeText(getApplication(), "Превышен настроенный лимит VPS (${limitGb} ГБ). Архивирование отменено.", Toast.LENGTH_LONG).show()
+                return
+            }
+        }
         if (IS_LIMIT_ACTIVE) {
             val currentArchivedSize = physicalArchiveSize.value
             val totalProjectedSize = currentArchivedSize + item.size

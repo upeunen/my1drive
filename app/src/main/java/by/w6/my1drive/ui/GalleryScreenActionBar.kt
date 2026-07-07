@@ -30,6 +30,7 @@ fun GalleryScreenActionBar(
     isArchiveTab: Boolean,
     isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
+    isVpsEnabled: Boolean = false,
     onArchive: () -> Unit,
     onRestore: () -> Unit
 ) {
@@ -43,7 +44,7 @@ fun GalleryScreenActionBar(
         if (!isArchiveTab) {
             FilledTonalButton(
                 onClick = onArchive,
-                enabled = isOtgConnected && otgDirectoryUri != null,
+                enabled = (isOtgConnected && otgDirectoryUri != null) || isVpsEnabled,
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),

@@ -698,10 +698,10 @@ private fun ImagePage(
     onLongPress: () -> Unit
 ) {
     val selectionScale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isSelected) 0.96f else 1.0f,
+        targetValue = if (isSelected) 0.98f else 1.0f,
         animationSpec = androidx.compose.animation.core.spring(
             dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
         ),
         label = "selectionScale"
     )
@@ -969,10 +969,10 @@ private fun VideoPage(
     onLongPress: () -> Unit
 ) {
     val selectionScale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isSelected) 0.96f else 1.0f,
+        targetValue = if (isSelected) 0.98f else 1.0f,
         animationSpec = androidx.compose.animation.core.spring(
             dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
         ),
         label = "selectionScale"
     )

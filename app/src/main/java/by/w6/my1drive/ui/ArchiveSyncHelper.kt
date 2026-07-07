@@ -19,10 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.security.MessageDigest
+import by.w6.my1drive.utils.VpsConnectionManager
 
 /** Helper for archive/manual-sync operations extracted from GalleryViewModel */
 class ArchiveSyncHelper(
@@ -42,6 +45,7 @@ class ArchiveSyncHelper(
     }
 
     private val metadataStore = ArchiveMetadataStore(application)
+    private val vpsManager = VpsConnectionManager(application)
 
     private val _syncState = MutableStateFlow<String?>(null)
     val syncState: StateFlow<String?> = _syncState.asStateFlow()
@@ -566,7 +570,13 @@ class ArchiveSyncHelper(
                     var itemErr: String? = null
                     var isSkipped = false; var skipReason = ""
 
-                    archiveUtil.copyAndVerifyItem(item, targetUri).collect { result ->
+                    val archiveFlow = if (vpsManager.isVpsEnabled()) {
+                        uploadAndVerifyItemToVps(item)
+                    } else {
+                        archiveUtil.copyAndVerifyItem(item, targetUri)
+                    }
+
+                    archiveFlow.collect { result ->
                         when (result) {
                             is CopyVerifyResult.Progress -> _archiveState.value = _archiveState.value.copy(
                                 currentStep = result.step,
@@ -644,8 +654,10 @@ class ArchiveSyncHelper(
                     dateArchived = currentTimeSec
                 )
             }
-            metadataStore.addEntries(otgUri, jsonEntries)
-            DebugLogBuffer.log(logTag, "Added entries to JSON metadata on OTG drive")
+            if (!vpsManager.isVpsEnabled()) {
+                metadataStore.addEntries(otgUri, jsonEntries)
+                DebugLogBuffer.log(logTag, "Added entries to JSON metadata on OTG drive")
+            }
 
             // 2. Insert into Room (local cache)
             for (info in list) {
@@ -678,4 +690,79 @@ class ArchiveSyncHelper(
     }
 
     fun dismissError() { _archiveState.value = _archiveState.value.copy(error = null) }
+
+    private fun uploadAndVerifyItemToVps(item: MediaItem): kotlinx.coroutines.flow.Flow<CopyVerifyResult> = kotlinx.coroutines.flow.flow {
+        val logTag = "VpsArchiveCopy"
+        try {
+            DebugLogBuffer.log(logTag, "Start uploadAndVerifyItemToVps: ${item.displayName}, size=${item.size}, mime=${item.mimeType}")
+            emit(CopyVerifyResult.Progress(item.displayName, "preparing", 0.0f))
+
+            if (item.size <= 0) {
+                emit(CopyVerifyResult.Skipped(item, "SKIP: source has zero size"))
+                return@flow
+            }
+
+            val digest = MessageDigest.getInstance("SHA-256")
+            val input = try {
+                application.contentResolver.openInputStream(item.uri)
+                    ?: throw Exception("Failed to open input stream for ${item.displayName}")
+            } catch (e: Exception) {
+                emit(CopyVerifyResult.Skipped(item, "SKIP: source file not found on device: ${e.localizedMessage}"))
+                return@flow
+            }
+
+            var bytesUploaded = 0L
+            val hashingInputStream = object : java.io.FilterInputStream(input) {
+                override fun read(): Int {
+                    val b = super.read()
+                    if (b != -1) {
+                        digest.update(b.toByte())
+                        bytesUploaded++
+                    }
+                    return b
+                }
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    val readBytes = super.read(b, off, len)
+                    if (readBytes != -1) {
+                        digest.update(b, off, readBytes)
+                        bytesUploaded += readBytes
+                    }
+                    return readBytes
+                }
+            }
+
+            emit(CopyVerifyResult.Progress(item.displayName, "uploading", 0.1f))
+
+            val uploadResult = vpsManager.uploadFile(hashingInputStream, item.displayName) { progress ->
+                // Emit progress
+                val fraction = 0.1f + (progress.toFloat() / item.size) * 0.8f
+                // We could emit progress fractions up to 0.9f here
+            }
+
+            if (uploadResult.isFailure) {
+                throw uploadResult.exceptionOrNull() ?: Exception("Upload failed")
+            }
+
+            val remotePath = uploadResult.getOrNull() ?: ""
+
+            emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.9f))
+
+            val srcHash = digest.digest().joinToString("") { "%02x".format(it) }
+
+            // Pre-cache thumbnail
+            val precachedPath = try {
+                archiveUtil.precacheThumbnail(item, srcHash)
+            } catch (ex: Exception) {
+                null
+            }
+
+            emit(CopyVerifyResult.Success(item, srcHash, remotePath, precachedPath))
+        } catch (e: Exception) {
+            DebugLogBuffer.log(logTag, "Error uploading to VPS: ${e.message}")
+            if (e is kotlinx.coroutines.CancellationException) {
+                throw e
+            }
+            emit(CopyVerifyResult.Error(item.displayName, "${e.javaClass.name}: ${e.message}"))
+        }
+    }.flowOn(Dispatchers.IO)
 }

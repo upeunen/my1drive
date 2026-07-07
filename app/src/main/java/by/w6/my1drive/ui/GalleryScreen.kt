@@ -1,5 +1,6 @@
 package by.w6.my1drive.ui
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -195,7 +196,7 @@ fun GalleryScreen(
                 }
 
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = selectedIds.isNotEmpty() && currentScreenRoute != "settings",
+                    visible = selectedIds.isNotEmpty() && currentScreenRoute != "settings" && activePreviewState == null,
                     enter = slideInVertically(
                         animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
                     ) { it } + fadeIn(),
@@ -222,7 +223,11 @@ fun GalleryScreen(
                             isArchiveTab = currentScreenRoute == "archive",
                             isOtgConnected = isOtgConnected,
                             otgDirectoryUri = otgDirectoryUri,
-                            onArchive = { otgDirectoryUri?.let { viewModel.startArchiving(it) } },
+                            isVpsEnabled = viewModel.isVpsEnabled(),
+                            onArchive = { 
+                                val uri = otgDirectoryUri ?: if (viewModel.isVpsEnabled()) Uri.EMPTY else null
+                                uri?.let { viewModel.startArchiving(it) } 
+                            },
                             onRestore = { viewModel.requestRestore() }
                         )
                     }

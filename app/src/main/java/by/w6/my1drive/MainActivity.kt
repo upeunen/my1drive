@@ -98,12 +98,10 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.OpenDocumentTree()
         ) { uri ->
             if (uri != null) {
-                // Больше не блокируем выбор внутренней памяти, но предупреждаем.
                 val isRemovable = isRemovableStorageUri(uri)
-                val isPhysConnected = viewModel.otgManager.physicalConnected.value
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgFolderLauncher: uri=$uri, isRemovable=$isRemovable, isPhysConnected=$isPhysConnected")
                 if (!isRemovable) {
-                    Toast.makeText(this, "Вы выбрали папку на устройстве телефона. Для работы с USB-флешкой выберите её в боковом меню SAF.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Выбор папки на устройстве телефона запрещен. Для архивации выберите USB-накопитель (OTG).", Toast.LENGTH_LONG).show()
+                    return@registerForActivityResult
                 }
                 try {
                     var finalUri = uri

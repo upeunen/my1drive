@@ -455,7 +455,7 @@ class OtgArchiveUtil(private val context: Context) {
         return null
     }
 
-    private fun precacheThumbnail(item: MediaItem, hash: String): String? {
+    fun precacheThumbnail(item: MediaItem, hash: String): String? {
         val previewDir = File(context.filesDir, "my1drive_previews")
         if (!previewDir.exists()) {
             previewDir.mkdirs()

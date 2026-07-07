@@ -35,6 +35,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.Cloud
+import android.widget.Toast
+import kotlinx.coroutines.launch
+
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +58,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
+
 @Composable
 fun SettingsTab(
     onSelectOtgDirectory: () -> Unit = {},
@@ -59,6 +70,7 @@ fun SettingsTab(
     isLocalFolder: Boolean = false,
     currentArchiveSize: Long = 0L,
     isLimitActive: Boolean = true,
+    vpsManager: by.w6.my1drive.utils.VpsConnectionManager? = null,
     onShowDebugLogs: () -> Unit = {},
     onSyncArchive: () -> Unit = {}
 ) {
@@ -158,6 +170,143 @@ fun SettingsTab(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 softWrap = false
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (vpsManager != null) {
+            Spacer(Modifier.height(16.dp))
+            var vpsEnabled by remember { mutableStateOf(vpsManager.isVpsEnabled()) }
+            var host by remember { mutableStateOf(vpsManager.getHost()) }
+            var portStr by remember { mutableStateOf(vpsManager.getPort().toString()) }
+            var username by remember { mutableStateOf(vpsManager.getUsername()) }
+            var password by remember { mutableStateOf(vpsManager.getPassword()) }
+            var remotePath by remember { mutableStateOf(vpsManager.getRemotePath()) }
+            var vpsLimitGbStr by remember { mutableStateOf(vpsManager.getVpsLimitGb().toString()) }
+            val coroutineScope = rememberCoroutineScope()
+            var testingConnection by remember { mutableStateOf(false) }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(
+                                imageVector = Icons.Default.Cloud,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "VPS-сервер",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "(Для опытных пользователей, сохранение на виртуальный сервер)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = vpsEnabled,
+                            onCheckedChange = { checked ->
+                                vpsEnabled = checked
+                                vpsManager.setVpsEnabled(checked)
+                                Toast.makeText(context, if (checked) "VPS архивация включена" else "VPS архивация выключена", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    if (vpsEnabled) {
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = host,
+                            onValueChange = { host = it },
+                            label = { Text("Хост (IP-адрес / домен)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = portStr,
+                                onValueChange = { portStr = it },
+                                label = { Text("Порт") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = { username = it },
+                                label = { Text("Имя пользователя") },
+                                modifier = Modifier.weight(2f),
+                                singleLine = true
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Пароль") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = remotePath,
+                            onValueChange = { remotePath = it },
+                            label = { Text("Путь для архива на VPS") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = vpsLimitGbStr,
+                            onValueChange = { vpsLimitGbStr = it },
+                            label = { Text("Лимит архива на VPS (в ГБ)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                            )
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                val port = portStr.toIntOrNull() ?: 22
+                                val limit = vpsLimitGbStr.toIntOrNull() ?: 10
+                                testingConnection = true
+                                coroutineScope.launch {
+                                    val result = vpsManager.testConnection(host, port, username, password, remotePath)
+                                    testingConnection = false
+                                    if (result.isSuccess) {
+                                        vpsManager.saveConfig(host, port, username, password, remotePath)
+                                        vpsManager.setVpsLimitGb(limit)
+                                        Toast.makeText(context, "Подключение успешно установлено и сохранено!", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        Toast.makeText(context, "Ошибка подключения: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            },
+                            enabled = !testingConnection && host.isNotEmpty() && username.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (testingConnection) "Проверка..." else "Проверить и сохранить настройки")
                         }
                     }
                 }

@@ -66,6 +66,9 @@ dependencies {
     // Icons Extended
     implementation(libs.androidx.compose.material.icons.extended)
 
+    // SSH/SFTP Support
+    implementation(libs.jsch)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
