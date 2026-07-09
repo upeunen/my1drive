@@ -99,6 +99,11 @@ class MainActivity : ComponentActivity() {
             var autoCreatedFolderName: String? = null
             try {
                 val treeDocId = DocumentsContract.getTreeDocumentId(uri)
+                if (treeDocId.startsWith("primary:", ignoreCase = true)) {
+                    Toast.makeText(this, "Пожалуйста, выберите папку на съемном носителе (OTG), а не во внутренней памяти.", Toast.LENGTH_LONG).show()
+                    return
+                }
+                
                 val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
                 if (pathSegment.isEmpty()) {
                     val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri)
