@@ -103,6 +103,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             },
             onArchiveSuccess = { items ->
                 deleteDeviceItems(items)
+            },
+            onItemArchived = { item ->
+                _selectedIds.value = _selectedIds.value - item.id
             }
         )
     }
@@ -234,6 +237,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val archivingItemIds: StateFlow<Set<String>> = syncHelper.archivingItemIds
     val copiedItemIds: StateFlow<Set<String>> = syncHelper.copiedItemIds
     val restoreState = MutableStateFlow(RestoreState())
+    private var restoringJob: kotlinx.coroutines.Job? = null
+    private var isRestoreCancellationRequested = false
     val syncState: StateFlow<String?> = syncHelper.syncState
     val syncProgressState: StateFlow<SyncProgressState> = syncHelper.syncProgressState
 
@@ -353,8 +358,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             val archiveTask = pendingArchiveTask
             if (archiveTask != null) {
-                // Clear selection for these items immediately as archiving starts
-                _selectedIds.value = _selectedIds.value - archiveTask.first.map { it.id }.toSet()
                 syncHelper.startArchiving(archiveTask.first, archiveTask.second)
                 pendingArchiveTask = null
             }
@@ -563,6 +566,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         otgManager.onEject()
     }
 
+    fun cancelArchiving() {
+        syncHelper.cancelArchiving()
+    }
+
+    fun cancelRestoring() {
+        isRestoreCancellationRequested = true
+    }
+
     // ─── Selection ───
 
     fun toggleSelection(itemId: String) { _selectedIds.value = _selectedIds.value.toMutableSet().apply { if (contains(itemId)) remove(itemId) else add(itemId) } }
@@ -625,8 +636,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             missingFoldersQueue.addAll(missingFolders)
             requestNextFolderPermission()
         } else {
-            // Clear selection for these items immediately
-            _selectedIds.value = _selectedIds.value - selected.map { it.id }.toSet()
             syncHelper.startArchiving(selected, targetUri)
         }
     }
@@ -659,8 +668,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             missingFoldersQueue.add(folder)
             requestNextFolderPermission()
         } else {
-            // Clear selection for this item immediately
-            _selectedIds.value = _selectedIds.value - item.id
             syncHelper.startArchiving(listOf(item), targetUri)
         }
     }
@@ -898,11 +905,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; startRestoring(it, uri) } }
     fun dismissRestoreRequest() { pendingRestoreItems = emptyList(); _restoreRequest.value = null }
 
-        private fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
-        // Clear selection for these items immediately as restoration starts
-        _selectedIds.value = _selectedIds.value - items.map { it.id }.toSet()
+    private fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
         _restoringItemIds.value = items.map { it.id }.toSet()
-        viewModelScope.launch {
+        isRestoreCancellationRequested = false
+        restoringJob = viewModelScope.launch {
             val logTag = "RestoreManager"
             try {
                 DebugLogBuffer.log(logTag, "Start startRestoring for ${items.size} items, targetDirUri=$targetDirUri")
@@ -910,6 +916,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 val otgUri = otgManager.otgDirectoryUri.value
                 restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
                 for ((index, item) in items.withIndex()) {
+                    if (isRestoreCancellationRequested) {
+                        DebugLogBuffer.log(logTag, "Restore cancelled by user request. Stopping.")
+                        break
+                    }
                     DebugLogBuffer.log(logTag, "Restoring item [${index + 1}/${items.size}]: ${item.displayName}")
                     restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "")
                     archiveUtil.restoreItem(item, targetDirUri).collect { result ->
@@ -919,6 +929,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                             )
                             is by.w6.my1drive.utils.RestoreResult.Success -> {
                                 successCount++
+                                _selectedIds.value = _selectedIds.value - result.item.id
                                 DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
                                 try {
                                     // 1. Remove from JSON metadata on OTG drive (source of truth)
@@ -963,6 +974,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 otgManager.updateArchiveSize()
             } finally {
                 _restoringItemIds.value = emptySet()
+                if (restoreState.value.isRestoring) {
+                    restoreState.value = restoreState.value.copy(isRestoring = false)
+                }
+                isRestoreCancellationRequested = false
+                restoringJob = null
             }
         }
     }

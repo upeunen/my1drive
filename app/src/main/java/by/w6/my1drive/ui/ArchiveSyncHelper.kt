@@ -37,8 +37,9 @@ class ArchiveSyncHelper(
     private val previewCache: PreviewCacheManager,
     private val scope: kotlinx.coroutines.CoroutineScope,
     private val onOperationComplete: () -> Unit = {},
-        private val onArchiveSuccess: (List<MediaItem>) -> Unit = {}
-    ) {
+    private val onArchiveSuccess: (List<MediaItem>) -> Unit = {},
+    private val onItemArchived: ((MediaItem) -> Unit)? = null
+) {
 
     companion object {
         private val operationMutex = Mutex()
@@ -519,11 +520,18 @@ class ArchiveSyncHelper(
 
     private val archiveQueue = mutableListOf<Pair<List<MediaItem>, Uri>>()
     private var isArchiveJobRunning = false
+    private var isCancellationRequested = false
+
+    fun cancelArchiving() {
+        isCancellationRequested = true
+        archiveQueue.clear()
+    }
 
     /** Add items to archive queue. If nothing is running, starts immediately. */
     fun startArchiving(items: List<MediaItem>, targetUri: Uri) {
         DebugLogBuffer.log("ArchiveSyncHelper", "startArchiving: items=${items.size}, targetUri=$targetUri, isArchiveJobRunning=$isArchiveJobRunning")
         if (items.isEmpty()) return
+        isCancellationRequested = false
         _archivingItemIds.value = _archivingItemIds.value + items.map { it.id }
         archiveQueue.add(items to targetUri)
         _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
@@ -535,7 +543,7 @@ class ArchiveSyncHelper(
 
     private suspend fun processArchiveQueue() {
         try {
-            while (archiveQueue.isNotEmpty()) {
+            while (archiveQueue.isNotEmpty() && !isCancellationRequested) {
                 val (items, targetUri) = archiveQueue.removeAt(0)
                 _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
                 performArchiving(items, targetUri)
@@ -543,6 +551,8 @@ class ArchiveSyncHelper(
         } finally {
             isArchiveJobRunning = false
             _copiedItemIds.value = emptySet()
+            _archiveState.value = ArchiveState(isArchiving = false)
+            isCancellationRequested = false
         }
     }
 
@@ -562,6 +572,10 @@ class ArchiveSyncHelper(
             _copiedItemIds.value = emptySet()
             try {
                 for ((index, item) in items.withIndex()) {
+                    if (isCancellationRequested) {
+                        DebugLogBuffer.log(logTag, "Archiving cancelled by user request. Stopping.")
+                        break
+                    }
                     DebugLogBuffer.log(logTag, "Processing queue item [${index + 1}/${items.size}]: ${item.displayName}")
                     _archiveState.value = _archiveState.value.copy(
                         currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = ""
@@ -592,6 +606,7 @@ class ArchiveSyncHelper(
                             copied.add(success)
                             _copiedItemIds.value = _copiedItemIds.value + item.id
                             DebugLogBuffer.log(logTag, "Item success: ${item.displayName}")
+                            onItemArchived?.invoke(item)
                         }
                         isSkipped -> {
                             skipped.add(item to skipReason)

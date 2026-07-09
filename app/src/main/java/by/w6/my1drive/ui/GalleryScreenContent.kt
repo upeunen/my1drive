@@ -829,6 +829,7 @@ fun GalleryScreenContent(
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
+    val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
@@ -900,6 +901,48 @@ fun GalleryScreenContent(
                 gridColumnsCount = gridColumnsCount,
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
+
+            AnimatedVisibility(
+                visible = isCheckingConnection,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Usb,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Подключение USB-накопителя...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(2.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.Transparent
+                        )
+                    }
+                }
+            }
 
             // Expandable group chips row
             AnimatedVisibility(
@@ -979,7 +1022,8 @@ fun GalleryScreenContent(
                     progressFraction = archiveState.progressFraction,
                     extraInfo = queue,
                     icon = Icons.Default.CloudUpload,
-                    statusText = mapStepToText(archiveState.currentStep)
+                    statusText = mapStepToText(archiveState.currentStep),
+                    onCancel = { viewModel.cancelArchiving() }
                 )
             } else if (restoreState.isRestoring) {
                 ProgressPanel(
@@ -989,7 +1033,8 @@ fun GalleryScreenContent(
                     totalFiles = restoreState.totalFiles,
                     progressFraction = restoreState.progressFraction,
                     icon = Icons.Default.CloudDownload,
-                    statusText = mapStepToText(restoreState.currentStep)
+                    statusText = mapStepToText(restoreState.currentStep),
+                    onCancel = { viewModel.cancelRestoring() }
                 )
             } else if (syncProgressState.isSyncing) {
                 ProgressPanel(
@@ -1435,43 +1480,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
-        if (isCheckingConnection) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .clickable(enabled = false) {},
-                contentAlignment = Alignment.Center
-            ) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.preloader_detecting_drive),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.preloader_please_wait),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
+
 
         if (showDebugLogsDialog) {
             DebugLogsDialog(onDismiss = { showDebugLogsDialog = false })
@@ -1902,7 +1911,8 @@ fun ProgressPanel(
     progressFraction: Float,
     extraInfo: String = "",
     icon: ImageVector,
-    statusText: String? = null
+    statusText: String? = null,
+    onCancel: (() -> Unit)? = null
 ) {
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -1976,15 +1986,37 @@ fun ProgressPanel(
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { progressFraction.coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.primaryContainer,
-                strokeCap = StrokeCap.Round
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                LinearProgressIndicator(
+                    progress = { progressFraction.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer,
+                    strokeCap = StrokeCap.Round
+                )
+                if (onCancel != null) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    androidx.compose.material3.TextButton(
+                        onClick = onCancel,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text(
+                            text = "Прервать",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
     }
 }

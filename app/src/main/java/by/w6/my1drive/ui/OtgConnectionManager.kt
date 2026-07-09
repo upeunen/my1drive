@@ -89,6 +89,7 @@ class OtgConnectionManager(
     private var firstLaunchHandled = false
     private var unknownDriveDialogHandled = false
     private var isEjectedButStillPluggedIn = false
+    private var isVerifying = false
 
     // ─── Public API ───
 
@@ -126,16 +127,15 @@ class OtgConnectionManager(
                 val isTransitionToConnected = otgPluggedIn && !wasPhysicalConnected
                 val isVerifyingNeeded = (firstCheck || isTransitionToConnected) && _otgDirectoryUri.value != null
                 if (isVerifyingNeeded) {
-                    _isCheckingConnection.value = true
+                    verifyConnectionAndWait()
+                } else {
+                    val computed = withContext(Dispatchers.IO) { computeDriveStatus() }
+                    if (computed != _status.value) {
+                        _status.value = computed
+                    }
                 }
 
-                val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
-                if (newStatus != _status.value) {
-                    _status.value = newStatus
-                }
-
-                // Verification is done, dismiss preloader
-                _isCheckingConnection.value = false
+                val newStatus = _status.value
 
                 // Update archive size only when transitioning TO known connected
                 if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED) {
@@ -260,38 +260,34 @@ class OtgConnectionManager(
 
     /** Called from BroadcastReceiver when physical USB connection changes. */
     fun onPhysicalConnectionChanged(isStartup: Boolean = false) {
-        val shouldShowPreloader = _otgDirectoryUri.value != null || !isStartup
-        if (shouldShowPreloader) {
-            _isCheckingConnection.value = true
-        }
         scope.launch {
             val wasConnected = _physicalConnected.value
-            val firstCheck = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() || isAnyOtgDrivePresent() }
-            
-            var isConnected = firstCheck
-            if (!firstCheck && !wasConnected) {
-                // Был отключен, и сейчас не определен как смонтированный — ждем монтирования до 4 секунд
-                val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < 4000) {
-                    delay(500)
-                    val check = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
-                    if (check) {
-                        isConnected = true
-                        break
-                    }
+            val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
+            val otgPluggedIn = usbPhysicallyConnected || withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            _physicalConnected.value = otgPluggedIn
+
+            if (!otgPluggedIn) {
+                unknownDriveDialogHandled = false
+            }
+
+            val isTransitionToConnected = otgPluggedIn && !wasConnected
+            val isVerifyingNeeded = (isStartup || isTransitionToConnected) && _otgDirectoryUri.value != null
+
+            if (isVerifyingNeeded) {
+                verifyConnectionAndWait()
+            } else {
+                val computed = withContext(Dispatchers.IO) { computeDriveStatus() }
+                if (computed != _status.value) {
+                    _status.value = computed
                 }
             }
 
-            _physicalConnected.value = isConnected
-            if (!isConnected) {
-                unknownDriveDialogHandled = false
-            }
-            val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
-            _status.value = newStatus
-            if (_otgDirectoryUri.value == null && isConnected && !wasConnected) {
+            val newStatus = _status.value
+
+            if (_otgDirectoryUri.value == null && otgPluggedIn && !wasConnected) {
                 firstLaunchHandled = false
             }
-            _isCheckingConnection.value = false
+
             if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
@@ -337,8 +333,41 @@ class OtgConnectionManager(
         unknownDriveDialogHandled = false
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "createNewArchive: end")
     }
-
-    // ─── Internal helpers ───
+    private suspend fun verifyConnectionAndWait() {
+        if (isVerifying) return
+        isVerifying = true
+        _isCheckingConnection.value = true
+        try {
+            val startTime = System.currentTimeMillis()
+            val timeoutMs = 8000L // 8 seconds timeout
+            var newStatus = DriveStatus.KNOWN_DRIVE_DISCONNECTED
+            
+            while (System.currentTimeMillis() - startTime < timeoutMs) {
+                val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
+                val otgPluggedIn = usbPhysicallyConnected || withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                _physicalConnected.value = otgPluggedIn
+                
+                if (!otgPluggedIn) {
+                    newStatus = DriveStatus.KNOWN_DRIVE_DISCONNECTED
+                    break
+                }
+                
+                newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) {
+                    break
+                }
+                
+                delay(500)
+            }
+            
+            if (newStatus != _status.value) {
+                _status.value = newStatus
+            }
+        } finally {
+            isVerifying = false
+            _isCheckingConnection.value = false
+        }
+    }
 
     private suspend fun computeDriveStatus(): DriveStatus {
         if (isEjectedButStillPluggedIn) {
