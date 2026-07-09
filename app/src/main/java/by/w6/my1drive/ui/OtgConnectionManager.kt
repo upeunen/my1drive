@@ -546,7 +546,7 @@ class OtgConnectionManager(
     }
 
     private fun readOtgUuidFile(dir: DocumentFile): Pair<String, String>? {
-        val file = dir.findFile(".my1drive_uuid") ?: return null
+        val file = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt") ?: return null
         return try {
             application.contentResolver.openInputStream(file.uri)?.use { inputStream ->
                 val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
@@ -565,7 +565,7 @@ class OtgConnectionManager(
 
     private fun writeOtgUuidFile(dir: DocumentFile, uuid: String, name: String): Boolean {
         try {
-            val file = dir.findFile(".my1drive_uuid") ?: dir.createFile("text/plain", ".my1drive_uuid") ?: return false
+            val file = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt") ?: dir.createFile("text/plain", ".my1drive_uuid") ?: return false
             application.contentResolver.openOutputStream(file.uri, "rwt")?.use { outputStream ->
                 val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(outputStream))
                 writer.write(uuid)
@@ -686,7 +686,7 @@ class OtgConnectionManager(
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
             if (dir != null && dir.exists()) {
                 dir.listFiles()
-                    .filter { !it.isDirectory && it.name != ".my1drive_uuid" }
+                    .filter { !it.isDirectory && it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" }
                     .sumOf { it.length() }
             } else {
                 0L

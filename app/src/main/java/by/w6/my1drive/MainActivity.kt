@@ -275,8 +275,8 @@ class MainActivity : ComponentActivity() {
                 otgRoot
             }
             else -> {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: manual root null or not removable, using phone storage")
-                phoneStorageRootUri()
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: manual root null or not removable, using null")
+                null
             }
         }
         

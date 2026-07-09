@@ -146,7 +146,7 @@ class ArchiveSyncHelper(
                         val physicalFiles = if (dir != null && dir.exists()) {
                             dir.listFiles().filter {
                                 !it.isDirectory && it.name != null &&
-                                it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
+                                it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" && it.name != ".my1drive_db.json"
                             }
                         } else emptyList()
 
@@ -341,7 +341,7 @@ class ArchiveSyncHelper(
 
                     val files = dir.listFiles().filter {
                         !it.isDirectory && it.name != null &&
-                        it.name != ".my1drive_uuid" && it.name != ".my1drive_db.json"
+                        it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" && it.name != ".my1drive_db.json"
                     }
                     if (files.isEmpty()) {
                         _syncProgressState.value = SyncProgressState(isSyncing = false)
