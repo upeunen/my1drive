@@ -48,6 +48,57 @@ class ArchiveSyncHelper(
 
     companion object {
         private val operationMutex = Mutex()
+        
+        data class FastDocumentFile(
+            val uri: android.net.Uri,
+            val name: String,
+            val length: Long,
+            val mimeType: String,
+            val lastModified: Long
+        )
+        
+        fun fastListFiles(context: android.content.Context, dirUri: android.net.Uri): List<FastDocumentFile> {
+            val results = mutableListOf<FastDocumentFile>()
+            try {
+                val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                    dirUri,
+                    android.provider.DocumentsContract.getDocumentId(dirUri)
+                )
+                val projection = arrayOf(
+                    android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    android.provider.DocumentsContract.Document.COLUMN_SIZE,
+                    android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE,
+                    android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED
+                )
+                context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                    val idIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                    val nameIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                    val sizeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
+                    val mimeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
+                    val modIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+
+                    while (cursor.moveToNext()) {
+                        val docId = cursor.getString(idIdx)
+                        val mime = cursor.getString(mimeIdx) ?: ""
+                        if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) continue
+                        val name = cursor.getString(nameIdx) ?: continue
+                        
+                        if (name == ".my1drive_uuid" || name == ".my1drive_uuid.txt" || 
+                            name == ".my1drive_db.json" || name == "my1drive_db.json") continue
+                        
+                        val docUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(dirUri, docId)
+                        val size = cursor.getLong(sizeIdx)
+                        val modified = cursor.getLong(modIdx)
+                        
+                        results.add(FastDocumentFile(docUri, name, size, mime, modified))
+                    }
+                }
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "fastListFiles error: ${e.message}")
+            }
+            return results
+        }
     }
 
     private val metadataStore = ArchiveMetadataStore(application)
@@ -85,14 +136,19 @@ class ArchiveSyncHelper(
 
     // ─── Silent auto-sync ───
 
+    private var activeSyncJob: Job? = null
+
     /**
-     * Silent auto-sync:
-     * 1. Копирует все записи из JSON (источник истины на OTG) в Room на устройстве.
-     * 2. Сканирует файлы на флешке, добавляет в JSON и Room те, что ещё не учтены.
-     *
-     * Это гарантирует, что после createNewArchive / переустановки приложения
-     * все ранее заархивированные файлы появятся в интерфейсе.
+     * Отменяет текущую синхронизацию (например, при извлечении диска).
      */
+    fun cancelOperations() {
+        activeSyncJob?.cancel()
+        activeSyncJob = null
+        isSilentSyncing = false
+        _syncProgressState.value = SyncProgressState(isSyncing = false)
+        isCancellationRequested = true
+        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "cancelOperations: sync and archive jobs cancelled")
+    }
 
     /**
      * Silent auto-sync:
@@ -104,9 +160,13 @@ class ArchiveSyncHelper(
      */
     fun silentSyncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
+        
+        // Отменяем предыдущую синхронизацию, если она есть
+        activeSyncJob?.cancel()
+        
         isSilentSyncing = true
         val logTag = "SilentSync"
-        scope.launch(Dispatchers.IO) {
+        activeSyncJob = scope.launch(Dispatchers.IO) {
             try {
                 operationMutex.withLock {
                     try {
@@ -123,18 +183,13 @@ class ArchiveSyncHelper(
                         }
                         DebugLogBuffer.log(logTag, "activeUuid resolved: $activeUuid")
 
-
                         // ── Шаг 1: Чтение JSON метаданных ──
                         val jsonEntries = metadataStore.readMetadata(uri)
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
                         val metadataExists = metadataStore.metadataExists(uri)
                         val physicalFiles = if (dir != null && dir.exists()) {
-                            dir.listFiles().filter {
-                                !it.isDirectory && it.name != null &&
-                                it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" &&
-                                it.name != ".my1drive_db.json" && it.name != "my1drive_db.json"
-                            }
+                            fastListFiles(application, dir.uri)
                         } else emptyList()
 
                         DebugLogBuffer.log(logTag, "Metadata exists: $metadataExists. Physical files found: ${physicalFiles.size}")
@@ -155,7 +210,7 @@ class ArchiveSyncHelper(
                             val knownHashes = jsonEntries.map { it.hash }.toHashSet()
 
                             for (file in files) {
-                                val name = file.name ?: continue
+                                val name = file.name
                                 val entry = knownNamesMap[name.lowercase()]
                                 if (entry != null) {
                                     continue
@@ -170,14 +225,14 @@ class ArchiveSyncHelper(
                                 }
 
                                 if (hash !in knownHashes) {
-                                    val mime = file.type ?: "image/jpeg"
+                                    val mime = file.mimeType
                                     val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
                                     val newEntry = JsonEntry(
                                         hash = hash,
                                         displayName = name,
                                         mimeType = mime,
-                                        size = file.length(),
-                                        dateModified = file.lastModified() / 1000,
+                                        size = file.length,
+                                        dateModified = file.lastModified / 1000,
                                         originalRelativePath = defaultPath,
                                         duration = null,
                                         dateArchived = System.currentTimeMillis() / 1000
@@ -202,7 +257,7 @@ class ArchiveSyncHelper(
                         var insertedToRoom = 0
 
                         val physicalUrisMap = physicalFiles.associate { 
-                            ((it.name ?: "").lowercase() to it.length()) to it.uri.toString() 
+                            (it.name.lowercase() to it.length) to it.uri.toString() 
                         }
 
                         for (entry in validJsonEntries) {
@@ -391,7 +446,10 @@ class ArchiveSyncHelper(
      */
     fun syncArchive(otgDirectoryUri: Uri?) {
         val uri = otgDirectoryUri ?: return
-        scope.launch {
+        
+        activeSyncJob?.cancel()
+        
+        activeSyncJob = scope.launch {
             _syncProgressState.value = SyncProgressState(
                 isSyncing = true,
                 currentFileName = "Поиск файлов на OTG...",
@@ -410,11 +468,7 @@ class ArchiveSyncHelper(
                         activeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
                     }
 
-                    val files = dir.listFiles().filter {
-                        !it.isDirectory && it.name != null &&
-                        it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" &&
-                        it.name != ".my1drive_db.json" && it.name != "my1drive_db.json"
-                    }
+                    val files = fastListFiles(application, dir.uri)
                     if (files.isEmpty()) {
                         _syncProgressState.value = SyncProgressState(isSyncing = false)
                         _syncState.value = "Синхронизация завершена: файлов нет."
@@ -430,7 +484,7 @@ class ArchiveSyncHelper(
                         metadataStore.readMetadata(uri)
                     }.toMutableList()
 
-                    val physicalFilesMap = files.associateBy { (it.name?.lowercase() ?: "") to it.length() }
+                    val physicalFilesMap = files.associateBy { (it.name.lowercase()) to it.length }
                     var jsonChanged = false
                     val validJsonEntries = mutableListOf<JsonEntry>()
 
@@ -445,7 +499,7 @@ class ArchiveSyncHelper(
                             val physicalFile = physicalFilesMap[key]
                             if (physicalFile != null) {
                                 // Имя файла на диске может отличаться регистром, обновим его
-                                val actualName = physicalFile.name ?: entry.displayName
+                                val actualName = physicalFile.name
                                 validJsonEntries.add(entry.copy(displayName = actualName))
                             } else {
                                 jsonChanged = true
@@ -460,9 +514,8 @@ class ArchiveSyncHelper(
 
                     withContext(Dispatchers.IO) {
                         for ((idx, file) in files.withIndex()) {
-                            if (file.isDirectory) continue
-                            val name = file.name ?: continue
-                            val length = file.length()
+                            val name = file.name
+                            val length = file.length
 
                             _syncProgressState.value = SyncProgressState(
                                 isSyncing = true,
@@ -499,14 +552,14 @@ class ArchiveSyncHelper(
                                 logSb.appendLine("Failed to read/hash $name: ${e.message}"); skipped++; continue
                             }
                             if (hash !in knownHashes) {
-                                val mime = file.type ?: "image/jpeg"
+                                val mime = file.mimeType.ifEmpty { "image/jpeg" }
                                 val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
                                 val entry = JsonEntry(
                                     hash = hash,
                                     displayName = name,
                                     mimeType = mime,
                                     size = length,
-                                    dateModified = file.lastModified() / 1000,
+                                    dateModified = file.lastModified / 1000,
                                     originalRelativePath = defaultPath,
                                     duration = null,
                                     dateArchived = System.currentTimeMillis() / 1000

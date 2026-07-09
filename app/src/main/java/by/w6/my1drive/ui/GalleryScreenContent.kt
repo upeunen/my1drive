@@ -1179,11 +1179,12 @@ fun GalleryScreenContent(
                             })
                         "settings" -> {
                             val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
+                            val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
                             SettingsTab(
                                 onSelectOtgDirectory = { showChangeFolderConfirmDialog = true },
                                 onClearCache = { viewModel.clearPreviewCache() },
                                 isOtgConnected = isOtgConnected,
-                                otgDirectoryDisplayName = viewModel.getOtgDirectoryDisplayName(),
+                                otgDirectoryDisplayName = otgDirectoryDisplayName,
                                 cacheSize = previewCacheManager.getCacheSize(),
                                 cacheFilesCount = previewCacheManager.getCacheFileCount(),
                                 isLocalFolder = viewModel.isOtgLocalFolder(),

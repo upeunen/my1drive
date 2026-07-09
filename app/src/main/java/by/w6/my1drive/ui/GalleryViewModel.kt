@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flowOn
 import by.w6.my1drive.utils.ArchiveMetadataStore
 import by.w6.my1drive.utils.JsonEntry
 import kotlinx.coroutines.launch
@@ -1043,16 +1044,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-        fun getOtgDirectoryDisplayName(): String? {
-        val uri = otgManager.otgDirectoryUri.value ?: return null
+    val otgDirectoryDisplayName: StateFlow<String?> = otgManager.otgDirectoryUri.map { uri ->
+        if (uri == null) return@map null
         val context = getApplication<Application>()
-        return try {
+        try {
             val archiveDir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, uri, createIfNotExist = false)
             archiveDir?.name ?: DocumentFile.fromTreeUri(context, uri)?.name ?: Uri.decode(uri.toString().substringAfterLast("/"))
         } catch (e: Exception) {
             Uri.decode(uri.toString().substringAfterLast("/"))
         }
-    }
+    }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.Lazily, null)
 
         fun isOtgLocalFolder(): Boolean {
         val uri = otgManager.otgDirectoryUri.value ?: return false

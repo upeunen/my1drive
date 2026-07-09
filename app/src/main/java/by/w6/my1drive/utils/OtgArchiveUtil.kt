@@ -384,17 +384,29 @@ class OtgArchiveUtil(private val context: Context) {
 
         fun calculateSha256(uri: Uri): String {
         val digest = MessageDigest.getInstance("SHA-256")
+        var size = 0L
         val stream = context.contentResolver.openInputStream(uri)
             ?: throw Exception("Failed to open stream for $uri")
         stream.use { input ->
             val buffer = ByteArray(65536)
+            var totalRead = 0L
             var bytesRead = input.read(buffer)
-            while (bytesRead != -1) {
+            while (bytesRead != -1 && totalRead < 1048576L) { // Read max 1 MB
                 digest.update(buffer, 0, bytesRead)
+                totalRead += bytesRead
+                size += bytesRead
                 bytesRead = input.read(buffer)
             }
+            // If there's more data, we need the exact total size without reading it all via SAF if possible.
+            // But we can just use the file length from DocumentFile or cursor.
         }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+        
+        // Retrieve actual file size via DocumentFile for the hash suffix
+        val docFile = DocumentFile.fromSingleUri(context, uri)
+        val actualSize = docFile?.length() ?: size
+        
+        val hashStr = digest.digest().joinToString("") { "%02x".format(it) }
+        return "${hashStr}_$actualSize"
     }
 
     private fun setFilesystemLastModified(uri: Uri, timestampSec: Long) {
