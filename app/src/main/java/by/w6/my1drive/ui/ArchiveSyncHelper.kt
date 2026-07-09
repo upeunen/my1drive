@@ -342,7 +342,7 @@ class ArchiveSyncHelper(
                         DebugLogBuffer.log(logTag, "Silent sync finished successfully")
 
                         // Запускаем фоновую генерацию превью после синхронизации
-                        startBackgroundPreviews()
+                        startBackgroundPreviews(activeUuid)
                     } catch (e: Exception) {
                         DebugLogBuffer.log(logTag, "Error in silentSyncArchive: ${e.localizedMessage}")
                         val sw = java.io.StringWriter()
@@ -376,13 +376,13 @@ class ArchiveSyncHelper(
      */
     private var backgroundPreviewJob: kotlinx.coroutines.Job? = null
 
-    private fun startBackgroundPreviews(limit: Int = 10000) {
+    private fun startBackgroundPreviews(activeUuid: String, limit: Int = 10000) {
         backgroundPreviewJob?.cancel()
         backgroundPreviewJob = scope.launch(Dispatchers.IO) {
             delay(500) // wait briefly after sync finishes
-            val items = db.mediaDao().getWithoutPreview(limit)
+            val items = db.mediaDao().getWithoutPreview(activeUuid, limit)
             if (items.isEmpty()) return@launch
-            DebugLogBuffer.log("BgPreview", "Starting background preview generation for ${items.size} items")
+            DebugLogBuffer.log("BgPreview", "Starting background preview generation for ${items.size} items on drive $activeUuid")
             val dir = previewCache.previewDir
             for (entity in items) {
                 if (!isActive) break
@@ -636,6 +636,8 @@ class ArchiveSyncHelper(
                     _syncProgressState.value = SyncProgressState(isSyncing = false)
                     _syncState.value = "Синхронизация завершена.\n\nИмпортировано новых файлов: $synced\nПропущено/проверено: ${files.size - synced}"
                     DebugLogBuffer.log("ManualSync", "Sync complete: imported $synced, total ${files.size}")
+                    
+                    startBackgroundPreviews(activeUuid)
                 } catch (e: Exception) {
                     _syncProgressState.value = SyncProgressState(isSyncing = false)
                     val errorMsg = "Ошибка синхронизации: ${e.localizedMessage}"
