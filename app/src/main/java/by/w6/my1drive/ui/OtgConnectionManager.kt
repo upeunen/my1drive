@@ -99,6 +99,7 @@ class OtgConnectionManager(
     /** Флаг: приветственный диалог уже был показан в этой сессии (или был отклонён). */
     private var firstLaunchHandled = false
     private var unknownDriveDialogHandled = false
+    private val scannedUris = mutableSetOf<String>()
     private var isEjectedButStillPluggedIn = false
     private var isVerifying = false
 
@@ -625,10 +626,14 @@ class OtgConnectionManager(
                 var uuid = fallbackUuid
                 
                 if (knownArchive == null) {
-                    val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(application, savedUri)
-                    if (recovered != null) {
-                        knownArchive = recovered
-                        uuid = recovered.uuid
+                    val uriStr = savedUri.toString()
+                    if (!scannedUris.contains(uriStr)) {
+                        scannedUris.add(uriStr)
+                        val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(application, savedUri)
+                        if (recovered != null) {
+                            knownArchive = recovered
+                            uuid = recovered.uuid
+                        }
                     }
                 }
                 val currentActiveUuid = _activeArchiveUuid.value

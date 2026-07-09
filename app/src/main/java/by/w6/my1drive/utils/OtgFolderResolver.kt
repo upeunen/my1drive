@@ -161,13 +161,8 @@ object OtgFolderResolver {
             val volumeUuid = extractVolumeId(rootUri)
             val db = AppDatabase.getDatabase(context)
             
-            // 1. Try to find the archive in the database first
-            var archive = if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
-            
-            // 2. If not found in DB, try scanning the drive for .my1drive_db.json (auto-recovery)
-            if (archive == null) {
-                archive = scanAndRecoverArchive(context, rootUri)
-            }
+            // 1. Try to find the archive in the database
+            val archive = if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
             
             var folderName = if (archive != null) {
                 if (archive.folderName.isNotEmpty()) {
@@ -187,7 +182,16 @@ object OtgFolderResolver {
                 folderName = getAutoCreatedFolderName(context)
             }
 
-            val subDir = if (folderName.isEmpty()) rootDoc else rootDoc.findFile(folderName)
+            val subDir = if (folderName.isEmpty()) {
+                rootDoc
+            } else {
+                // Optimize: Build child URI directly to avoid slow rootDoc.listFiles() caused by findFile
+                val rootDocId = android.provider.DocumentsContract.getTreeDocumentId(rootUri)
+                val childDocId = if (rootDocId.endsWith(":")) "$rootDocId$folderName" else "$rootDocId/$folderName"
+                val childUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(rootUri, childDocId)
+                val directDoc = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, childUri)
+                if (directDoc != null && directDoc.exists()) directDoc else null
+            }
             if (subDir != null) {
                 return subDir
             }
