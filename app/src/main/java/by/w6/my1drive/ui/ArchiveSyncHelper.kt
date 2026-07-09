@@ -112,16 +112,17 @@ class ArchiveSyncHelper(
                     try {
                         DebugLogBuffer.log(logTag, "Start silentSyncArchive: targetUri=$uri")
 
+
                         val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
-                        val uuidFile = dir?.findFile(".my1drive_uuid") ?: dir?.findFile(".my1drive_uuid.txt")
-                        val activeUuid: String = if (uuidFile != null) {
-                            try {
-                                (application.contentResolver.openInputStream(uuidFile.uri)?.use { inputStream ->
-                                    val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
-                                    reader.readLine()?.trim() ?: ""
-                                }) ?: ""
-                            } catch (_: Exception) { "" }
-                        } else { "" }
+
+                        val uuidFromPrefs = prefs.getString("active_archive_uuid", "") ?: ""
+                        val activeUuid: String = if (uuidFromPrefs.isNotEmpty()) {
+                            uuidFromPrefs
+                        } else {
+                            by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+                        }
+                        DebugLogBuffer.log(logTag, "activeUuid resolved: $activeUuid")
+
 
                         // ── Шаг 1: Чтение JSON метаданных ──
                         val jsonEntries = metadataStore.readMetadata(uri)
