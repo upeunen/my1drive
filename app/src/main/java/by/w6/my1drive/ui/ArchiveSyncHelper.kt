@@ -221,13 +221,8 @@ class ArchiveSyncHelper(
                                     continue
                                 }
 
-                                DebugLogBuffer.log(logTag, "Scanning detected new physical file: $name. Calculating SHA-256...")
-                                val hash = try {
-                                    archiveUtil.calculateSha256(file.uri)
-                                } catch (e: Exception) {
-                                    DebugLogBuffer.log(logTag, "Failed to read/hash $name: ${e.message}")
-                                    continue
-                                }
+                                DebugLogBuffer.log(logTag, "Scanning detected new physical file: $name. Using name+size as hash...")
+                                val hash = "${name}_${file.length}"
 
                                 if (hash !in knownHashes) {
                                     val mime = file.mimeType
@@ -557,9 +552,7 @@ class ArchiveSyncHelper(
                                 continue
                             }
 
-                            val hash = try { archiveUtil.calculateSha256(file.uri) } catch (e: Exception) {
-                                logSb.appendLine("Failed to read/hash $name: ${e.message}"); skipped++; continue
-                            }
+                            val hash = "${name}_$length"
                             if (hash !in knownHashes) {
                                 val mime = file.mimeType.ifEmpty { "image/jpeg" }
                                 val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
