@@ -569,7 +569,7 @@ class OtgConnectionManager(
     private fun writeOtgUuidFile(dir: DocumentFile, uuid: String, name: String): Boolean {
         try {
             val file = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt") ?: dir.createFile("text/plain", ".my1drive_uuid") ?: return false
-            application.contentResolver.openOutputStream(file.uri, "rwt")?.use { outputStream ->
+            application.contentResolver.openOutputStream(file.uri, "w")?.use { outputStream ->
                 val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(outputStream))
                 writer.write(uuid)
                 writer.newLine()

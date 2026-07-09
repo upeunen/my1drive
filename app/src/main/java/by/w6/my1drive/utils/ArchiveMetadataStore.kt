@@ -115,7 +115,7 @@ class ArchiveMetadataStore(private val context: Context) {
                 put("files", filesArray)
             }
 
-            context.contentResolver.openOutputStream(file.uri, "rwt")?.use { output ->
+            context.contentResolver.openOutputStream(file.uri, "w")?.use { output ->
                 output.write(root.toString(2).toByteArray(Charsets.UTF_8))
             }
         } catch (_: Exception) { }
