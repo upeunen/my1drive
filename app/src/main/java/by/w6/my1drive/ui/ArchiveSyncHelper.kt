@@ -166,6 +166,7 @@ class ArchiveSyncHelper(
         
         // Отменяем предыдущую синхронизацию, если она есть
         activeSyncJob?.cancel()
+        isCancellationRequested = false
         
         isSilentSyncing = true
         val logTag = "SilentSync"
@@ -264,6 +265,10 @@ class ArchiveSyncHelper(
                         }
 
                         for (entry in validJsonEntries) {
+                            if (isCancellationRequested || !isActive) {
+                                DebugLogBuffer.log(logTag, "Silent sync cancelled during Room update")
+                                break
+                            }
                             val existing = db.mediaDao().getById(entry.hash)
                             if (existing == null) {
                                 val key = (entry.displayName.lowercase()) to entry.size
