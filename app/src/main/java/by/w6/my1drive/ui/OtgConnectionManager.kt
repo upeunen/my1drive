@@ -470,17 +470,24 @@ class OtgConnectionManager(
             application.contentResolver.persistedUriPermissions
         } catch (_: Exception) { emptyList() }
         
+        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Checking persisted permissions: size=${persistedPermissions.size}")
+        
         var connectedUri: Uri? = null
         var connectedUuidPair: Pair<String, String>? = null
 
         for (perm in persistedPermissions) {
             val uri = perm.uri
-            if (isOtgUriPhysicallyConnected(uri)) {
+            val isPhys = isOtgUriPhysicallyConnected(uri)
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isPhysicallyConnected=$isPhys")
+            if (isPhys) {
                 val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "getArchiveDir: $dir (exists=${dir?.exists()})")
                 if (dir != null && dir.exists()) {
                     val uuidPair = readOtgUuidFile(dir)
+                    by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "readOtgUuidFile: $uuidPair")
                     if (uuidPair != null) {
                         val knownArchive = db.archiveDao().getById(uuidPair.first)
+                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "db.archiveDao().getById(${uuidPair.first}): $knownArchive")
                         if (knownArchive != null) {
                             connectedUri = uri
                             connectedUuidPair = uuidPair
