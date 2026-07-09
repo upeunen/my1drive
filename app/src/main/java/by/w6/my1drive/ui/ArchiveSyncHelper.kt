@@ -210,6 +210,11 @@ class ArchiveSyncHelper(
                             val knownHashes = jsonEntries.map { it.hash }.toHashSet()
 
                             for (file in files) {
+                                if (isCancellationRequested || !isActive) {
+                                    DebugLogBuffer.log(logTag, "Silent sync cancelled during scan loop")
+                                    break
+                                }
+
                                 val name = file.name
                                 val entry = knownNamesMap[name.lowercase()]
                                 if (entry != null) {
@@ -514,6 +519,10 @@ class ArchiveSyncHelper(
 
                     withContext(Dispatchers.IO) {
                         for ((idx, file) in files.withIndex()) {
+                            if (isCancellationRequested || !isActive) {
+                                logSb.appendLine("Sync cancelled by user.")
+                                break
+                            }
                             val name = file.name
                             val length = file.length
 
