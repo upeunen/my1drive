@@ -506,14 +506,22 @@ class OtgConnectionManager(
                     val uuidPair = readOtgUuidFile(dir)
                     val currentActiveUuid = _activeArchiveUuid.value
                     if (uuidPair != null) {
-                        if (currentActiveUuid == null || uuidPair.first == currentActiveUuid) {
-                            if (currentActiveUuid == null) {
+                        val knownArchive = db.archiveDao().getById(uuidPair.first)
+                        if (knownArchive != null) {
+                            if (currentActiveUuid != uuidPair.first) {
                                 _activeArchiveUuid.value = uuidPair.first
                                 prefs.edit().putString("active_archive_uuid", uuidPair.first).apply()
                             }
-                            db.archiveDao().getById(uuidPair.first)?.let {
-                                db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
-                            } ?: db.archiveDao().insert(ArchiveEntity(uuidPair.first, uuidPair.second, System.currentTimeMillis(), System.currentTimeMillis()))
+                            db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
+                            db.mediaDao().migrateLegacyArchiveUuid(uuidPair.first)
+
+                            driveErrorCount = 0
+                            _showUnknownDriveDialog.value = false
+                            DriveStatus.KNOWN_DRIVE_CONNECTED
+                        } else if (currentActiveUuid == null) {
+                            _activeArchiveUuid.value = uuidPair.first
+                            prefs.edit().putString("active_archive_uuid", uuidPair.first).apply()
+                            db.archiveDao().insert(ArchiveEntity(uuidPair.first, uuidPair.second, System.currentTimeMillis(), System.currentTimeMillis()))
                             db.mediaDao().migrateLegacyArchiveUuid(uuidPair.first)
 
                             driveErrorCount = 0
