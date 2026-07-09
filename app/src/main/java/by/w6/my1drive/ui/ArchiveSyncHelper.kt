@@ -57,7 +57,7 @@ class ArchiveSyncHelper(
             val lastModified: Long
         )
         
-        fun fastListFiles(context: android.content.Context, dirUri: android.net.Uri): List<FastDocumentFile> {
+        fun fastListFiles(context: android.content.Context, dirUri: android.net.Uri, isCancelled: () -> Boolean = { false }): List<FastDocumentFile> {
             val results = mutableListOf<FastDocumentFile>()
             try {
                 val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
@@ -79,6 +79,7 @@ class ArchiveSyncHelper(
                     val modIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
 
                     while (cursor.moveToNext()) {
+                        if (isCancelled()) break
                         val docId = cursor.getString(idIdx)
                         val mime = cursor.getString(mimeIdx) ?: ""
                         if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) continue
@@ -144,10 +145,12 @@ class ArchiveSyncHelper(
     fun cancelOperations() {
         activeSyncJob?.cancel()
         activeSyncJob = null
+        backgroundPreviewJob?.cancel()
+        backgroundPreviewJob = null
         isSilentSyncing = false
         _syncProgressState.value = SyncProgressState(isSyncing = false)
         isCancellationRequested = true
-        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "cancelOperations: sync and archive jobs cancelled")
+        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "cancelOperations: sync, archive and preview jobs cancelled")
     }
 
     /**
@@ -189,7 +192,7 @@ class ArchiveSyncHelper(
 
                         val metadataExists = metadataStore.metadataExists(uri)
                         val physicalFiles = if (dir != null && dir.exists()) {
-                            fastListFiles(application, dir.uri)
+                            fastListFiles(application, dir.uri) { isCancellationRequested }
                         } else emptyList()
 
                         DebugLogBuffer.log(logTag, "Metadata exists: $metadataExists. Physical files found: ${physicalFiles.size}")
@@ -468,7 +471,7 @@ class ArchiveSyncHelper(
                         activeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
                     }
 
-                    val files = fastListFiles(application, dir.uri)
+                    val files = fastListFiles(application, dir.uri) { isCancellationRequested }
                     if (files.isEmpty()) {
                         _syncProgressState.value = SyncProgressState(isSyncing = false)
                         _syncState.value = "Синхронизация завершена: файлов нет."
