@@ -202,3 +202,13 @@ graph TD
   - Введён новый класс [OtgFolderResolver](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/OtgFolderResolver.kt) для динамического получения архивной папки `Arhiv-<DeviceName>` на базе Tree URI родительского тома, на который выданы постоянные права.
   - В [MainActivity](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/MainActivity.kt) и Preferences сохраняется строго корневой Tree URI флешки (а не URI созданной папки), что гарантирует валидность persisted permissions.
   - Компоненты файлового I/O ([ArchiveMetadataStore](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/ArchiveMetadataStore.kt), [ArchiveSyncHelper](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/ui/ArchiveSyncHelper.kt), [OtgArchiveUtil](file:///d:/My1drive/android/app/src/main/java/by/w6/my1drive/utils/OtgArchiveUtil.kt)) теперь резолвят путь архива через `OtgFolderResolver`.
+
+### Версия v1.1.1 (Оптимизация и стабильность OTG)
+* **Изменения**: Радикально ускорен процесс монтирования неизвестных и известных архивов, упрощен UI-флоу, исправлено зависание интерфейса.
+* **Архитектурные детали**:
+  - Из непрерывного поллинг-цикла `OtgConnectionManager` убрана безусловная тяжелая проверка `scanAndRecoverArchive`. Введено кэширование проверок через Room.
+  - Оптимизирован `OtgFolderResolver`: теперь при авто-поиске старых архивов `my1drive_db.json` сканируются *только* папки с префиксом `Arhiv-`, избегая медленного парсинга тысяч медиафайлов (например, в папке `DCIM`).
+  - Упрощен процесс выдачи прав: окна `FirstLaunchDialog` и `UnknownDriveDialog` заменены на единый баннер-гайд. После получения прав от SAF `onOtgUriSelected` автоматически и **тихо монтирует** старый архив без дополнительных окон.
+  - `ACTION_OPEN_DOCUMENT_TREE` теперь гарантированно открывается в корне флешки с использованием `createOpenDocumentTreeIntent()` для API 29+.
+  - Исправлена кнопка "Извлечь накопитель" — добавлен `activeSyncJob` в `ArchiveSyncHelper`, принудительно останавливающий I/O-операции на диске для безопасного физического извлечения.
+
