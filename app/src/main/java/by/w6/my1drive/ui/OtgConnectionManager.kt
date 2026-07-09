@@ -203,9 +203,15 @@ class OtgConnectionManager(
 
         scope.launch {
             val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+            
+            // Try to resolve the directory first, which will trigger scanAndRecoverArchive if needed
+            val dir = withContext(Dispatchers.IO) {
+                OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+            }
+            
             val knownArchive = withContext(Dispatchers.IO) { db.archiveDao().getById(uuid) }
             
-            if (knownArchive != null) {
+            if (knownArchive != null && dir != null && dir.exists()) {
                 withContext(Dispatchers.IO) {
                     db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
                     db.mediaDao().migrateLegacyArchiveUuid(uuid)
@@ -492,17 +498,17 @@ class OtgConnectionManager(
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
             if (isReadable) {
                 val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+                
+                // Trigger directory resolution which auto-recovers the DB record if .my1drive_db.json is found
+                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+                
                 val knownArchive = db.archiveDao().getById(uuid)
                 by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Scanning persisted URI: $uri, uuid=$uuid, knownArchive=$knownArchive")
-                if (knownArchive != null) {
-                    val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
-                    by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "getArchiveDir: $dir (exists=${dir?.exists()})")
-                    if (dir != null && dir.exists()) {
-                        connectedUri = uri
-                        connectedUuid = uuid
-                        connectedName = knownArchive.name
-                        break
-                    }
+                if (knownArchive != null && dir != null && dir.exists()) {
+                    connectedUri = uri
+                    connectedUuid = uuid
+                    connectedName = knownArchive.name
+                    break
                 }
             }
         }

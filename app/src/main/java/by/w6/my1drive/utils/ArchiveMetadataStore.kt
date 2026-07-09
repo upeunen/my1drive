@@ -65,7 +65,28 @@ class ArchiveMetadataStore(private val context: Context) {
 
     companion object {
         private const val METADATA_FILE_NAME = ".my1drive_db.json"
-        private const val JSON_VERSION = 1
+        private const val JSON_VERSION = 2
+    }
+
+    /**
+     * Read archive metadata fields (UUID and name) from JSON without parsing file list.
+     */
+    fun readArchiveIdentity(file: DocumentFile): Pair<String, String>? {
+        return try {
+            context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
+                val jsonString = inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(jsonString)
+                val uuid = root.optString("archiveUuid")
+                val name = root.optString("archiveName")
+                if (uuid.isNotEmpty() && name.isNotEmpty()) {
+                    Pair(uuid, name)
+                } else {
+                    null
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**
@@ -82,7 +103,7 @@ class ArchiveMetadataStore(private val context: Context) {
 
             val root = JSONObject(jsonString)
             val version = root.optInt("version", 0)
-            if (version != JSON_VERSION) return@withContext null
+            if (version != 1 && version != 2) return@withContext null
 
             val filesArray = root.optJSONArray("files") ?: return@withContext null
             val entries = mutableListOf<JsonEntry>()
@@ -110,8 +131,15 @@ class ArchiveMetadataStore(private val context: Context) {
                 filesArray.put(entry.toJson())
             }
 
+            val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
+            val db = by.w6.my1drive.data.local.AppDatabase.getDatabase(context)
+            val archive = db.archiveDao().getById(uuid)
+            val archiveName = archive?.name ?: "USB-накопитель"
+
             val root = JSONObject().apply {
                 put("version", JSON_VERSION)
+                put("archiveUuid", uuid)
+                put("archiveName", archiveName)
                 put("files", filesArray)
             }
 

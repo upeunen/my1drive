@@ -55,6 +55,78 @@ object OtgFolderResolver {
     }
 
     /**
+     * Scans the drive root and first-level directories for .my1drive_db.json.
+     * If found, automatically registers the archive in Room.
+     */
+    fun scanAndRecoverArchive(context: Context, rootUri: Uri): String? {
+        try {
+            val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return null
+            if (!rootDoc.exists() || !rootDoc.canRead()) return null
+
+            val store = ArchiveMetadataStore(context)
+            val db = AppDatabase.getDatabase(context)
+
+            // 1. Check root directory first
+            val rootMetadataFile = rootDoc.findFile(".my1drive_db.json")
+            if (rootMetadataFile != null && rootMetadataFile.exists()) {
+                val identity = store.readArchiveIdentity(rootMetadataFile)
+                if (identity != null) {
+                    val (uuid, name) = identity
+                    val folderName = "" // Located directly in the root
+                    val existing = db.archiveDao().getById(uuid)
+                    if (existing == null) {
+                        db.archiveDao().insert(
+                            by.w6.my1drive.data.local.ArchiveEntity(
+                                uuid = uuid,
+                                name = name,
+                                folderName = folderName,
+                                dateCreated = System.currentTimeMillis(),
+                                lastConnected = System.currentTimeMillis()
+                            )
+                        )
+                        db.mediaDao().migrateLegacyArchiveUuid(uuid)
+                        DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from root: name=$name, uuid=$uuid")
+                    }
+                    return folderName
+                }
+            }
+
+            // 2. Scan first-level subdirectories
+            val files = rootDoc.listFiles()
+            for (file in files) {
+                if (file.isDirectory) {
+                    val metadataFile = file.findFile(".my1drive_db.json")
+                    if (metadataFile != null && metadataFile.exists()) {
+                        val identity = store.readArchiveIdentity(metadataFile)
+                        if (identity != null) {
+                            val (uuid, name) = identity
+                            val folderName = file.name ?: ""
+                            val existing = db.archiveDao().getById(uuid)
+                            if (existing == null) {
+                                db.archiveDao().insert(
+                                    by.w6.my1drive.data.local.ArchiveEntity(
+                                        uuid = uuid,
+                                        name = name,
+                                        folderName = folderName,
+                                        dateCreated = System.currentTimeMillis(),
+                                        lastConnected = System.currentTimeMillis()
+                                    )
+                                )
+                                db.mediaDao().migrateLegacyArchiveUuid(uuid)
+                                DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from subfolder $folderName: name=$name, uuid=$uuid")
+                            }
+                            return folderName
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgFolderResolver", "scanAndRecoverArchive exception: ${e.localizedMessage}")
+        }
+        return null
+    }
+
+    /**
      * Resolves the actual archive directory DocumentFile from the saved root/folder tree URI.
      * If the URI is the root of the volume (no subfolder path in document ID), it will
      * find or create the folder inside it based on the archive's folderName.
@@ -96,7 +168,8 @@ object OtgFolderResolver {
                         name
                     }
                 } else {
-                    null
+                    // If not found in Room, scan the drive for .my1drive_db.json
+                    scanAndRecoverArchive(context, rootUri)
                 }
             } else {
                 null
@@ -107,15 +180,15 @@ object OtgFolderResolver {
                 folderName = getAutoCreatedFolderName(context)
             }
 
-            val subDir = rootDoc.findFile(folderName)
+            val subDir = if (folderName.isEmpty()) rootDoc else rootDoc.findFile(folderName)
             if (subDir != null) {
                 return subDir
             }
             
-            if (createIfNotExist) {
+            if (createIfNotExist && folderName.isNotEmpty()) {
                 return rootDoc.createDirectory(folderName)
             }
-            return null
+            return if (folderName.isEmpty()) rootDoc else null
         } catch (e: Exception) {
             DebugLogBuffer.log("OtgFolderResolver", "Error resolving archive dir: ${e.localizedMessage}")
             return null
