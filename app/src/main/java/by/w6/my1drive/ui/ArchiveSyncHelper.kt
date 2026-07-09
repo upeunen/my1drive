@@ -373,7 +373,7 @@ class ArchiveSyncHelper(
      */
     private var backgroundPreviewJob: kotlinx.coroutines.Job? = null
 
-    private fun startBackgroundPreviews(limit: Int = 100) {
+    private fun startBackgroundPreviews(limit: Int = 10000) {
         backgroundPreviewJob?.cancel()
         backgroundPreviewJob = scope.launch(Dispatchers.IO) {
             delay(500) // wait briefly after sync finishes
