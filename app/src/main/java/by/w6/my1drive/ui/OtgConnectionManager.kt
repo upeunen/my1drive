@@ -215,6 +215,7 @@ class OtgConnectionManager(
                 
                 withContext(Dispatchers.IO) {
                     db.archiveDao().insert(ArchiveEntity(uuid, name, System.currentTimeMillis(), System.currentTimeMillis()))
+                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
                 }
                 
                 _activeArchiveUuid.value = uuid
@@ -260,6 +261,7 @@ class OtgConnectionManager(
             if (success) {
                 withContext(Dispatchers.IO) {
                     db.archiveDao().insert(ArchiveEntity(uuid, name, System.currentTimeMillis(), System.currentTimeMillis()))
+                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
                 }
                 _activeArchiveUuid.value = uuid
                 prefs.edit()
@@ -512,6 +514,7 @@ class OtgConnectionManager(
                             db.archiveDao().getById(uuidPair.first)?.let {
                                 db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
                             } ?: db.archiveDao().insert(ArchiveEntity(uuidPair.first, uuidPair.second, System.currentTimeMillis(), System.currentTimeMillis()))
+                            db.mediaDao().migrateLegacyArchiveUuid(uuidPair.first)
 
                             driveErrorCount = 0
                             _showUnknownDriveDialog.value = false

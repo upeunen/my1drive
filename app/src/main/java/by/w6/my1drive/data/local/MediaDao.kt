@@ -12,6 +12,9 @@ interface MediaDao {
     @Query("SELECT * FROM media_archive ORDER BY dateModified DESC")
     fun getAllFlow(): Flow<List<MediaEntity>>
 
+    @Query("UPDATE media_archive SET archiveUuid = :newUuid WHERE archiveUuid = '' OR archiveUuid IS NULL")
+    fun migrateLegacyArchiveUuid(newUuid: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(entity: MediaEntity)
 
