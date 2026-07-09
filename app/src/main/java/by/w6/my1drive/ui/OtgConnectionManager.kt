@@ -349,7 +349,6 @@ class OtgConnectionManager(
 
     fun dismissEjectSuccessDialog() {
         _showEjectSuccessDialog.value = false
-        isEjectedButStillPluggedIn = false
     }
 
     fun retryConnection() {
@@ -366,6 +365,10 @@ class OtgConnectionManager(
 
             if (!otgPluggedIn) {
                 unknownDriveDialogHandled = false
+                if (isEjectedButStillPluggedIn) {
+                    isEjectedButStillPluggedIn = false
+                    _showEjectSuccessDialog.value = false
+                }
             }
 
             val isTransitionToConnected = otgPluggedIn && !wasConnected
