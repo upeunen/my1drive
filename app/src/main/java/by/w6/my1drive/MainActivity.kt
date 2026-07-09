@@ -228,13 +228,14 @@ class MainActivity : ComponentActivity() {
 
         private fun selectOtgFolder() {
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: start")
-        val currentOtgUri = viewModel.otgDirectoryUri.value
-        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: currentOtgUri=$currentOtgUri")
+        val isUnknownDrive = viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.UNKNOWN_DRIVE_CONNECTED || viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.NO_URI_CONFIGURED
+        val currentOtgUri = if (isUnknownDrive) null else viewModel.otgDirectoryUri.value
+        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: currentOtgUri=$currentOtgUri, isUnknown=$isUnknownDrive")
 
         val isPhysConnected = viewModel.otgManager.physicalConnected.value
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: isPhysConnected=$isPhysConnected")
 
-        // 1. If we already have a saved URI, launch with it as initial hint
+        // 1. If we already have a valid saved URI for this known drive, launch with it as initial hint
         if (currentOtgUri != null) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri")
             try {
