@@ -203,14 +203,23 @@ class OtgConnectionManager(
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
 
         scope.launch {
-            val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+            var uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
             
-            // Try to resolve the directory first, which will trigger scanAndRecoverArchive if needed
+            var knownArchive = withContext(Dispatchers.IO) { db.archiveDao().getById(uuid) }
+            
+            if (knownArchive == null) {
+                val recovered = withContext(Dispatchers.IO) {
+                    OtgFolderResolver.scanAndRecoverArchive(application, uri)
+                }
+                if (recovered != null) {
+                    knownArchive = recovered
+                    uuid = recovered.uuid
+                }
+            }
+            
             val dir = withContext(Dispatchers.IO) {
                 OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
             }
-            
-            val knownArchive = withContext(Dispatchers.IO) { db.archiveDao().getById(uuid) }
             
             if (knownArchive != null && dir != null && dir.exists()) {
                 withContext(Dispatchers.IO) {
