@@ -119,37 +119,7 @@ class ArchiveSyncHelper(
                         } else { "" }
 
                         // ── Шаг 1: Чтение JSON метаданных ──
-                        var jsonEntries = metadataStore.readMetadata(uri)
-                        if (jsonEntries == null) {
-                            DebugLogBuffer.log(logTag, "Metadata file exists but failed to read/parse.")
-                            
-                            // Check if Room has cached items for this drive
-                            val roomEntities = db.mediaDao().getAllSync().filter { !it.otgUri.isNullOrEmpty() && it.archiveUuid == activeUuid }
-                            if (roomEntities.isNotEmpty()) {
-                                DebugLogBuffer.log(logTag, "Local Room cache has ${roomEntities.size} entries. Attempting to restore metadata file from Room...")
-                                val restoredEntries = roomEntities.map { entity ->
-                                    JsonEntry(
-                                        hash = entity.id,
-                                        displayName = entity.displayName,
-                                        mimeType = entity.mimeType,
-                                        size = entity.size,
-                                        dateModified = entity.dateModified,
-                                        originalRelativePath = entity.originalRelativePath,
-                                        duration = entity.duration,
-                                        dateArchived = entity.dateArchived
-                                    )
-                                }
-                                metadataStore.writeMetadata(uri, restoredEntries)
-                                DebugLogBuffer.log(logTag, "Metadata file successfully rebuilt from Room cache.")
-                                jsonEntries = metadataStore.readMetadata(uri)
-                            }
-                            
-                            if (jsonEntries == null) {
-                                DebugLogBuffer.log(logTag, "Failed to restore metadata from Room. Halting sync to prevent data loss.")
-                                _syncState.value = "Индекс архива на накопителе поврежден, а локальный кэш пуст. Для возобновления работы запустите синхронизацию в настройках для восстановления индекса."
-                                return@withLock
-                            }
-                        }
+                        val jsonEntries = metadataStore.readMetadata(uri)
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
                         val metadataExists = metadataStore.metadataExists(uri)
@@ -361,7 +331,8 @@ class ArchiveSyncHelper(
 
                     val files = dir.listFiles().filter {
                         !it.isDirectory && it.name != null &&
-                        it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" && it.name != ".my1drive_db.json"
+                        it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" &&
+                        it.name != ".my1drive_db.json" && it.name != "my1drive_db.json"
                     }
                     if (files.isEmpty()) {
                         _syncProgressState.value = SyncProgressState(isSyncing = false)
@@ -376,7 +347,7 @@ class ArchiveSyncHelper(
                     // Source of truth: JSON metadata on the OTG drive
                     val jsonEntries = withContext(Dispatchers.IO) {
                         metadataStore.readMetadata(uri)
-                    }?.toMutableList() ?: mutableListOf()
+                    }.toMutableList()
 
                     val physicalFilesMap = files.associateBy { (it.name?.lowercase() ?: "") to it.length() }
                     var jsonChanged = false

@@ -93,19 +93,33 @@ class ArchiveMetadataStore(private val context: Context) {
      * Read all entries from the metadata file on the OTG drive.
      * Returns empty list if file doesn't exist, and null if it fails to read/parse.
      */
-    suspend fun readMetadata(otgUri: Uri): List<JsonEntry>? = withContext(Dispatchers.IO) {
+    suspend fun readMetadata(otgUri: Uri): List<JsonEntry> = withContext(Dispatchers.IO) {
         try {
-            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext null
+            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext emptyList()
             val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: return@withContext emptyList()
 
-            val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext null
+            val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext emptyList()
             val jsonString = inputStream.bufferedReader().use { it.readText() }
 
-            val root = JSONObject(jsonString)
-            val version = root.optInt("version", 0)
-            if (version != 1 && version != 2) return@withContext null
+            if (jsonString.trim().isEmpty()) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Metadata file is empty, returning empty entries list.")
+                return@withContext emptyList()
+            }
 
-            val filesArray = root.optJSONArray("files") ?: return@withContext null
+            val root = try {
+                JSONObject(jsonString)
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Invalid JSON content: ${e.localizedMessage}. Returning empty entries list to self-heal.")
+                return@withContext emptyList()
+            }
+
+            val version = root.optInt("version", 0)
+            if (version != 1 && version != 2) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Unsupported version $version, returning empty entries list.")
+                return@withContext emptyList()
+            }
+
+            val filesArray = root.optJSONArray("files") ?: return@withContext emptyList()
             val entries = mutableListOf<JsonEntry>()
             for (i in 0 until filesArray.length()) {
                 val entry = JsonEntry.fromJson(filesArray.getJSONObject(i))
@@ -113,7 +127,8 @@ class ArchiveMetadataStore(private val context: Context) {
             }
             entries
         } catch (e: Exception) {
-            null
+            by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "readMetadata error: ${e.localizedMessage}. Returning empty entries list to self-heal.")
+            emptyList()
         }
     }
 
