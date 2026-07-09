@@ -477,9 +477,12 @@ class OtgConnectionManager(
 
         for (perm in persistedPermissions) {
             val uri = perm.uri
-            val isPhys = isOtgUriPhysicallyConnected(uri)
-            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isPhysicallyConnected=$isPhys")
-            if (isPhys) {
+            val isReadable = try {
+                val docFile = DocumentFile.fromTreeUri(application, uri)
+                docFile != null && docFile.exists() && docFile.canRead()
+            } catch (_: Exception) { false }
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
+            if (isReadable) {
                 val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                 by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "getArchiveDir: $dir (exists=${dir?.exists()})")
                 if (dir != null && dir.exists()) {
