@@ -465,6 +465,58 @@ class OtgConnectionManager(
             return DriveStatus.KNOWN_DRIVE_DISCONNECTED
         }
 
+        // 1. Scan persisted tree URIs to see if any known drive is physically connected
+        val persistedPermissions = try {
+            application.contentResolver.persistedUriPermissions
+        } catch (_: Exception) { emptyList() }
+        
+        var connectedUri: Uri? = null
+        var connectedUuidPair: Pair<String, String>? = null
+
+        for (perm in persistedPermissions) {
+            val uri = perm.uri
+            if (isOtgUriPhysicallyConnected(uri)) {
+                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+                if (dir != null && dir.exists()) {
+                    val uuidPair = readOtgUuidFile(dir)
+                    if (uuidPair != null) {
+                        val knownArchive = db.archiveDao().getById(uuidPair.first)
+                        if (knownArchive != null) {
+                            connectedUri = uri
+                            connectedUuidPair = uuidPair
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
+        if (connectedUri != null && connectedUuidPair != null) {
+            val uuid = connectedUuidPair.first
+            val name = connectedUuidPair.second
+            val currentActiveUuid = _activeArchiveUuid.value
+            val currentOtgUri = _otgDirectoryUri.value
+
+            if (currentActiveUuid != uuid || currentOtgUri != connectedUri) {
+                _activeArchiveUuid.value = uuid
+                _otgDirectoryUri.value = connectedUri
+                prefs.edit()
+                    .putString("active_archive_uuid", uuid)
+                    .putString(PREF_OTG_URI, connectedUri.toString())
+                    .apply()
+            }
+
+            db.archiveDao().getById(uuid)?.let {
+                db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
+            }
+            db.mediaDao().migrateLegacyArchiveUuid(uuid)
+
+            driveErrorCount = 0
+            _showUnknownDriveDialog.value = false
+            unknownDriveDialogHandled = false
+            return DriveStatus.KNOWN_DRIVE_CONNECTED
+        }
+
         val savedUri = _otgDirectoryUri.value ?: return DriveStatus.NO_URI_CONFIGURED
 
         val isPhysicallyConnected = isOtgUriPhysicallyConnected(savedUri)
