@@ -497,11 +497,18 @@ class OtgConnectionManager(
             } catch (_: Exception) { false }
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
             if (isReadable) {
+                // 1. Try JSON recovery first (highly robust!)
+                val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(application, uri)
+                if (recovered != null) {
+                    connectedUri = uri
+                    connectedUuid = recovered.uuid
+                    connectedName = recovered.name
+                    break
+                }
+                
+                // 2. Fallback to Room DB Volume UUID
                 val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
-                
-                // Trigger directory resolution which auto-recovers the DB record if .my1drive_db.json is found
                 val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
-                
                 val knownArchive = db.archiveDao().getById(uuid)
                 by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Scanning persisted URI: $uri, uuid=$uuid, knownArchive=$knownArchive")
                 if (knownArchive != null && dir != null && dir.exists()) {
@@ -573,7 +580,8 @@ class OtgConnectionManager(
         return try {
             val docFile = DocumentFile.fromTreeUri(application, savedUri)
             if (docFile != null && docFile.exists() && docFile.canRead()) {
-                val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri) ?: savedUri.toString().hashCode().toString()
+                val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(application, savedUri)
+                val uuid = recovered?.uuid ?: by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri) ?: savedUri.toString().hashCode().toString()
                 val knownArchive = db.archiveDao().getById(uuid)
                 val currentActiveUuid = _activeArchiveUuid.value
                 
@@ -589,6 +597,7 @@ class OtgConnectionManager(
 
                         driveErrorCount = 0
                         _showUnknownDriveDialog.value = false
+                        unknownDriveDialogHandled = false
                         DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
                         if (!unknownDriveDialogHandled) {

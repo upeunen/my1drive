@@ -58,7 +58,7 @@ object OtgFolderResolver {
      * Scans the drive root and first-level directories for .my1drive_db.json.
      * If found, automatically registers the archive in Room.
      */
-    fun scanAndRecoverArchive(context: Context, rootUri: Uri): String? {
+    fun scanAndRecoverArchive(context: Context, rootUri: Uri): by.w6.my1drive.data.local.ArchiveEntity? {
         try {
             val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return null
             if (!rootDoc.exists() || !rootDoc.canRead()) return null
@@ -73,21 +73,22 @@ object OtgFolderResolver {
                 if (identity != null) {
                     val (uuid, name) = identity
                     val folderName = "" // Located directly in the root
+                    val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                        uuid = uuid,
+                        name = name,
+                        folderName = folderName,
+                        dateCreated = System.currentTimeMillis(),
+                        lastConnected = System.currentTimeMillis()
+                    )
                     val existing = db.archiveDao().getById(uuid)
                     if (existing == null) {
-                        db.archiveDao().insert(
-                            by.w6.my1drive.data.local.ArchiveEntity(
-                                uuid = uuid,
-                                name = name,
-                                folderName = folderName,
-                                dateCreated = System.currentTimeMillis(),
-                                lastConnected = System.currentTimeMillis()
-                            )
-                        )
+                        db.archiveDao().insert(entity)
                         db.mediaDao().migrateLegacyArchiveUuid(uuid)
                         DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from root: name=$name, uuid=$uuid")
+                        return entity
+                    } else {
+                        return existing
                     }
-                    return folderName
                 }
             }
 
@@ -101,21 +102,22 @@ object OtgFolderResolver {
                         if (identity != null) {
                             val (uuid, name) = identity
                             val folderName = file.name ?: ""
+                            val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                                uuid = uuid,
+                                name = name,
+                                folderName = folderName,
+                                dateCreated = System.currentTimeMillis(),
+                                lastConnected = System.currentTimeMillis()
+                            )
                             val existing = db.archiveDao().getById(uuid)
                             if (existing == null) {
-                                db.archiveDao().insert(
-                                    by.w6.my1drive.data.local.ArchiveEntity(
-                                        uuid = uuid,
-                                        name = name,
-                                        folderName = folderName,
-                                        dateCreated = System.currentTimeMillis(),
-                                        lastConnected = System.currentTimeMillis()
-                                    )
-                                )
+                                db.archiveDao().insert(entity)
                                 db.mediaDao().migrateLegacyArchiveUuid(uuid)
                                 DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from subfolder $folderName: name=$name, uuid=$uuid")
+                                return entity
+                            } else {
+                                return existing
                             }
-                            return folderName
                         }
                     }
                 }
@@ -155,27 +157,30 @@ object OtgFolderResolver {
             // User chose the root of the volume.
             // 1. Try to find the folder name from the database based on the volume UUID.
             val volumeUuid = extractVolumeId(rootUri)
-            var folderName = if (volumeUuid != null) {
-                val db = AppDatabase.getDatabase(context)
-                val archive = db.archiveDao().getById(volumeUuid)
-                if (archive != null) {
-                    if (archive.folderName.isNotEmpty()) {
-                        archive.folderName
-                    } else {
-                        // For backwards compatibility: update the folderName to "Arhiv-${archive.name}"
-                        val name = "Arhiv-${archive.name}"
-                        db.archiveDao().insert(archive.copy(folderName = name))
-                        name
-                    }
+            val db = AppDatabase.getDatabase(context)
+            
+            // 1. Try to find the archive in the database first
+            var archive = if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
+            
+            // 2. If not found in DB, try scanning the drive for .my1drive_db.json (auto-recovery)
+            if (archive == null) {
+                archive = scanAndRecoverArchive(context, rootUri)
+            }
+            
+            var folderName = if (archive != null) {
+                if (archive.folderName.isNotEmpty()) {
+                    archive.folderName
                 } else {
-                    // If not found in Room, scan the drive for .my1drive_db.json
-                    scanAndRecoverArchive(context, rootUri)
+                    // For backwards compatibility: update the folderName to "Arhiv-${archive.name}"
+                    val name = "Arhiv-${archive.name}"
+                    db.archiveDao().insert(archive.copy(folderName = name))
+                    name
                 }
             } else {
                 null
             }
 
-            // 2. If no folderName is registered yet, use the auto-created fallback folder name
+            // 3. If no folderName is registered yet, use the auto-created fallback folder name
             if (folderName == null) {
                 folderName = getAutoCreatedFolderName(context)
             }
