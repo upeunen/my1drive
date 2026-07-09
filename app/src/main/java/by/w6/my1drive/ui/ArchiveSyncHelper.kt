@@ -20,12 +20,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 import by.w6.my1drive.utils.VpsConnectionManager
+
 
 /** Helper for archive/manual-sync operations extracted from GalleryViewModel */
 class ArchiveSyncHelper(
@@ -38,7 +42,8 @@ class ArchiveSyncHelper(
     private val scope: kotlinx.coroutines.CoroutineScope,
     private val onOperationComplete: () -> Unit = {},
     private val onArchiveSuccess: (List<MediaItem>) -> Unit = {},
-    private val onItemArchived: ((MediaItem) -> Unit)? = null
+    private val onItemArchived: ((MediaItem) -> Unit)? = null,
+    private val onPreviewCached: ((hash: String, path: String) -> Unit)? = null
 ) {
 
     companion object {
@@ -271,6 +276,9 @@ class ArchiveSyncHelper(
                             repository.refresh()
                         }
                         DebugLogBuffer.log(logTag, "Silent sync finished successfully")
+
+                        // Запускаем фоновую генерацию превью после синхронизации
+                        startBackgroundPreviews()
                     } catch (e: Exception) {
                         DebugLogBuffer.log(logTag, "Error in silentSyncArchive: ${e.localizedMessage}")
                         val sw = java.io.StringWriter()
@@ -296,7 +304,84 @@ class ArchiveSyncHelper(
         _missingFilesNotification.value = null
     }
 
+
+    /**
+     * Background thumbnail generation: after sync, generate previews for the
+     * first [limit] archived items that don't have a cached thumbnail yet.
+     * Runs on IO dispatcher and does NOT block the main thread or the UI.
+     */
+    private var backgroundPreviewJob: kotlinx.coroutines.Job? = null
+
+    private fun startBackgroundPreviews(limit: Int = 100) {
+        backgroundPreviewJob?.cancel()
+        backgroundPreviewJob = scope.launch(Dispatchers.IO) {
+            delay(500) // wait briefly after sync finishes
+            val items = db.mediaDao().getWithoutPreview(limit)
+            if (items.isEmpty()) return@launch
+            DebugLogBuffer.log("BgPreview", "Starting background preview generation for ${items.size} items")
+            val dir = previewCache.previewDir
+            for (entity in items) {
+                if (!isActive) break
+                if (entity.otgUri.isNullOrEmpty()) continue
+                val cacheFile = previewCache.cacheFileFor(entity.id)
+                if (cacheFile.exists() && cacheFile.length() > 0) {
+                    // already cached, update DB if path is stale
+                    if (entity.thumbnailPath != cacheFile.absolutePath) {
+                        db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
+                        onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
+                    }
+                    continue
+                }
+                try {
+                    val uri = android.net.Uri.parse(entity.otgUri)
+                    val bitmap: android.graphics.Bitmap? = if (entity.mimeType.startsWith("video")) {
+                        val retriever = android.media.MediaMetadataRetriever()
+                        try {
+                            retriever.setDataSource(application, uri)
+                            retriever.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        } finally { retriever.release() }
+                    } else {
+                        val boundsOpts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        application.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, boundsOpts) }
+                        var size = 1
+                        val target = 256
+                        if (boundsOpts.outWidth > target || boundsOpts.outHeight > target) {
+                            val halfW = boundsOpts.outWidth / 2; val halfH = boundsOpts.outHeight / 2
+                            while (halfW / size >= target && halfH / size >= target) size *= 2
+                        }
+                        val decodeOpts = android.graphics.BitmapFactory.Options().apply { inSampleSize = size }
+                        application.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, decodeOpts) }
+                    }
+                    if (bitmap == null) continue
+                    dir.mkdirs()
+                    try {
+                        cacheFile.outputStream().buffered().use { out ->
+                            val w = bitmap.width; val h = bitmap.height
+                            val scale = if (w > 256 || h > 256) 256f / maxOf(w, h) else 1f
+                            val scaled = if (scale < 1f) android.graphics.Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true) else bitmap
+                            scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                            if (scaled !== bitmap) scaled.recycle()
+                        }
+                        bitmap.recycle()
+                        if (cacheFile.exists() && cacheFile.length() > 0) {
+                            db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
+                            onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
+                            DebugLogBuffer.log("BgPreview", "Cached preview for ${entity.displayName}")
+                        }
+                    } catch (e: Exception) {
+                        cacheFile.delete()
+                        bitmap.recycle()
+                    }
+                } catch (e: Exception) {
+                    DebugLogBuffer.log("BgPreview", "Failed for ${entity.displayName}: ${e.localizedMessage}")
+                }
+            }
+            DebugLogBuffer.log("BgPreview", "Background preview generation finished")
+        }
+    }
+
     fun dismissAutoSyncAddedCount() { _autoSyncAddedCount.value = 0 }
+
 
     // ─── Manual sync ───
 

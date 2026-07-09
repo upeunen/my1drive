@@ -106,6 +106,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             },
             onItemArchived = { item ->
                 _selectedIds.value = _selectedIds.value - item.id
+            },
+            onPreviewCached = { hash, path ->
+                onPreviewCached(hash, path)
             }
         )
     }
