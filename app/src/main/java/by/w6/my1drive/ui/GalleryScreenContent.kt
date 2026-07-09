@@ -837,7 +837,7 @@ fun GalleryScreenContent(
     val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
-    val showConnectionErrorBanner by viewModel.otgManager.showConnectionErrorBanner.collectAsState()
+
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
@@ -922,24 +922,14 @@ fun GalleryScreenContent(
             )
 
             AnimatedVisibility(
-                visible = isCheckingConnection || showConnectionErrorBanner,
+                visible = isCheckingConnection,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            if (showConnectionErrorBanner) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
-                        .then(
-                            if (showConnectionErrorBanner) {
-                                Modifier.clickable { viewModel.otgManager.retryConnection() }
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     Column {
                         Row(
@@ -952,8 +942,7 @@ fun GalleryScreenContent(
                             Icon(
                                 imageVector = Icons.Default.Usb,
                                 contentDescription = null,
-                                tint = if (showConnectionErrorBanner) MaterialTheme.colorScheme.error
-                                       else MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .size(18.dp)
                                     .graphicsLayer {
@@ -964,11 +953,9 @@ fun GalleryScreenContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (showConnectionErrorBanner) "Не удалось подключить накопитель. Нажмите для повтора."
-                                       else "Подключение USB-накопителя...",
+                                text = "Подключение USB-накопителя...",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = if (showConnectionErrorBanner) MaterialTheme.colorScheme.onErrorContainer
-                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         if (isCheckingConnection) {
