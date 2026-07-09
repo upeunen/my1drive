@@ -67,7 +67,7 @@ object OtgFolderResolver {
             val db = AppDatabase.getDatabase(context)
 
             // 1. Check root directory first
-            val rootMetadataFile = rootDoc.findFile(".my1drive_db.json")
+            val rootMetadataFile = rootDoc.findFile("my1drive_db.json") ?: rootDoc.findFile(".my1drive_db.json")
             if (rootMetadataFile != null && rootMetadataFile.exists()) {
                 val identity = store.readArchiveIdentity(rootMetadataFile)
                 if (identity != null) {
@@ -96,7 +96,7 @@ object OtgFolderResolver {
             val files = rootDoc.listFiles()
             for (file in files) {
                 if (file.isDirectory) {
-                    val metadataFile = file.findFile(".my1drive_db.json")
+                    val metadataFile = file.findFile("my1drive_db.json") ?: file.findFile(".my1drive_db.json")
                     if (metadataFile != null && metadataFile.exists()) {
                         val identity = store.readArchiveIdentity(metadataFile)
                         if (identity != null) {

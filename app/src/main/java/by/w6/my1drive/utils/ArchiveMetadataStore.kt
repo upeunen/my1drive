@@ -96,7 +96,7 @@ class ArchiveMetadataStore(private val context: Context) {
     suspend fun readMetadata(otgUri: Uri): List<JsonEntry>? = withContext(Dispatchers.IO) {
         try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext null
-            val file = dir.findFile(METADATA_FILE_NAME) ?: return@withContext emptyList()
+            val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: return@withContext emptyList()
 
             val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext null
             val jsonString = inputStream.bufferedReader().use { it.readText() }
@@ -124,7 +124,7 @@ class ArchiveMetadataStore(private val context: Context) {
         try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = true) ?: return@withContext
 
-            val file = dir.findFile(METADATA_FILE_NAME) ?: dir.createFile("application/json", METADATA_FILE_NAME) ?: return@withContext
+            val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: dir.createFile("application/json", "my1drive_db.json") ?: return@withContext
 
             val filesArray = JSONArray()
             for (entry in entries) {
@@ -199,7 +199,7 @@ class ArchiveMetadataStore(private val context: Context) {
     suspend fun metadataExists(otgUri: Uri): Boolean = withContext(Dispatchers.IO) {
         try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext false
-            dir.findFile(METADATA_FILE_NAME) != null
+            dir.findFile("my1drive_db.json") != null || dir.findFile(".my1drive_db.json") != null
         } catch (_: Exception) { false }
     }
 }
