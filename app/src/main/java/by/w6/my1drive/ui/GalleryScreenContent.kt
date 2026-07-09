@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -1332,15 +1333,10 @@ fun GalleryScreenContent(
 
         val showFirstLaunch by viewModel.otgManager.showFirstLaunchDialog.collectAsState()
         if (showFirstLaunch) {
-            val isUsbPhysical by viewModel.otgManager.physicalConnected.collectAsState()
-            FirstLaunchDialog(
-                isOtgConnected = isUsbPhysical,
-                onStart = {
-                    viewModel.dismissFirstLaunchDialog()
-                    onSetShowOtgGuide(true)
-                },
-                onDismiss = { viewModel.dismissFirstLaunchDialog() }
-            )
+            LaunchedEffect(Unit) {
+                viewModel.dismissFirstLaunchDialog()
+                onSetShowOtgGuide(true)
+            }
         }
 
                 val showLocalFolder by viewModel.otgManager.showLocalFolderDialog.collectAsState()
@@ -1370,13 +1366,10 @@ fun GalleryScreenContent(
 
         val showUnknownDrive by viewModel.otgManager.showUnknownDriveDialog.collectAsState()
         if (showUnknownDrive) {
-            UnknownDriveDialog(
-                onCreateNew = {
-                    viewModel.createNewArchive()
-                    onSetShowOtgGuide(true)
-                },
-                onDismiss = { viewModel.dismissUnknownDriveDialog() }
-            )
+            LaunchedEffect(Unit) {
+                viewModel.dismissUnknownDriveDialog()
+                onSetShowOtgGuide(true)
+            }
         }
 
         if (showEjectConfirmDialog) {

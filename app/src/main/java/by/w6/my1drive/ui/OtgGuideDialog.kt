@@ -64,7 +64,7 @@ fun OtgGuideDialog(
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.otg_select_title), fontWeight = FontWeight.Bold)
+                Text("Доступ к накопителю", fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -85,7 +85,7 @@ fun OtgGuideDialog(
                 }
 
                 Text(
-                    text = stringResource(R.string.otg_select_guide),
+                    text = "Для работы со съемным диском необходимо дать доступ. Нажмите кнопку ниже и выберите корень флешки (выберите саму флешку и нажмите 'Использовать эту папку').",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
