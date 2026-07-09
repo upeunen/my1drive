@@ -284,6 +284,12 @@ class OtgConnectionManager(
                 .apply()
             _otgDirectoryUri.value = uri
             
+            // Write empty metadata immediately (creates the .my1drive_db.json file on the disk)
+            withContext(Dispatchers.IO) {
+                val store = by.w6.my1drive.utils.ArchiveMetadataStore(application)
+                store.writeMetadata(uri, emptyList())
+            }
+            
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
             _status.value = newStatus
