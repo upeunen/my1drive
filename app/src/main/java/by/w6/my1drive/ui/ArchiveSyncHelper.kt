@@ -107,13 +107,24 @@ class ArchiveSyncHelper(
                     try {
                         DebugLogBuffer.log(logTag, "Start silentSyncArchive: targetUri=$uri")
 
+                        val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+                        val uuidFile = dir?.findFile(".my1drive_uuid") ?: dir?.findFile(".my1drive_uuid.txt")
+                        val activeUuid: String = if (uuidFile != null) {
+                            try {
+                                (application.contentResolver.openInputStream(uuidFile.uri)?.use { inputStream ->
+                                    val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
+                                    reader.readLine()?.trim() ?: ""
+                                }) ?: ""
+                            } catch (_: Exception) { "" }
+                        } else { "" }
+
                         // ── Шаг 1: Чтение JSON метаданных ──
                         var jsonEntries = metadataStore.readMetadata(uri)
                         if (jsonEntries == null) {
                             DebugLogBuffer.log(logTag, "Metadata file exists but failed to read/parse.")
                             
                             // Check if Room has cached items for this drive
-                            val roomEntities = db.mediaDao().getAllSync().filter { !it.otgUri.isNullOrEmpty() }
+                            val roomEntities = db.mediaDao().getAllSync().filter { !it.otgUri.isNullOrEmpty() && it.archiveUuid == activeUuid }
                             if (roomEntities.isNotEmpty()) {
                                 DebugLogBuffer.log(logTag, "Local Room cache has ${roomEntities.size} entries. Attempting to restore metadata file from Room...")
                                 val restoredEntries = roomEntities.map { entity ->
@@ -142,7 +153,6 @@ class ArchiveSyncHelper(
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
                         val metadataExists = metadataStore.metadataExists(uri)
-                        val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                         val physicalFiles = if (dir != null && dir.exists()) {
                             dir.listFiles().filter {
                                 !it.isDirectory && it.name != null &&
@@ -214,9 +224,6 @@ class ArchiveSyncHelper(
                         var roomModified = false
                         var insertedToRoom = 0
 
-                        // Map physical files by (lowercase name, size) to their actual DocumentFile URIs.
-                        // This avoids retrieving treeDocumentId (which throws exceptions for subfolders)
-                        // and ensures that even manually scanned files resolve to valid content URIs.
                         val physicalUrisMap = physicalFiles.associate { 
                             ((it.name ?: "").lowercase() to it.length()) to it.uri.toString() 
                         }
@@ -237,19 +244,20 @@ class ArchiveSyncHelper(
                                     thumbnailPath = null,
                                     duration = entry.duration,
                                     originalRelativePath = entry.originalRelativePath,
-                                    dateArchived = entry.dateArchived
+                                    dateArchived = entry.dateArchived,
+                                    archiveUuid = activeUuid
                                 ))
                                 insertedToRoom++
                                 roomModified = true
                             } else {
-                                // Resolve the otgUri directly from the physical file scan to heal any invalid database entries.
                                 val key = (entry.displayName.lowercase()) to entry.size
                                 val resolvedUri = physicalUrisMap[key] ?: existing.otgUri ?: ""
 
                                 if (existing.displayName != entry.displayName || 
                                     existing.size != entry.size || 
                                     existing.dateModified != entry.dateModified ||
-                                    existing.otgUri != resolvedUri
+                                    existing.otgUri != resolvedUri ||
+                                    existing.archiveUuid != activeUuid
                                 ) {
                                     db.mediaDao().insert(existing.copy(
                                         displayName = entry.displayName,
@@ -259,7 +267,8 @@ class ArchiveSyncHelper(
                                         otgUri = resolvedUri,
                                         duration = entry.duration,
                                         originalRelativePath = entry.originalRelativePath,
-                                        dateArchived = entry.dateArchived
+                                        dateArchived = entry.dateArchived,
+                                        archiveUuid = activeUuid
                                     ))
                                     roomModified = true
                                 }
@@ -339,6 +348,16 @@ class ArchiveSyncHelper(
                     val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                     if (dir == null || !dir.exists()) throw Exception("Не удалось получить доступ к OTG накопителю")
 
+                    val uuidFile = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt")
+                    val activeUuid: String = if (uuidFile != null) {
+                        try {
+                            (application.contentResolver.openInputStream(uuidFile.uri)?.use { inputStream ->
+                                val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
+                                reader.readLine()?.trim() ?: ""
+                            }) ?: ""
+                        } catch (_: Exception) { "" }
+                    } else { "" }
+
                     val files = dir.listFiles().filter {
                         !it.isDirectory && it.name != null &&
                         it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" && it.name != ".my1drive_db.json"
@@ -416,7 +435,8 @@ class ArchiveSyncHelper(
                                         otgUri = otgFileUri,
                                         thumbnailPath = null,
                                         duration = entry.duration,
-                                        originalRelativePath = entry.originalRelativePath
+                                        originalRelativePath = entry.originalRelativePath,
+                                        archiveUuid = activeUuid
                                     ))
                                 }
                                 continue
@@ -476,13 +496,14 @@ class ArchiveSyncHelper(
                                     otgUri = otgFileUri,
                                     thumbnailPath = null,
                                     duration = entry.duration,
-                                    originalRelativePath = entry.originalRelativePath
+                                    originalRelativePath = entry.originalRelativePath,
+                                    archiveUuid = activeUuid
                                 ))
                             }
                         }
                         
                         // 2. Удаляем из Room пропавшие
-                        val allRoomEntities = db.mediaDao().getAllSync()
+                        val allRoomEntities = db.mediaDao().getAllSync().filter { it.archiveUuid == activeUuid }
                         for (entity in allRoomEntities) {
                             if (entity.id !in finalHashes) {
                                 entity.thumbnailPath?.let { path ->
