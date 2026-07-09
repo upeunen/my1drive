@@ -319,15 +319,10 @@ class ArchiveSyncHelper(
                     val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                     if (dir == null || !dir.exists()) throw Exception("Не удалось получить доступ к OTG накопителю")
 
-                    val uuidFile = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt")
-                    val activeUuid: String = if (uuidFile != null) {
-                        try {
-                            (application.contentResolver.openInputStream(uuidFile.uri)?.use { inputStream ->
-                                val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
-                                reader.readLine()?.trim() ?: ""
-                            }) ?: ""
-                        } catch (_: Exception) { "" }
-                    } else { "" }
+                    var activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
+                    if (activeUuid.isEmpty()) {
+                        activeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+                    }
 
                     val files = dir.listFiles().filter {
                         !it.isDirectory && it.name != null &&
