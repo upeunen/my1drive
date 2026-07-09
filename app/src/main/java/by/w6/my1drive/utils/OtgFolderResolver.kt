@@ -92,57 +92,32 @@ object OtgFolderResolver {
                 }
             }
 
-            // 2. Scan first-level subdirectories quickly using ContentResolver query
-            val childrenUri = try {
-                android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
-                    rootUri,
-                    android.provider.DocumentsContract.getDocumentId(rootUri)
-                )
-            } catch (e: Exception) { null }
-
-            if (childrenUri != null) {
-                val projection = arrayOf(
-                    android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                    android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE
-                )
-                
-                context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
-                    val idIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                    val nameIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                    val mimeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
-                    
-                    while (cursor.moveToNext()) {
-                        val mime = cursor.getString(mimeIdx) ?: ""
-                        if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
-                            val docId = cursor.getString(idIdx)
-                            val folderName = cursor.getString(nameIdx) ?: continue
-                            val dirUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(rootUri, docId)
-                            val dirDoc = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, dirUri)
-                            
-                            if (dirDoc != null && dirDoc.exists()) {
-                                val metadataFile = dirDoc.findFile("my1drive_db.json") ?: dirDoc.findFile(".my1drive_db.json")
-                                if (metadataFile != null && metadataFile.exists()) {
-                                    val identity = store.readArchiveIdentity(metadataFile)
-                                    if (identity != null) {
-                                        val (uuid, name) = identity
-                                        val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                                            uuid = uuid,
-                                            name = name,
-                                            folderName = folderName,
-                                            dateCreated = System.currentTimeMillis(),
-                                            lastConnected = System.currentTimeMillis()
-                                        )
-                                        val existing = db.archiveDao().getById(uuid)
-                                        if (existing == null) {
-                                            db.archiveDao().insert(entity)
-                                            db.mediaDao().migrateLegacyArchiveUuid(uuid)
-                                            by.w6.my1drive.utils.DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from subfolder $folderName: name=$name, uuid=$uuid")
-                                            return entity
-                                        } else {
-                                            return existing
-                                        }
-                                    }
+            // 2. Scan first-level subdirectories, but ONLY those starting with "Arhiv-" or "Архив-"
+            val files = rootDoc.listFiles()
+            for (file in files) {
+                if (file.isDirectory) {
+                    val folderName = file.name ?: ""
+                    if (folderName.startsWith("Arhiv", ignoreCase = true) || folderName.startsWith("Архив", ignoreCase = true)) {
+                        val metadataFile = file.findFile("my1drive_db.json") ?: file.findFile(".my1drive_db.json")
+                        if (metadataFile != null && metadataFile.exists()) {
+                            val identity = store.readArchiveIdentity(metadataFile)
+                            if (identity != null) {
+                                val (uuid, name) = identity
+                                val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                                    uuid = uuid,
+                                    name = name,
+                                    folderName = folderName,
+                                    dateCreated = System.currentTimeMillis(),
+                                    lastConnected = System.currentTimeMillis()
+                                )
+                                val existing = db.archiveDao().getById(uuid)
+                                if (existing == null) {
+                                    db.archiveDao().insert(entity)
+                                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
+                                    by.w6.my1drive.utils.DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from subfolder $folderName: name=$name, uuid=$uuid")
+                                    return entity
+                                } else {
+                                    return existing
                                 }
                             }
                         }
