@@ -6,9 +6,28 @@ import android.os.Build
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.utils.DebugLogBuffer
+import by.w6.my1drive.data.local.AppDatabase
 
 object OtgFolderResolver {
     
+    fun extractVolumeId(uri: Uri): String? {
+        val path = uri.path ?: return null
+
+        val docSegment = path.substringAfter("/document/", "")
+        if (docSegment.isNotEmpty()) {
+            val rawId = docSegment.substringBefore(":")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
+        }
+
+        val treeSegment = path.substringAfter("/tree/", "")
+        if (treeSegment.isNotEmpty()) {
+            val rawId = treeSegment.substringBefore(":")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
+        }
+
+        return null
+    }
+
     fun getAutoCreatedFolderName(context: Context): String {
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
@@ -38,7 +57,7 @@ object OtgFolderResolver {
     /**
      * Resolves the actual archive directory DocumentFile from the saved root/folder tree URI.
      * If the URI is the root of the volume (no subfolder path in document ID), it will
-     * find or create the "Arhiv-<DeviceName>" folder inside it.
+     * find or create the folder inside it based on the archive's folderName.
      * Otherwise, if the user explicitly selected a subdirectory, it returns that subdirectory directly.
      */
     fun getArchiveDir(context: Context, rootUri: Uri, createIfNotExist: Boolean = true): DocumentFile? {
@@ -49,7 +68,6 @@ object OtgFolderResolver {
             }
             
             // Check if the selected URI has a subfolder path.
-            // If the document ID is just the volume root (e.g., "1234-5678:"), the path segment is empty.
             val treeDocId = try {
                 DocumentsContract.getTreeDocumentId(rootUri)
             } catch (e: Exception) {
@@ -62,8 +80,33 @@ object OtgFolderResolver {
                 return rootDoc
             }
             
-            // User chose the root of the volume. Resolve/create the "Arhiv-<DeviceName>" folder.
-            val folderName = getAutoCreatedFolderName(context)
+            // User chose the root of the volume.
+            // 1. Try to find the folder name from the database based on the volume UUID.
+            val volumeUuid = extractVolumeId(rootUri)
+            var folderName = if (volumeUuid != null) {
+                val db = AppDatabase.getDatabase(context)
+                val archive = db.archiveDao().getById(volumeUuid)
+                if (archive != null) {
+                    if (archive.folderName.isNotEmpty()) {
+                        archive.folderName
+                    } else {
+                        // For backwards compatibility: update the folderName to "Arhiv-${archive.name}"
+                        val name = "Arhiv-${archive.name}"
+                        db.archiveDao().insert(archive.copy(folderName = name))
+                        name
+                    }
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+
+            // 2. If no folderName is registered yet, use the auto-created fallback folder name
+            if (folderName == null) {
+                folderName = getAutoCreatedFolderName(context)
+            }
+
             val subDir = rootDoc.findFile(folderName)
             if (subDir != null) {
                 return subDir

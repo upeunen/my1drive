@@ -9,6 +9,7 @@ import android.os.storage.StorageManager
 import android.hardware.usb.UsbManager
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.data.local.ArchiveEntity
+import by.w6.my1drive.utils.OtgFolderResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -201,20 +202,12 @@ class OtgConnectionManager(
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
 
         scope.launch {
-            val dir = withContext(Dispatchers.IO) {
-                by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = true)
-            }
-            if (dir == null) {
-                return@launch
-            }
-
-            val uuidPair = withContext(Dispatchers.IO) { readOtgUuidFile(dir) }
-            if (uuidPair != null) {
-                val uuid = uuidPair.first
-                val name = uuidPair.second
-                
+            val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+            val knownArchive = withContext(Dispatchers.IO) { db.archiveDao().getById(uuid) }
+            
+            if (knownArchive != null) {
                 withContext(Dispatchers.IO) {
-                    db.archiveDao().insert(ArchiveEntity(uuid, name, System.currentTimeMillis(), System.currentTimeMillis()))
+                    db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
                     db.mediaDao().migrateLegacyArchiveUuid(uuid)
                 }
                 
@@ -247,38 +240,52 @@ class OtgConnectionManager(
         _showNamingDialog.value = null
         _isCheckingConnection.value = true
         scope.launch {
+            val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+            val folderName = "Arhiv-$name"
+
+            withContext(Dispatchers.IO) {
+                // 1. Insert/register the ArchiveEntity in Room first
+                db.archiveDao().insert(
+                    ArchiveEntity(
+                        uuid = uuid,
+                        name = name,
+                        folderName = folderName,
+                        dateCreated = System.currentTimeMillis(),
+                        lastConnected = System.currentTimeMillis()
+                    )
+                )
+                db.mediaDao().migrateLegacyArchiveUuid(uuid)
+            }
+
+            // 2. Resolve/Create the physical directory on the drive (which will now use the folderName from the DB!)
             val dir = withContext(Dispatchers.IO) {
                 by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = true)
             }
+
             if (dir == null) {
+                // If directory creation failed, clean up DB entry
+                withContext(Dispatchers.IO) {
+                    db.archiveDao().delete(uuid)
+                }
                 _isCheckingConnection.value = false
                 return@launch
             }
 
-            val uuid = java.util.UUID.randomUUID().toString()
-            val success = withContext(Dispatchers.IO) { writeOtgUuidFile(dir, uuid, name) }
+            _activeArchiveUuid.value = uuid
+            prefs.edit()
+                .putString("active_archive_uuid", uuid)
+                .putString(PREF_OTG_URI, uri.toString())
+                .apply()
+            _otgDirectoryUri.value = uri
             
-            if (success) {
-                withContext(Dispatchers.IO) {
-                    db.archiveDao().insert(ArchiveEntity(uuid, name, System.currentTimeMillis(), System.currentTimeMillis()))
-                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
-                }
-                _activeArchiveUuid.value = uuid
-                prefs.edit()
-                    .putString("active_archive_uuid", uuid)
-                    .putString(PREF_OTG_URI, uri.toString())
-                    .apply()
-                _otgDirectoryUri.value = uri
-                
-                _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
-                val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
-                _status.value = newStatus
-                updateArchiveSize()
-                
-                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
-                    syncHelper.silentSyncArchive(_otgDirectoryUri.value)
-                    refreshCacheStats()
-                }
+            _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+            val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+            _status.value = newStatus
+            updateArchiveSize()
+            
+            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+                syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                refreshCacheStats()
             }
             _isCheckingConnection.value = false
         }
@@ -473,7 +480,8 @@ class OtgConnectionManager(
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Checking persisted permissions: size=${persistedPermissions.size}")
         
         var connectedUri: Uri? = null
-        var connectedUuidPair: Pair<String, String>? = null
+        var connectedUuid: String? = null
+        var connectedName: String? = null
 
         for (perm in persistedPermissions) {
             val uri = perm.uri
@@ -483,43 +491,39 @@ class OtgConnectionManager(
             } catch (_: Exception) { false }
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
             if (isReadable) {
-                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
-                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "getArchiveDir: $dir (exists=${dir?.exists()})")
-                if (dir != null && dir.exists()) {
-                    val uuidPair = readOtgUuidFile(dir)
-                    by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "readOtgUuidFile: $uuidPair")
-                    if (uuidPair != null) {
-                        val knownArchive = db.archiveDao().getById(uuidPair.first)
-                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "db.archiveDao().getById(${uuidPair.first}): $knownArchive")
-                        if (knownArchive != null) {
-                            connectedUri = uri
-                            connectedUuidPair = uuidPair
-                            break
-                        }
+                val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+                val knownArchive = db.archiveDao().getById(uuid)
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Scanning persisted URI: $uri, uuid=$uuid, knownArchive=$knownArchive")
+                if (knownArchive != null) {
+                    val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+                    by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "getArchiveDir: $dir (exists=${dir?.exists()})")
+                    if (dir != null && dir.exists()) {
+                        connectedUri = uri
+                        connectedUuid = uuid
+                        connectedName = knownArchive.name
+                        break
                     }
                 }
             }
         }
 
-        if (connectedUri != null && connectedUuidPair != null) {
-            val uuid = connectedUuidPair.first
-            val name = connectedUuidPair.second
+        if (connectedUri != null && connectedUuid != null && connectedName != null) {
             val currentActiveUuid = _activeArchiveUuid.value
             val currentOtgUri = _otgDirectoryUri.value
 
-            if (currentActiveUuid != uuid || currentOtgUri != connectedUri) {
-                _activeArchiveUuid.value = uuid
+            if (currentActiveUuid != connectedUuid || currentOtgUri != connectedUri) {
+                _activeArchiveUuid.value = connectedUuid
                 _otgDirectoryUri.value = connectedUri
                 prefs.edit()
-                    .putString("active_archive_uuid", uuid)
+                    .putString("active_archive_uuid", connectedUuid)
                     .putString(PREF_OTG_URI, connectedUri.toString())
                     .apply()
             }
 
-            db.archiveDao().getById(uuid)?.let {
+            db.archiveDao().getById(connectedUuid)?.let {
                 db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
             }
-            db.mediaDao().migrateLegacyArchiveUuid(uuid)
+            db.mediaDao().migrateLegacyArchiveUuid(connectedUuid)
 
             driveErrorCount = 0
             _showUnknownDriveDialog.value = false
@@ -563,39 +567,23 @@ class OtgConnectionManager(
         return try {
             val docFile = DocumentFile.fromTreeUri(application, savedUri)
             if (docFile != null && docFile.exists() && docFile.canRead()) {
-                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, savedUri, createIfNotExist = false)
-                if (dir != null && dir.exists()) {
-                    val uuidPair = readOtgUuidFile(dir)
-                    val currentActiveUuid = _activeArchiveUuid.value
-                    if (uuidPair != null) {
-                        val knownArchive = db.archiveDao().getById(uuidPair.first)
-                        if (knownArchive != null) {
-                            if (currentActiveUuid != uuidPair.first) {
-                                _activeArchiveUuid.value = uuidPair.first
-                                prefs.edit().putString("active_archive_uuid", uuidPair.first).apply()
-                            }
-                            db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
-                            db.mediaDao().migrateLegacyArchiveUuid(uuidPair.first)
-
-                            driveErrorCount = 0
-                            _showUnknownDriveDialog.value = false
-                            DriveStatus.KNOWN_DRIVE_CONNECTED
-                        } else if (currentActiveUuid == null) {
-                            _activeArchiveUuid.value = uuidPair.first
-                            prefs.edit().putString("active_archive_uuid", uuidPair.first).apply()
-                            db.archiveDao().insert(ArchiveEntity(uuidPair.first, uuidPair.second, System.currentTimeMillis(), System.currentTimeMillis()))
-                            db.mediaDao().migrateLegacyArchiveUuid(uuidPair.first)
-
-                            driveErrorCount = 0
-                            _showUnknownDriveDialog.value = false
-                            DriveStatus.KNOWN_DRIVE_CONNECTED
-                        } else {
-                            if (!unknownDriveDialogHandled) {
-                                _showUnknownDriveDialog.value = true
-                                unknownDriveDialogHandled = true
-                            }
-                            DriveStatus.UNKNOWN_DRIVE_CONNECTED
+                val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri) ?: savedUri.toString().hashCode().toString()
+                val knownArchive = db.archiveDao().getById(uuid)
+                val currentActiveUuid = _activeArchiveUuid.value
+                
+                if (knownArchive != null) {
+                    val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, savedUri, createIfNotExist = false)
+                    if (dir != null && dir.exists()) {
+                        if (currentActiveUuid != uuid) {
+                            _activeArchiveUuid.value = uuid
+                            prefs.edit().putString("active_archive_uuid", uuid).apply()
                         }
+                        db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
+                        db.mediaDao().migrateLegacyArchiveUuid(uuid)
+
+                        driveErrorCount = 0
+                        _showUnknownDriveDialog.value = false
+                        DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
                         if (!unknownDriveDialogHandled) {
                             _showUnknownDriveDialog.value = true
@@ -604,9 +592,11 @@ class OtgConnectionManager(
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
-                    driveErrorCount = 0
-                    _showUnknownDriveDialog.value = false
-                    DriveStatus.KNOWN_DRIVE_CONNECTED
+                    if (!unknownDriveDialogHandled) {
+                        _showUnknownDriveDialog.value = true
+                        unknownDriveDialogHandled = true
+                    }
+                    DriveStatus.UNKNOWN_DRIVE_CONNECTED
                 }
             } else {
                 _showUnknownDriveDialog.value = false
@@ -615,41 +605,6 @@ class OtgConnectionManager(
         } catch (e: Exception) {
             _showUnknownDriveDialog.value = false
             DriveStatus.KNOWN_DRIVE_DISCONNECTED
-        }
-    }
-
-    private fun readOtgUuidFile(dir: DocumentFile): Pair<String, String>? {
-        val file = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt") ?: return null
-        return try {
-            application.contentResolver.openInputStream(file.uri)?.use { inputStream ->
-                val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
-                val uuid = reader.readLine()?.trim() ?: ""
-                val name = reader.readLine()?.trim() ?: ""
-                if (uuid.isNotEmpty()) {
-                    Pair(uuid, name.ifEmpty { "USB-накопитель" })
-                } else {
-                    null
-                }
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun writeOtgUuidFile(dir: DocumentFile, uuid: String, name: String): Boolean {
-        try {
-            val file = dir.findFile(".my1drive_uuid") ?: dir.findFile(".my1drive_uuid.txt") ?: dir.createFile("text/plain", ".my1drive_uuid") ?: return false
-            application.contentResolver.openOutputStream(file.uri, "w")?.use { outputStream ->
-                val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(outputStream))
-                writer.write(uuid)
-                writer.newLine()
-                writer.write(name)
-                writer.flush()
-            }
-            return true
-        } catch (e: Exception) {
-            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Failed to write uuid file: ${e.localizedMessage}")
-            return false
         }
     }
 
@@ -698,23 +653,7 @@ class OtgConnectionManager(
      * inside the tree, so we must handle the /document/ segment.
      */
     private fun extractVolumeId(uri: Uri): String? {
-        val path = uri.path ?: return null
-
-        // Try /document/ segment first (more specific, for subfolder URIs)
-        val docSegment = path.substringAfter("/document/", "")
-        if (docSegment.isNotEmpty()) {
-            val rawId = docSegment.substringBefore(":")
-            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
-        }
-
-        // Fallback to /tree/ segment
-        val treeSegment = path.substringAfter("/tree/", "")
-        if (treeSegment.isNotEmpty()) {
-            val rawId = treeSegment.substringBefore(":")
-            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
-        }
-
-        return null
+        return by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
     }
 
     private fun isOtgUriPhysicallyConnected(uri: Uri): Boolean {
