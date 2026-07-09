@@ -8,6 +8,7 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.hardware.usb.UsbManager
 import androidx.documentfile.provider.DocumentFile
+import by.w6.my1drive.data.local.ArchiveEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -83,6 +84,12 @@ class OtgConnectionManager(
     private val _showEjectSuccessDialog = MutableStateFlow(false)
     val showEjectSuccessDialog: StateFlow<Boolean> = _showEjectSuccessDialog.asStateFlow()
 
+    private val _showNamingDialog = MutableStateFlow<Uri?>(null)
+    val showNamingDialog: StateFlow<Uri?> = _showNamingDialog.asStateFlow()
+
+    private val _activeArchiveUuid = MutableStateFlow<String?>(null)
+    val activeArchiveUuid: StateFlow<String?> = _activeArchiveUuid.asStateFlow()
+
     // ─── Internal state ───
 
     private var driveErrorCount = 0
@@ -104,6 +111,7 @@ class OtgConnectionManager(
     fun start(savedOtgUri: Uri?, savedDeviceUri: Uri?) {
         _otgDirectoryUri.value = savedOtgUri
         _deviceDirectoryUri.value = savedDeviceUri
+        _activeArchiveUuid.value = prefs.getString("active_archive_uuid", null)
         scope.launch {
             var previousStatus: DriveStatus? = null
             var firstCheck = true
@@ -190,25 +198,92 @@ class OtgConnectionManager(
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")
-        _otgDirectoryUri.value = uri
         _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
-        prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
 
-        _isCheckingConnection.value = true
         scope.launch {
-            _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
-            val extractedVolId = extractVolumeId(uri)
-            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: extractedVolumeId=$extractedVolId, physicalConnected=${_physicalConnected.value}")
-            val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
-            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: computedStatus=$newStatus")
-            _status.value = newStatus
-            updateArchiveSize()
-            _isCheckingConnection.value = false
-            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
-                syncHelper.silentSyncArchive(_otgDirectoryUri.value)
-                refreshCacheStats()
+            val dir = withContext(Dispatchers.IO) {
+                by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = true)
+            }
+            if (dir == null) {
+                return@launch
+            }
+
+            val uuidPair = withContext(Dispatchers.IO) { readOtgUuidFile(dir) }
+            if (uuidPair != null) {
+                val uuid = uuidPair.first
+                val name = uuidPair.second
+                
+                withContext(Dispatchers.IO) {
+                    db.archiveDao().insert(ArchiveEntity(uuid, name, System.currentTimeMillis(), System.currentTimeMillis()))
+                }
+                
+                _activeArchiveUuid.value = uuid
+                prefs.edit()
+                    .putString("active_archive_uuid", uuid)
+                    .putString(PREF_OTG_URI, uri.toString())
+                    .apply()
+                    
+                _otgDirectoryUri.value = uri
+                _isCheckingConnection.value = true
+                
+                _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+                _status.value = newStatus
+                updateArchiveSize()
+                _isCheckingConnection.value = false
+                
+                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+                    syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                    refreshCacheStats()
+                }
+            } else {
+                _showNamingDialog.value = uri
             }
         }
+    }
+
+    fun saveOtgArchive(uri: Uri, name: String) {
+        _showNamingDialog.value = null
+        _isCheckingConnection.value = true
+        scope.launch {
+            val dir = withContext(Dispatchers.IO) {
+                by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = true)
+            }
+            if (dir == null) {
+                _isCheckingConnection.value = false
+                return@launch
+            }
+
+            val uuid = java.util.UUID.randomUUID().toString()
+            val success = withContext(Dispatchers.IO) { writeOtgUuidFile(dir, uuid, name) }
+            
+            if (success) {
+                withContext(Dispatchers.IO) {
+                    db.archiveDao().insert(ArchiveEntity(uuid, name, System.currentTimeMillis(), System.currentTimeMillis()))
+                }
+                _activeArchiveUuid.value = uuid
+                prefs.edit()
+                    .putString("active_archive_uuid", uuid)
+                    .putString(PREF_OTG_URI, uri.toString())
+                    .apply()
+                _otgDirectoryUri.value = uri
+                
+                _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
+                _status.value = newStatus
+                updateArchiveSize()
+                
+                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+                    syncHelper.silentSyncArchive(_otgDirectoryUri.value)
+                    refreshCacheStats()
+                }
+            }
+            _isCheckingConnection.value = false
+        }
+    }
+
+    fun dismissNamingDialog() {
+        _showNamingDialog.value = null
     }
 
     fun setCheckingConnection(value: Boolean) {
@@ -424,20 +499,84 @@ class OtgConnectionManager(
         return try {
             val docFile = DocumentFile.fromTreeUri(application, savedUri)
             if (docFile != null && docFile.exists() && docFile.canRead()) {
-                driveErrorCount = 0
-                _showUnknownDriveDialog.value = false
-                DriveStatus.KNOWN_DRIVE_CONNECTED
+                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, savedUri, createIfNotExist = false)
+                if (dir != null && dir.exists()) {
+                    val uuidPair = readOtgUuidFile(dir)
+                    val currentActiveUuid = _activeArchiveUuid.value
+                    if (uuidPair != null) {
+                        if (currentActiveUuid == null || uuidPair.first == currentActiveUuid) {
+                            if (currentActiveUuid == null) {
+                                _activeArchiveUuid.value = uuidPair.first
+                                prefs.edit().putString("active_archive_uuid", uuidPair.first).apply()
+                            }
+                            db.archiveDao().getById(uuidPair.first)?.let {
+                                db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
+                            } ?: db.archiveDao().insert(ArchiveEntity(uuidPair.first, uuidPair.second, System.currentTimeMillis(), System.currentTimeMillis()))
+
+                            driveErrorCount = 0
+                            _showUnknownDriveDialog.value = false
+                            DriveStatus.KNOWN_DRIVE_CONNECTED
+                        } else {
+                            if (!unknownDriveDialogHandled) {
+                                _showUnknownDriveDialog.value = true
+                                unknownDriveDialogHandled = true
+                            }
+                            DriveStatus.UNKNOWN_DRIVE_CONNECTED
+                        }
+                    } else {
+                        if (!unknownDriveDialogHandled) {
+                            _showUnknownDriveDialog.value = true
+                            unknownDriveDialogHandled = true
+                        }
+                        DriveStatus.UNKNOWN_DRIVE_CONNECTED
+                    }
+                } else {
+                    driveErrorCount = 0
+                    _showUnknownDriveDialog.value = false
+                    DriveStatus.KNOWN_DRIVE_CONNECTED
+                }
             } else {
-                // Same physical drive, but we can't read/exist (e.g. unmounting)
-                // Do NOT show unknown drive dialog, just treat as disconnected
                 _showUnknownDriveDialog.value = false
                 DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
         } catch (e: Exception) {
-            // Access error (e.g. unmounting or temporary permission lock)
-            // Treat as disconnected, do NOT show unknown drive dialog
             _showUnknownDriveDialog.value = false
             DriveStatus.KNOWN_DRIVE_DISCONNECTED
+        }
+    }
+
+    private fun readOtgUuidFile(dir: DocumentFile): Pair<String, String>? {
+        val file = dir.findFile(".my1drive_uuid") ?: return null
+        return try {
+            application.contentResolver.openInputStream(file.uri)?.use { inputStream ->
+                val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
+                val uuid = reader.readLine()?.trim() ?: ""
+                val name = reader.readLine()?.trim() ?: ""
+                if (uuid.isNotEmpty()) {
+                    Pair(uuid, name.ifEmpty { "USB-накопитель" })
+                } else {
+                    null
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun writeOtgUuidFile(dir: DocumentFile, uuid: String, name: String): Boolean {
+        try {
+            val file = dir.findFile(".my1drive_uuid") ?: dir.createFile("text/plain", ".my1drive_uuid") ?: return false
+            application.contentResolver.openOutputStream(file.uri, "rwt")?.use { outputStream ->
+                val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(outputStream))
+                writer.write(uuid)
+                writer.newLine()
+                writer.write(name)
+                writer.flush()
+            }
+            return true
+        } catch (e: Exception) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Failed to write uuid file: ${e.localizedMessage}")
+            return false
         }
     }
 

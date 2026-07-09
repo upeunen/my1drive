@@ -8,12 +8,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MediaEntity::class],
-    version = 5,
+    entities = [MediaEntity::class, ArchiveEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun mediaDao(): MediaDao
+    abstract fun archiveDao(): ArchiveDao
 
     companion object {
         @Volatile
@@ -26,6 +27,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE media_archive ADD COLUMN archiveUuid TEXT NOT NULL DEFAULT ''")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `archives` (
+                        `uuid` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `dateCreated` INTEGER NOT NULL, 
+                        `lastConnected` INTEGER NOT NULL, 
+                        PRIMARY KEY(`uuid`)
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -34,7 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "my1drive.db"
                 )
                     .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_5_6)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -19,5 +19,7 @@ data class MediaEntity(
     @ColumnInfo(defaultValue = "0")
     val lastAccessed: Long = 0L,              // Unix ms -- updated when preview is loaded (for LRU eviction)
     @ColumnInfo(defaultValue = "0")
-    val dateArchived: Long = 0L              // Unix timestamp in seconds
+    val dateArchived: Long = 0L,              // Unix timestamp in seconds
+    @ColumnInfo(defaultValue = "")
+    val archiveUuid: String = ""
 )

@@ -123,6 +123,7 @@ fun FullscreenPreview(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
+    activeArchiveUuid: String? = null,
     selectedIds: Set<String> = emptySet(),
     onToggleSelection: (String) -> Unit = {},
     onClose: () -> Unit,
@@ -288,7 +289,7 @@ fun FullscreenPreview(
                     PagerPage(
                         item = item,
                         imageLoader = imageLoader,
-                        isOtgConnected = isOtgConnected,
+                        isOtgConnected = if (item.status == MediaStatus.ARCHIVED_OTG) (isOtgConnected && item.archiveUuid == activeArchiveUuid) else isOtgConnected,
                         isActive = (pagerState.currentPage == page),
                         isSelected = selectedIds.contains(item.id),
                         showOverlays = showOverlays,

@@ -195,6 +195,7 @@ fun PhotosRoute(
     isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
     onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
+    val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val sortMode by viewModel.deviceSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
@@ -271,6 +272,7 @@ fun PhotosRoute(
             selectedIds = selectedIds,
             imageLoader = imageLoader,
             isOtgConnected = isOtgConnected,
+            activeArchiveUuid = activeArchiveUuid,
             archivingItemIds = archivingItemIds,
             copiedItemIds = copiedItemIds,
             gridColumnsCount = gridColumnsCount,
@@ -306,6 +308,7 @@ fun ArchiveRoute(
     isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
     onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
 ) {
+    val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val sortMode by viewModel.archiveSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
@@ -616,7 +619,7 @@ fun ArchiveRoute(
                                                         isArchiving = isArchiving || isRestoring,
                                                         isCopied = isCopied,
                                                         imageLoader = imageLoader,
-                                                        isOtgConnected = isOtgConnected,
+                                                        isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
                                                         modifier = Modifier.onGloballyPositioned { itemCoordinates = it },
                                                         onClick = {
                                                             onItemClick(mediaItem)
@@ -830,6 +833,7 @@ fun GalleryScreenContent(
     onNavigate: (String) -> Unit = {}
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
+    val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
     val showConnectionErrorBanner by viewModel.otgManager.showConnectionErrorBanner.collectAsState()
@@ -1187,7 +1191,8 @@ fun GalleryScreenContent(
                                 isLimitActive = viewModel.isLimitActive,
                                 vpsManager = viewModel.vpsManager,
                                 onShowDebugLogs = { showDebugLogsDialog = true },
-                                onSyncArchive = onSyncArchive
+                                onSyncArchive = onSyncArchive,
+                                onRefresh = { viewModel.refresh() }
                             )
                         }
                     }
@@ -1196,7 +1201,7 @@ fun GalleryScreenContent(
         }
 
         showInfoDialogItem?.let { item ->
-            InfoDialog(item = item, imageLoader = imageLoader ?: return@let, isOtgConnected = isOtgConnected,
+            InfoDialog(item = item, imageLoader = imageLoader ?: return@let, isOtgConnected = if (item.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && item.archiveUuid == activeArchiveUuid) else isOtgConnected,
                 onOpenFullscreen = {
                     if (activePreviewState == null) {
                         // Open fullscreen from info: just this single item
@@ -1226,6 +1231,7 @@ fun GalleryScreenContent(
                 imageLoader = imageLoader ?: return@let,
                 isOtgConnected = isOtgConnected,
                 otgDirectoryUri = otgDirectoryUri,
+                activeArchiveUuid = activeArchiveUuid,
                 selectedIds = selectedIds,
                 onToggleSelection = onToggleSelection,
                 onClose = {
@@ -1306,6 +1312,19 @@ fun GalleryScreenContent(
                             softWrap = false
                         )
                     }
+                }
+            )
+        }
+
+        val showNamingDialog by viewModel.otgManager.showNamingDialog.collectAsState()
+        showNamingDialog?.let { uri ->
+            ArchiveNamingDialog(
+                onConfirm = { name ->
+                    viewModel.otgManager.saveOtgArchive(uri, name)
+                    viewModel.refresh()
+                },
+                onDismiss = {
+                    viewModel.otgManager.dismissNamingDialog()
                 }
             )
         }

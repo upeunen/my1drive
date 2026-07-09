@@ -203,11 +203,11 @@ fun InfoDialog(
                     Color(0xFF4CAF50)
                 )
                 isOtgConnected -> Pair(
-                    stringResource(R.string.info_location_otg),
+                    stringResource(R.string.info_location_otg) + (item.archiveName?.let { " ($it)" } ?: ""),
                     MaterialTheme.colorScheme.primary
                 )
                 else -> Pair(
-                    stringResource(R.string.info_location_otg_disconnected),
+                    stringResource(R.string.info_location_otg_disconnected) + (item.archiveName?.let { " ($it)" } ?: ""),
                     Color(0xFFFF9800)
                 )
             }

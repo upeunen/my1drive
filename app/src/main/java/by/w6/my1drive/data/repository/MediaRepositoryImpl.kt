@@ -27,14 +27,22 @@ class MediaRepositoryImpl(
 
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
         val archivedFlow = mediaDao.getAllFlow()
+        val archivesFlow = by.w6.my1drive.data.local.AppDatabase.getDatabase(context).archiveDao().getAllFlow()
 
-        return combine(refreshTrigger, archivedFlow) { _, archivedEntities ->
+        return combine(refreshTrigger, archivedFlow, archivesFlow) { _, archivedEntities, archives ->
+            val archiveNamesMap = archives.associate { it.uuid to it.name }
+            val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+            val showOffline = prefs.getBoolean("show_offline_archives", false)
+            val activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
+
             val localList = queryLocalMediaStore()
-            val archivedItems = archivedEntities.map { entity ->
-                val thumbnailUri = entity.thumbnailPath?.let { path ->
-                    Uri.fromFile(File(path))
-                } ?: Uri.EMPTY
+            val filteredEntities = if (showOffline) {
+                archivedEntities
+            } else {
+                archivedEntities.filter { it.archiveUuid == activeUuid }
+            }
 
+            val archivedItems = filteredEntities.map { entity ->
                 MediaItem(
                     id = "archived_${entity.id}",
                     displayName = entity.displayName,
@@ -49,12 +57,14 @@ class MediaRepositoryImpl(
                     thumbnailPath = entity.thumbnailPath,
                     originalRelativePath = entity.originalRelativePath,
                     dateArchived = entity.dateArchived,
-                    dateAdded = null
+                    dateAdded = null,
+                    archiveUuid = entity.archiveUuid,
+                    archiveName = archiveNamesMap[entity.archiveUuid] ?: "Неизвестный диск"
                 )
             }
 
             // Quick heuristic to filter out duplicates (local files already in database)
-            val archivedKeys = archivedEntities.map { it.displayName to it.size }.toSet()
+            val archivedKeys = filteredEntities.map { it.displayName to it.size }.toSet()
             val filteredLocalList = localList.filterNot { localItem ->
                 archivedKeys.contains(localItem.displayName to localItem.size)
             }
@@ -75,6 +85,8 @@ class MediaRepositoryImpl(
         originalRelativePath: String?,
         dateArchived: Long
 ) = withContext(Dispatchers.IO) {
+        val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+        val activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
         val entity = MediaEntity(
             id = hash,
             displayName = item.displayName,
@@ -85,7 +97,8 @@ class MediaRepositoryImpl(
             thumbnailPath = thumbnailPath,
             duration = item.duration,
             originalRelativePath = originalRelativePath ?: item.originalRelativePath,
-            dateArchived = dateArchived
+            dateArchived = dateArchived,
+            archiveUuid = activeUuid
         )
         mediaDao.insert(entity)
     }

@@ -1,5 +1,6 @@
 package by.w6.my1drive.ui
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -72,7 +73,8 @@ fun SettingsTab(
     isLimitActive: Boolean = true,
     vpsManager: by.w6.my1drive.utils.VpsConnectionManager? = null,
     onShowDebugLogs: () -> Unit = {},
-    onSyncArchive: () -> Unit = {}
+    onSyncArchive: () -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -172,6 +174,55 @@ fun SettingsTab(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // 1.5 Multi-Archive settings card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                var showOffline by remember {
+                    mutableStateOf(
+                        context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+                            .getBoolean("show_offline_archives", false)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Работа с несколькими архивами (дисками)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Отображать файлы с отключенных накопителей в галерее",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Switch(
+                        checked = showOffline,
+                        onCheckedChange = { checked ->
+                            showOffline = checked
+                            context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putBoolean("show_offline_archives", checked)
+                                .apply()
+                            onRefresh()
+                        }
+                    )
                 }
             }
         }
