@@ -98,6 +98,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
@@ -830,6 +832,7 @@ fun GalleryScreenContent(
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
+    val showConnectionErrorBanner by viewModel.otgManager.showConnectionErrorBanner.collectAsState()
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
@@ -902,15 +905,36 @@ fun GalleryScreenContent(
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
 
+            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+            val iconAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.3f,
+                targetValue = 1.0f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "alpha"
+            )
+
             AnimatedVisibility(
-                visible = isCheckingConnection,
+                visible = isCheckingConnection || showConnectionErrorBanner,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .background(
+                            if (showConnectionErrorBanner) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                        .then(
+                            if (showConnectionErrorBanner) {
+                                Modifier.clickable { viewModel.otgManager.retryConnection() }
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     Column {
                         Row(
@@ -923,23 +947,34 @@ fun GalleryScreenContent(
                             Icon(
                                 imageVector = Icons.Default.Usb,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                tint = if (showConnectionErrorBanner) MaterialTheme.colorScheme.error
+                                       else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .graphicsLayer {
+                                        if (isCheckingConnection) {
+                                            alpha = iconAlpha
+                                        }
+                                    }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Подключение USB-накопителя...",
+                                text = if (showConnectionErrorBanner) "Не удалось подключить накопитель. Нажмите для повтора."
+                                       else "Подключение USB-накопителя...",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (showConnectionErrorBanner) MaterialTheme.colorScheme.onErrorContainer
+                                       else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(2.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = Color.Transparent
-                        )
+                        if (isCheckingConnection) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = Color.Transparent
+                            )
+                        }
                     }
                 }
             }

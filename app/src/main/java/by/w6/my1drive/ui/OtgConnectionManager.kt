@@ -77,6 +77,9 @@ class OtgConnectionManager(
     private val _isCheckingConnection = MutableStateFlow(false)
     val isCheckingConnection: StateFlow<Boolean> = _isCheckingConnection.asStateFlow()
 
+    private val _showConnectionErrorBanner = MutableStateFlow(false)
+    val showConnectionErrorBanner: StateFlow<Boolean> = _showConnectionErrorBanner.asStateFlow()
+
     private val _showEjectSuccessDialog = MutableStateFlow(false)
     val showEjectSuccessDialog: StateFlow<Boolean> = _showEjectSuccessDialog.asStateFlow()
 
@@ -117,6 +120,7 @@ class OtgConnectionManager(
                 if (!otgPluggedIn) {
                     unknownDriveDialogHandled = false
                     firstLaunchHandled = false
+                    _showConnectionErrorBanner.value = false
                     if (isEjectedButStillPluggedIn) {
                         isEjectedButStillPluggedIn = false
                         _showEjectSuccessDialog.value = false
@@ -258,6 +262,10 @@ class OtgConnectionManager(
         isEjectedButStillPluggedIn = false
     }
 
+    fun retryConnection() {
+        onPhysicalConnectionChanged(isStartup = false)
+    }
+
     /** Called from BroadcastReceiver when physical USB connection changes. */
     fun onPhysicalConnectionChanged(isStartup: Boolean = false) {
         scope.launch {
@@ -268,6 +276,7 @@ class OtgConnectionManager(
 
             if (!otgPluggedIn) {
                 unknownDriveDialogHandled = false
+                _showConnectionErrorBanner.value = false
             }
 
             val isTransitionToConnected = otgPluggedIn && !wasConnected
@@ -337,6 +346,7 @@ class OtgConnectionManager(
         if (isVerifying) return
         isVerifying = true
         _isCheckingConnection.value = true
+        _showConnectionErrorBanner.value = false
         try {
             val startTime = System.currentTimeMillis()
             val timeoutMs = 8000L // 8 seconds timeout
@@ -362,6 +372,10 @@ class OtgConnectionManager(
             
             if (newStatus != _status.value) {
                 _status.value = newStatus
+            }
+
+            if (newStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && _physicalConnected.value) {
+                _showConnectionErrorBanner.value = true
             }
         } finally {
             isVerifying = false
