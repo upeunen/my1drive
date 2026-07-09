@@ -117,14 +117,13 @@ class OtgConnectionManager(
         scope.launch {
             var previousStatus: DriveStatus? = null
             var firstCheck = true
-            var unreadableOtgDialogHandled = false
             while (true) {
                 val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
                 val otgPluggedIn = usbPhysicallyConnected || withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
 
                 if (!usbPhysicallyConnected) {
-                    unreadableOtgDialogHandled = false
+                    // Do nothing
                 }
 
                 if (!otgPluggedIn) {
@@ -168,14 +167,6 @@ class OtgConnectionManager(
                 if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null && !isEjectedButStillPluggedIn) {
                     _showFirstLaunchDialog.value = true
                     firstLaunchHandled = true
-                }
-
-                // Check for unreadable OTG at startup
-                if (usbPhysicallyConnected && !otgPluggedIn && _otgDirectoryUri.value == null) {
-                    if (!unreadableOtgDialogHandled) {
-                        _showUnreadableOtgDialog.value = true
-                        unreadableOtgDialogHandled = true
-                    }
                 }
 
                 wasPhysicalConnected = otgPluggedIn
@@ -337,10 +328,6 @@ class OtgConnectionManager(
         _showLocalFolderDialog.value = false
     }
 
-    fun dismissUnreadableOtgDialog() {
-        _showUnreadableOtgDialog.value = false
-    }
-
     fun showWriteProtectedRootDialog() {
         _showWriteProtectedRootDialog.value = true
     }
@@ -355,7 +342,7 @@ class OtgConnectionManager(
         // We just mark it as logically disconnected until physical replug.
         isEjectedButStillPluggedIn = true
         _showEjectSuccessDialog.value = true
-        _showUnreadableOtgDialog.value = false
+
         
         syncHelper.cancelOperations()
 

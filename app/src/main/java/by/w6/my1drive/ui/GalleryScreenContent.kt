@@ -1426,55 +1426,6 @@ fun GalleryScreenContent(
             )
         }
 
-        val showUnreadableOtg by viewModel.otgManager.showUnreadableOtgDialog.collectAsState()
-        if (showUnreadableOtg) {
-            var showWhy by remember { mutableStateOf(false) }
-            AlertDialog(
-                onDismissRequest = {
-                    viewModel.otgManager.dismissUnreadableOtgDialog()
-                    showWhy = false
-                },
-                title = { Text(stringResource(R.string.unreadable_otg_title), fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.unreadable_otg_msg))
-                        
-                        if (!showWhy) {
-                            Text(
-                                text = stringResource(R.string.unreadable_otg_why_link),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    textDecoration = TextDecoration.Underline,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                modifier = Modifier
-                                    .clickable { showWhy = true }
-                                    .padding(vertical = 4.dp)
-                            )
-                        } else {
-                            Text(
-                                text = stringResource(R.string.unreadable_otg_explanation),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        viewModel.otgManager.dismissUnreadableOtgDialog()
-                        showWhy = false
-                    }) {
-                        Text(
-                            text = stringResource(R.string.btn_ok),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                }
-            )
-        }
 
         val showWriteProtectedRoot by viewModel.otgManager.showWriteProtectedRootDialog.collectAsState()
         if (showWriteProtectedRoot) {
