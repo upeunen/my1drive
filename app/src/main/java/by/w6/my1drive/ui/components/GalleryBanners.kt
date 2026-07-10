@@ -114,7 +114,7 @@ fun OtgRequiredBanner() {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Usb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.otg_required_msg), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -164,7 +164,7 @@ fun ConnectingUsbBanner(visible: Boolean) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Подключение USB-накопителя...",
+                        text = stringResource(R.string.connecting_usb_msg),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -183,18 +183,19 @@ fun ConnectingUsbBanner(visible: Boolean) {
     }
 }
 
+@Composable
 fun mapStepToText(step: String): String {
     return when {
-        step == "preparing" || step == "restore_preparing" -> "Подготовка..."
-        step == "verifying" || step == "restore_verifying" -> "Проверка целостности..."
-        step == "copying" -> "Копирование в архив..."
-        step == "restore_reading" -> "Чтение из архива..."
-        step == "restore_writing" -> "Запись на устройство..."
+        step == "preparing" || step == "restore_preparing" -> stringResource(R.string.step_preparing)
+        step == "verifying" || step == "restore_verifying" -> stringResource(R.string.step_verifying)
+        step == "copying" -> stringResource(R.string.step_copying)
+        step == "restore_reading" -> stringResource(R.string.step_restore_reading)
+        step == "restore_writing" -> stringResource(R.string.step_restore_writing)
         step.startsWith("restore_writing_percent:") -> {
             val pct = step.substringAfter(":")
-            "Запись на устройство... ($pct%)"
+            stringResource(R.string.step_restore_writing_pct, pct)
         }
-        else -> "Обработка..."
+        else -> stringResource(R.string.step_processing)
     }
 }
 
@@ -248,7 +249,7 @@ fun ProgressPanel(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "$title ($currentIndex из $totalFiles)",
+                        text = stringResource(R.string.progress_title_format, title, currentIndex, totalFiles),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -305,7 +306,7 @@ fun ProgressPanel(
                         )
                     ) {
                         Text(
-                            text = "Прервать",
+                            text = stringResource(R.string.btn_cancel),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,

@@ -183,8 +183,20 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="welcome_btn_close">Закрыть</string>
 
     <!-- Preloader -->
-    <string name="preloader_detecting_drive">Определение накопителя…</string>
-    <string name="preloader_please_wait">Подождите, пожалуйста.\nПроцесс может занять от нескольких секунд до пары минут.</string>
+    <string name="preloader_detecting_drive">Поиск накопителя</string>
+    <string name="preloader_please_wait">Пожалуйста, подождите.\nПересоздание базы данных может занять до 2-х минут.</string>
+
+    <!-- Banners -->
+    <string name="otg_required_msg">Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер</string>
+    <string name="connecting_usb_msg">Подключение USB-накопителя...</string>
+    <string name="step_preparing">Подготовка...</string>
+    <string name="step_verifying">Проверка целостности...</string>
+    <string name="step_copying">Копирование в архив...</string>
+    <string name="step_restore_reading">Чтение из архива...</string>
+    <string name="step_restore_writing">Запись на устройство...</string>
+    <string name="step_restore_writing_pct">Запись на устройство... (%1$s%%)</string>
+    <string name="step_processing">Обработка...</string>
+    <string name="progress_title_format">%1$s (%2$d из %3$d)</string>
 
     <!-- Unreadable OTG warning -->
     <string name="unreadable_otg_title">USB Device Detected</string>

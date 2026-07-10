@@ -341,6 +341,9 @@ class ArchiveSyncHelper(
                         }
                         DebugLogBuffer.log(logTag, "Silent sync finished successfully")
 
+                        // Очищаем осиротевшие превью из кэша (для файлов, которых больше нет на флешке)
+                        previewCache.cleanupOrphanedPreviews(finalHashes)
+
                         // Запускаем фоновую генерацию превью после синхронизации
                         startBackgroundPreviews(activeUuid)
                     } catch (e: Exception) {

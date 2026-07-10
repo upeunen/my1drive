@@ -121,6 +121,20 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissNamingDialog() { _showNamingDialog.value = null }
     fun triggerWriteProtectedRootDialog() { _showWriteProtectedRootDialog.value = true }
 
+    private val archiveInteractor: ArchiveInteractor by lazy {
+        ArchiveInteractor(
+            application = application,
+            repository = repository,
+            otgManager = otgManager,
+            metadataStore = metadataStore,
+            archiveUtil = archiveUtil,
+            scope = viewModelScope,
+            restoreState = restoreState,
+            restoringItemIds = _restoringItemIds,
+            selectedIds = _selectedIds
+        )
+    }
+
     private val syncHelper: ArchiveSyncHelper by lazy {
         ArchiveSyncHelper(
             application = application,
@@ -210,7 +224,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             items.forEach { resultList.add(GalleryItem.Media(it)) }
         }
         resultList
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _archiveSortMode = MutableStateFlow(
         try {
@@ -257,7 +271,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             items.forEach { resultList.add(GalleryItem.Media(it)) }
         }
         resultList
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds = _selectedIds.asStateFlow()
@@ -410,7 +424,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 val itemsToDelete = deleteTask
                 pendingDeleteTask = null
                 deleteDeviceItems(itemsToDelete.filter { it.status == MediaStatus.ON_DEVICE })
-                deleteArchivedItems(itemsToDelete.filter { it.status == MediaStatus.ARCHIVED_OTG })
+                archiveInteractor.deleteArchivedItems(itemsToDelete.filter { it.status == MediaStatus.ARCHIVED_OTG })
             }
         }
     }
@@ -607,7 +621,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun cancelRestoring() {
-        isRestoreCancellationRequested = true
+        archiveInteractor.isRestoreCancellationRequested = true
     }
 
     // ─── Selection ───
@@ -708,7 +722,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     fun restoreSingleItem(item: MediaItem) {
-        startRestoring(listOf(item), null)
+        archiveInteractor.startRestoring(listOf(item), null)
     }
     fun dismissError() { syncHelper.dismissError() }
     fun refresh() { repository.refresh() }
@@ -904,29 +918,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.refresh() }
     }
 
-        private fun deleteArchivedItems(items: List<MediaItem>) {
-        if (items.isEmpty()) return
-        viewModelScope.launch {
-            val otgUri = otgManager.otgDirectoryUri.value
-            for (item in items) {
-                try {
-                    // 1. Remove from JSON metadata on OTG drive (source of truth)
-                    if (otgUri != null && item.hash != null) {
-                        metadataStore.removeEntry(otgUri, item.hash)
-                    }
-                    // 2. Delete physical file from OTG drive
-                    item.otgUri?.let { fileUri ->
-                        try { DocumentFile.fromSingleUri(getApplication(), Uri.parse(fileUri))?.delete() } catch (_: Exception) { }
-                    }
-                    // 3. Remove from Room (local cache)
-                    repository.deleteArchivedItem(item)
-                } catch (_: Exception) { }
-            }
-            repository.refresh()
-            otgManager.updateArchiveSize()
-        }
-    }
-
     // ─── Restore ───
 
     fun setAskRestorePath(value: Boolean) { _askRestorePath.value = value; prefs.edit().putBoolean(PREF_ASK_RESTORE_PATH, value).apply() }
@@ -934,90 +925,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun requestRestore() {
         val selected = mediaItems.value.filter { it.id in _selectedIds.value && it.status == MediaStatus.ARCHIVED_OTG }
         if (selected.isEmpty()) return
-        startRestoring(selected, null)
+        archiveInteractor.startRestoring(selected, null)
     }
 
-    fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; startRestoring(it, null) } }
-    fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; startRestoring(it, uri) } }
+    fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, null) } }
+    fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, uri) } }
     fun dismissRestoreRequest() { pendingRestoreItems = emptyList(); _restoreRequest.value = null }
 
-    private fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
-        _restoringItemIds.value = items.map { it.id }.toSet()
-        isRestoreCancellationRequested = false
-        restoringJob = viewModelScope.launch {
-            val logTag = "RestoreManager"
-            try {
-                DebugLogBuffer.log(logTag, "Start startRestoring for ${items.size} items, targetDirUri=$targetDirUri")
-                var successCount = 0; val errors = mutableListOf<String>()
-                val otgUri = otgManager.otgDirectoryUri.value
-                restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
-                for ((index, item) in items.withIndex()) {
-                    if (isRestoreCancellationRequested) {
-                        DebugLogBuffer.log(logTag, "Restore cancelled by user request. Stopping.")
-                        break
-                    }
-                    DebugLogBuffer.log(logTag, "Restoring item [${index + 1}/${items.size}]: ${item.displayName}")
-                    restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "")
-                    archiveUtil.restoreItem(item, targetDirUri).collect { result ->
-                        when (result) {
-                            is by.w6.my1drive.utils.RestoreResult.Progress -> restoreState.value = restoreState.value.copy(
-                                currentStep = result.step, progressFraction = (index.toFloat() + result.progressFraction) / items.size
-                            )
-                            is by.w6.my1drive.utils.RestoreResult.Success -> {
-                                successCount++
-                                _selectedIds.value = _selectedIds.value - result.item.id
-                                DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
-                                try {
-                                    // 1. Remove from JSON metadata on OTG drive (source of truth)
-                                    if (otgUri != null && result.item.hash != null) {
-                                        metadataStore.removeEntry(otgUri, result.item.hash)
-                                        DebugLogBuffer.log(logTag, "Removed metadata entry from JSON for ${result.item.displayName}")
-                                    }
-                                    // 2. Delete physical file from OTG drive
-                                    result.item.otgUri?.let { fileUri ->
-                                        try {
-                                            val otgFile = DocumentFile.fromSingleUri(getApplication(), Uri.parse(fileUri))
-                                            val deleted = otgFile?.delete() ?: false
-                                            DebugLogBuffer.log(logTag, "Deleted physical file from OTG: ${result.item.displayName}, success=$deleted")
-                                        } catch (ex: Exception) {
-                                            DebugLogBuffer.log(logTag, "Failed to delete physical file on OTG for ${result.item.displayName}: ${ex.localizedMessage}")
-                                        }
-                                    }
-                                    // 3. Remove from Room (local cache)
-                                    repository.deleteArchivedItem(result.item)
-                                    DebugLogBuffer.log(logTag, "Deleted item from local Room DB: ${result.item.displayName}")
-                                } catch (e: Exception) {
-                                    DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
-                                }
-                            }
-                            is by.w6.my1drive.utils.RestoreResult.Error -> {
-                                val errStr = "${result.displayName}: ${result.message}"
-                                errors.add(errStr)
-                                DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
-                            }
-                        }
-                    }
-                    _restoringItemIds.value = _restoringItemIds.value - item.id
-                }
-                repository.refresh()
-                val finalError = when {
-                    errors.isNotEmpty() -> "Восстановлено: $successCount из ${items.size}.\n\nОшибки:\n" + errors.joinToString("\n")
-                    successCount < items.size -> "Восстановлено: $successCount из ${items.size}."
-                    else -> null
-                }
-                DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")
-                restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = finalError)
-                otgManager.updateArchiveSize()
-            } finally {
-                _restoringItemIds.value = emptySet()
-                if (restoreState.value.isRestoring) {
-                    restoreState.value = restoreState.value.copy(isRestoring = false)
-                }
-                isRestoreCancellationRequested = false
-                restoringJob = null
-            }
-        }
-    }
+
 
     fun dismissRestoreError() { restoreState.value = restoreState.value.copy(error = null) }
     fun dismissArchiveError() { syncHelper.dismissError() }
@@ -1047,7 +962,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             requestNextFolderPermission()
         } else {
             deleteDeviceItems(deviceItems)
-            deleteArchivedItems(archivedItems)
+            archiveInteractor.deleteArchivedItems(archivedItems)
         }
     }
 

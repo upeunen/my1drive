@@ -92,16 +92,16 @@ class PreviewCacheManager(
         }
 
         // Also remove orphaned files not tracked in DB
-        cleanOrphans()
+        cleanupOrphanedPreviews()
     }
 
     /** Removes cache files that have no corresponding DB entry */
-    private fun cleanOrphans() {
-        val cacheFiles = previewDir.listFiles() ?: return
-        val dbIds = mediaDao.getAllSync().map { it.id }.toSet()
+    suspend fun cleanupOrphanedPreviews(validHashes: Set<String>? = null) = withContext(Dispatchers.IO) {
+        val cacheFiles = previewDir.listFiles() ?: return@withContext
+        val dbIds = validHashes ?: mediaDao.getAllSync().map { it.id }.toSet()
         for (file in cacheFiles) {
             val hash = file.nameWithoutExtension
-            if (hash !in dbIds) {
+            if (hash !in dbIds && file.name != ".nomedia") {
                 file.delete()
             }
         }

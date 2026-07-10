@@ -4,7 +4,10 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "media_archive")
+@Entity(
+    tableName = "media_archive",
+    indices = [androidx.room.Index(value = ["archiveUuid"])]
+)
 data class MediaEntity(
     @PrimaryKey
     val id: String,                          // SHA-256 hash of the file
