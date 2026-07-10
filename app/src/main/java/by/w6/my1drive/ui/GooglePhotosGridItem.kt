@@ -23,12 +23,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
@@ -71,6 +68,7 @@ fun GooglePhotosGridItem(
     isOtgConnected: Boolean = true,
     isArchiving: Boolean = false,
     isCopied: Boolean = false,
+    archiveStripeOverrideColor: androidx.compose.ui.graphics.Color? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onLongClick: () -> Unit
@@ -217,28 +215,7 @@ fun GooglePhotosGridItem(
                     )
                 }
             }
-            // Cloud status indicator with Glassmorphism and white/black border
-            if (item.status == MediaStatus.ARCHIVED_OTG) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(6.dp)
-                        .size(24.dp)
-                        .background(
-                            color = Color.Black.copy(alpha = 0.5f),
-                            shape = CircleShape
-                        )
-                        .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isOtgConnected) Icons.Default.CloudDone else Icons.Default.CloudOff,
-                        contentDescription = if (isOtgConnected) "On OTG (Connected)" else "On OTG (Disconnected)",
-                        tint = if (isOtgConnected) Color(0xFF4CAF50) else Color(0xFFB0BEC5),
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
+
             // Video play badge
             if (item.isVideo && !(isArchivedOffline && !hasCachedPreview)) {
                 Box(
@@ -312,6 +289,19 @@ fun GooglePhotosGridItem(
                     )
                 }
             }
+
+            // Archive stripe — цветная полоска снизу (не null = мульти-архив включён)
+            if (archiveStripeOverrideColor != null && item.status == MediaStatus.ARCHIVED_OTG) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(archiveStripeOverrideColor)
+                )
+            }
         }
     }
 }
+
+

@@ -75,6 +75,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val metadataStore = ArchiveMetadataStore(application)
     val vpsManager = by.w6.my1drive.utils.VpsConnectionManager(application)
 
+    /** Список всех известных архивов (носителей) из БД — для легенды цветов в настройках */
+    val knownArchives = db.archiveDao().getAllFlow()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val _showFirstLaunchDialog = MutableStateFlow(false)
     val showFirstLaunchDialog = _showFirstLaunchDialog.asStateFlow()
 
@@ -304,6 +308,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val showLimitReachedDialog = _showLimitReachedDialog.asStateFlow()
 
     val showEjectSuccessDialog: StateFlow<Boolean> = otgManager.showEjectSuccessDialog
+    val isEjecting: StateFlow<Boolean> = otgManager.isEjecting
 
     val isLimitActive = IS_LIMIT_ACTIVE
 

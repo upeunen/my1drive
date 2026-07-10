@@ -145,8 +145,7 @@ class ArchiveSyncHelper(
     fun cancelOperations() {
         activeSyncJob?.cancel()
         activeSyncJob = null
-        backgroundPreviewJob?.cancel()
-        backgroundPreviewJob = null
+
         isSilentSyncing = false
         _syncProgressState.value = SyncProgressState(isSyncing = false)
         isCancellationRequested = true
@@ -264,6 +263,8 @@ class ArchiveSyncHelper(
                             (it.name.lowercase() to it.length) to it.uri.toString() 
                         }
 
+                        val batchToInsert = mutableListOf<MediaEntity>()
+
                         for (entry in validJsonEntries) {
                             if (isCancellationRequested || !isActive) {
                                 DebugLogBuffer.log(logTag, "Silent sync cancelled during Room update")
@@ -274,7 +275,7 @@ class ArchiveSyncHelper(
                                 val key = (entry.displayName.lowercase()) to entry.size
                                 val otgFileUri = physicalUrisMap[key] ?: ""
 
-                                db.mediaDao().insert(MediaEntity(
+                                batchToInsert.add(MediaEntity(
                                     id = entry.hash,
                                     displayName = entry.displayName,
                                     mimeType = entry.mimeType,
@@ -299,7 +300,7 @@ class ArchiveSyncHelper(
                                     existing.otgUri != resolvedUri ||
                                     existing.archiveUuid != activeUuid
                                 ) {
-                                    db.mediaDao().insert(existing.copy(
+                                    batchToInsert.add(existing.copy(
                                         displayName = entry.displayName,
                                         mimeType = entry.mimeType,
                                         size = entry.size,
@@ -313,6 +314,15 @@ class ArchiveSyncHelper(
                                     roomModified = true
                                 }
                             }
+                            
+                            if (batchToInsert.size >= 500) {
+                                db.mediaDao().insertAll(batchToInsert)
+                                batchToInsert.clear()
+                            }
+                        }
+                        
+                        if (batchToInsert.isNotEmpty()) {
+                            db.mediaDao().insertAll(batchToInsert)
                         }
                         if (insertedToRoom > 0) {
                             DebugLogBuffer.log(logTag, "Added $insertedToRoom missing entries from JSON to Room")
@@ -344,8 +354,6 @@ class ArchiveSyncHelper(
                         // Очищаем осиротевшие превью из кэша (для файлов, которых больше нет на флешке)
                         previewCache.cleanupOrphanedPreviews(finalHashes)
 
-                        // Запускаем фоновую генерацию превью после синхронизации
-                        startBackgroundPreviews(activeUuid)
                     } catch (e: Exception) {
                         DebugLogBuffer.log(logTag, "Error in silentSyncArchive: ${e.localizedMessage}")
                         val sw = java.io.StringWriter()
@@ -371,81 +379,6 @@ class ArchiveSyncHelper(
         _missingFilesNotification.value = null
     }
 
-
-    /**
-     * Background thumbnail generation: after sync, generate previews for the
-     * first [limit] archived items that don't have a cached thumbnail yet.
-     * Runs on IO dispatcher and does NOT block the main thread or the UI.
-     */
-    private var backgroundPreviewJob: kotlinx.coroutines.Job? = null
-
-    private fun startBackgroundPreviews(activeUuid: String, limit: Int = 10000) {
-        backgroundPreviewJob?.cancel()
-        backgroundPreviewJob = scope.launch(Dispatchers.IO) {
-            delay(500) // wait briefly after sync finishes
-            val items = db.mediaDao().getWithoutPreview(activeUuid, limit)
-            if (items.isEmpty()) return@launch
-            DebugLogBuffer.log("BgPreview", "Starting background preview generation for ${items.size} items on drive $activeUuid")
-            val dir = previewCache.previewDir
-            for (entity in items) {
-                if (!isActive) break
-                if (entity.otgUri.isNullOrEmpty()) continue
-                val cacheFile = previewCache.cacheFileFor(entity.id)
-                if (cacheFile.exists() && cacheFile.length() > 0) {
-                    // already cached, update DB if path is stale
-                    if (entity.thumbnailPath != cacheFile.absolutePath) {
-                        db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
-                        onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
-                    }
-                    continue
-                }
-                try {
-                    val uri = android.net.Uri.parse(entity.otgUri)
-                    val bitmap: android.graphics.Bitmap? = if (entity.mimeType.startsWith("video")) {
-                        val retriever = android.media.MediaMetadataRetriever()
-                        try {
-                            retriever.setDataSource(application, uri)
-                            retriever.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                        } finally { retriever.release() }
-                    } else {
-                        val boundsOpts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        application.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, boundsOpts) }
-                        var size = 1
-                        val target = 256
-                        if (boundsOpts.outWidth > target || boundsOpts.outHeight > target) {
-                            val halfW = boundsOpts.outWidth / 2; val halfH = boundsOpts.outHeight / 2
-                            while (halfW / size >= target && halfH / size >= target) size *= 2
-                        }
-                        val decodeOpts = android.graphics.BitmapFactory.Options().apply { inSampleSize = size }
-                        application.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, decodeOpts) }
-                    }
-                    if (bitmap == null) continue
-                    dir.mkdirs()
-                    try {
-                        cacheFile.outputStream().buffered().use { out ->
-                            val w = bitmap.width; val h = bitmap.height
-                            val scale = if (w > 256 || h > 256) 256f / maxOf(w, h) else 1f
-                            val scaled = if (scale < 1f) android.graphics.Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true) else bitmap
-                            scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
-                            if (scaled !== bitmap) scaled.recycle()
-                        }
-                        bitmap.recycle()
-                        if (cacheFile.exists() && cacheFile.length() > 0) {
-                            db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
-                            onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
-                            DebugLogBuffer.log("BgPreview", "Cached preview for ${entity.displayName}")
-                        }
-                    } catch (e: Exception) {
-                        cacheFile.delete()
-                        bitmap.recycle()
-                    }
-                } catch (e: Exception) {
-                    DebugLogBuffer.log("BgPreview", "Failed for ${entity.displayName}: ${e.localizedMessage}")
-                }
-            }
-            DebugLogBuffer.log("BgPreview", "Background preview generation finished")
-        }
-    }
 
     fun dismissAutoSyncAddedCount() { _autoSyncAddedCount.value = 0 }
 
@@ -607,13 +540,14 @@ class ArchiveSyncHelper(
                     // Синхронизируем Room для новых и удаленных файлов
                     val finalHashes = validJsonEntries.map { it.hash }.toSet()
                     withContext(Dispatchers.IO) {
+                        val batchToInsert = mutableListOf<MediaEntity>()
                         // 1. Добавляем в Room новые
                         for (entry in newEntries) {
                             val physicalFile = physicalFilesMap[(entry.displayName.lowercase()) to entry.size]
                             val otgFileUri = physicalFile?.uri?.toString() ?: ""
                             val existing = db.mediaDao().getById(entry.hash)
                             if (existing == null) {
-                                db.mediaDao().insert(MediaEntity(
+                                batchToInsert.add(MediaEntity(
                                     id = entry.hash,
                                     displayName = entry.displayName,
                                     mimeType = entry.mimeType,
@@ -627,11 +561,18 @@ class ArchiveSyncHelper(
                                 ))
                             } else if ((existing.otgUri != otgFileUri && otgFileUri.isNotEmpty()) || existing.archiveUuid != activeUuid) {
                                 // Обновляем старый URI в локальной базе
-                                db.mediaDao().insert(existing.copy(
+                                batchToInsert.add(existing.copy(
                                     otgUri = otgFileUri,
                                     archiveUuid = activeUuid
                                 ))
                             }
+                            if (batchToInsert.size >= 500) {
+                                db.mediaDao().insertAll(batchToInsert)
+                                batchToInsert.clear()
+                            }
+                        }
+                        if (batchToInsert.isNotEmpty()) {
+                            db.mediaDao().insertAll(batchToInsert)
                         }
                         
                         // 2. Удаляем из Room пропавшие
@@ -651,8 +592,6 @@ class ArchiveSyncHelper(
 
                     _syncState.value = "Синхронизация завершена.\n\nИмпортировано новых файлов: $synced\nПропущено/проверено: ${files.size - synced}"
                     DebugLogBuffer.log("ManualSync", "Sync complete: imported $synced, total ${files.size}")
-                    
-                    startBackgroundPreviews(activeUuid)
                 } catch (e: Exception) {
                     val errorMsg = "Ошибка синхронизации: ${e.localizedMessage}"
                     _syncState.value = errorMsg

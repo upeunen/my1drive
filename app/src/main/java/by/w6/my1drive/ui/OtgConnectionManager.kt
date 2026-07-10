@@ -74,6 +74,10 @@ class OtgConnectionManager(
     private val _showEjectSuccessDialog = MutableStateFlow(false)
     val showEjectSuccessDialog: StateFlow<Boolean> = _showEjectSuccessDialog.asStateFlow()
 
+    /** true — идёт процесс безопасного извлечения (fsync, flush). UI показывает спиннер. */
+    private val _isEjecting = MutableStateFlow(false)
+    val isEjecting: StateFlow<Boolean> = _isEjecting.asStateFlow()
+
 
     private val _activeArchiveUuid = MutableStateFlow<String?>(null)
     val activeArchiveUuid: StateFlow<String?> = _activeArchiveUuid.asStateFlow()
@@ -336,18 +340,51 @@ class OtgConnectionManager(
 
     /** Called when user explicitly ejects / removes the drive reference. */
     fun onEject() {
-        // Do NOT release permissions or clear URIs! We want to remember the drive.
-        // We just mark it as logically disconnected until physical replug.
-        isEjectedButStillPluggedIn = true
-        _showEjectSuccessDialog.value = true
+        if (_isEjecting.value) return // защита от двойного нажатия
+        _isEjecting.value = true
 
-        
-        syncHelper.cancelOperations()
-
-        // Update the status so the UI thinks it's disconnected immediately
         scope.launch {
+            // Шаг 1: отменяем все активные операции (синхронизация, архивирование)
+            syncHelper.cancelOperations()
+
+            // Шаг 2: даём время на завершение активных write-буферов в ФС (500 мс достаточно для flush)
+            delay(500)
+
+            // Шаг 3: fsync через ContentResolver — принудительно сбрасываем кеш ФС на диск
+            val otgUri = _otgDirectoryUri.value
+            if (otgUri != null) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        application.contentResolver.openFileDescriptor(otgUri, "r")?.use { pfd ->
+                            pfd.fileDescriptor.sync()
+                            by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "fsync completed on OTG root")
+                        }
+                    } catch (e: Exception) {
+                        // Не критично — readonly директория может не поддерживать sync
+                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "fsync skipped: ${e.localizedMessage}")
+                    }
+
+                    // Шаг 4: снимаем persistable permission — сигнализируем ОС что работа с томом завершена
+                    // (не удаляем saved URI — он нужен при повторном подключении)
+                    try {
+                        application.contentResolver.releasePersistableUriPermission(
+                            otgUri,
+                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        )
+                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "releasePersistableUriPermission done")
+                    } catch (e: Exception) {
+                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "release permission skipped: ${e.localizedMessage}")
+                    }
+                }
+            }
+
+            // Шаг 5: обновляем UI-состояние
+            isEjectedButStillPluggedIn = true
             _status.value = DriveStatus.KNOWN_DRIVE_DISCONNECTED
             _archiveSize.value = 0L
+            _isEjecting.value = false
+            _showEjectSuccessDialog.value = true
         }
     }
 

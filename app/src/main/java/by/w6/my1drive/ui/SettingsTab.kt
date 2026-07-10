@@ -74,7 +74,8 @@ fun SettingsTab(
     vpsManager: by.w6.my1drive.utils.VpsConnectionManager? = null,
     onShowDebugLogs: () -> Unit = {},
     onSyncArchive: () -> Unit = {},
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    knownArchives: List<by.w6.my1drive.data.local.ArchiveEntity> = emptyList()
 ) {
     val context = LocalContext.current
 
@@ -223,6 +224,39 @@ fun SettingsTab(
                             onRefresh()
                         }
                     )
+                }
+
+                // Легенда архивов — только при включённой мульти-архивности
+                if (knownArchives.isNotEmpty() && showOffline) {
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "Цвета носителей",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    knownArchives.forEachIndexed { idx, archive ->
+                        val stripe = ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 3.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 28.dp, height = 4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(stripe)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = archive.name.ifBlank { archive.folderName.ifBlank { archive.uuid.take(8) } },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
             }
         }

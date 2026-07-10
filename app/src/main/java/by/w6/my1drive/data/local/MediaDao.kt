@@ -18,6 +18,9 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(entity: MediaEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertAll(entities: List<MediaEntity>)
+
     @Delete
     fun delete(entity: MediaEntity)
 

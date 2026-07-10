@@ -263,6 +263,12 @@ fun ArchiveRoute(
     val restoreState by viewModel.restoreState.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
     val syncProgressState by viewModel.syncProgressState.collectAsState()
+    val knownArchives by viewModel.knownArchives.collectAsState()
+    val context = LocalContext.current
+    val showOffline = remember {
+        context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
+            .getBoolean("show_offline_archives", false)
+    }
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -277,9 +283,20 @@ fun ArchiveRoute(
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
 
-    // 1. Извлекаем плоский список архивных медиафайлов
-    val archivedItems = remember(archivedGroupedItems) {
+    // Фильтр по носителям: null = все, иначе uuid выбранной флешки
+    var filterUuid by remember { mutableStateOf<String?>(null) }
+
+    // Карта uuid → Color по позиции в списке (флешка 1 = цвет[0], флешка 2 = цвет[1]...)
+    val archiveColorMap = remember(knownArchives) {
+        knownArchives.mapIndexed { idx, archive ->
+            archive.uuid to ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
+        }.toMap()
+    }
+
+    // 1. Извлекаем плоский список архивных медиафайлов (с учётом фильтра)
+    val archivedItems = remember(archivedGroupedItems, filterUuid) {
         archivedGroupedItems.filterIsInstance<GalleryItem.Media>().map { it.item }
+            .let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
     }
 
     // 2. Группируем архивные медиафайлы по Годам и Месяцам
@@ -346,6 +363,62 @@ fun ArchiveRoute(
     Column(modifier = Modifier.fillMaxSize()) {
         val isManualSyncing = syncProgressState.isSyncing
         val isOperationRunning = isSilentSyncing || archiveState.isArchiving || restoreState.isRestoring || isManualSyncing
+
+        // Строка фильтра по флешкам (только при включённой мульти-архивности и >1 носителя)
+        if (showOffline && knownArchives.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // «Все» чип
+                val allActive = filterUuid == null
+                Box(
+                    modifier = Modifier
+                        .height(22.dp)
+                        .background(
+                            color = if (allActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(11.dp)
+                        )
+                        .combinedClickable(onClick = { filterUuid = null }, onLongClick = { filterUuid = null })
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Все",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (allActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Чипы для каждой флешки
+                knownArchives.forEach { archive ->
+                    val color = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
+                    val isActive = filterUuid == archive.uuid
+                    Box(
+                        modifier = Modifier
+                            .height(22.dp)
+                            .background(
+                                color = if (isActive) color else color.copy(alpha = 0.25f),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(11.dp)
+                            )
+                            .combinedClickable(
+                                onClick = { filterUuid = if (isActive) null else archive.uuid },
+                                onLongClick = { filterUuid = archive.uuid }
+                            )
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = archive.name.ifBlank { archive.folderName.take(10).ifBlank { archive.uuid.take(6) } },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isActive) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
 
         Row(
             modifier = Modifier
@@ -564,6 +637,7 @@ fun ArchiveRoute(
                                                         isCopied = isCopied,
                                                         imageLoader = imageLoader,
                                                         isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
+                                                        archiveStripeOverrideColor = if (showOffline && knownArchives.size > 1) archiveColorMap[mediaItem.archiveUuid] else null,
                                                         modifier = Modifier.onGloballyPositioned { itemCoordinates = it },
                                                         onClick = {
                                                             onItemClick(mediaItem)
@@ -1065,9 +1139,10 @@ fun GalleryScreenContent(
                                     Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
                                 }
                             })
-                        "settings" -> {
+                        \"settings\" -> {
                             val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
                             val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
+                            val knownArchives by viewModel.knownArchives.collectAsState()
                             SettingsTab(
                                 onSelectOtgDirectory = { showChangeFolderConfirmDialog = true },
                                 onClearCache = { viewModel.clearPreviewCache() },
@@ -1081,7 +1156,8 @@ fun GalleryScreenContent(
                                 vpsManager = viewModel.vpsManager,
                                 onShowDebugLogs = { showDebugLogsDialog = true },
                                 onSyncArchive = onSyncArchive,
-                                onRefresh = { viewModel.refresh() }
+                                onRefresh = { viewModel.refresh() },
+                                knownArchives = knownArchives
                             )
                         }
                     }
@@ -1164,6 +1240,14 @@ fun GalleryScreenContent(
                             softWrap = false
                         )
                     }
+                },
+                dismissButton = {
+                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                    androidx.compose.material3.TextButton(onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(err))
+                    }) {
+                        Text("Скопировать лог")
+                    }
                 }
             )
         }
@@ -1208,6 +1292,16 @@ fun GalleryScreenContent(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
                         )
+                    }
+                },
+                dismissButton = {
+                    if (stateMessage.contains("Ошибка", ignoreCase = true)) {
+                        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                        androidx.compose.material3.TextButton(onClick = {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(stateMessage))
+                        }) {
+                            Text("Скопировать лог")
+                        }
                     }
                 }
             )
@@ -1298,6 +1392,25 @@ fun GalleryScreenContent(
                         )
                     }
                 }
+            )
+        }
+
+        val isEjecting by viewModel.isEjecting.collectAsState()
+        if (isEjecting) {
+            AlertDialog(
+                onDismissRequest = {},
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text("Подготовка к извлечению", fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = { Text("Завершаем запись данных и сбрасываем кеш на диск. Не извлекайте диск до появления подтверждения…") },
+                confirmButton = {}
             )
         }
 

@@ -299,7 +299,9 @@ class OtgArchiveUtil(private val context: Context) {
                 throw Exception("restore_empty_file: archived file has zero bytes")
             }
 
-            val digest = MessageDigest.getInstance("SHA-256")
+            val fullDigest = MessageDigest.getInstance("SHA-256")
+            val oneMbDigest = MessageDigest.getInstance("SHA-256")
+            var totalReadForOneMb = 0L
 
             // Write bytes to destination using stream with fsync
             DebugLogBuffer.log(logTag, "Opening streams for restore...")
@@ -312,7 +314,11 @@ class OtgArchiveUtil(private val context: Context) {
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {
                             output.write(buffer, 0, bytesRead)
-                            digest.update(buffer, 0, bytesRead)
+                            fullDigest.update(buffer, 0, bytesRead)
+                            if (totalReadForOneMb < 1048576L) {
+                                oneMbDigest.update(buffer, 0, bytesRead)
+                                totalReadForOneMb += bytesRead
+                            }
                             totalBytesCopied += bytesRead
                             if (effectiveSize > 0) {
                                 val progress = 0.4f + (totalBytesCopied.toFloat() / effectiveSize) * 0.4f
@@ -362,12 +368,13 @@ class OtgArchiveUtil(private val context: Context) {
             // Verify hash
             if (item.hash != null) {
                 val expectedHashPart = item.hash.substringBefore("_")
-                val destHash = digest.digest().joinToString("") { "%02x".format(it) }
-                DebugLogBuffer.log(logTag, "Verifying restored hash. Expected: ${item.hash}, Restored: $destHash")
+                val destHash = fullDigest.digest().joinToString("") { "%02x".format(it) }
+                val destHash1Mb = oneMbDigest.digest().joinToString("") { "%02x".format(it) }
+                DebugLogBuffer.log(logTag, "Verifying restored hash. Expected: ${item.hash}, Restored: $destHash, Restored1MB: $destHash1Mb")
                 
                 if (expectedHashPart.length == 64 && expectedHashPart.matches(Regex("^[a-fA-F0-9]+\$"))) {
-                    if (destHash != expectedHashPart) {
-                        throw Exception("restore_verification_failed: hash mismatch (expected ${item.hash}, got $destHash)")
+                    if (destHash != expectedHashPart && destHash1Mb != expectedHashPart) {
+                        throw Exception("restore_verification_failed: hash mismatch (expected ${item.hash}, got $destHash or $destHash1Mb)")
                     }
                 } else {
                     DebugLogBuffer.log(logTag, "Skipping hash verification because expected hash does not look like SHA-256: ${item.hash}")

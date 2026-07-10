@@ -99,31 +99,54 @@ class ArchiveMetadataStore(private val context: Context) {
             val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: return@withContext emptyList()
 
             val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext emptyList()
-            val jsonString = inputStream.bufferedReader().use { it.readText() }
-
-            if (jsonString.trim().isEmpty()) {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Metadata file is empty, returning empty entries list.")
-                return@withContext emptyList()
-            }
-
-            val root = try {
-                JSONObject(jsonString)
-            } catch (e: Exception) {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Invalid JSON content: ${e.localizedMessage}. Returning empty entries list to self-heal.")
-                return@withContext emptyList()
-            }
-
-            val version = root.optInt("version", 0)
-            if (version != 1 && version != 2) {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Unsupported version $version, returning empty entries list.")
-                return@withContext emptyList()
-            }
-
-            val filesArray = root.optJSONArray("files") ?: return@withContext emptyList()
             val entries = mutableListOf<JsonEntry>()
-            for (i in 0 until filesArray.length()) {
-                val entry = JsonEntry.fromJson(filesArray.getJSONObject(i))
-                if (entry != null) entries.add(entry)
+            try {
+                android.util.JsonReader(inputStream.bufferedReader()).use { reader ->
+                    reader.beginObject()
+                    while (reader.hasNext()) {
+                        when (reader.nextName()) {
+                            "files" -> {
+                                reader.beginArray()
+                                while (reader.hasNext()) {
+                                    reader.beginObject()
+                                    var hash = ""
+                                    var displayName = ""
+                                    var mimeType = ""
+                                    var size = 0L
+                                    var dateModified = 0L
+                                    var originalRelativePath: String? = null
+                                    var duration: Long? = null
+                                    var dateArchived = 0L
+
+                                    while (reader.hasNext()) {
+                                        when (reader.nextName()) {
+                                            "hash" -> hash = reader.nextString()
+                                            "displayName" -> displayName = reader.nextString()
+                                            "mimeType" -> mimeType = reader.nextString()
+                                            "size" -> size = reader.nextLong()
+                                            "dateModified" -> dateModified = reader.nextLong()
+                                            "originalRelativePath" -> if (reader.peek() == android.util.JsonToken.NULL) { reader.nextNull() } else { originalRelativePath = reader.nextString() }
+                                            "duration" -> if (reader.peek() == android.util.JsonToken.NULL) { reader.nextNull() } else { duration = reader.nextLong() }
+                                            "dateArchived" -> dateArchived = reader.nextLong()
+                                            else -> reader.skipValue()
+                                        }
+                                    }
+                                    reader.endObject()
+                                    
+                                    if (dateArchived == 0L) dateArchived = dateModified
+                                    if (hash.isNotEmpty() && displayName.isNotEmpty()) {
+                                        entries.add(JsonEntry(hash, displayName, mimeType, size, dateModified, originalRelativePath, duration, dateArchived))
+                                    }
+                                }
+                                reader.endArray()
+                            }
+                            else -> reader.skipValue()
+                        }
+                    }
+                    reader.endObject()
+                }
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "Invalid JSON content or read error: ${e.localizedMessage}. Returning read entries.")
             }
             entries
         } catch (e: Exception) {
@@ -141,27 +164,45 @@ class ArchiveMetadataStore(private val context: Context) {
 
             val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: dir.createFile("application/json", "my1drive_db.json") ?: return@withContext
 
-            val filesArray = JSONArray()
-            for (entry in entries) {
-                filesArray.put(entry.toJson())
-            }
-
             val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
             val db = by.w6.my1drive.data.local.AppDatabase.getDatabase(context)
             val archive = db.archiveDao().getById(uuid)
             val archiveName = archive?.name ?: "USB-накопитель"
 
-            val root = JSONObject().apply {
-                put("version", JSON_VERSION)
-                put("archiveUuid", uuid)
-                put("archiveName", archiveName)
-                put("files", filesArray)
-            }
-
             context.contentResolver.openOutputStream(file.uri, "w")?.use { output ->
-                output.write(root.toString(2).toByteArray(Charsets.UTF_8))
+                android.util.JsonWriter(output.bufferedWriter()).use { writer ->
+                    writer.setIndent("  ")
+                    writer.beginObject()
+                    writer.name("version").value(JSON_VERSION)
+                    writer.name("archiveUuid").value(uuid)
+                    writer.name("archiveName").value(archiveName)
+                    writer.name("files").beginArray()
+                    
+                    for (entry in entries) {
+                        writer.beginObject()
+                        writer.name("hash").value(entry.hash)
+                        writer.name("displayName").value(entry.displayName)
+                        writer.name("mimeType").value(entry.mimeType)
+                        writer.name("size").value(entry.size)
+                        writer.name("dateModified").value(entry.dateModified)
+                        
+                        writer.name("originalRelativePath")
+                        if (entry.originalRelativePath != null) writer.value(entry.originalRelativePath) else writer.nullValue()
+                        
+                        writer.name("duration")
+                        if (entry.duration != null) writer.value(entry.duration) else writer.nullValue()
+                        
+                        writer.name("dateArchived").value(entry.dateArchived)
+                        writer.endObject()
+                    }
+                    
+                    writer.endArray()
+                    writer.endObject()
+                }
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MetadataStore", "writeMetadata error: ${e.localizedMessage}")
+        }
     }
 
     /**

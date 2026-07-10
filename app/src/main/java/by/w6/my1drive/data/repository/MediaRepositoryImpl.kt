@@ -11,10 +11,12 @@ import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.repository.MediaRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -25,17 +27,28 @@ class MediaRepositoryImpl(
 
     private val refreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0L)
 
+    // Кешированный список локальных файлов. Обновляется только при явном вызове refresh(),
+    // а НЕ при каждом изменении Room. Это предотвращает повторный дорогой cursor-скан MediaStore
+    // при каждой вставке в архив.
+    private val _localItemsCache = kotlinx.coroutines.flow.MutableStateFlow<List<MediaItem>>(emptyList())
+
+    init {
+        // Первичная загрузка локальных файлов при создании репозитория
+        GlobalScope.launch(Dispatchers.IO) {
+            _localItemsCache.value = queryLocalMediaStore()
+        }
+    }
+
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
         val archivedFlow = mediaDao.getAllFlow()
         val archivesFlow = by.w6.my1drive.data.local.AppDatabase.getDatabase(context).archiveDao().getAllFlow()
 
-        return combine(refreshTrigger, archivedFlow, archivesFlow) { _, archivedEntities, archives ->
+        return combine(_localItemsCache, archivedFlow, archivesFlow) { localList, archivedEntities, archives ->
             val archiveNamesMap = archives.associate { it.uuid to it.name }
             val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
             val showOffline = prefs.getBoolean("show_offline_archives", false)
             val activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
 
-            val localList = queryLocalMediaStore()
             val filteredEntities = if (showOffline) {
                 archivedEntities
             } else {
@@ -74,7 +87,11 @@ class MediaRepositoryImpl(
     }
 
     override fun refresh() {
-        refreshTrigger.value = System.currentTimeMillis()
+        // Запускаем сканирование MediaStore в фоне, кешируем результат в _localItemsCache.
+        // combine() в getMediaItemsFlow() автоматически получит новый список.
+        GlobalScope.launch(Dispatchers.IO) {
+            _localItemsCache.value = queryLocalMediaStore()
+        }
     }
 
     override suspend fun insertArchivedItem(
