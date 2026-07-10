@@ -545,7 +545,8 @@ class ArchiveSyncHelper(
                             val entry = knownNamesAndSizesMap[key]
                             if (entry != null) {
                                 val otgFileUri = file.uri.toString()
-                                if (db.mediaDao().getById(entry.hash) == null) {
+                                val existing = db.mediaDao().getById(entry.hash)
+                                if (existing == null) {
                                     db.mediaDao().insert(MediaEntity(
                                         id = entry.hash,
                                         displayName = entry.displayName,
@@ -556,6 +557,12 @@ class ArchiveSyncHelper(
                                         thumbnailPath = null,
                                         duration = entry.duration,
                                         originalRelativePath = entry.originalRelativePath,
+                                        archiveUuid = activeUuid
+                                    ))
+                                } else if (existing.otgUri != otgFileUri || existing.archiveUuid != activeUuid) {
+                                    // Обновляем кэш, если флешку переподключили и URI изменился
+                                    db.mediaDao().insert(existing.copy(
+                                        otgUri = otgFileUri,
                                         archiveUuid = activeUuid
                                     ))
                                 }
@@ -604,7 +611,8 @@ class ArchiveSyncHelper(
                         for (entry in newEntries) {
                             val physicalFile = physicalFilesMap[(entry.displayName.lowercase()) to entry.size]
                             val otgFileUri = physicalFile?.uri?.toString() ?: ""
-                            if (db.mediaDao().getById(entry.hash) == null) {
+                            val existing = db.mediaDao().getById(entry.hash)
+                            if (existing == null) {
                                 db.mediaDao().insert(MediaEntity(
                                     id = entry.hash,
                                     displayName = entry.displayName,
@@ -615,6 +623,12 @@ class ArchiveSyncHelper(
                                     thumbnailPath = null,
                                     duration = entry.duration,
                                     originalRelativePath = entry.originalRelativePath,
+                                    archiveUuid = activeUuid
+                                ))
+                            } else if ((existing.otgUri != otgFileUri && otgFileUri.isNotEmpty()) || existing.archiveUuid != activeUuid) {
+                                // Обновляем старый URI в локальной базе
+                                db.mediaDao().insert(existing.copy(
+                                    otgUri = otgFileUri,
                                     archiveUuid = activeUuid
                                 ))
                             }
