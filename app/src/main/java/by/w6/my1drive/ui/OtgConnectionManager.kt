@@ -364,18 +364,10 @@ class OtgConnectionManager(
                         by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "fsync skipped: ${e.localizedMessage}")
                     }
 
-                    // Шаг 4: снимаем persistable permission — сигнализируем ОС что работа с томом завершена
                     // (не удаляем saved URI — он нужен при повторном подключении)
-                    try {
-                        application.contentResolver.releasePersistableUriPermission(
-                            otgUri,
-                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                            android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                        )
-                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "releasePersistableUriPermission done")
-                    } catch (e: Exception) {
-                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "release permission skipped: ${e.localizedMessage}")
-                    }
+                    // Убрано снятие разрешений (releasePersistableUriPermission),
+                    // так как Android требует их сохранять для автоматического
+                    // монтирования при повторном подключении флешки.
                 }
             }
 
@@ -610,8 +602,13 @@ class OtgConnectionManager(
                         val uuid = volume.uuid
                         if (!volume.isPrimary && volume.state == Environment.MEDIA_MOUNTED && uuid != null) {
                             if (db.archiveDao().getById(uuid) != null) {
-                                isActuallyKnownButNotReady = true
-                                break
+                                // Флешка есть в БД. А есть ли для неё разрешение?
+                                val persisted = application.contentResolver.persistedUriPermissions
+                                val hasPermission = persisted.any { it.uri.toString().contains(uuid) }
+                                if (hasPermission) {
+                                    isActuallyKnownButNotReady = true
+                                    break
+                                }
                             }
                         }
                     }

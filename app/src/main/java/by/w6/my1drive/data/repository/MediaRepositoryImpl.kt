@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlinx.coroutines.channels.awaitClose
 
 class MediaRepositoryImpl(
     private val context: Context,
@@ -60,7 +61,7 @@ class MediaRepositoryImpl(
                 prefs.getString("active_archive_uuid", "") ?: ""
             )
         )
-        kotlinx.coroutines.channels.awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
