@@ -707,7 +707,7 @@ private fun ImagePage(
         label = "selectionScale"
     )
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
-        if (isOtgConnected && item.otgUri != null && item.archiveUuid == activeArchiveUuid) {
+        if (isOtgConnected && item.otgUri != null) {
             Uri.parse(item.otgUri)
         } else if (item.thumbnailPath != null) {
             Uri.fromFile(File(item.thumbnailPath))
