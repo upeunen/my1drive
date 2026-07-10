@@ -1169,6 +1169,7 @@ fun GalleryScreenContent(
         }
 
         restoreState.error?.let { err ->
+            val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { viewModel.dismissRestoreError() },
                 title = { Text("Ошибка восстановления") },
@@ -1181,6 +1182,13 @@ fun GalleryScreenContent(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
                         )
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(err))
+                    }) {
+                        Text("Скопировать лог")
                     }
                 }
             )
