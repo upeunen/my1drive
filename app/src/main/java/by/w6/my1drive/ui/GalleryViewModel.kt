@@ -75,7 +75,25 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val metadataStore = ArchiveMetadataStore(application)
     val vpsManager = by.w6.my1drive.utils.VpsConnectionManager(application)
 
-            val otgManager: OtgConnectionManager by lazy {
+    private val _showFirstLaunchDialog = MutableStateFlow(false)
+    val showFirstLaunchDialog = _showFirstLaunchDialog.asStateFlow()
+
+    private val _showUnknownDriveDialog = MutableStateFlow(false)
+    val showUnknownDriveDialog = _showUnknownDriveDialog.asStateFlow()
+
+    private val _showUnreadableOtgDialog = MutableStateFlow(false)
+    val showUnreadableOtgDialog = _showUnreadableOtgDialog.asStateFlow()
+
+    private val _showWriteProtectedRootDialog = MutableStateFlow(false)
+    val showWriteProtectedRootDialog = _showWriteProtectedRootDialog.asStateFlow()
+
+    private val _showLocalFolderDialog = MutableStateFlow(false)
+    val showLocalFolderDialog = _showLocalFolderDialog.asStateFlow()
+
+    private val _showNamingDialog = MutableStateFlow<Uri?>(null)
+    val showNamingDialog = _showNamingDialog.asStateFlow()
+
+    val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
             application = application,
             prefs = prefs,
@@ -85,9 +103,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             refreshCacheStats = { refreshCacheStats() },
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
-            }
+            },
+            onShowFirstLaunchDialog = { _showFirstLaunchDialog.value = it },
+            onShowUnknownDriveDialog = { _showUnknownDriveDialog.value = it },
+            onShowUnreadableOtgDialog = { _showUnreadableOtgDialog.value = it },
+            onShowWriteProtectedRootDialog = { _showWriteProtectedRootDialog.value = it },
+            onShowLocalFolderDialog = { _showLocalFolderDialog.value = it },
+            onShowNamingDialog = { _showNamingDialog.value = it }
         )
     }
+
+    fun dismissFirstLaunchDialog() { _showFirstLaunchDialog.value = false }
+    fun dismissUnknownDriveDialog() { _showUnknownDriveDialog.value = false }
+    fun dismissUnreadableOtgDialog() { _showUnreadableOtgDialog.value = false }
+    fun dismissWriteProtectedRootDialog() { _showWriteProtectedRootDialog.value = false }
+    fun dismissLocalFolderDialog() { _showLocalFolderDialog.value = false }
+    fun dismissNamingDialog() { _showNamingDialog.value = null }
+    fun triggerWriteProtectedRootDialog() { _showWriteProtectedRootDialog.value = true }
 
     private val syncHelper: ArchiveSyncHelper by lazy {
         ArchiveSyncHelper(
@@ -112,6 +144,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 onPreviewCached(hash, path)
             }
         )
+    }
+
+    fun onPause() {
+        otgManager.pausePolling()
+    }
+
+    fun onResume() {
+        otgManager.resumePolling()
     }
 
     // ─── Flows ───
@@ -519,18 +559,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         otgManager.onPhysicalConnectionChanged(isStartup)
     }
 
-    fun dismissFirstLaunchDialog() {
-        otgManager.dismissFirstLaunchDialog()
-    }
 
     fun setDeviceDirectory(uri: Uri) {
         otgManager.onDeviceUriSelected(uri)
         onFolderPermissionGranted(uri)
     }
 
-    fun dismissUnknownDriveDialog() {
-        otgManager.dismissUnknownDriveDialog()
-    }
 
     fun createNewArchive() {
         otgManager.createNewArchive()
@@ -554,8 +588,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
         // ─── OTG folder ───
 
-    fun showWriteProtectedRootDialog() { otgManager.showWriteProtectedRootDialog() }
-    fun dismissWriteProtectedRootDialog() { otgManager.dismissWriteProtectedRootDialog() }
 
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)

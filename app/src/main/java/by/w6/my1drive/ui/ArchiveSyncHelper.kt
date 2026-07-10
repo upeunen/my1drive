@@ -478,7 +478,6 @@ class ArchiveSyncHelper(
 
                     val files = fastListFiles(application, dir.uri) { isCancellationRequested }
                     if (files.isEmpty()) {
-                        _syncProgressState.value = SyncProgressState(isSyncing = false)
                         _syncState.value = "Синхронизация завершена: файлов нет."
                         return@withLock
                     }
@@ -633,13 +632,11 @@ class ArchiveSyncHelper(
 
                     repository.refresh()
 
-                    _syncProgressState.value = SyncProgressState(isSyncing = false)
                     _syncState.value = "Синхронизация завершена.\n\nИмпортировано новых файлов: $synced\nПропущено/проверено: ${files.size - synced}"
                     DebugLogBuffer.log("ManualSync", "Sync complete: imported $synced, total ${files.size}")
                     
                     startBackgroundPreviews(activeUuid)
                 } catch (e: Exception) {
-                    _syncProgressState.value = SyncProgressState(isSyncing = false)
                     val errorMsg = "Ошибка синхронизации: ${e.localizedMessage}"
                     _syncState.value = errorMsg
                     DebugLogBuffer.log("ManualSync", "Exception in manual sync: ${e.localizedMessage}")
@@ -647,6 +644,7 @@ class ArchiveSyncHelper(
                     e.printStackTrace(java.io.PrintWriter(sw))
                     DebugLogBuffer.log("ManualSync", "Stacktrace: $sw")
                 } finally {
+                    _syncProgressState.value = SyncProgressState(isSyncing = false)
                     onOperationComplete()
                 }
             }

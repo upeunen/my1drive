@@ -36,7 +36,13 @@ class OtgConnectionManager(
     private val syncHelper: ArchiveSyncHelper,
     private val scope: CoroutineScope,
     private val refreshCacheStats: () -> Unit = {},
-    private val isBusy: () -> Boolean = { false }
+    private val isBusy: () -> Boolean = { false },
+    private val onShowFirstLaunchDialog: (Boolean) -> Unit = {},
+    private val onShowUnknownDriveDialog: (Boolean) -> Unit = {},
+    private val onShowUnreadableOtgDialog: (Boolean) -> Unit = {},
+    private val onShowWriteProtectedRootDialog: (Boolean) -> Unit = {},
+    private val onShowLocalFolderDialog: (Boolean) -> Unit = {},
+    private val onShowNamingDialog: (Uri?) -> Unit = {}
 ) {
     companion object {
         private const val PREF_OTG_URI = "otg_directory_uri"
@@ -52,17 +58,6 @@ class OtgConnectionManager(
     private val _physicalConnected = MutableStateFlow(false)
     val physicalConnected: StateFlow<Boolean> = _physicalConnected.asStateFlow()
 
-    private val _showFirstLaunchDialog = MutableStateFlow(false)
-    val showFirstLaunchDialog: StateFlow<Boolean> = _showFirstLaunchDialog.asStateFlow()
-
-    private val _showUnknownDriveDialog = MutableStateFlow(false)
-    val showUnknownDriveDialog: StateFlow<Boolean> = _showUnknownDriveDialog.asStateFlow()
-
-    private val _showUnreadableOtgDialog = MutableStateFlow(false)
-    val showUnreadableOtgDialog: StateFlow<Boolean> = _showUnreadableOtgDialog.asStateFlow()
-
-    private val _showWriteProtectedRootDialog = MutableStateFlow(false)
-    val showWriteProtectedRootDialog: StateFlow<Boolean> = _showWriteProtectedRootDialog.asStateFlow()
 
     private val _archiveSize = MutableStateFlow(0L)
     val archiveSize: StateFlow<Long> = _archiveSize.asStateFlow()
@@ -73,16 +68,12 @@ class OtgConnectionManager(
     private val _deviceDirectoryUri = MutableStateFlow<Uri?>(null)
     val deviceDirectoryUri: StateFlow<Uri?> = _deviceDirectoryUri.asStateFlow()
 
-    private val _showLocalFolderDialog = MutableStateFlow(false)
-    val showLocalFolderDialog: StateFlow<Boolean> = _showLocalFolderDialog.asStateFlow()
 
     private val _isCheckingConnection = MutableStateFlow(false)
     val isCheckingConnection: StateFlow<Boolean> = _isCheckingConnection.asStateFlow()
     private val _showEjectSuccessDialog = MutableStateFlow(false)
     val showEjectSuccessDialog: StateFlow<Boolean> = _showEjectSuccessDialog.asStateFlow()
 
-    private val _showNamingDialog = MutableStateFlow<Uri?>(null)
-    val showNamingDialog: StateFlow<Uri?> = _showNamingDialog.asStateFlow()
 
     private val _activeArchiveUuid = MutableStateFlow<String?>(null)
     val activeArchiveUuid: StateFlow<String?> = _activeArchiveUuid.asStateFlow()
@@ -99,7 +90,15 @@ class OtgConnectionManager(
     private var isEjectedButStillPluggedIn = false
     private var isVerifying = false
 
-    // ─── Public API ───
+    private var isPollingPaused = false
+
+    fun pausePolling() {
+        isPollingPaused = true
+    }
+
+    fun resumePolling() {
+        isPollingPaused = false
+    }
 
     /**
      * Start polling loop. Should be called once from init scope.
@@ -114,6 +113,11 @@ class OtgConnectionManager(
             var previousStatus: DriveStatus? = null
             var firstCheck = true
             while (true) {
+                if (isPollingPaused) {
+                    delay(POLL_INTERVAL_MS)
+                    continue
+                }
+
                 val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
                 val otgPluggedIn = usbPhysicallyConnected || withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
@@ -159,7 +163,7 @@ class OtgConnectionManager(
                 // (до dismiss или выбора папки).
                 // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
                 if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null && !isEjectedButStillPluggedIn) {
-                    _showFirstLaunchDialog.value = true
+                    onShowFirstLaunchDialog(true)
                     firstLaunchHandled = true
                 }
 
@@ -186,7 +190,7 @@ class OtgConnectionManager(
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")
-        _showFirstLaunchDialog.value = false  // закрываем диалог, если он ещё виден
+        onShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
 
         scope.launch {
             var uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
@@ -233,13 +237,13 @@ class OtgConnectionManager(
                     refreshCacheStats()
                 }
             } else {
-                _showNamingDialog.value = uri
+                onShowNamingDialog(uri)
             }
         }
     }
 
     fun saveOtgArchive(uri: Uri, name: String) {
-        _showNamingDialog.value = null
+        onShowNamingDialog(null)
         _isCheckingConnection.value = true
         scope.launch {
             val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
@@ -300,7 +304,7 @@ class OtgConnectionManager(
     }
 
     fun dismissNamingDialog() {
-        _showNamingDialog.value = null
+        onShowNamingDialog(null)
     }
 
     fun setCheckingConnection(value: Boolean) {
@@ -308,26 +312,26 @@ class OtgConnectionManager(
     }
 
     fun showLocalFolderPrompt() {
-        _showLocalFolderDialog.value = true
+        onShowLocalFolderDialog(true)
     }
 
     /** Called from ViewModel when user selects local device folder via SAF. */
     fun onDeviceUriSelected(uri: Uri) {
         _deviceDirectoryUri.value = uri
-        _showLocalFolderDialog.value = false
+        onShowLocalFolderDialog(false)
         prefs.edit().putString(PREF_DEVICE_URI, uri.toString()).apply()
     }
 
     fun dismissLocalFolderDialog() {
-        _showLocalFolderDialog.value = false
+        onShowLocalFolderDialog(false)
     }
 
     fun showWriteProtectedRootDialog() {
-        _showWriteProtectedRootDialog.value = true
+        onShowWriteProtectedRootDialog(true)
     }
 
     fun dismissWriteProtectedRootDialog() {
-        _showWriteProtectedRootDialog.value = false
+        onShowWriteProtectedRootDialog(false)
     }
 
     /** Called when user explicitly ejects / removes the drive reference. */
@@ -397,7 +401,7 @@ class OtgConnectionManager(
     }
 
     fun dismissFirstLaunchDialog() {
-        _showFirstLaunchDialog.value = false
+        onShowFirstLaunchDialog(false)
 
 
         // Не сбрасываем firstLaunchHandled — он сбрасывается в onPhysicalConnectionChanged
@@ -405,7 +409,7 @@ class OtgConnectionManager(
     }
 
     fun dismissUnknownDriveDialog() {
-        _showUnknownDriveDialog.value = false
+        onShowUnknownDriveDialog(false)
     }
 
     /**
@@ -427,7 +431,7 @@ class OtgConnectionManager(
         }
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
-        _showUnknownDriveDialog.value = false
+        onShowUnknownDriveDialog(false)
         // Сбросить флаги, чтобы при подключённой флешке снова показать приветствие
         wasPhysicalConnected = false
         firstLaunchHandled = true
@@ -440,7 +444,7 @@ class OtgConnectionManager(
         _isCheckingConnection.value = true
         try {
             val startTime = System.currentTimeMillis()
-            val timeoutMs = 8000L // 8 seconds timeout
+            val timeoutMs = 20000L // 20 seconds timeout for slow OS mounts (e.g. Android 12)
             var newStatus = DriveStatus.KNOWN_DRIVE_DISCONNECTED
             var usbPhysicallyConnected = false
             
@@ -537,7 +541,7 @@ class OtgConnectionManager(
             db.mediaDao().migrateLegacyArchiveUuid(connectedUuid)
 
             driveErrorCount = 0
-            _showUnknownDriveDialog.value = false
+            onShowUnknownDriveDialog(false)
             unknownDriveDialogHandled = false
             return DriveStatus.KNOWN_DRIVE_CONNECTED
         }
@@ -580,13 +584,13 @@ class OtgConnectionManager(
                         DriveStatus.KNOWN_DRIVE_DISCONNECTED
                     } else {
                         if (!unknownDriveDialogHandled) {
-                            _showUnknownDriveDialog.value = true
+                            onShowUnknownDriveDialog(true)
                             unknownDriveDialogHandled = true
                         }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
-                    _showUnknownDriveDialog.value = false
+                    onShowUnknownDriveDialog(false)
                     unknownDriveDialogHandled = false
                     DriveStatus.KNOWN_DRIVE_DISCONNECTED
                 }
@@ -628,29 +632,29 @@ class OtgConnectionManager(
                         db.mediaDao().migrateLegacyArchiveUuid(uuid)
 
                         driveErrorCount = 0
-                        _showUnknownDriveDialog.value = false
+                        onShowUnknownDriveDialog(false)
                         unknownDriveDialogHandled = false
                         DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
                         if (!unknownDriveDialogHandled) {
-                            _showUnknownDriveDialog.value = true
+                            onShowUnknownDriveDialog(true)
                             unknownDriveDialogHandled = true
                         }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
                     if (!unknownDriveDialogHandled) {
-                        _showUnknownDriveDialog.value = true
+                        onShowUnknownDriveDialog(true)
                         unknownDriveDialogHandled = true
                     }
                     DriveStatus.UNKNOWN_DRIVE_CONNECTED
                 }
             } else {
-                _showUnknownDriveDialog.value = false
+                onShowUnknownDriveDialog(false)
                 DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
         } catch (e: Exception) {
-            _showUnknownDriveDialog.value = false
+            onShowUnknownDriveDialog(false)
             DriveStatus.KNOWN_DRIVE_DISCONNECTED
         }
     }

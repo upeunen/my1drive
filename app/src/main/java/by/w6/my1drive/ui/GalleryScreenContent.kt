@@ -125,70 +125,13 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Sync
 
-@Composable
-fun UnknownDriveBanner() {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Usb, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.drive_unknown_connected), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
-        }
-    }
-}
-
-@Composable
-fun DisconnectedDriveBanner() {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.UsbOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.drive_known_disconnected), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-fun PartialAccessBanner(onGrantFullAccess: () -> Unit, onOpenSettings: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.CheckCircleOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.partial_access_banner_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(stringResource(R.string.partial_access_banner_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onGrantFullAccess, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.btn_grant_full_access), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false) }
-                OutlinedButton(onClick = onOpenSettings, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.btn_open_settings), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false) }
-            }
-        }
-    }
-}
-
-@Composable
-fun OtgRequiredBanner() {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Usb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
+import by.w6.my1drive.ui.components.UnknownDriveBanner
+import by.w6.my1drive.ui.components.DisconnectedDriveBanner
+import by.w6.my1drive.ui.components.PartialAccessBanner
+import by.w6.my1drive.ui.components.OtgRequiredBanner
+import by.w6.my1drive.ui.components.ConnectingUsbBanner
+import by.w6.my1drive.ui.components.ProgressPanel
+import by.w6.my1drive.ui.components.mapStepToText
 
 @Composable
 fun PhotosRoute(
@@ -839,6 +782,21 @@ fun GalleryScreenContent(
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
     val isSilentSyncing by viewModel.isSilentSyncingFlow.collectAsState()
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> viewModel.onPause()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> viewModel.onResume()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
@@ -911,66 +869,7 @@ fun GalleryScreenContent(
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
             )
 
-            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-            val iconAlpha by infiniteTransition.animateFloat(
-                initialValue = 0.3f,
-                targetValue = 1.0f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 1000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "alpha"
-            )
-
-            AnimatedVisibility(
-                visible = isCheckingConnection || isSilentSyncing,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Usb,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .graphicsLayer {
-                                        if (isCheckingConnection || isSilentSyncing) {
-                                            alpha = iconAlpha
-                                        }
-                                    }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Подключение USB-накопителя...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        if (isCheckingConnection || isSilentSyncing) {
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(2.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = Color.Transparent
-                            )
-                        }
-                    }
-                }
-            }
+            ConnectingUsbBanner(visible = isCheckingConnection || isSilentSyncing)
 
             // Expandable group chips row
             AnimatedVisibility(
@@ -1078,7 +977,7 @@ fun GalleryScreenContent(
 
             val driveStatus by viewModel.otgManager.status.collectAsState()
             if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
-            else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !isCheckingConnection) DisconnectedDriveBanner()
+            else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
             if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
             if (otgDirectoryUri == null) OtgRequiredBanner()
 
@@ -1306,7 +1205,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val showNamingDialog by viewModel.otgManager.showNamingDialog.collectAsState()
+        val showNamingDialog by viewModel.showNamingDialog.collectAsState()
         showNamingDialog?.let { uri ->
             ArchiveNamingDialog(
                 onConfirm = { name ->
@@ -1314,12 +1213,12 @@ fun GalleryScreenContent(
                     viewModel.refresh()
                 },
                 onDismiss = {
-                    viewModel.otgManager.dismissNamingDialog()
+                    viewModel.dismissNamingDialog()
                 }
             )
         }
 
-        val showFirstLaunch by viewModel.otgManager.showFirstLaunchDialog.collectAsState()
+        val showFirstLaunch by viewModel.showFirstLaunchDialog.collectAsState()
         if (showFirstLaunch) {
             LaunchedEffect(Unit) {
                 viewModel.dismissFirstLaunchDialog()
@@ -1327,7 +1226,7 @@ fun GalleryScreenContent(
             }
         }
 
-                val showLocalFolder by viewModel.otgManager.showLocalFolderDialog.collectAsState()
+                val showLocalFolder by viewModel.showLocalFolderDialog.collectAsState()
         val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
         if (showLocalFolder) {
             LocalFolderDialog(
@@ -1335,7 +1234,7 @@ fun GalleryScreenContent(
                 onSelectFolder = {
                     onSelectDeviceDirectory()
                 },
-                onDismiss = { viewModel.otgManager.dismissLocalFolderDialog() }
+                onDismiss = { viewModel.dismissLocalFolderDialog() }
             )
         }
 
@@ -1352,7 +1251,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val showUnknownDrive by viewModel.otgManager.showUnknownDriveDialog.collectAsState()
+        val showUnknownDrive by viewModel.showUnknownDriveDialog.collectAsState()
         if (showUnknownDrive) {
             LaunchedEffect(Unit) {
                 viewModel.dismissUnknownDriveDialog()
@@ -1415,7 +1314,7 @@ fun GalleryScreenContent(
         }
 
 
-        val showWriteProtectedRoot by viewModel.otgManager.showWriteProtectedRootDialog.collectAsState()
+        val showWriteProtectedRoot by viewModel.showWriteProtectedRootDialog.collectAsState()
         if (showWriteProtectedRoot) {
             WriteProtectedRootDialog(
                 onRetry = {

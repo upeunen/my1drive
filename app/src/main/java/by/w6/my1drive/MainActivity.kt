@@ -114,15 +114,15 @@ class MainActivity : ComponentActivity() {
                             if (subDir != null) {
                                 autoCreatedFolderName = folderName
                             } else {
-                                viewModel.showWriteProtectedRootDialog()
+                                viewModel.triggerWriteProtectedRootDialog()
                                 return
                             }
                         } catch (_: Exception) {
-                            viewModel.showWriteProtectedRootDialog()
+                            viewModel.triggerWriteProtectedRootDialog()
                             return
                         }
                     } else {
-                        viewModel.showWriteProtectedRootDialog()
+                        viewModel.triggerWriteProtectedRootDialog()
                         return
                     }
                 }
