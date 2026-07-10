@@ -1256,9 +1256,10 @@ fun GalleryScreenContent(
                     }
                 },
                 dismissButton = {
-                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                    val context = LocalContext.current
                     androidx.compose.material3.TextButton(onClick = {
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(err))
+                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", err))
                     }) {
                         Text("Скопировать лог")
                     }
@@ -1267,7 +1268,7 @@ fun GalleryScreenContent(
         }
 
         restoreState.error?.let { err ->
-            val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+            val context = LocalContext.current
             AlertDialog(
                 onDismissRequest = { viewModel.dismissRestoreError() },
                 title = { Text("Ошибка восстановления") },
@@ -1284,7 +1285,8 @@ fun GalleryScreenContent(
                 },
                 dismissButton = {
                     androidx.compose.material3.TextButton(onClick = {
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(err))
+                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", err))
                     }) {
                         Text("Скопировать лог")
                     }
@@ -1310,9 +1312,10 @@ fun GalleryScreenContent(
                 },
                 dismissButton = {
                     if (stateMessage.contains("Ошибка", ignoreCase = true)) {
-                        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                        val context = LocalContext.current
                         androidx.compose.material3.TextButton(onClick = {
-                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(stateMessage))
+                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", stateMessage))
                         }) {
                             Text("Скопировать лог")
                         }
