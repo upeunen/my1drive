@@ -40,15 +40,38 @@ class MediaRepositoryImpl(
         }
     }
 
+    private fun getPrefsFlow(): kotlinx.coroutines.flow.Flow<Pair<Boolean, String>> = kotlinx.coroutines.flow.callbackFlow {
+        val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+            if (key == "show_offline_archives" || key == "active_archive_uuid") {
+                trySend(
+                    Pair(
+                        sharedPreferences.getBoolean("show_offline_archives", false),
+                        sharedPreferences.getString("active_archive_uuid", "") ?: ""
+                    )
+                )
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        // Emit initial value
+        trySend(
+            Pair(
+                prefs.getBoolean("show_offline_archives", false),
+                prefs.getString("active_archive_uuid", "") ?: ""
+            )
+        )
+        kotlinx.coroutines.channels.awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
         val archivedFlow = mediaDao.getAllFlow()
         val archivesFlow = by.w6.my1drive.data.local.AppDatabase.getDatabase(context).archiveDao().getAllFlow()
+        val prefsFlow = getPrefsFlow()
 
-        return combine(_localItemsCache, archivedFlow, archivesFlow, _refreshTrigger) { localList, archivedEntities, archives, _ ->
+        return combine(_localItemsCache, archivedFlow, archivesFlow, prefsFlow) { localList, archivedEntities, archives, prefsPair ->
             val archiveNamesMap = archives.associate { it.uuid to it.name }
-            val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
-            val showOffline = prefs.getBoolean("show_offline_archives", false)
-            val activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
+            val showOffline = prefsPair.first
+            val activeUuid = prefsPair.second
 
             val filteredEntities = if (showOffline) {
                 archivedEntities
