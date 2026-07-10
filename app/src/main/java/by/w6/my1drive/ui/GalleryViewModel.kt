@@ -245,7 +245,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private var isRestoreCancellationRequested = false
     val syncState: StateFlow<String?> = syncHelper.syncState
     val syncProgressState: StateFlow<SyncProgressState> = syncHelper.syncProgressState
-    val isSilentSyncing: StateFlow<Boolean> = syncHelper.isSilentSyncingFlow
 
     private val _showLimitReachedDialog = MutableStateFlow(false)
     val showLimitReachedDialog = _showLimitReachedDialog.asStateFlow()

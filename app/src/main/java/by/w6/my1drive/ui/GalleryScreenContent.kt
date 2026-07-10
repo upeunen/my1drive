@@ -837,7 +837,7 @@ fun GalleryScreenContent(
     val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
-    val isSilentSyncing by viewModel.isSilentSyncing.collectAsState()
+    val isSilentSyncing by viewModel.isSilentSyncingFlow.collectAsState()
 
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
