@@ -267,9 +267,17 @@ fun ArchiveRoute(
     val syncProgressState by viewModel.syncProgressState.collectAsState()
     val knownArchives by viewModel.knownArchives.collectAsState()
     val context = LocalContext.current
-    val showOffline = remember {
-        context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
-            .getBoolean("show_offline_archives", false)
+    val prefs = context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
+    var showOffline by remember { mutableStateOf(prefs.getBoolean("show_offline_archives", false)) }
+    
+    androidx.compose.runtime.DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+            if (key == "show_offline_archives") {
+                showOffline = sharedPreferences.getBoolean(key, false)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
     val listState = rememberLazyListState()
