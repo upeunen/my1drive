@@ -604,7 +604,7 @@ class OtgConnectionManager(
                             if (db.archiveDao().getById(uuid) != null) {
                                 // Флешка есть в БД. А есть ли для неё разрешение?
                                 val persisted = application.contentResolver.persistedUriPermissions
-                                val hasPermission = persisted.any { it.uri.toString().contains(uuid) }
+                                val hasPermission = persisted.any { it.uri.toString().contains(uuid, ignoreCase = true) }
                                 if (hasPermission) {
                                     isActuallyKnownButNotReady = true
                                     break
