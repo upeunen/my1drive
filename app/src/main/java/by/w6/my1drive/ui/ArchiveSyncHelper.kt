@@ -329,7 +329,7 @@ class ArchiveSyncHelper(
                         }
 
                         // Удаляем из Room записи, которых больше нет в JSON
-                        val allRoomEntities = db.mediaDao().getAllSync()
+                        val allRoomEntities = db.mediaDao().getAllSync().filter { it.archiveUuid == activeUuid }
                         var deletedFromRoom = 0
                         for (entity in allRoomEntities) {
                             if (entity.id !in finalHashes) {
@@ -352,7 +352,7 @@ class ArchiveSyncHelper(
                         DebugLogBuffer.log(logTag, "Silent sync finished successfully")
 
                         // Очищаем осиротевшие превью из кэша (для файлов, которых больше нет на флешке)
-                        previewCache.cleanupOrphanedPreviews(finalHashes)
+                        previewCache.cleanupOrphanedPreviews(null)
 
                     } catch (e: Exception) {
                         DebugLogBuffer.log(logTag, "Error in silentSyncArchive: ${e.localizedMessage}")
@@ -574,13 +574,12 @@ class ArchiveSyncHelper(
                         if (batchToInsert.isNotEmpty()) {
                             db.mediaDao().insertAll(batchToInsert)
                         }
-                        
                         // 2. Удаляем из Room пропавшие
                         val allRoomEntities = db.mediaDao().getAllSync().filter { it.archiveUuid == activeUuid }
                         for (entity in allRoomEntities) {
                             if (entity.id !in finalHashes) {
                                 entity.thumbnailPath?.let { path ->
-                                    val file = File(path)
+                                    val file = java.io.File(path)
                                     if (file.exists()) file.delete()
                                 }
                                 db.mediaDao().delete(entity)
@@ -589,6 +588,9 @@ class ArchiveSyncHelper(
                     }
 
                     repository.refresh()
+                    
+                    // Очистка мертвых превью
+                    previewCache.cleanupOrphanedPreviews(null)
 
                     _syncState.value = "Синхронизация завершена.\n\nИмпортировано новых файлов: $synced\nПропущено/проверено: ${files.size - synced}"
                     DebugLogBuffer.log("ManualSync", "Sync complete: imported $synced, total ${files.size}")
