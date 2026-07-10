@@ -837,6 +837,7 @@ fun GalleryScreenContent(
     val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
+    val isSilentSyncing by viewModel.isSilentSyncing.collectAsState()
 
     val context = LocalContext.current
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
@@ -922,7 +923,7 @@ fun GalleryScreenContent(
             )
 
             AnimatedVisibility(
-                visible = isCheckingConnection,
+                visible = isCheckingConnection || isSilentSyncing,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -946,7 +947,7 @@ fun GalleryScreenContent(
                                 modifier = Modifier
                                     .size(18.dp)
                                     .graphicsLayer {
-                                        if (isCheckingConnection) {
+                                        if (isCheckingConnection || isSilentSyncing) {
                                             alpha = iconAlpha
                                         }
                                     }
@@ -958,7 +959,7 @@ fun GalleryScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (isCheckingConnection) {
+                        if (isCheckingConnection || isSilentSyncing) {
                             LinearProgressIndicator(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1077,7 +1078,7 @@ fun GalleryScreenContent(
 
             val driveStatus by viewModel.otgManager.status.collectAsState()
             if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
-            else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null) DisconnectedDriveBanner()
+            else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !isCheckingConnection) DisconnectedDriveBanner()
             if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
             if (otgDirectoryUri == null) OtgRequiredBanner()
 
