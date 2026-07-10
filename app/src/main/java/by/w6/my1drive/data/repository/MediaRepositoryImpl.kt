@@ -27,10 +27,11 @@ class MediaRepositoryImpl(
 
     private val refreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0L)
 
-    // Кешированный список локальных файлов. Обновляется только при явном вызове refresh(),
-    // а НЕ при каждом изменении Room. Это предотвращает повторный дорогой cursor-скан MediaStore
-    // при каждой вставке в архив.
+    // Кешированный список локальных файлов.
     private val _localItemsCache = kotlinx.coroutines.flow.MutableStateFlow<List<MediaItem>>(emptyList())
+    
+    // Триггер для принудительного обновления Flow (например, при смене настроек)
+    private val _refreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0L)
 
     init {
         // Первичная загрузка локальных файлов при создании репозитория
@@ -43,7 +44,7 @@ class MediaRepositoryImpl(
         val archivedFlow = mediaDao.getAllFlow()
         val archivesFlow = by.w6.my1drive.data.local.AppDatabase.getDatabase(context).archiveDao().getAllFlow()
 
-        return combine(_localItemsCache, archivedFlow, archivesFlow) { localList, archivedEntities, archives ->
+        return combine(_localItemsCache, archivedFlow, archivesFlow, _refreshTrigger) { localList, archivedEntities, archives, _ ->
             val archiveNamesMap = archives.associate { it.uuid to it.name }
             val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
             val showOffline = prefs.getBoolean("show_offline_archives", false)
@@ -89,6 +90,7 @@ class MediaRepositoryImpl(
     override fun refresh() {
         // Запускаем сканирование MediaStore в фоне, кешируем результат в _localItemsCache.
         // combine() в getMediaItemsFlow() автоматически получит новый список.
+        _refreshTrigger.value = System.currentTimeMillis()
         GlobalScope.launch(Dispatchers.IO) {
             _localItemsCache.value = queryLocalMediaStore()
         }
