@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
@@ -1139,7 +1141,7 @@ fun GalleryScreenContent(
                                     Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
                                 }
                             })
-                        \"settings\" -> {
+                        "settings" -> {
                             val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
                             val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
                             val knownArchives by viewModel.knownArchives.collectAsState()
