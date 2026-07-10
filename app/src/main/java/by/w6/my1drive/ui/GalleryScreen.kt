@@ -116,6 +116,22 @@ fun GalleryScreen(
         }
     }
 
+    val view = androidx.compose.ui.platform.LocalView.current
+    val isWorking = archiveState.isArchiving || restoreState.isRestoring || syncProgressState.isSyncing
+    androidx.compose.runtime.DisposableEffect(isWorking) {
+        val window = (view.context as? android.app.Activity)?.window
+            ?: generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }.mapNotNull { it as? android.app.Activity }.firstOrNull()?.window
+
+        if (isWorking) {
+            window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     val navigateToTab: (String) -> Unit = { route ->
         if (activePreviewState != null) {
             activePreviewState = null
