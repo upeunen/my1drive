@@ -1123,7 +1123,9 @@ fun GalleryScreenContent(
                             gridColumnsCount = gridColumnsCount,
                             actionBarHeightPx = actionBarHeightPx,
                             onItemClick = { item ->
-                                if (isOtgConnected) {
+                                val currentActiveUuid = viewModel.otgManager.activeArchiveUuid.value
+                                val isItemActive = isOtgConnected && item.archiveUuid == currentActiveUuid
+                                if (isItemActive) {
                                     if (selectedIds.isNotEmpty()) {
                                         viewModel.toggleSelection(item.id)
                                     } else {
@@ -1143,10 +1145,12 @@ fun GalleryScreenContent(
                                 }
                             },
                             onItemLongClick = { item ->
-                                if (isOtgConnected) {
+                                val currentActiveUuid = viewModel.otgManager.activeArchiveUuid.value
+                                val isItemActive = isOtgConnected && item.archiveUuid == currentActiveUuid
+                                if (isItemActive) {
                                     viewModel.toggleSelection(item.id)
                                 } else {
-                                    Toast.makeText(context, "Подключите OTG накопитель для доступа к файлам", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Подключите нужный OTG накопитель", Toast.LENGTH_SHORT).show()
                                 }
                             })
                         "settings" -> {
