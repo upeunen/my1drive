@@ -361,10 +361,16 @@ class OtgArchiveUtil(private val context: Context) {
 
             // Verify hash
             if (item.hash != null) {
+                val expectedHashPart = item.hash.substringBefore("_")
                 val destHash = digest.digest().joinToString("") { "%02x".format(it) }
                 DebugLogBuffer.log(logTag, "Verifying restored hash. Expected: ${item.hash}, Restored: $destHash")
-                if (destHash != item.hash) {
-                    throw Exception("restore_verification_failed: hash mismatch (expected ${item.hash}, got $destHash)")
+                
+                if (expectedHashPart.length == 64 && expectedHashPart.matches(Regex("^[a-fA-F0-9]+\$"))) {
+                    if (destHash != expectedHashPart) {
+                        throw Exception("restore_verification_failed: hash mismatch (expected ${item.hash}, got $destHash)")
+                    }
+                } else {
+                    DebugLogBuffer.log(logTag, "Skipping hash verification because expected hash does not look like SHA-256: ${item.hash}")
                 }
             }
 
