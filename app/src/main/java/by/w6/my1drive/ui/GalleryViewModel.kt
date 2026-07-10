@@ -690,8 +690,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             missingFoldersQueue.clear()
             missingFoldersQueue.addAll(missingFolders)
             requestNextFolderPermission()
+            _selectedIds.value = emptySet()
         } else {
             syncHelper.startArchiving(selected, targetUri)
+            _selectedIds.value = emptySet()
         }
     }
 
@@ -931,6 +933,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val selected = mediaItems.value.filter { it.id in _selectedIds.value && it.status == MediaStatus.ARCHIVED_OTG }
         if (selected.isEmpty()) return
         archiveInteractor.startRestoring(selected, null)
+        _selectedIds.value = emptySet()
     }
 
     fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, null) } }
