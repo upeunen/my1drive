@@ -28,6 +28,12 @@ class ArchiveInteractor(
     private var restoringJob: Job? = null
     var isRestoreCancellationRequested = false
 
+    private var conflictDeferred: kotlinx.coroutines.CompletableDeferred<RestoreConflictDecision>? = null
+
+    fun resolveRestoreConflict(decision: RestoreConflictDecision) {
+        conflictDeferred?.complete(decision)
+    }
+
     fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
         restoringItemIds.value = items.map { it.id }.toSet()
         isRestoreCancellationRequested = false
@@ -38,14 +44,23 @@ class ArchiveInteractor(
                 var successCount = 0; val errors = mutableListOf<String>()
                 val otgUri = otgManager.otgDirectoryUri.value
                 restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
+                var globalApplyToAll = false
+                var globalFallbackUri: Uri? = null
+
                 for ((index, item) in items.withIndex()) {
                     if (isRestoreCancellationRequested) {
                         DebugLogBuffer.log(logTag, "Restore cancelled by user request. Stopping.")
                         break
                     }
                     DebugLogBuffer.log(logTag, "Restoring item [${index + 1}/${items.size}]: ${item.displayName}")
-                    restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "")
-                    archiveUtil.restoreItem(item, targetDirUri).collect { result ->
+                    
+                    var currentTargetDirUri = if (globalApplyToAll) globalFallbackUri else targetDirUri
+                    var retry = true
+                    
+                    while (retry) {
+                        retry = false
+                        restoreState.value = restoreState.value.copy(currentFileName = item.displayName, currentFileIndex = index + 1, currentStep = "", conflict = null)
+                        archiveUtil.restoreItem(item, currentTargetDirUri).collect { result ->
                         when (result) {
                             is RestoreResult.Progress -> restoreState.value = restoreState.value.copy(
                                 currentStep = result.step, progressFraction = (index.toFloat() + result.progressFraction) / items.size
@@ -78,14 +93,47 @@ class ArchiveInteractor(
                                 }
                             }
                             is RestoreResult.Error -> {
-                                val errStr = "${result.displayName}: ${result.message}"
-                                errors.add(errStr)
-                                DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
+                                if (result.message.contains("restore_mediastore_insert_failed")) {
+                                    if (globalApplyToAll) {
+                                        // Already applied to all and failed again? Just record error and skip.
+                                        val errStr = "${result.displayName}: MediaStore rejected fallback path."
+                                        errors.add(errStr)
+                                        DebugLogBuffer.log(logTag, "Item restoration failed despite applyToAll: $errStr")
+                                    } else {
+                                        // Pause and ask user
+                                        val fallbackPath = if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
+                                        restoreState.value = restoreState.value.copy(
+                                            conflict = RestoreConflict(item.displayName, fallbackPath)
+                                        )
+                                        conflictDeferred = kotlinx.coroutines.CompletableDeferred()
+                                        val decision = conflictDeferred!!.await()
+                                        conflictDeferred = null
+                                        restoreState.value = restoreState.value.copy(conflict = null)
+                                        
+                                        if (decision.applyToAll) {
+                                            globalApplyToAll = true
+                                            globalFallbackUri = decision.uri
+                                        }
+                                        if (decision.uri != null) {
+                                            currentTargetDirUri = decision.uri
+                                            retry = true
+                                        } else {
+                                            // User chose to skip or MediaStore fallback via null URI
+                                            currentTargetDirUri = null
+                                            retry = true
+                                        }
+                                    }
+                                } else {
+                                    val errStr = "${result.displayName}: ${result.message}"
+                                    errors.add(errStr)
+                                    DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
+                                }
                             }
-                        }
-                    }
+                        } // end when
+                    } // end collect
+                    } // end while (retry)
                     restoringItemIds.value = restoringItemIds.value - item.id
-                }
+                } // end for
                 repository.refresh()
                 val finalError = when {
                     errors.isNotEmpty() -> "Восстановлено: $successCount из ${items.size}.\n\nОшибки:\n" + errors.joinToString("\n")

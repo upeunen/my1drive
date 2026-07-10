@@ -262,5 +262,14 @@ fun GalleryScreen(
             }
         )
     }
+
+    if (restoreState.conflict != null) {
+        by.w6.my1drive.ui.components.RestoreConflictDialog(
+            conflict = restoreState.conflict!!,
+            onDecision = { decision ->
+                viewModel.resolveRestoreConflict(decision)
+            }
+        )
+    }
 }
 

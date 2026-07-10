@@ -186,6 +186,17 @@ class OtgArchiveUtil(private val context: Context) {
 
             emit(RestoreResult.Progress(item.displayName, "restore_reading", 0.15f))
 
+            // Sanitize MIME type and relative path
+            var mimeType = item.mimeType
+            if (mimeType.isEmpty() || mimeType.contains("octet-stream") || mimeType.contains("public.")) {
+                val ext = item.displayName.substringAfterLast('.', "").lowercase()
+                val mapped = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                if (mapped != null) {
+                    mimeType = mapped
+                    DebugLogBuffer.log(logTag, "Normalized MIME type from extension: $mimeType")
+                }
+            }
+
             destUri = if (targetDirUri != null) {
                 // Write via SAF to chosen folder
                 DebugLogBuffer.log(logTag, "Restoring via SAF to chosen folder: $targetDirUri")
@@ -197,15 +208,14 @@ class OtgArchiveUtil(private val context: Context) {
                     existing
                 } else {
                     DebugLogBuffer.log(logTag, "Creating new file in target folder")
-                    dir.createFile(item.mimeType, item.displayName)
+                    dir.createFile(mimeType, item.displayName)
                         ?: throw Exception("restore_create_failed")
                 }
                 createdFile = file
                 file.uri
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Write via MediaStore to original relative path
-                var relativePath = item.originalRelativePath ?: run {
-                    if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
+                var relativePath = item.originalRelativePath?.replace("\\", "/")?.removePrefix("/") ?: run {
+                    if (mimeType.startsWith("video/")) "Movies/" else "Pictures/"
                 }
                 
                 // Bypassing Android restriction: MediaStore does not allow primary directory "Android"
@@ -226,21 +236,21 @@ class OtgArchiveUtil(private val context: Context) {
                 }
 
                 DebugLogBuffer.log(logTag, "Restoring via MediaStore to original path: $relativePath")
-                val collection = if (item.mimeType.startsWith("video/")) {
+                val collection = if (mimeType.startsWith("video/")) {
                     MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
                 } else {
                     MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
                 }
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, item.displayName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, item.mimeType)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                     put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
                     put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis() / 1000)
-                    if (item.mimeType.startsWith("image/")) {
+                    if (mimeType.startsWith("image/")) {
                         put(MediaStore.Images.ImageColumns.DATE_TAKEN, item.dateModified * 1000)
-                    } else if (item.mimeType.startsWith("video/")) {
+                    } else if (mimeType.startsWith("video/")) {
                         put(MediaStore.Video.VideoColumns.DATE_TAKEN, item.dateModified * 1000)
                     }
                 }
@@ -250,14 +260,14 @@ class OtgArchiveUtil(private val context: Context) {
                 insertedUri
             } else {
                 // Android 9 fallback (SDK 28): insert directly to external content
-                val collection = if (item.mimeType.startsWith("video/")) {
+                val collection = if (mimeType.startsWith("video/")) {
                     MediaStore.Video.Media.EXTERNAL_CONTENT_URI
                 } else {
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI
                 }
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, item.displayName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, item.mimeType)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     put(MediaStore.MediaColumns.DATE_MODIFIED, item.dateModified)
                     put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis() / 1000)
                 }

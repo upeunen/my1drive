@@ -931,6 +931,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, null) } }
     fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, uri) } }
     fun dismissRestoreRequest() { pendingRestoreItems = emptyList(); _restoreRequest.value = null }
+    
+    fun resolveRestoreConflict(decision: by.w6.my1drive.ui.RestoreConflictDecision) {
+        archiveInteractor.resolveRestoreConflict(decision)
+    }
 
 
 

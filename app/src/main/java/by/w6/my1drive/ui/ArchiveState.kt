@@ -42,7 +42,18 @@ data class RestoreState(
     val totalFiles: Int = 0,
     val currentFileIndex: Int = 0,
     val successCount: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    val conflict: RestoreConflict? = null
+)
+
+data class RestoreConflict(
+    val itemDisplayName: String,
+    val defaultFallbackPath: String
+)
+
+data class RestoreConflictDecision(
+    val uri: android.net.Uri?,
+    val applyToAll: Boolean
 )
 
 data class SyncProgressState(
