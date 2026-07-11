@@ -19,4 +19,7 @@ interface ArchiveDao {
 
     @Query("DELETE FROM archives WHERE uuid = :uuid")
     fun delete(uuid: String)
+
+    @Query("DELETE FROM archives")
+    fun deleteAll()
 }

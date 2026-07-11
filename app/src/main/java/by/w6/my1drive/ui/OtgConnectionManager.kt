@@ -42,7 +42,8 @@ class OtgConnectionManager(
     private val onShowUnreadableOtgDialog: (Boolean) -> Unit = {},
     private val onShowWriteProtectedRootDialog: (Boolean) -> Unit = {},
     private val onShowLocalFolderDialog: (Boolean) -> Unit = {},
-    private val onShowNamingDialog: (Uri?) -> Unit = {}
+    private val onShowNamingDialog: (Uri?) -> Unit = {},
+    private val onShowCreateArchiveGuideDialog: (Uri) -> Unit = {}
 ) {
     companion object {
         private const val PREF_OTG_URI = "otg_directory_uri"
@@ -81,6 +82,24 @@ class OtgConnectionManager(
 
     private val _activeArchiveUuid = MutableStateFlow<String?>(null)
     val activeArchiveUuid: StateFlow<String?> = _activeArchiveUuid.asStateFlow()
+
+    fun resetActiveArchiveUuid() {
+        _activeArchiveUuid.value = null
+        prefs.edit().remove("active_archive_uuid").apply()
+    }
+
+    fun resetConnection() {
+        _otgDirectoryUri.value = null
+        _activeArchiveUuid.value = null
+        _status.value = DriveStatus.NO_URI_CONFIGURED
+        _archiveSize.value = 0L
+        wasPhysicalConnected = false
+        prefs.edit()
+            .remove(PREF_OTG_URI)
+            .remove("active_archive_uuid")
+            .remove("known_archive_uuid")
+            .apply()
+    }
 
     // ─── Internal state ───
 
@@ -245,7 +264,7 @@ class OtgConnectionManager(
                     refreshCacheStats()
                 }
             } else {
-                onShowNamingDialog(uri)
+                onShowCreateArchiveGuideDialog(uri)
             }
         }
     }
@@ -654,9 +673,9 @@ class OtgConnectionManager(
                         // It's a known drive, SAF just hasn't made it readable yet. Keep waiting.
                         DriveStatus.KNOWN_DRIVE_DISCONNECTED
                     } else {
-                        if (!unknownDriveDialogHandled) {
-                            onShowUnknownDriveDialog(true)
-                            unknownDriveDialogHandled = true
+                        if (!firstLaunchHandled) {
+                            onShowFirstLaunchDialog(true)
+                            firstLaunchHandled = true
                         }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
@@ -708,16 +727,16 @@ class OtgConnectionManager(
                         unknownDriveDialogHandled = false
                         DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
-                        if (!unknownDriveDialogHandled) {
-                            onShowUnknownDriveDialog(true)
-                            unknownDriveDialogHandled = true
+                        if (!firstLaunchHandled) {
+                            onShowFirstLaunchDialog(true)
+                            firstLaunchHandled = true
                         }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
-                    if (!unknownDriveDialogHandled) {
-                        onShowUnknownDriveDialog(true)
-                        unknownDriveDialogHandled = true
+                    if (!firstLaunchHandled) {
+                        onShowFirstLaunchDialog(true)
+                        firstLaunchHandled = true
                     }
                     DriveStatus.UNKNOWN_DRIVE_CONNECTED
                 }

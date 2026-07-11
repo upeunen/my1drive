@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.flowOn
 import by.w6.my1drive.utils.ArchiveMetadataStore
 import by.w6.my1drive.utils.JsonEntry
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -97,6 +98,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _showNamingDialog = MutableStateFlow<Uri?>(null)
     val showNamingDialog = _showNamingDialog.asStateFlow()
 
+    private val _showCreateArchiveGuideDialog = MutableStateFlow<Uri?>(null)
+    val showCreateArchiveGuideDialog = _showCreateArchiveGuideDialog.asStateFlow()
+
+    fun showCreateArchiveGuideDialog(uri: Uri) { _showCreateArchiveGuideDialog.value = uri }
+    fun dismissCreateArchiveGuideDialog() { _showCreateArchiveGuideDialog.value = null }
+
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
             application = application,
@@ -113,7 +120,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowUnreadableOtgDialog = { _showUnreadableOtgDialog.value = it },
             onShowWriteProtectedRootDialog = { _showWriteProtectedRootDialog.value = it },
             onShowLocalFolderDialog = { _showLocalFolderDialog.value = it },
-            onShowNamingDialog = { _showNamingDialog.value = it }
+            onShowNamingDialog = { _showNamingDialog.value = it },
+            onShowCreateArchiveGuideDialog = { _showCreateArchiveGuideDialog.value = it }
         )
     }
 
@@ -124,6 +132,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissLocalFolderDialog() { _showLocalFolderDialog.value = false }
     fun dismissNamingDialog() { _showNamingDialog.value = null }
     fun triggerWriteProtectedRootDialog() { _showWriteProtectedRootDialog.value = true }
+    fun showNamingDialog(uri: Uri) { _showNamingDialog.value = uri }
 
     private val archiveInteractor: ArchiveInteractor by lazy {
         ArchiveInteractor(
@@ -600,7 +609,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refreshCacheStats() { viewModelScope.launch(Dispatchers.IO) { _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount()) } }
-    fun clearPreviewCache() { viewModelScope.launch { previewCache.clearAll(); refreshCacheStats(); repository.refresh() } }
+    fun clearPreviewCache() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                previewCache.clearAll()
+                db.clearAllTables()
+            }
+            otgManager.resetConnection()
+            refreshCacheStats()
+            repository.refresh()
+        }
+    }
     fun getCacheMaxMb(): Long = previewCache.getMaxBytes() / (1024 * 1024)
     fun getPreviewCacheManager(): PreviewCacheManager = previewCache
     fun setCacheMaxMb(mb: Long) { previewCache.setMaxBytes(mb * 1024 * 1024); viewModelScope.launch { previewCache.evictIfNeeded() } }
