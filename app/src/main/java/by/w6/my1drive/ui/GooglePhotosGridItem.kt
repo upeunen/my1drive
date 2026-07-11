@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SdStorage
+import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -291,15 +292,31 @@ fun GooglePhotosGridItem(
                 }
             }
 
-            // Archive stripe — цветная полоска снизу (не null = мульти-архив включён)
+            // Угловой мини-бэйдж архива вместо грубой полоски во всю ширину
             if (archiveStripeOverrideColor != null && item.status == MediaStatus.ARCHIVED_OTG) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .background(archiveStripeOverrideColor)
-                )
+                        .align(Alignment.BottomEnd)
+                        .padding(6.dp)
+                        .size(20.dp)
+                        .background(
+                            color = if (isOtgConnected) archiveStripeOverrideColor else archiveStripeOverrideColor.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.8f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isOtgConnected) Icons.Default.SdStorage else Icons.Default.UsbOff,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
         }
     }

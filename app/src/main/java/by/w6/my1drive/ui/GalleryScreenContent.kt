@@ -114,6 +114,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
@@ -175,37 +176,39 @@ fun PhotosRoute(
                     )
                     .padding(2.dp)
             ) {
-                val buttonModifier = { active: Boolean, targetMode: DeviceSortMode ->
-                    Modifier
-                        .background(
-                            color = if (active) primaryColor else transparentColor,
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                        .clickable {
-                            viewModel.setDeviceSortMode(targetMode)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                }
+                val isByPhotoActive = sortMode == DeviceSortMode.BY_PHOTO_DATE
+                val photoDateBgColor by animateColorAsState(if (isByPhotoActive) primaryColor else transparentColor, label = "photoDateBg")
+                val photoDateTextColor by animateColorAsState(if (isByPhotoActive) onPrimaryColor else onSurfaceVariantColor, label = "photoDateText")
 
                 Box(
-                    modifier = buttonModifier(sortMode == DeviceSortMode.BY_PHOTO_DATE, DeviceSortMode.BY_PHOTO_DATE),
+                    modifier = Modifier
+                        .background(photoDateBgColor, RoundedCornerShape(14.dp))
+                        .clickable { viewModel.setDeviceSortMode(DeviceSortMode.BY_PHOTO_DATE) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Дата фото",
-                        color = if (sortMode == DeviceSortMode.BY_PHOTO_DATE) onPrimaryColor else onSurfaceVariantColor,
+                        color = photoDateTextColor,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
+                val isByRestoreActive = sortMode == DeviceSortMode.BY_RESTORE_DATE
+                val restoreDateBgColor by animateColorAsState(if (isByRestoreActive) primaryColor else transparentColor, label = "restoreDateBg")
+                val restoreDateTextColor by animateColorAsState(if (isByRestoreActive) onPrimaryColor else onSurfaceVariantColor, label = "restoreDateText")
+
                 Box(
-                    modifier = buttonModifier(sortMode == DeviceSortMode.BY_RESTORE_DATE, DeviceSortMode.BY_RESTORE_DATE),
+                    modifier = Modifier
+                        .background(restoreDateBgColor, RoundedCornerShape(14.dp))
+                        .clickable { viewModel.setDeviceSortMode(DeviceSortMode.BY_RESTORE_DATE) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Дата разархивации",
-                        color = if (sortMode == DeviceSortMode.BY_RESTORE_DATE) onPrimaryColor else onSurfaceVariantColor,
+                        color = restoreDateTextColor,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -374,56 +377,105 @@ fun ArchiveRoute(
         val isManualSyncing = syncProgressState.isSyncing
         val isOperationRunning = isSilentSyncing || archiveState.isArchiving || restoreState.isRestoring || isManualSyncing
 
-        // Строка фильтра по флешкам (только при включённой мульти-архивности и >1 носителя)
+        // Строка фильтра по флешкам с горизонтальной прокруткой и современными чипами
         if (showOffline && knownArchives.size > 1) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // «Все» чип
                 val allActive = filterUuid == null
-                Box(
+                val allActiveScale by animateFloatAsState(targetValue = if (allActive) 1.0f else 0.95f, label = "allActiveScale")
+                val allActiveBgColor by animateColorAsState(
+                    targetValue = if (allActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    label = "allActiveBg"
+                )
+                val allActiveContentColor by animateColorAsState(
+                    targetValue = if (allActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = "allActiveContent"
+                )
+                val allActiveBorderColor = if (allActive) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+
+                Row(
                     modifier = Modifier
-                        .height(22.dp)
-                        .background(
-                            color = if (allActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(11.dp)
-                        )
-                        .combinedClickable(onClick = { filterUuid = null }, onLongClick = { filterUuid = null })
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center
+                        .graphicsLayer(scaleX = allActiveScale, scaleY = allActiveScale)
+                        .height(32.dp)
+                        .background(allActiveBgColor, RoundedCornerShape(16.dp))
+                        .border(1.dp, allActiveBorderColor, RoundedCornerShape(16.dp))
+                        .clickable { filterUuid = null }
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.SdStorage,
+                        contentDescription = null,
+                        tint = allActiveContentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
                     Text(
                         text = "Все",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (allActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = allActiveContentColor
                     )
                 }
+
                 // Чипы для каждой флешки
                 knownArchives.forEach { archive ->
-                    val color = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
+                    val baseColor = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
                     val isActive = filterUuid == archive.uuid
-                    Box(
+                    val isCurrentConnected = isOtgConnected && activeArchiveUuid == archive.uuid
+                    
+                    val chipScale by animateFloatAsState(targetValue = if (isActive) 1.0f else 0.95f, label = "chipScale")
+                    val chipBgColor by animateColorAsState(
+                        targetValue = if (isActive) baseColor else Color.Transparent,
+                        label = "chipBg"
+                    )
+                    val chipContentColor by animateColorAsState(
+                        targetValue = if (isActive) Color.White else baseColor,
+                        label = "chipContent"
+                    )
+                    val chipBorderColor = if (isActive) Color.Transparent else baseColor.copy(alpha = 0.4f)
+
+                    Row(
                         modifier = Modifier
-                            .height(22.dp)
-                            .background(
-                                color = if (isActive) color else color.copy(alpha = 0.25f),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(11.dp)
-                            )
-                            .combinedClickable(
-                                onClick = { filterUuid = if (isActive) null else archive.uuid },
-                                onLongClick = { filterUuid = archive.uuid }
-                            )
-                            .padding(horizontal = 10.dp),
-                        contentAlignment = Alignment.Center
+                            .graphicsLayer(scaleX = chipScale, scaleY = chipScale)
+                            .height(32.dp)
+                            .background(chipBgColor, RoundedCornerShape(16.dp))
+                            .border(1.dp, chipBorderColor, RoundedCornerShape(16.dp))
+                            .clickable {
+                                filterUuid = if (isActive) null else archive.uuid
+                            }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        if (isCurrentConnected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF4CAF50), CircleShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.UsbOff,
+                                contentDescription = "Offline",
+                                tint = chipContentColor.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        
                         Text(
                             text = archive.name.ifBlank { archive.folderName.take(10).ifBlank { archive.uuid.take(6) } },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isActive) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = chipContentColor
                         )
                     }
                 }
@@ -466,37 +518,39 @@ fun ArchiveRoute(
                         )
                         .padding(2.dp)
                 ) {
-                    val buttonModifier = { active: Boolean, targetMode: ArchiveSortMode ->
-                        Modifier
-                            .background(
-                                color = if (active) primaryColor else transparentColor,
-                                shape = RoundedCornerShape(14.dp)
-                            )
-                            .clickable {
-                                viewModel.setArchiveSortMode(targetMode)
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    }
+                    val isByPhotoActive = sortMode == ArchiveSortMode.BY_PHOTO_DATE
+                    val photoDateBgColor by animateColorAsState(if (isByPhotoActive) primaryColor else transparentColor, label = "archivePhotoBg")
+                    val photoDateTextColor by animateColorAsState(if (isByPhotoActive) onPrimaryColor else onSurfaceVariantColor, label = "archivePhotoText")
 
                     Box(
-                        modifier = buttonModifier(sortMode == ArchiveSortMode.BY_PHOTO_DATE, ArchiveSortMode.BY_PHOTO_DATE),
+                        modifier = Modifier
+                            .background(photoDateBgColor, RoundedCornerShape(14.dp))
+                            .clickable { viewModel.setArchiveSortMode(ArchiveSortMode.BY_PHOTO_DATE) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Дата фото",
-                            color = if (sortMode == ArchiveSortMode.BY_PHOTO_DATE) onPrimaryColor else onSurfaceVariantColor,
+                            color = photoDateTextColor,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
+                    val isByArchiveActive = sortMode == ArchiveSortMode.BY_ARCHIVE_DATE
+                    val archiveDateBgColor by animateColorAsState(if (isByArchiveActive) primaryColor else transparentColor, label = "archiveDateBg")
+                    val archiveDateTextColor by animateColorAsState(if (isByArchiveActive) onPrimaryColor else onSurfaceVariantColor, label = "archiveDateText")
+
                     Box(
-                        modifier = buttonModifier(sortMode == ArchiveSortMode.BY_ARCHIVE_DATE, ArchiveSortMode.BY_ARCHIVE_DATE),
+                        modifier = Modifier
+                            .background(archiveDateBgColor, RoundedCornerShape(14.dp))
+                            .clickable { viewModel.setArchiveSortMode(ArchiveSortMode.BY_ARCHIVE_DATE) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Дата архивации",
-                            color = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) onPrimaryColor else onSurfaceVariantColor,
+                            color = archiveDateTextColor,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -1333,6 +1387,20 @@ fun GalleryScreenContent(
                 },
                 onDismiss = {
                     viewModel.dismissNamingDialog()
+                }
+            )
+        }
+
+        val showCreateArchiveGuide by viewModel.showCreateArchiveGuideDialog.collectAsState()
+        showCreateArchiveGuide?.let { uri ->
+            CreateArchiveGuideDialog(
+                onConfirm = {
+                    viewModel.dismissCreateArchiveGuideDialog()
+                    // После подтверждения показываем окно для ввода имени архива
+                    viewModel.showNamingDialog(uri)
+                },
+                onDismiss = {
+                    viewModel.dismissCreateArchiveGuideDialog()
                 }
             )
         }
