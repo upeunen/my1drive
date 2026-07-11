@@ -81,7 +81,8 @@ fun SettingsTab(
     onSyncArchive: () -> Unit = {},
     onRefresh: () -> Unit = {},
     knownArchives: List<by.w6.my1drive.data.local.ArchiveEntity> = emptyList(),
-    onDeleteArchive: (String) -> Unit = {}
+    onDeleteArchive: (String) -> Unit = {},
+    activeArchiveUuid: String? = null
 ) {
     val context = LocalContext.current
 
@@ -276,7 +277,8 @@ fun SettingsTab(
                         val stripe = ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
                         val displayName = archive.name.ifBlank { archive.folderName.ifBlank { "Архив ${archive.uuid.take(6)}" } }
                         val subtitle = if (archive.folderName.isNotEmpty()) "Папка: ${archive.folderName}" else "UUID: ${archive.uuid.take(12)}"
-                        
+                        val isCurrentConnected = isOtgConnected && archive.uuid == activeArchiveUuid
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -319,16 +321,25 @@ fun SettingsTab(
                                 )
                             }
                             
-                            IconButton(
-                                onClick = { archiveToDelete = archive },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Удалить архив",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(18.dp)
+                            if (isCurrentConnected) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(horizontal = 14.dp)
+                                        .size(8.dp)
+                                        .background(Color(0xFF4CAF50), CircleShape)
                                 )
+                            } else {
+                                IconButton(
+                                    onClick = { archiveToDelete = archive },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Удалить архив",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }

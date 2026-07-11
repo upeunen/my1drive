@@ -1218,6 +1218,7 @@ fun GalleryScreenContent(
                             val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
                             val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
                             val knownArchives by viewModel.knownArchives.collectAsState()
+                            val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
                             SettingsTab(
                                 onSelectOtgDirectory = { showChangeFolderConfirmDialog = true },
                                 onClearCache = { viewModel.clearPreviewCache() },
@@ -1233,7 +1234,8 @@ fun GalleryScreenContent(
                                 onSyncArchive = onSyncArchive,
                                 onRefresh = { viewModel.refresh() },
                                 knownArchives = knownArchives,
-                                onDeleteArchive = { viewModel.deleteArchive(it) }
+                                onDeleteArchive = { viewModel.deleteArchive(it) },
+                                activeArchiveUuid = activeArchiveUuid
                             )
                         }
                     }
