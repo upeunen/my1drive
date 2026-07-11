@@ -973,7 +973,7 @@ fun GalleryScreenContent(
                     ) {
                         Checkbox(
                             checked = dontWarnAgain,
-                            onCheckedChange = { dontWarnAgain = it }
+                            onCheckedChange = null
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("я понимаю, больше не нужно предупреждать", style = MaterialTheme.typography.bodyMedium)

@@ -213,7 +213,7 @@ fun FullscreenPreview(
     val isItemConnected = currentItem.status == MediaStatus.ON_DEVICE ||
         (isOtgConnected && currentItem.archiveUuid == activeArchiveUuid && !currentItem.otgUri.isNullOrEmpty())
 
-    val isShareEnabled = currentItem.status == MediaStatus.ON_DEVICE || !currentItem.thumbnailPath.isNullOrEmpty()
+    val isShareEnabled = isItemConnected || !currentItem.thumbnailPath.isNullOrEmpty()
 
     BackHandler {
         if (!isNavigatingBack) {
@@ -692,7 +692,7 @@ fun FullscreenPreview(
                         ) {
                             Checkbox(
                                 checked = dontWarnAgain,
-                                onCheckedChange = { dontWarnAgain = it }
+                                onCheckedChange = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("я понимаю, больше не нужно предупреждать", style = MaterialTheme.typography.bodyMedium)
