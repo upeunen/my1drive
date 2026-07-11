@@ -76,6 +76,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -141,6 +143,7 @@ fun FullscreenPreview(
     var showOverlays by remember { mutableStateOf(false) }
     var isPinned by remember { mutableStateOf(false) }
     var isZoomed by remember { mutableStateOf(false) }
+    var showShareThumbnailConfirm by remember { mutableStateOf<MediaItem?>(null) }
 
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -207,6 +210,8 @@ fun FullscreenPreview(
 
     val isItemConnected = currentItem.status == MediaStatus.ON_DEVICE ||
         (isOtgConnected && currentItem.archiveUuid == activeArchiveUuid && !currentItem.otgUri.isNullOrEmpty())
+
+    val isShareEnabled = currentItem.status == MediaStatus.ON_DEVICE || !currentItem.thumbnailPath.isNullOrEmpty()
 
     BackHandler {
         if (!isNavigatingBack) {
@@ -370,13 +375,19 @@ fun FullscreenPreview(
                             )
                         }
                         IconButton(
-                            onClick = { onShare(currentItem) },
-                            enabled = isItemConnected
+                            onClick = {
+                                if (currentItem.status == MediaStatus.ARCHIVED_OTG && !isItemConnected) {
+                                    showShareThumbnailConfirm = currentItem
+                                } else {
+                                    onShare(currentItem)
+                                }
+                            },
+                            enabled = isShareEnabled
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = if (isItemConnected) Color.White else Color.White.copy(alpha = 0.4f)
+                                tint = if (isShareEnabled) Color.White else Color.White.copy(alpha = 0.4f)
                             )
                         }
                         IconButton(onClick = { isPinned = !isPinned }) {
@@ -641,6 +652,46 @@ fun FullscreenPreview(
                     }
                 }
             }
+        }
+
+        if (showShareThumbnailConfirm != null) {
+            val item = showShareThumbnailConfirm!!
+            val resolution = remember(item.thumbnailPath) {
+                try {
+                    val path = item.thumbnailPath
+                    if (!path.isNullOrEmpty()) {
+                        val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        android.graphics.BitmapFactory.decodeFile(path, options)
+                        "${options.outWidth}x${options.outHeight}"
+                    } else {
+                        "неизвестно"
+                    }
+                } catch (_: Exception) {
+                    "неизвестно"
+                }
+            }
+            AlertDialog(
+                onDismissRequest = { showShareThumbnailConfirm = null },
+                title = { Text("Поделиться эскизом?") },
+                text = {
+                    Text("Исходный накопитель отключен. Вы можете отправить эскиз (миниатюру) в низком разрешении ($resolution).")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onShare(item)
+                            showShareThumbnailConfirm = null
+                        }
+                    ) {
+                        Text("Поделиться")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showShareThumbnailConfirm = null }) {
+                        Text("Отмена")
+                    }
+                }
+            )
         }
     }
 }

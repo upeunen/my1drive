@@ -1083,53 +1083,87 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 onError(e.localizedMessage ?: "Ошибка при отправке файла")
             }
         } else if (item.status == MediaStatus.ARCHIVED_OTG) {
-            val otgUriStr = item.otgUri
-            if (otgUriStr.isNullOrEmpty()) {
-                onError("Ссылка на файл в архиве отсутствует")
-                return
-            }
-            if (!isOtgConnected.value) {
-                onError("USB-накопитель отключен")
-                return
-            }
+            val activeUuid = otgManager.activeArchiveUuid.value
+            val isCurrentConnected = isOtgConnected.value && item.archiveUuid == activeUuid
+            
+            if (isCurrentConnected && !item.otgUri.isNullOrEmpty()) {
+                _isSharingPreparing.value = true
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        val otgUri = Uri.parse(item.otgUri)
+                        val inputStream = context.contentResolver.openInputStream(otgUri)
+                            ?: throw Exception("Не удалось открыть файл на накопителе")
 
-            _isSharingPreparing.value = true
-            viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    val otgUri = Uri.parse(otgUriStr)
-                    val inputStream = context.contentResolver.openInputStream(otgUri)
-                        ?: throw Exception("Не удалось открыть файл на накопителе")
+                        val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
+                        val tempFile = File(sharedTempDir, item.displayName)
+                        
+                        inputStream.use { input ->
+                            tempFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
 
-                    val sharedTempDir = File(context.cacheDir, "shared_temp")
-                    if (!sharedTempDir.exists()) {
-                        sharedTempDir.mkdirs()
-                    }
-                    val tempFile = File(sharedTempDir, item.displayName)
-                    
-                    inputStream.use { input ->
-                        tempFile.outputStream().use { output ->
-                            input.copyTo(output)
+                        val fileUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            tempFile
+                        )
+
+                        _isSharingPreparing.value = false
+
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = item.mimeType
+                            putExtra(Intent.EXTRA_STREAM, fileUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Поделиться"))
+                    } catch (e: Exception) {
+                        _isSharingPreparing.value = false
+                        viewModelScope.launch(Dispatchers.Main) {
+                            onError(e.localizedMessage ?: "Ошибка при подготовке файла из архива")
                         }
                     }
-
-                    val fileUri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        tempFile
-                    )
-
-                    _isSharingPreparing.value = false
-
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = item.mimeType
-                        putExtra(Intent.EXTRA_STREAM, fileUri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "Поделиться"))
-                } catch (e: Exception) {
-                    _isSharingPreparing.value = false
-                    viewModelScope.launch(Dispatchers.Main) {
-                        onError(e.localizedMessage ?: "Ошибка при подготовке файла из архива")
+                }
+            } else {
+                val thumbPath = item.thumbnailPath
+                if (thumbPath.isNullOrEmpty()) {
+                    onError("Накопитель отключен и локальный эскиз отсутствует")
+                    return
+                }
+                _isSharingPreparing.value = true
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        val thumbFile = File(thumbPath)
+                        if (!thumbFile.exists()) {
+                            throw Exception("Файл эскиза не найден на устройстве")
+                        }
+                        
+                        val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
+                        val tempFile = File(sharedTempDir, item.displayName)
+                        thumbFile.inputStream().use { input ->
+                            tempFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        
+                        val fileUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            tempFile
+                        )
+                        _isSharingPreparing.value = false
+                        
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = item.mimeType
+                            putExtra(Intent.EXTRA_STREAM, fileUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Поделиться эскизом"))
+                    } catch (e: Exception) {
+                        _isSharingPreparing.value = false
+                        viewModelScope.launch(Dispatchers.Main) {
+                            onError(e.localizedMessage ?: "Ошибка при подготовке эскиза")
+                        }
                     }
                 }
             }
@@ -1166,30 +1200,58 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         } else {
             // Some files are in OTG archive — need to copy to cache first
-            if (!isOtgConnected.value) {
-                onError("USB-накопитель отключен")
-                return
-            }
             _isSharingPreparing.value = true
             viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
                     val uris = ArrayList<Uri>()
+                    val activeUuid = otgManager.activeArchiveUuid.value
+                    val isOtgConnectedVal = isOtgConnected.value
 
                     // Add on-device items directly (no copy needed)
                     onDeviceItems.forEach { uris.add(it.uri) }
 
-                    // Copy archived items from OTG to cache
+                    // Copy archived items (original if connected, thumbnail if offline)
                     for (item in archivedItems) {
-                        val otgUriStr = item.otgUri
-                        if (otgUriStr.isNullOrEmpty()) continue
-                        val otgUri = Uri.parse(otgUriStr)
-                        val inputStream = context.contentResolver.openInputStream(otgUri) ?: continue
-                        val tempFile = File(sharedTempDir, item.displayName)
-                        inputStream.use { input ->
-                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                        val isCurrentConnected = isOtgConnectedVal && item.archiveUuid == activeUuid
+                        var copied = false
+                        
+                        if (isCurrentConnected && !item.otgUri.isNullOrEmpty()) {
+                            try {
+                                val otgUri = Uri.parse(item.otgUri)
+                                val inputStream = context.contentResolver.openInputStream(otgUri)
+                                if (inputStream != null) {
+                                    val tempFile = File(sharedTempDir, item.displayName)
+                                    inputStream.use { input ->
+                                        tempFile.outputStream().use { output -> input.copyTo(output) }
+                                    }
+                                    uris.add(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile))
+                                    copied = true
+                                }
+                            } catch (_: Exception) {}
                         }
-                        uris.add(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile))
+                        
+                        if (!copied) {
+                            // Try copying local thumbnail as fallback
+                            val thumbPath = item.thumbnailPath
+                            if (!thumbPath.isNullOrEmpty()) {
+                                val thumbFile = File(thumbPath)
+                                if (thumbFile.exists()) {
+                                    val tempFile = File(sharedTempDir, item.displayName)
+                                    try {
+                                        thumbFile.inputStream().use { input ->
+                                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                                        }
+                                        uris.add(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile))
+                                        copied = true
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
+                        
+                        if (!copied) {
+                            throw Exception("Не удалось прочитать файл «${item.displayName}» (накопитель отключен и нет локального эскиза)")
+                        }
                     }
 
                     _isSharingPreparing.value = false

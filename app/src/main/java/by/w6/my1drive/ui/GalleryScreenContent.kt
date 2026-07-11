@@ -946,12 +946,38 @@ fun GalleryScreenContent(
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
     var showEjectConfirmDialog by remember { mutableStateOf(false) }
+    var showOfflineShareConfirm by remember { mutableStateOf(false) }
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
     val mediaItems by viewModel.mediaItems.collectAsState()
     val gridColumnsCount by viewModel.gridColumnsCount.collectAsState()
 
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showOfflineShareConfirm) {
+        AlertDialog(
+            onDismissRequest = { showOfflineShareConfirm = false },
+            title = { Text("Поделиться эскизами?") },
+            text = {
+                Text("Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showOfflineShareConfirm = false
+                    viewModel.shareSelectedItems(context) { errMsg ->
+                        android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }) {
+                    Text("Поделиться", maxLines = 1, softWrap = false)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOfflineShareConfirm = false }) {
+                    Text("Отмена", maxLines = 1, softWrap = false)
+                }
+            }
+        )
+    }
 
     if (showChangeFolderConfirmDialog) {
         AlertDialog(
@@ -1005,8 +1031,17 @@ fun GalleryScreenContent(
                 onEjectClick = { showEjectConfirmDialog = true },
                 onGroupClick = { isGroupExpanded = !isGroupExpanded },
                 onShare = {
-                    viewModel.shareSelectedItems(context) { errMsg ->
-                        android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
+                    val selected = mediaItems.filter { it.id in selectedIds }
+                    val hasOffline = selected.any { 
+                        it.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG && 
+                        !(isOtgConnected && it.archiveUuid == activeArchiveUuid)
+                    }
+                    if (hasOffline) {
+                        showOfflineShareConfirm = true
+                    } else {
+                        viewModel.shareSelectedItems(context) { errMsg ->
+                            android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
+                        }
                     }
                 },
                 onDelete = { viewModel.requestDeleteSelected() },
