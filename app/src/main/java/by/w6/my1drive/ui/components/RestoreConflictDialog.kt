@@ -27,17 +27,19 @@ fun RestoreConflictDialog(
         }
     }
 
+    val fallbackFolderName = conflict.defaultFallbackPath.removeSuffix("/")
+
     AlertDialog(
         onDismissRequest = { 
             // Interpret dismiss as skipping the file.
             onDecision(RestoreConflictDecision(uri = null, applyToAll = false))
         },
-        title = { Text("Ошибка восстановления пути") },
+        title = { Text("Путь восстановления недоступен") },
         text = {
             Column {
-                Text("Файл \"${conflict.itemDisplayName}\" имеет несовместимый путь (возможно, сохранен с другого устройства).")
+                Text("Не удалось получить доступ к целевой папке для восстановления файла «${conflict.itemDisplayName}».")
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Он будет восстановлен в стандартную папку: ${conflict.defaultFallbackPath}")
+                Text("Пожалуйста, укажите, куда восстановить файл:")
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -47,7 +49,7 @@ fun RestoreConflictDialog(
                         checked = applyToAll,
                         onCheckedChange = { applyToAll = it }
                     )
-                    Text("Применить ко всем последующим конфликтам")
+                    Text("Применить ко всем последующим")
                 }
             }
         },
@@ -58,7 +60,7 @@ fun RestoreConflictDialog(
                     onDecision(RestoreConflictDecision(uri = null, applyToAll = applyToAll))
                 }
             ) {
-                Text("OK")
+                Text("Восстановить в $fallbackFolderName")
             }
         },
         dismissButton = {
@@ -67,7 +69,7 @@ fun RestoreConflictDialog(
                     folderPickerLauncher.launch(null)
                 }
             ) {
-                Text("Выбрать папку")
+                Text("Выбрать куда")
             }
         }
     )

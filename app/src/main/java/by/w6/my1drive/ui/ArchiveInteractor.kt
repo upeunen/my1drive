@@ -92,43 +92,50 @@ class ArchiveInteractor(
                                     DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
                                 }
                             }
-                            is RestoreResult.Error -> {
-                                if (result.message.contains("restore_mediastore_insert_failed")) {
-                                    if (globalApplyToAll) {
-                                        // Already applied to all and failed again? Just record error and skip.
-                                        val errStr = "${result.displayName}: MediaStore rejected fallback path."
-                                        errors.add(errStr)
-                                        DebugLogBuffer.log(logTag, "Item restoration failed despite applyToAll: $errStr")
-                                    } else {
-                                        // Pause and ask user
-                                        val fallbackPath = if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
-                                        restoreState.value = restoreState.value.copy(
-                                            conflict = RestoreConflict(item.displayName, fallbackPath)
-                                        )
-                                        conflictDeferred = kotlinx.coroutines.CompletableDeferred()
-                                        val decision = conflictDeferred!!.await()
-                                        conflictDeferred = null
-                                        restoreState.value = restoreState.value.copy(conflict = null)
-                                        
-                                        if (decision.applyToAll) {
-                                            globalApplyToAll = true
-                                            globalFallbackUri = decision.uri
-                                        }
-                                        if (decision.uri != null) {
-                                            currentTargetDirUri = decision.uri
-                                            retry = true
-                                        } else {
-                                            // User chose to skip or MediaStore fallback via null URI
-                                            currentTargetDirUri = null
-                                            retry = true
-                                        }
-                                    }
-                                } else {
-                                    val errStr = "${result.displayName}: ${result.message}"
-                                    errors.add(errStr)
-                                    DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
-                                }
-                            }
+                             is RestoreResult.Error -> {
+                                 val msg = result.message.lowercase()
+                                 if (msg.contains("restore_mediastore_insert_failed") ||
+                                     msg.contains("restore_target_access_failed") ||
+                                     msg.contains("restore_create_failed") ||
+                                     msg.contains("securityexception") ||
+                                     msg.contains("access") ||
+                                     msg.contains("permission")
+                                 ) {
+                                     if (globalApplyToAll) {
+                                         // Already applied to all and failed again? Just record error and skip.
+                                         val errStr = "${result.displayName}: Destination folder not accessible."
+                                         errors.add(errStr)
+                                         DebugLogBuffer.log(logTag, "Item restoration failed despite applyToAll: $errStr")
+                                     } else {
+                                         // Pause and ask user
+                                         val fallbackPath = if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
+                                         restoreState.value = restoreState.value.copy(
+                                             conflict = RestoreConflict(item.displayName, fallbackPath)
+                                         )
+                                         conflictDeferred = kotlinx.coroutines.CompletableDeferred()
+                                         val decision = conflictDeferred!!.await()
+                                         conflictDeferred = null
+                                         restoreState.value = restoreState.value.copy(conflict = null)
+                                         
+                                         if (decision.applyToAll) {
+                                             globalApplyToAll = true
+                                             globalFallbackUri = decision.uri
+                                         }
+                                         if (decision.uri != null) {
+                                             currentTargetDirUri = decision.uri
+                                             retry = true
+                                         } else {
+                                             // User chose to skip or MediaStore fallback via null URI
+                                             currentTargetDirUri = null
+                                             retry = true
+                                         }
+                                     }
+                                 } else {
+                                     val errStr = "${result.displayName}: ${result.message}"
+                                     errors.add(errStr)
+                                     DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
+                                 }
+                             }
                         } // end when
                     } // end collect
                     } // end while (retry)
