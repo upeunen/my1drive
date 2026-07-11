@@ -391,14 +391,14 @@ fun ArchiveRoute(
                 val allActive = filterUuid == null
                 val allActiveScale by animateFloatAsState(targetValue = if (allActive) 1.0f else 0.95f, label = "allActiveScale")
                 val allActiveBgColor by animateColorAsState(
-                    targetValue = if (allActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    targetValue = if (allActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                     label = "allActiveBg"
                 )
                 val allActiveContentColor by animateColorAsState(
-                    targetValue = if (allActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    targetValue = if (allActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                     label = "allActiveContent"
                 )
-                val allActiveBorderColor = if (allActive) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                val allActiveBorderColor = if (allActive) Color.Transparent else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
 
                 Row(
                     modifier = Modifier
@@ -433,14 +433,14 @@ fun ArchiveRoute(
                     
                     val chipScale by animateFloatAsState(targetValue = if (isActive) 1.0f else 0.95f, label = "chipScale")
                     val chipBgColor by animateColorAsState(
-                        targetValue = if (isActive) baseColor else Color.Transparent,
+                        targetValue = if (isActive) baseColor else baseColor.copy(alpha = 0.4f),
                         label = "chipBg"
                     )
                     val chipContentColor by animateColorAsState(
                         targetValue = if (isActive) Color.White else baseColor,
                         label = "chipContent"
                     )
-                    val chipBorderColor = if (isActive) Color.Transparent else baseColor.copy(alpha = 0.4f)
+                    val chipBorderColor = if (isActive) Color.Transparent else baseColor.copy(alpha = 0.2f)
 
                     Row(
                         modifier = Modifier
