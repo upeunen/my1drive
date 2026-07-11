@@ -4,7 +4,9 @@ import android.app.Application
 import android.net.Uri
 import java.io.File
 import androidx.documentfile.provider.DocumentFile
-import android.provider.DocumentsContract
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import by.w6.my1drive.data.local.AppDatabase
 import by.w6.my1drive.data.local.MediaEntity
 import by.w6.my1drive.domain.model.MediaItem
@@ -875,4 +877,110 @@ class ArchiveSyncHelper(
             emit(CopyVerifyResult.Error(item.displayName, "${e.javaClass.name}: ${e.message}"))
         }
     }.flowOn(Dispatchers.IO)
+
+    suspend fun syncAllThumbnails(
+        activeUuid: String,
+        isCancelled: () -> Boolean,
+        onProgress: (current: Int, total: Int) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        val missingItems = db.mediaDao().getWithoutPreview(activeUuid, limit = 50_000)
+        val total = missingItems.size
+        if (total == 0) return@withContext
+
+        // Lift cache limit until next cache clearance
+        prefs.edit().putBoolean("preview_cache_unlimited", true).apply()
+
+        val pDir = previewCache.previewDir
+
+        for ((idx, entity) in missingItems.withIndex()) {
+            if (isCancelled()) {
+                DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled")
+                break
+            }
+            val uriStr = entity.otgUri ?: ""
+            if (uriStr.isEmpty()) continue
+
+            val cacheFile = previewCache.cacheFileFor(entity.id)
+            var success = false
+
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                // Already cached
+                db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
+                onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
+                success = true
+            } else {
+                try {
+                    val uri = Uri.parse(uriStr)
+                    val bitmap = generateThumbnailHelper(uri, entity.mimeType)
+                    if (bitmap != null) {
+                        pDir.mkdirs()
+                        cacheFile.outputStream().buffered().use { out ->
+                            val scaled = scaleBitmapHelper(bitmap, 256)
+                            scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                            if (scaled !== bitmap) scaled.recycle()
+                        }
+                        bitmap.recycle()
+                        db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
+                        onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
+                        success = true
+                    }
+                } catch (e: Exception) {
+                    DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
+                }
+            }
+            
+            // throttle slightly to keep CPU cool
+            kotlinx.coroutines.delay(10)
+            
+            withContext(Dispatchers.Main) {
+                onProgress(idx + 1, total)
+            }
+        }
+    }
+
+    private fun generateThumbnailHelper(uri: Uri, mimeType: String): Bitmap? {
+        return if (mimeType.startsWith("video")) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(application, uri)
+                retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            } catch (e: Exception) {
+                null
+            } finally {
+                retriever.release()
+            }
+        } else {
+            val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            try {
+                application.contentResolver.openInputStream(uri)?.use { input ->
+                    BitmapFactory.decodeStream(input, null, boundsOpts)
+                }
+                val sampleSize = calculateSampleSizeHelper(boundsOpts.outWidth, boundsOpts.outHeight, 256)
+                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+                application.contentResolver.openInputStream(uri)?.use { input ->
+                    BitmapFactory.decodeStream(input, null, decodeOpts)
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun scaleBitmapHelper(src: Bitmap, maxDim: Int): Bitmap {
+        val w = src.width
+        val h = src.height
+        if (w <= maxDim && h <= maxDim) return src
+        val scale = maxDim.toFloat() / maxOf(w, h)
+        return Bitmap.createScaledBitmap(src, (w * scale).toInt(), (h * scale).toInt(), true)
+    }
+
+    private fun calculateSampleSizeHelper(width: Int, height: Int, reqSize: Int): Int {
+        var size = 1
+        if (width > reqSize || height > reqSize) {
+            val halfW = width / 2
+            val halfH = height / 2
+            while (halfW / size >= reqSize && halfH / size >= reqSize) size *= 2
+        }
+        return size
+    }
 }

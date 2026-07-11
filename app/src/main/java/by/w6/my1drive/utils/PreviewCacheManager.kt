@@ -40,6 +40,9 @@ class PreviewCacheManager(
 
     fun getMaxBytes(): Long {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean("preview_cache_unlimited", false)) {
+            return Long.MAX_VALUE
+        }
         return prefs.getLong(PREF_CACHE_LIMIT, DEFAULT_MAX_BYTES)
     }
 

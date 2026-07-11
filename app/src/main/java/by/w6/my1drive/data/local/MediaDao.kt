@@ -63,6 +63,9 @@ interface MediaDao {
     /** Items without a cached preview, ordered by most recent first — for background generation */
     @Query("SELECT * FROM media_archive WHERE archiveUuid = :archiveUuid AND (thumbnailPath IS NULL OR thumbnailPath = '') AND otgUri != '' AND otgUri IS NOT NULL ORDER BY dateModified DESC LIMIT :limit")
     fun getWithoutPreview(archiveUuid: String, limit: Int): List<MediaEntity>
+
+    @Query("SELECT COUNT(*) FROM media_archive WHERE archiveUuid = :archiveUuid AND (thumbnailPath IS NULL OR thumbnailPath = '') AND otgUri != '' AND otgUri IS NOT NULL")
+    fun getWithoutPreviewCount(archiveUuid: String): Int
 }
 
 

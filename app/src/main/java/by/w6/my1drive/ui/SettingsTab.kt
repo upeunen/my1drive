@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -82,9 +84,15 @@ fun SettingsTab(
     onRefresh: () -> Unit = {},
     knownArchives: List<by.w6.my1drive.data.local.ArchiveEntity> = emptyList(),
     onDeleteArchive: (String) -> Unit = {},
-    activeArchiveUuid: String? = null
+    activeArchiveUuid: String? = null,
+    isSyncingThumbnails: Boolean = false,
+    syncThumbnailsProgress: Pair<Int, Int> = Pair(0, 0),
+    missingThumbnailsCount: Int = 0,
+    onSyncThumbnails: () -> Unit = {},
+    onCancelSyncThumbnails: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -623,6 +631,114 @@ fun SettingsTab(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         softWrap = false
                     )
+                }
+
+                if (showConfirmDialog) {
+                    val estimatedSizeMb = remember(missingThumbnailsCount) { (missingThumbnailsCount * 150) / 1024.0 }
+                    val sizeStr = if (estimatedSizeMb < 1.0) "меньше 1 МБ" else "${String.format(java.util.Locale.US, "%.1f", estimatedSizeMb)} МБ"
+                    AlertDialog(
+                        onDismissRequest = { showConfirmDialog = false },
+                        title = { Text("Синхронизировать миниатюры?") },
+                        text = {
+                            Text("Будет загружено $missingThumbnailsCount эскизов. Это займет примерно $sizeStr памяти на вашем устройстве.\n\nИх можно удалить в любое время в настройках. Если размер превысит лимит кэша, лимит будет автоматически снят.")
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                showConfirmDialog = false
+                                onSyncThumbnails()
+                            }) {
+                                Text("Начать")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showConfirmDialog = false }) {
+                                Text("Отмена")
+                            }
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                if (isSyncingThumbnails) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Синхронизация: ${syncThumbnailsProgress.first}/${syncThumbnailsProgress.second}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        val progressFraction = if (syncThumbnailsProgress.second > 0) {
+                            syncThumbnailsProgress.first.toFloat() / syncThumbnailsProgress.second
+                        } else 0f
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { progressFraction },
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp))
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = onCancelSyncThumbnails,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Отмена")
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = { showConfirmDialog = true },
+                        enabled = isOtgConnected && missingThumbnailsCount > 0,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Синхронизировать миниатюры",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
+                    }
+                    if (!isOtgConnected) {
+                        Text(
+                            text = "Подключите USB-накопитель, чтобы скачать эскизы",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    } else if (missingThumbnailsCount == 0) {
+                        Text(
+                            text = "Все миниатюры уже синхронизированы",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Доступно для синхронизации: $missingThumbnailsCount эскизов",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(12.dp))

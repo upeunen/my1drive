@@ -1276,6 +1276,14 @@ fun GalleryScreenContent(
                             val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
                             val knownArchives by viewModel.knownArchives.collectAsState()
                             val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
+                            val isSyncingThumbnails by viewModel.isSyncingThumbnails.collectAsState()
+                            val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsState()
+                            val missingThumbnailsCount by viewModel.missingThumbnailsCount.collectAsState()
+
+                            LaunchedEffect(Unit) {
+                                viewModel.updateMissingThumbnailsCount()
+                            }
+
                             SettingsTab(
                                 onSelectOtgDirectory = { showChangeFolderConfirmDialog = true },
                                 onClearCache = { viewModel.clearPreviewCache() },
@@ -1292,7 +1300,12 @@ fun GalleryScreenContent(
                                 onRefresh = { viewModel.refresh() },
                                 knownArchives = knownArchives,
                                 onDeleteArchive = { viewModel.deleteArchive(it) },
-                                activeArchiveUuid = activeArchiveUuid
+                                activeArchiveUuid = activeArchiveUuid,
+                                isSyncingThumbnails = isSyncingThumbnails,
+                                syncThumbnailsProgress = syncThumbnailsProgress,
+                                missingThumbnailsCount = missingThumbnailsCount,
+                                onSyncThumbnails = { viewModel.startThumbnailSync() },
+                                onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() }
                             )
                         }
                     }

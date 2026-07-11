@@ -569,6 +569,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
+        viewModelScope.launch {
+            otgManager.activeArchiveUuid.collect { _ ->
+                updateMissingThumbnailsCount()
+            }
+        }
+
         // Start the polling loop
         otgManager.start(savedUri, savedDeviceUri)
 
@@ -614,11 +620,67 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             withContext(Dispatchers.IO) {
                 previewCache.clearAll()
                 db.mediaDao().deleteAll()
+                getApplication<Application>().getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
+                    .edit().putBoolean("preview_cache_unlimited", false).apply()
             }
             otgManager.resetActiveArchiveUuid()
             refreshCacheStats()
             repository.refresh()
         }
+    }
+
+    private val _isSyncingThumbnails = MutableStateFlow(false)
+    val isSyncingThumbnails = _isSyncingThumbnails.asStateFlow()
+
+    private val _syncThumbnailsProgress = MutableStateFlow(Pair(0, 0))
+    val syncThumbnailsProgress = _syncThumbnailsProgress.asStateFlow()
+
+    private var thumbnailSyncJob: kotlinx.coroutines.Job? = null
+
+    fun getMissingThumbnailsCount(): Int {
+        return 0 // computed via state update
+    }
+
+    private val _missingThumbnailsCount = MutableStateFlow(0)
+    val missingThumbnailsCount = _missingThumbnailsCount.asStateFlow()
+
+    fun updateMissingThumbnailsCount() {
+        val activeUuid = otgManager.activeArchiveUuid.value
+        if (activeUuid == null) {
+            _missingThumbnailsCount.value = 0
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val count = db.mediaDao().getWithoutPreviewCount(activeUuid)
+            _missingThumbnailsCount.value = count
+        }
+    }
+
+    fun startThumbnailSync() {
+        val activeUuid = otgManager.activeArchiveUuid.value ?: return
+        _isSyncingThumbnails.value = true
+        _syncThumbnailsProgress.value = Pair(0, 0)
+        thumbnailSyncJob = viewModelScope.launch {
+            val job = coroutineContext[kotlinx.coroutines.Job]
+            try {
+                syncHelper.syncAllThumbnails(
+                    activeUuid = activeUuid,
+                    isCancelled = { job?.isActive == false },
+                    onProgress = { current, total ->
+                        _syncThumbnailsProgress.value = Pair(current, total)
+                    }
+                )
+            } finally {
+                _isSyncingThumbnails.value = false
+                updateMissingThumbnailsCount()
+                refreshCacheStats()
+            }
+        }
+    }
+
+    fun cancelThumbnailSync() {
+        thumbnailSyncJob?.cancel()
+        _isSyncingThumbnails.value = false
     }
 
     fun deleteArchive(uuid: String) {
