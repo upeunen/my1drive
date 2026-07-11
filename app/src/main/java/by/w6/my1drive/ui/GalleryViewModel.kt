@@ -613,9 +613,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 previewCache.clearAll()
-                db.clearAllTables()
+                db.mediaDao().deleteAll()
             }
-            otgManager.resetConnection()
+            otgManager.resetActiveArchiveUuid()
             refreshCacheStats()
             repository.refresh()
         }

@@ -88,19 +88,6 @@ class OtgConnectionManager(
         prefs.edit().remove("active_archive_uuid").apply()
     }
 
-    fun resetConnection() {
-        _otgDirectoryUri.value = null
-        _activeArchiveUuid.value = null
-        _status.value = DriveStatus.NO_URI_CONFIGURED
-        _archiveSize.value = 0L
-        wasPhysicalConnected = false
-        prefs.edit()
-            .remove(PREF_OTG_URI)
-            .remove("active_archive_uuid")
-            .remove("known_archive_uuid")
-            .apply()
-    }
-
     // ─── Internal state ───
 
     private var driveErrorCount = 0
