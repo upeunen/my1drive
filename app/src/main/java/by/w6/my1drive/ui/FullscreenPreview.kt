@@ -205,6 +205,9 @@ fun FullscreenPreview(
         return
     }
 
+    val isItemConnected = currentItem.status == MediaStatus.ON_DEVICE ||
+        (isOtgConnected && currentItem.archiveUuid == activeArchiveUuid && !currentItem.otgUri.isNullOrEmpty())
+
     BackHandler {
         if (!isNavigatingBack) {
             isNavigatingBack = true
@@ -368,12 +371,12 @@ fun FullscreenPreview(
                         }
                         IconButton(
                             onClick = { onShare(currentItem) },
-                            enabled = currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)
+                            enabled = isItemConnected
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = if (currentItem.status == MediaStatus.ON_DEVICE || (isOtgConnected && currentItem.otgUri != null)) Color.White else Color.White.copy(alpha = 0.4f)
+                                tint = if (isItemConnected) Color.White else Color.White.copy(alpha = 0.4f)
                             )
                         }
                         IconButton(onClick = { isPinned = !isPinned }) {
@@ -477,7 +480,7 @@ fun FullscreenPreview(
                             } else {
                                 Button(
                                     onClick = { restoreCurrentItem(currentItem) },
-                                    enabled = isOtgConnected,
+                                    enabled = isItemConnected,
                                     shape = RoundedCornerShape(24.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color.White.copy(alpha = 0.15f),

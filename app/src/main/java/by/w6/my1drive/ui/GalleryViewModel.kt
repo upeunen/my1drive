@@ -1084,7 +1084,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         } else if (item.status == MediaStatus.ARCHIVED_OTG) {
             val otgUriStr = item.otgUri
-            if (otgUriStr == null) {
+            if (otgUriStr.isNullOrEmpty()) {
                 onError("Ссылка на файл в архиве отсутствует")
                 return
             }
@@ -1181,7 +1181,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
                     // Copy archived items from OTG to cache
                     for (item in archivedItems) {
-                        val otgUri = Uri.parse(item.otgUri ?: continue)
+                        val otgUriStr = item.otgUri
+                        if (otgUriStr.isNullOrEmpty()) continue
+                        val otgUri = Uri.parse(otgUriStr)
                         val inputStream = context.contentResolver.openInputStream(otgUri) ?: continue
                         val tempFile = File(sharedTempDir, item.displayName)
                         inputStream.use { input ->
