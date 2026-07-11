@@ -299,6 +299,13 @@ fun ArchiveRoute(
     // Фильтр по носителям: null = все, иначе uuid выбранной флешки
     var filterUuid by remember { mutableStateOf<String?>(null) }
 
+    // Автоматически переключаем фильтр на подключенную флешку при её подключении
+    LaunchedEffect(isOtgConnected, activeArchiveUuid) {
+        if (isOtgConnected && activeArchiveUuid != null) {
+            filterUuid = activeArchiveUuid
+        }
+    }
+
     // Карта uuid → Color по позиции в списке (флешка 1 = цвет[0], флешка 2 = цвет[1]...)
     val archiveColorMap = remember(knownArchives) {
         knownArchives.mapIndexed { idx, archive ->
