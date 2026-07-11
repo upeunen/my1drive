@@ -18,9 +18,7 @@ val ARCHIVE_STRIPE_COLORS = listOf(
  * Используй эту версию везде где есть список архивов.
  */
 fun archiveStripeColor(uuid: String?, knownArchives: List<ArchiveEntity>): Color {
-    if (uuid.isNullOrEmpty()) return ARCHIVE_STRIPE_COLORS[0]
-    val idx = knownArchives.indexOfFirst { it.uuid == uuid }.coerceAtLeast(0)
-    return ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
+    return archiveStripeColor(uuid)
 }
 
 /** Fallback без списка (по хэшу) — оставлен для совместимости */

@@ -274,7 +274,7 @@ fun SettingsTab(
                     }
 
                     knownArchives.forEachIndexed { idx, archive ->
-                        val stripe = ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
+                        val stripe = archiveStripeColor(archive.uuid)
                         val displayName = archive.name.ifBlank { archive.folderName.ifBlank { "Архив ${archive.uuid.take(6)}" } }
                         val subtitle = if (archive.folderName.isNotEmpty()) "Папка: ${archive.folderName}" else "UUID: ${archive.uuid.take(12)}"
                         val isCurrentConnected = isOtgConnected && archive.uuid == activeArchiveUuid
@@ -292,7 +292,8 @@ fun SettingsTab(
                                     .background(stripe),
                                 contentAlignment = Alignment.Center
                             ) {
-                                val icon = when (idx % 3) {
+                                val hashVal = Math.abs(archive.uuid.hashCode())
+                                val icon = when (hashVal % 3) {
                                     0 -> Icons.Default.SdStorage
                                     1 -> Icons.Default.Usb
                                     else -> Icons.Default.Save

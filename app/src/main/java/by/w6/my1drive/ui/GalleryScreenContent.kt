@@ -307,11 +307,11 @@ fun ArchiveRoute(
         }
     }
 
-    // Карта uuid → Color по позиции в списке (флешка 1 = цвет[0], флешка 2 = цвет[1]...)
+    // Карта uuid → Color по стабильному хэшу UUID
     val archiveColorMap = remember(knownArchives) {
-        knownArchives.mapIndexed { idx, archive ->
-            archive.uuid to ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
-        }.toMap()
+        knownArchives.associate { archive ->
+            archive.uuid to archiveStripeColor(archive.uuid)
+        }
     }
 
     // 1. Извлекаем плоский список архивных медиафайлов (с учётом фильтра)
