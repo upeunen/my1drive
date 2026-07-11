@@ -78,6 +78,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -146,6 +147,7 @@ fun FullscreenPreview(
     var showShareThumbnailConfirm by remember { mutableStateOf<MediaItem?>(null) }
 
     val context = LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE) }
     val haptic = LocalHapticFeedback.current
     val activity = remember(context) {
         var ctx = context
@@ -377,7 +379,11 @@ fun FullscreenPreview(
                         IconButton(
                             onClick = {
                                 if (currentItem.status == MediaStatus.ARCHIVED_OTG && !isItemConnected) {
-                                    showShareThumbnailConfirm = currentItem
+                                    if (prefs.getBoolean("skip_offline_share_warning", false)) {
+                                        onShare(currentItem)
+                                    } else {
+                                        showShareThumbnailConfirm = currentItem
+                                    }
                                 } else {
                                     onShare(currentItem)
                                 }
@@ -670,15 +676,35 @@ fun FullscreenPreview(
                     "неизвестно"
                 }
             }
+            var dontWarnAgain by remember { mutableStateOf(false) }
             AlertDialog(
                 onDismissRequest = { showShareThumbnailConfirm = null },
                 title = { Text("Поделиться эскизом?") },
                 text = {
-                    Text("Исходный накопитель отключен. Вы можете отправить эскиз (миниатюру) в низком разрешении ($resolution).")
+                    Column {
+                        Text("Исходный накопитель отключен. Вы можете отправить эскиз (миниатюру) в низком разрешении ($resolution).")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { dontWarnAgain = !dontWarnAgain }
+                        ) {
+                            Checkbox(
+                                checked = dontWarnAgain,
+                                onCheckedChange = { dontWarnAgain = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("я понимаю, больше не нужно предупреждать", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
+                            if (dontWarnAgain) {
+                                prefs.edit().putBoolean("skip_offline_share_warning", true).apply()
+                            }
                             onShare(item)
                             showShareThumbnailConfirm = null
                         }

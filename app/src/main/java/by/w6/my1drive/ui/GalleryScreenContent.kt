@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -943,6 +944,7 @@ fun GalleryScreenContent(
     }
 
     val context = LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE) }
     var showDisconnectedOtgItemInfo by remember { mutableStateOf<MediaItem?>(null) }
     var showDebugLogsDialog by remember { mutableStateOf(false) }
     var showEjectConfirmDialog by remember { mutableStateOf(false) }
@@ -955,15 +957,35 @@ fun GalleryScreenContent(
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
 
     if (showOfflineShareConfirm) {
+        var dontWarnAgain by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { showOfflineShareConfirm = false },
             title = { Text("Поделиться эскизами?") },
             text = {
-                Text("Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.")
+                Column {
+                    Text("Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { dontWarnAgain = !dontWarnAgain }
+                    ) {
+                        Checkbox(
+                            checked = dontWarnAgain,
+                            onCheckedChange = { dontWarnAgain = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("я понимаю, больше не нужно предупреждать", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             },
             confirmButton = {
                 Button(onClick = {
                     showOfflineShareConfirm = false
+                    if (dontWarnAgain) {
+                        prefs.edit().putBoolean("skip_offline_share_warning", true).apply()
+                    }
                     viewModel.shareSelectedItems(context) { errMsg ->
                         android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
                     }
@@ -1036,7 +1058,7 @@ fun GalleryScreenContent(
                         it.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG && 
                         !(isOtgConnected && it.archiveUuid == activeArchiveUuid)
                     }
-                    if (hasOffline) {
+                    if (hasOffline && !prefs.getBoolean("skip_offline_share_warning", false)) {
                         showOfflineShareConfirm = true
                     } else {
                         viewModel.shareSelectedItems(context) { errMsg ->
