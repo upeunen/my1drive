@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,10 @@ import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.SdStorage
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -75,7 +80,8 @@ fun SettingsTab(
     onShowDebugLogs: () -> Unit = {},
     onSyncArchive: () -> Unit = {},
     onRefresh: () -> Unit = {},
-    knownArchives: List<by.w6.my1drive.data.local.ArchiveEntity> = emptyList()
+    knownArchives: List<by.w6.my1drive.data.local.ArchiveEntity> = emptyList(),
+    onDeleteArchive: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -226,35 +232,104 @@ fun SettingsTab(
                     )
                 }
 
-                // Легенда архивов — только при включённой мульти-архивности
+                // Список известных архивов — только при включённой мульти-архивности
                 if (knownArchives.isNotEmpty() && showOffline) {
                     Spacer(Modifier.height(14.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Цвета носителей",
+                        text = "Подключенные и оффлайн-носители",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(8.dp))
+                    
+                    var archiveToDelete by remember { mutableStateOf<by.w6.my1drive.data.local.ArchiveEntity?>(null) }
+                    
+                    if (archiveToDelete != null) {
+                        AlertDialog(
+                            onDismissRequest = { archiveToDelete = null },
+                            title = { Text("Удалить архив?") },
+                            text = { 
+                                Text("Вы действительно хотите удалить архив «${archiveToDelete?.name?.ifBlank { archiveToDelete?.folderName?.ifBlank { archiveToDelete?.uuid?.take(8) } }}»?\n\nЛокальный кэш и список файлов для этого носителя будут удалены с телефона. Файлы на самой флешке останутся нетронутыми.")
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        archiveToDelete?.uuid?.let { onDeleteArchive(it) }
+                                        archiveToDelete = null
+                                    }
+                                ) {
+                                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { archiveToDelete = null }) {
+                                    Text("Отмена")
+                                }
+                            }
+                        )
+                    }
+
                     knownArchives.forEachIndexed { idx, archive ->
                         val stripe = ARCHIVE_STRIPE_COLORS[idx % ARCHIVE_STRIPE_COLORS.size]
+                        val displayName = archive.name.ifBlank { archive.folderName.ifBlank { "Архив ${archive.uuid.take(6)}" } }
+                        val subtitle = if (archive.folderName.isNotEmpty()) "Папка: ${archive.folderName}" else "UUID: ${archive.uuid.take(12)}"
+                        
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 3.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(width = 28.dp, height = 4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(stripe)
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = archive.name.ifBlank { archive.folderName.ifBlank { archive.uuid.take(8) } },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(stripe),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val icon = when (idx % 3) {
+                                    0 -> Icons.Default.SdStorage
+                                    1 -> Icons.Default.Usb
+                                    else -> Icons.Default.Save
+                                }
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            
+                            Spacer(Modifier.width(12.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            IconButton(
+                                onClick = { archiveToDelete = archive },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Удалить архив",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }

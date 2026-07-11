@@ -620,6 +620,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             repository.refresh()
         }
     }
+
+    fun deleteArchive(uuid: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val itemsToDelete = db.mediaDao().getAllSync().filter { it.archiveUuid == uuid }
+            itemsToDelete.forEach { entity ->
+                entity.thumbnailPath?.let { path ->
+                    val file = java.io.File(path)
+                    if (file.exists()) file.delete()
+                }
+            }
+            db.archiveDao().delete(uuid)
+            db.mediaDao().deleteByArchiveUuid(uuid)
+            withContext(Dispatchers.Main) {
+                repository.refresh()
+            }
+        }
+    }
     fun getCacheMaxMb(): Long = previewCache.getMaxBytes() / (1024 * 1024)
     fun getPreviewCacheManager(): PreviewCacheManager = previewCache
     fun setCacheMaxMb(mb: Long) { previewCache.setMaxBytes(mb * 1024 * 1024); viewModelScope.launch { previewCache.evictIfNeeded() } }

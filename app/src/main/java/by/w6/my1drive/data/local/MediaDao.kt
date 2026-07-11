@@ -30,6 +30,9 @@ interface MediaDao {
     @Query("DELETE FROM media_archive")
     fun deleteAll()
 
+    @Query("DELETE FROM media_archive WHERE archiveUuid = :archiveUuid")
+    fun deleteByArchiveUuid(archiveUuid: String)
+
     @Query("SELECT * FROM media_archive ORDER BY dateModified DESC")
     fun getAllSync(): List<MediaEntity>
 

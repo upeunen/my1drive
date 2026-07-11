@@ -1232,7 +1232,8 @@ fun GalleryScreenContent(
                                 onShowDebugLogs = { showDebugLogsDialog = true },
                                 onSyncArchive = onSyncArchive,
                                 onRefresh = { viewModel.refresh() },
-                                knownArchives = knownArchives
+                                knownArchives = knownArchives,
+                                onDeleteArchive = { viewModel.deleteArchive(it) }
                             )
                         }
                     }
