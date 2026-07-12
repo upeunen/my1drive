@@ -272,7 +272,11 @@ private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) 
         putExtra(android.content.Intent.EXTRA_SUBJECT, item.displayName)
         putExtra(android.content.Intent.EXTRA_TEXT, shareText)
 
-        val path = item.thumbnailPath
+        val path = item.thumbnailPath ?: run {
+            val previewDir = File(context.filesDir, "my1drive_previews")
+            val cacheFile = File(previewDir, "${item.id}.my1d")
+            if (cacheFile.exists()) cacheFile.absolutePath else null
+        }
         if (path != null) {
             val file = File(path)
             if (file.exists()) {
@@ -302,7 +306,11 @@ private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb
         Накопитель: ${item.archiveName ?: "Неизвестный"}
     """.trimIndent()
 
-    val path = item.thumbnailPath
+    val path = item.thumbnailPath ?: run {
+        val previewDir = File(context.filesDir, "my1drive_previews")
+        val cacheFile = File(previewDir, "${item.id}.my1d")
+        if (cacheFile.exists()) cacheFile.absolutePath else null
+    }
     if (path != null) {
         val file = File(path)
         if (file.exists()) {
