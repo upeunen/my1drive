@@ -21,6 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -234,6 +237,11 @@ fun InfoDialog(
             InfoRow(label = stringResource(R.string.info_type, ""), value = item.mimeType)
             InfoRow(label = stringResource(R.string.info_size, ""), value = sizeMb)
 
+            item.archiveName?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                InfoRow(label = "Накопитель:", value = it)
+            }
+
             item.originalRelativePath?.let {
                 Spacer(modifier = Modifier.height(4.dp))
                 InfoRow(label = stringResource(R.string.info_original_folder), value = it)
@@ -372,18 +380,39 @@ fun InfoDialog(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(onClick = onDismiss) {
+                OutlinedButton(
+                    onClick = { shareFileDetails(context, item, sizeMb) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Поделиться", maxLines = 1, fontSize = 11.sp)
+                }
+
+                OutlinedButton(
+                    onClick = { copyFileDetailsToClipboard(context, item, sizeMb) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Копировать", maxLines = 1, fontSize = 11.sp)
+                }
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = stringResource(R.string.btn_close),
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        softWrap = false
+                        softWrap = false,
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -445,4 +474,71 @@ private fun readExifMetadata(context: Context, uri: Uri): Map<String, String> {
         e.printStackTrace()
     }
     return metadata
+}
+
+private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) {
+    val shareText = """
+        Имя: ${item.displayName}
+        Путь: ${item.otgUri ?: ""}
+        Размер: $sizeMb
+        Накопитель: ${item.archiveName ?: "Неизвестный"}
+    """.trimIndent()
+
+    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "image/webp"
+        putExtra(android.content.Intent.EXTRA_SUBJECT, item.displayName)
+        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+
+        val path = item.thumbnailPath
+        if (path != null) {
+            val file = File(path)
+            if (file.exists()) {
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } else {
+                type = "text/plain"
+            }
+        } else {
+            type = "text/plain"
+        }
+    }
+    context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
+}
+
+private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    val shareText = """
+        Имя: ${item.displayName}
+        Путь: ${item.otgUri ?: ""}
+        Размер: $sizeMb
+        Накопитель: ${item.archiveName ?: "Неизвестный"}
+    """.trimIndent()
+
+    val path = item.thumbnailPath
+    if (path != null) {
+        val file = File(path)
+        if (file.exists()) {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            val clip = android.content.ClipData.newUri(context.contentResolver, "file_thumbnail", uri).apply {
+                addItem(android.content.ClipData.Item(shareText))
+            }
+            clipboard.setPrimaryClip(clip)
+        } else {
+            val clip = android.content.ClipData.newPlainText("file_details", shareText)
+            clipboard.setPrimaryClip(clip)
+        }
+    } else {
+        val clip = android.content.ClipData.newPlainText("file_details", shareText)
+        clipboard.setPrimaryClip(clip)
+    }
+    Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
 }
