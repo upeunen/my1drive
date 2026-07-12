@@ -476,6 +476,28 @@ private fun readExifMetadata(context: Context, uri: Uri): Map<String, String> {
     return metadata
 }
 
+private fun getSharedImageUri(context: Context, sourceFile: File, displayName: String): Uri? {
+    return try {
+        val sharedTempDir = File(context.cacheDir, "shared_temp")
+        sharedTempDir.mkdirs()
+        val cleanName = displayName.substringBeforeLast(".") + "_preview.webp"
+        val tempFile = File(sharedTempDir, cleanName)
+        sourceFile.inputStream().use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            tempFile
+        )
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
 private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) {
     val shareText = """
         Имя: ${item.displayName}
@@ -484,32 +506,35 @@ private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) 
         Накопитель: ${item.archiveName ?: "Неизвестный"}
     """.trimIndent()
 
+    val path = item.thumbnailPath ?: run {
+        val previewDir = File(context.filesDir, "my1drive_previews")
+        val cacheFile = File(previewDir, "${item.id}.my1d")
+        if (cacheFile.exists()) cacheFile.absolutePath else null
+    }
+
+    if (path != null) {
+        val file = File(path)
+        if (file.exists()) {
+            val uri = getSharedImageUri(context, file, item.displayName)
+            if (uri != null) {
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "image/webp"
+                    putExtra(android.content.Intent.EXTRA_SUBJECT, item.displayName)
+                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
+                return
+            }
+        }
+    }
+
+    // Fallback: text only
     val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-        type = "image/webp"
+        type = "text/plain"
         putExtra(android.content.Intent.EXTRA_SUBJECT, item.displayName)
         putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-
-        val path = item.thumbnailPath ?: run {
-            val previewDir = File(context.filesDir, "my1drive_previews")
-            val cacheFile = File(previewDir, "${item.id}.my1d")
-            if (cacheFile.exists()) cacheFile.absolutePath else null
-        }
-        if (path != null) {
-            val file = File(path)
-            if (file.exists()) {
-                val uri = androidx.core.content.FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-                putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } else {
-                type = "text/plain"
-            }
-        } else {
-            type = "text/plain"
-        }
     }
     context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
 }
@@ -528,25 +553,23 @@ private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb
         val cacheFile = File(previewDir, "${item.id}.my1d")
         if (cacheFile.exists()) cacheFile.absolutePath else null
     }
+
     if (path != null) {
         val file = File(path)
         if (file.exists()) {
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-            val clip = android.content.ClipData.newUri(context.contentResolver, "file_thumbnail", uri).apply {
-                addItem(android.content.ClipData.Item(shareText))
+            val uri = getSharedImageUri(context, file, item.displayName)
+            if (uri != null) {
+                val clip = android.content.ClipData.newUri(context.contentResolver, "file_thumbnail", uri).apply {
+                    addItem(android.content.ClipData.Item(shareText))
+                }
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
+                return
             }
-            clipboard.setPrimaryClip(clip)
-        } else {
-            val clip = android.content.ClipData.newPlainText("file_details", shareText)
-            clipboard.setPrimaryClip(clip)
         }
-    } else {
-        val clip = android.content.ClipData.newPlainText("file_details", shareText)
-        clipboard.setPrimaryClip(clip)
     }
+
+    val clip = android.content.ClipData.newPlainText("file_details", shareText)
+    clipboard.setPrimaryClip(clip)
     Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
 }
