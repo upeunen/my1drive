@@ -218,23 +218,6 @@ fun DisconnectedOtgInfoDialog(
                         }
                     }
 
-                    // Метка тома
-                    archive?.folderName?.let {
-                        Column {
-                            Text(
-                                text = "Метка тома",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
                     // ID накопителя (UUID)
                     item.archiveUuid?.let {
                         Column {
@@ -319,14 +302,12 @@ private fun getSharedImageUri(context: Context, sourceFile: File, displayName: S
 
 private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
     val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
-    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val archiveUuid = item.archiveUuid ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
         Накопитель: $archiveName
-        Метка тома: $volumeLabel
         ID накопителя (UUID): $archiveUuid
     """.trimIndent()
 
@@ -366,14 +347,12 @@ private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, 
 private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
-    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val archiveUuid = item.archiveUuid ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
         Накопитель: $archiveName
-        Метка тома: $volumeLabel
         ID накопителя (UUID): $archiveUuid
     """.trimIndent()
 

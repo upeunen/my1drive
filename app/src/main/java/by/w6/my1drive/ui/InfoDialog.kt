@@ -244,10 +244,7 @@ fun InfoDialog(
                 InfoRow(label = "Накопитель:", value = it)
             }
 
-            archive?.folderName?.let {
-                Spacer(modifier = Modifier.height(4.dp))
-                InfoRow(label = "Метка тома:", value = it)
-            }
+
 
             item.archiveUuid?.let {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -493,14 +490,12 @@ private fun getSharedImageUri(context: Context, sourceFile: File, displayName: S
 
 private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
     val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
-    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val archiveUuid = item.archiveUuid ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
         Накопитель: $archiveName
-        Метка тома: $volumeLabel
         ID накопителя (UUID): $archiveUuid
     """.trimIndent()
 
@@ -540,14 +535,12 @@ private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, 
 private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
-    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val archiveUuid = item.archiveUuid ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
         Накопитель: $archiveName
-        Метка тома: $volumeLabel
         ID накопителя (UUID): $archiveUuid
     """.trimIndent()
 
