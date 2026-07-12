@@ -162,37 +162,17 @@ fun SettingsTab(
                 }
 
                 Spacer(Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = onSelectOtgDirectory,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
-                                else stringResource(R.string.select_otg_folder),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                    if (isOtgConnected && otgDirectoryDisplayName != null) {
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = onSyncArchive,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.sync_archive_title),
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                softWrap = false
-                            )
-                        }
-                    }
+                Button(
+                    onClick = onSelectOtgDirectory,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (otgDirectoryDisplayName != null) stringResource(R.string.change_otg_folder)
+                            else stringResource(R.string.select_otg_folder),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
                 }
             }
         }
