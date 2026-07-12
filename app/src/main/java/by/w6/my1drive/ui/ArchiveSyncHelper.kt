@@ -930,7 +930,7 @@ class ArchiveSyncHelper(
             }
             
             // throttle slightly to keep CPU cool
-            kotlinx.coroutines.delay(10)
+            kotlinx.coroutines.delay(50)
             
             withContext(Dispatchers.Main) {
                 onProgress(idx + 1, total)

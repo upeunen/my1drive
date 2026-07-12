@@ -316,29 +316,9 @@ fun ArchiveRoute(
     }
 
     // 1. Извлекаем плоский список архивных медиафайлов (с учётом фильтра)
-    val totalArchivedCount = remember(archivedGroupedItems, filterUuid) {
+    val archivedItems = remember(archivedGroupedItems, filterUuid) {
         archivedGroupedItems.filterIsInstance<GalleryItem.Media>().map { it.item }
             .let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
-            .size
-    }
-
-    val archivedItems = remember(archivedGroupedItems, filterUuid, isOtgConnected) {
-        archivedGroupedItems.filterIsInstance<GalleryItem.Media>().map { it.item }
-            .let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
-            .let { all ->
-                if (!isOtgConnected) {
-                    // Для каждого архива: если тумблер «Оффлайн-копии» выключен —
-                    // скрываем файлы без кэшированного превью (не показываем пустые плитки)
-                    all.filter { item ->
-                        val offlineEnabled = prefs.getBoolean(
-                            "archive_unlimited_cache_${item.archiveUuid}", false
-                        )
-                        offlineEnabled || item.hasCachedPreview
-                    }
-                } else {
-                    all
-                }
-            }
     }
 
     // 2. Группируем архивные медиафайлы по Годам и Месяцам
@@ -511,41 +491,7 @@ fun ArchiveRoute(
             }
         }
 
-        // Баннер: отображаются не все миниатюры
-        val hiddenCount = totalArchivedCount - archivedItems.size
-        if (!isOtgConnected && hiddenCount > 0) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Cloud,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = "Отображается ${archivedItems.size} из $totalArchivedCount — " +
-                            "скрыты файлы без оффлайн-копии. " +
-                            "Подключите накопитель или включите безлимитный кэш в настройках.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        lineHeight = MaterialTheme.typography.bodySmall.fontSize * 1.4
-                    )
-                }
-            }
-        }
+
 
         Row(
             modifier = Modifier

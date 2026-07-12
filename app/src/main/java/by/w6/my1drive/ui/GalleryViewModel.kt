@@ -581,8 +581,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         viewModelScope.launch {
-            otgManager.activeArchiveUuid.collect { _ ->
+            kotlinx.coroutines.flow.combine(
+                otgManager.activeArchiveUuid,
+                _isOtgConnected
+            ) { uuid, connected ->
+                Pair(uuid, connected)
+            }.collect { (uuid, connected) ->
                 updateMissingThumbnailsCount()
+                if (connected && uuid != null) {
+                    startSilentThumbnailSync()
+                } else {
+                    silentThumbnailSyncJob?.cancel()
+                }
             }
         }
 
@@ -645,6 +655,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private var thumbnailSyncJob: kotlinx.coroutines.Job? = null
+    private var silentThumbnailSyncJob: kotlinx.coroutines.Job? = null
 
     fun getMissingThumbnailsCount(): Int {
         return 0 // computed via state update
@@ -689,6 +700,25 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun cancelThumbnailSync() {
         thumbnailSyncJob?.cancel()
         _isSyncingThumbnails.value = false
+    }
+
+    fun startSilentThumbnailSync() {
+        val activeUuid = otgManager.activeArchiveUuid.value ?: return
+        silentThumbnailSyncJob?.cancel()
+        silentThumbnailSyncJob = viewModelScope.launch {
+            val job = coroutineContext[kotlinx.coroutines.Job]
+            try {
+                syncHelper.syncAllThumbnails(
+                    activeUuid = activeUuid,
+                    isCancelled = { job?.isActive == false || !_isOtgConnected.value },
+                    onProgress = { _, _ -> }
+                )
+            } catch (_: Exception) {
+            } finally {
+                updateMissingThumbnailsCount()
+                refreshCacheStats()
+            }
+        }
     }
 
     fun deleteArchive(uuid: String) {
