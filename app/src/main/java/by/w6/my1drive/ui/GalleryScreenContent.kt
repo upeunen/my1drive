@@ -1300,6 +1300,7 @@ fun GalleryScreenContent(
                             val isSyncingThumbnails by viewModel.isSyncingThumbnails.collectAsState()
                             val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsState()
                             val missingThumbnailsCount by viewModel.missingThumbnailsCount.collectAsState()
+                            val isStorageLow by viewModel.isStorageLow.collectAsState()
 
                             LaunchedEffect(Unit) {
                                 viewModel.updateMissingThumbnailsCount()
@@ -1326,7 +1327,8 @@ fun GalleryScreenContent(
                                 syncThumbnailsProgress = syncThumbnailsProgress,
                                 missingThumbnailsCount = missingThumbnailsCount,
                                 onSyncThumbnails = { viewModel.startThumbnailSync() },
-                                onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() }
+                                onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() },
+                                isStorageLow = isStorageLow
                             )
                         }
                     }

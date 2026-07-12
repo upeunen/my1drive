@@ -346,6 +346,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _cacheStats = MutableStateFlow(Pair(0L, 0))
     val cacheStats = _cacheStats.asStateFlow()
 
+    private val _isStorageLow = MutableStateFlow(false)
+    val isStorageLow = _isStorageLow.asStateFlow()
+
     private val _isSharingPreparing = MutableStateFlow(false)
     val isSharingPreparing = _isSharingPreparing.asStateFlow()
 
@@ -642,19 +645,29 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun refreshCacheStats() { viewModelScope.launch(Dispatchers.IO) { _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount()) } }
+    fun refreshCacheStats() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount())
+            _isStorageLow.value = checkIsStorageLow()
+        }
+    }
+
+    private fun checkIsStorageLow(): Boolean {
+        return try {
+            val context = getApplication<Application>()
+            val stat = android.os.StatFs(context.filesDir.absolutePath)
+            val bytesAvailable = stat.availableBlocksLong * stat.blockSizeLong
+            bytesAvailable < 500L * 1024 * 1024
+        } catch (_: Exception) {
+            false
+        }
+    }
     fun clearPreviewCache() {
         viewModelScope.launch {
             otgManager.onEject() // Safe eject/unmount to stop silent sync
             withContext(Dispatchers.IO) {
                 previewCache.clearAll()
                 db.mediaDao().deleteAll()
-                val sp = getApplication<Application>().getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
-                val editor = sp.edit()
-                sp.all.keys.filter { it.startsWith("archive_unlimited_cache_") }.forEach { key ->
-                    editor.remove(key)
-                }
-                editor.apply()
             }
             otgManager.resetActiveArchiveUuid()
             refreshCacheStats()

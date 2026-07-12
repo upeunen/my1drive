@@ -90,7 +90,8 @@ fun SettingsTab(
     syncThumbnailsProgress: Pair<Int, Int> = Pair(0, 0),
     missingThumbnailsCount: Int = 0,
     onSyncThumbnails: () -> Unit = {},
-    onCancelSyncThumbnails: () -> Unit = {}
+    onCancelSyncThumbnails: () -> Unit = {},
+    isStorageLow: Boolean = false
 ) {
     val context = LocalContext.current
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -600,6 +601,15 @@ fun SettingsTab(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (isStorageLow) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Мало места на устройстве. Фоновое кэширование приостановлено.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = onClearCache,

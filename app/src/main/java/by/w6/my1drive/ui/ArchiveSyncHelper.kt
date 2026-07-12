@@ -887,9 +887,6 @@ class ArchiveSyncHelper(
         val total = missingItems.size
         if (total == 0) return@withContext
 
-        // Lift cache limit until next cache clearance
-        prefs.edit().putBoolean("archive_unlimited_cache_$activeUuid", true).apply()
-
         val pDir = previewCache.previewDir
 
         for ((idx, entity) in missingItems.withIndex()) {
