@@ -890,8 +890,8 @@ class ArchiveSyncHelper(
         val pDir = previewCache.previewDir
 
         for ((idx, entity) in missingItems.withIndex()) {
-            if (isCancelled() || isFreeSpaceLow()) {
-                DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled or storage space low")
+            if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
+                DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery)")
                 break
             }
             val uriStr = entity.otgUri ?: ""
@@ -940,6 +940,22 @@ class ArchiveSyncHelper(
             val stat = android.os.StatFs(application.filesDir.absolutePath)
             val bytesAvailable = stat.availableBlocksLong * stat.blockSizeLong
             bytesAvailable < 500L * 1024 * 1024
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isBatteryLow(): Boolean {
+        return try {
+            val filter = android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED)
+            val batteryStatus = application.registerReceiver(null, filter) ?: return false
+            val level = batteryStatus.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+            val scale = batteryStatus.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
+            val batteryPct = level / scale.toFloat()
+            val status = batteryStatus.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+            val isCharging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == android.os.BatteryManager.BATTERY_STATUS_FULL
+            batteryPct < 0.2f && !isCharging
         } catch (_: Exception) {
             false
         }
