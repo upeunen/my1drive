@@ -1210,6 +1210,10 @@ private fun VideoPage(
 
 private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(context) {
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        val playerView = getChildAt(0) as? PlayerView
+        if (playerView != null && playerView.isControllerFullyVisible) {
+            return super.dispatchTouchEvent(ev)
+        }
         if (ev.y <= height * 0.8f) {
             return false // Let Compose handle it
         }
