@@ -69,6 +69,18 @@ fun LocalFolderDialog(
                     softWrap = false
                 )
             }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text(
+                    text = "Я буду подтверждать каждый файл",
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    softWrap = false
+                )
+            }
         }
     )
 }

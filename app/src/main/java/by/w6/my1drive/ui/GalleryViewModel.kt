@@ -518,6 +518,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             // После подтверждения откроется SAF через коллбэк в MainActivity
         }
 
+        // ─── Thumbnail sync state (must be before init) ───
+
+    private val _isSyncingThumbnails = MutableStateFlow(false)
+    val isSyncingThumbnails = _isSyncingThumbnails.asStateFlow()
+
+    private val _syncThumbnailsProgress = MutableStateFlow(Pair(0, 0))
+    val syncThumbnailsProgress = _syncThumbnailsProgress.asStateFlow()
+
+    private val _missingThumbnailsCount = MutableStateFlow(0)
+    val missingThumbnailsCount = _missingThumbnailsCount.asStateFlow()
+
         // ─── Init ───
 
     init {
@@ -620,8 +631,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             withContext(Dispatchers.IO) {
                 previewCache.clearAll()
                 db.mediaDao().deleteAll()
-                getApplication<Application>().getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
-                    .edit().putBoolean("preview_cache_unlimited", false).apply()
+                val sp = getApplication<Application>().getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
+                val editor = sp.edit()
+                sp.all.keys.filter { it.startsWith("archive_unlimited_cache_") }.forEach { key ->
+                    editor.remove(key)
+                }
+                editor.apply()
             }
             otgManager.resetActiveArchiveUuid()
             refreshCacheStats()
@@ -629,30 +644,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private val _isSyncingThumbnails = MutableStateFlow(false)
-    val isSyncingThumbnails = _isSyncingThumbnails.asStateFlow()
-
-    private val _syncThumbnailsProgress = MutableStateFlow(Pair(0, 0))
-    val syncThumbnailsProgress = _syncThumbnailsProgress.asStateFlow()
-
     private var thumbnailSyncJob: kotlinx.coroutines.Job? = null
 
     fun getMissingThumbnailsCount(): Int {
         return 0 // computed via state update
     }
 
-    private val _missingThumbnailsCount = MutableStateFlow(0)
-    val missingThumbnailsCount = _missingThumbnailsCount.asStateFlow()
-
     fun updateMissingThumbnailsCount() {
-        val activeUuid = otgManager.activeArchiveUuid.value
+        // Guard against rare case of being called before field init via coroutine
+        val countFlow = _missingThumbnailsCount ?: return
+        val activeUuid = try { otgManager.activeArchiveUuid.value } catch (_: Exception) { return }
         if (activeUuid == null) {
-            _missingThumbnailsCount.value = 0
+            countFlow.value = 0
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
             val count = db.mediaDao().getWithoutPreviewCount(activeUuid)
-            _missingThumbnailsCount.value = count
+            countFlow.value = count
         }
     }
 
@@ -716,6 +724,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun ejectOtg() {
+        // Остановить синхронизацию миниатюр перед извлечением
+        cancelThumbnailSync()
+        _syncThumbnailsProgress.value = Pair(0, 0)
         otgManager.onEject()
     }
 

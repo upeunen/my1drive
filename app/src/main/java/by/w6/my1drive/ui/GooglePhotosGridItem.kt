@@ -86,15 +86,20 @@ fun GooglePhotosGridItem(
     val isArchivedOnline = item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected
     val hasCachedPreview = item.hasCachedPreview
     var isImageLoading by remember { mutableStateOf(false) }
-    // Build Coil model: use OtgThumbnailRequest for archived items, plain URI for local
+    // Build Coil model: when offline but cached preview exists — load directly from local file.
+    // When connected — use OtgThumbnailRequest to generate/refresh thumbnail from drive.
     val imageModel: Any = if (item.status == MediaStatus.ARCHIVED_OTG && item.hash != null) {
-        OtgThumbnailRequest(
-            otgUri = item.otgUri ?: "",
-            hash = item.hash,
-            mimeType = item.mimeType,
-            isConnected = isOtgConnected,
-            existingCachePath = item.thumbnailPath
-        )
+        if (!isOtgConnected && item.hasCachedPreview && item.thumbnailPath != null) {
+            java.io.File(item.thumbnailPath)
+        } else {
+            OtgThumbnailRequest(
+                otgUri = item.otgUri ?: "",
+                hash = item.hash,
+                mimeType = item.mimeType,
+                isConnected = isOtgConnected,
+                existingCachePath = item.thumbnailPath
+            )
+        }
     } else {
         item.uri
     }

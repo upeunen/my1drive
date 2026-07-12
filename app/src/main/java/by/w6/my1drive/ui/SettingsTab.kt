@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -93,6 +94,8 @@ fun SettingsTab(
 ) {
     val context = LocalContext.current
     var showConfirmDialog by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE) }
+    var archiveForOfflineWarning by remember { mutableStateOf<by.w6.my1drive.data.local.ArchiveEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -281,6 +284,33 @@ fun SettingsTab(
                         )
                     }
 
+                    if (archiveForOfflineWarning != null) {
+                        val archive = archiveForOfflineWarning!!
+                        AlertDialog(
+                            onDismissRequest = { archiveForOfflineWarning = null },
+                            title = { Text("Сохранять все миниатюры?") },
+                            text = {
+                                Text("Для архива \"${archive.name.ifBlank { archive.folderName.ifBlank { "Архив " + archive.uuid.take(6) } }}\" будут сохранены все миниатюры на устройстве для оффлайн-доступа. Это займет дополнительное место на телефоне. Синхронизация начнется при подключении накопителя.")
+                            },
+                            confirmButton = {
+                                Button(onClick = {
+                                    prefs.edit().putBoolean("archive_unlimited_cache_${archive.uuid}", true).apply()
+                                    archiveForOfflineWarning = null
+                                    if (isOtgConnected && archive.uuid == activeArchiveUuid) {
+                                        onSyncThumbnails()
+                                    }
+                                }) {
+                                    Text("Включить")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { archiveForOfflineWarning = null }) {
+                                    Text("Отмена")
+                                }
+                            }
+                        )
+                    }
+
                     knownArchives.forEachIndexed { idx, archive ->
                         val stripe = archiveStripeColor(archive.uuid)
                         val displayName = archive.name.ifBlank { archive.folderName.ifBlank { "Архив ${archive.uuid.take(6)}" } }
@@ -327,6 +357,34 @@ fun SettingsTab(
                                     text = subtitle,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            val isOfflineEnabled = remember(archive.uuid) {
+                                mutableStateOf(prefs.getBoolean("archive_unlimited_cache_${archive.uuid}", false))
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                Text(
+                                    text = "Оффлайн-копии",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Switch(
+                                    checked = isOfflineEnabled.value,
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            archiveForOfflineWarning = archive
+                                        } else {
+                                            isOfflineEnabled.value = false
+                                            prefs.edit().putBoolean("archive_unlimited_cache_${archive.uuid}", false).apply()
+                                            onClearCache()
+                                        }
+                                    },
+                                    modifier = Modifier.graphicsLayer(scaleX = 0.75f, scaleY = 0.75f)
                                 )
                             }
                             

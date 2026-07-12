@@ -78,8 +78,14 @@ class PreviewCacheManager(
         // Get DB items with cached previews, oldest first
         val oldestItems = mediaDao.getOldestByLastAccessed(limit = 10_000)
 
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         for (item in oldestItems) {
             if (currentSize <= maxBytes) break
+
+            // Skip evicting items from archives with unlimited caching enabled
+            val isUnlimited = prefs.getBoolean("archive_unlimited_cache_${item.archiveUuid}", false)
+            if (isUnlimited) continue
+
             val path = item.thumbnailPath ?: continue
             val file = File(path)
             if (file.exists()) {

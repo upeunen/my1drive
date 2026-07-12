@@ -888,7 +888,7 @@ class ArchiveSyncHelper(
         if (total == 0) return@withContext
 
         // Lift cache limit until next cache clearance
-        prefs.edit().putBoolean("preview_cache_unlimited", true).apply()
+        prefs.edit().putBoolean("archive_unlimited_cache_$activeUuid", true).apply()
 
         val pDir = previewCache.previewDir
 
