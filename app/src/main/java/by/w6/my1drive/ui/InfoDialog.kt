@@ -378,37 +378,13 @@ fun InfoDialog(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val canOpen = item.status == MediaStatus.ON_DEVICE || (item.status == MediaStatus.ARCHIVED_OTG && isOtgConnected)
-                if (canOpen) {
-                    TextButton(onClick = onDismiss) {
-                        Text(
-                            text = stringResource(R.string.btn_close),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = {
-                        onOpenFullscreen()
-                        onDismiss()
-                    }) {
-                        Text(
-                            text = "Открыть",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                } else {
-                    Button(onClick = onDismiss) {
-                        Text(
-                            text = stringResource(R.string.btn_close),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
+                Button(onClick = onDismiss) {
+                    Text(
+                        text = stringResource(R.string.btn_close),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
                 }
             }
         }
