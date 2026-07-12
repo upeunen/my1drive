@@ -50,6 +50,7 @@ import androidx.compose.foundation.layout.width
 fun DisconnectedOtgInfoDialog(
     item: MediaItem,
     imageLoader: ImageLoader,
+    archive: by.w6.my1drive.data.local.ArchiveEntity? = null,
     onDismiss: () -> Unit
 ) {
     val sizeMb = remember(item.size) {
@@ -200,10 +201,28 @@ fun DisconnectedOtgInfoDialog(
                     }
 
                     // Накопитель
-                    item.archiveName?.let {
+                    val archiveName = archive?.name ?: item.archiveName
+                    archiveName?.let {
                         Column {
                             Text(
                                 text = "Накопитель",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Метка тома
+                    archive?.folderName?.let {
+                        Column {
+                            Text(
+                                text = "Метка тома",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
@@ -225,7 +244,7 @@ fun DisconnectedOtgInfoDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = { shareFileDetails(context, item, sizeMb) },
+                    onClick = { shareFileDetails(context, item, sizeMb, archive) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -234,7 +253,7 @@ fun DisconnectedOtgInfoDialog(
                 }
 
                 OutlinedButton(
-                    onClick = { copyFileDetailsToClipboard(context, item, sizeMb) },
+                    onClick = { copyFileDetailsToClipboard(context, item, sizeMb, archive) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -281,12 +300,15 @@ private fun getSharedImageUri(context: Context, sourceFile: File, displayName: S
     }
 }
 
-private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) {
+private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
+    val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
+    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
-        Накопитель: ${item.archiveName ?: "Неизвестный"}
+        Накопитель: $archiveName
+        Метка тома: $volumeLabel
     """.trimIndent()
 
     val path = item.thumbnailPath ?: run {
@@ -322,13 +344,16 @@ private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) 
     context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
 }
 
-private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String) {
+private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
+    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
-        Накопитель: ${item.archiveName ?: "Неизвестный"}
+        Накопитель: $archiveName
+        Метка тома: $volumeLabel
     """.trimIndent()
 
     val path = item.thumbnailPath ?: run {

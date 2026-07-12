@@ -933,6 +933,7 @@ fun GalleryScreenContent(
 ) {
     val pendingDelete by viewModel.pendingDelete.collectAsState()
     val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
+    val knownArchives by viewModel.knownArchives.collectAsState()
     val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
     val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
     val isSilentSyncing by viewModel.isSilentSyncingFlow.collectAsState()
@@ -1295,7 +1296,6 @@ fun GalleryScreenContent(
                         "settings" -> {
                             val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
                             val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
-                            val knownArchives by viewModel.knownArchives.collectAsState()
                             val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
                             val isSyncingThumbnails by viewModel.isSyncingThumbnails.collectAsState()
                             val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsState()
@@ -1337,7 +1337,14 @@ fun GalleryScreenContent(
         }
 
         showInfoDialogItem?.let { item ->
-            InfoDialog(item = item, imageLoader = imageLoader ?: return@let, isOtgConnected = if (item.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && item.archiveUuid == activeArchiveUuid) else isOtgConnected,
+            val archive = remember(knownArchives, item.archiveUuid) {
+                knownArchives.find { it.uuid == item.archiveUuid }
+            }
+            InfoDialog(
+                item = item,
+                imageLoader = imageLoader ?: return@let,
+                isOtgConnected = if (item.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && item.archiveUuid == activeArchiveUuid) else isOtgConnected,
+                archive = archive,
                 onOpenFullscreen = {
                     if (activePreviewState == null) {
                         // Open fullscreen from info: just this single item
@@ -1668,9 +1675,13 @@ fun GalleryScreenContent(
         }
 
         showDisconnectedOtgItemInfo?.let { item ->
+            val archive = remember(knownArchives, item.archiveUuid) {
+                knownArchives.find { it.uuid == item.archiveUuid }
+            }
             DisconnectedOtgInfoDialog(
                 item = item,
                 imageLoader = imageLoader,
+                archive = archive,
                 onDismiss = { showDisconnectedOtgItemInfo = null }
             )
         }

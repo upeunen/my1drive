@@ -78,6 +78,7 @@ fun InfoDialog(
     item: MediaItem,
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
+    archive: by.w6.my1drive.data.local.ArchiveEntity? = null,
     onOpenFullscreen: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -237,9 +238,15 @@ fun InfoDialog(
             InfoRow(label = stringResource(R.string.info_type, ""), value = item.mimeType)
             InfoRow(label = stringResource(R.string.info_size, ""), value = sizeMb)
 
-            item.archiveName?.let {
+            val archiveName = archive?.name ?: item.archiveName
+            archiveName?.let {
                 Spacer(modifier = Modifier.height(4.dp))
                 InfoRow(label = "Накопитель:", value = it)
+            }
+
+            archive?.folderName?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                InfoRow(label = "Метка тома:", value = it)
             }
 
             item.originalRelativePath?.let {
@@ -255,25 +262,6 @@ fun InfoDialog(
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // ── Preview cache path ──
-            item.thumbnailPath?.let {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.info_preview_path),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
                 )
                 Text(
                     text = it,
@@ -386,7 +374,7 @@ fun InfoDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = { shareFileDetails(context, item, sizeMb) },
+                    onClick = { shareFileDetails(context, item, sizeMb, archive) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -395,7 +383,7 @@ fun InfoDialog(
                 }
 
                 OutlinedButton(
-                    onClick = { copyFileDetailsToClipboard(context, item, sizeMb) },
+                    onClick = { copyFileDetailsToClipboard(context, item, sizeMb, archive) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -498,12 +486,15 @@ private fun getSharedImageUri(context: Context, sourceFile: File, displayName: S
     }
 }
 
-private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) {
+private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
+    val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
+    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
-        Накопитель: ${item.archiveName ?: "Неизвестный"}
+        Накопитель: $archiveName
+        Метка тома: $volumeLabel
     """.trimIndent()
 
     val path = item.thumbnailPath ?: run {
@@ -539,13 +530,16 @@ private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String) 
     context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
 }
 
-private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String) {
+private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
+    val volumeLabel = archive?.folderName ?: "Неизвестно"
     val shareText = """
         Имя: ${item.displayName}
         Путь: ${item.otgUri ?: ""}
         Размер: $sizeMb
-        Накопитель: ${item.archiveName ?: "Неизвестный"}
+        Накопитель: $archiveName
+        Метка тома: $volumeLabel
     """.trimIndent()
 
     val path = item.thumbnailPath ?: run {
