@@ -2,4 +2,6 @@
 <paths>
     <!-- Expose cacheDir/shared_temp/ to other apps for sharing -->
     <cache-path name="shared_temp" path="shared_temp/" />
+    <!-- Expose filesDir/my1drive_previews/ to other apps for thumbnail sharing -->
+    <files-path name="my1drive_previews" path="my1drive_previews/" />
 </paths>
