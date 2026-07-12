@@ -49,7 +49,8 @@ fun GooglePhotosTopBar(
     onShare: () -> Unit = {},
     onDelete: () -> Unit = {},
     gridColumnsCount: Int = 3,
-    onToggleGridColumns: () -> Unit = {}
+    onToggleGridColumns: () -> Unit = {},
+    showGridToggle: Boolean = true
 ) {
     val title = when {
         selectedCount > 0 -> "$selectedCount"
@@ -175,12 +176,14 @@ fun GooglePhotosTopBar(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).padding(start = 8.dp)
             )
-            IconButton(onClick = onToggleGridColumns) {
-                Icon(
-                    imageVector = if (gridColumnsCount == 3) Icons.Default.GridView else Icons.Default.GridOn,
-                    contentDescription = "Toggle Grid Columns",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
+            if (showGridToggle) {
+                IconButton(onClick = onToggleGridColumns) {
+                    Icon(
+                        imageVector = if (gridColumnsCount == 3) Icons.Default.GridView else Icons.Default.GridOn,
+                        contentDescription = "Toggle Grid Columns",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
             }
             if (isOtgConnected && otgUriSet) {
                 IconButton(onClick = onEjectClick) {

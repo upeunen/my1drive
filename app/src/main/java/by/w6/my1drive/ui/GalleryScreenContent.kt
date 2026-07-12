@@ -1125,7 +1125,8 @@ fun GalleryScreenContent(
                 },
                 onDelete = { viewModel.requestDeleteSelected() },
                 gridColumnsCount = gridColumnsCount,
-                onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) }
+                onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) },
+                showGridToggle = currentScreenRoute != "settings"
             )
 
             ConnectingUsbBanner(visible = isCheckingConnection || isSilentSyncing)
