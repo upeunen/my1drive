@@ -773,9 +773,9 @@ fun SettingsTab(
                             @Suppress("DEPRECATION")
                             context.packageManager.getPackageInfo(context.packageName, 0)
                         }
-                        packageInfo.versionName ?: "2.0.1"
+                        packageInfo.versionName ?: "2.1.1"
                     } catch (e: Exception) {
-                        "2.0.1"
+                        "2.1.1"
                     }
                 }
                 Row(

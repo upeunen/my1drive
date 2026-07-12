@@ -13,8 +13,8 @@ android {
         applicationId = "by.w6.my1drive"
         minSdk = 28
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.0.1"
+        versionCode = 13
+        versionName = "2.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
