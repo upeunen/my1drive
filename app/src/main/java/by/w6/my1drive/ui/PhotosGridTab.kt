@@ -55,9 +55,13 @@ fun PhotosGridTab(
     actionBarHeightPx: Float = 0f,
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
-    onSelectItems: (Collection<String>, Boolean) -> Unit = { _, _ -> }
+    onSelectItems: (Collection<String>, Boolean) -> Unit = { _, _ -> },
+    onScrollStateChanged: (Boolean) -> Unit = {}
 ) {
     val gridState = rememberLazyGridState()
+    androidx.compose.runtime.LaunchedEffect(gridState.isScrollInProgress) {
+        onScrollStateChanged(gridState.isScrollInProgress)
+    }
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }

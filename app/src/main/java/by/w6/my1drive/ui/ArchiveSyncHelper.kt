@@ -893,8 +893,8 @@ class ArchiveSyncHelper(
         val pDir = previewCache.previewDir
 
         for ((idx, entity) in missingItems.withIndex()) {
-            if (isCancelled()) {
-                DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled")
+            if (isCancelled() || isFreeSpaceLow()) {
+                DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled or storage space low")
                 break
             }
             val uriStr = entity.otgUri ?: ""
@@ -935,6 +935,16 @@ class ArchiveSyncHelper(
             withContext(Dispatchers.Main) {
                 onProgress(idx + 1, total)
             }
+        }
+    }
+
+    private fun isFreeSpaceLow(): Boolean {
+        return try {
+            val stat = android.os.StatFs(application.filesDir.absolutePath)
+            val bytesAvailable = stat.availableBlocksLong * stat.blockSizeLong
+            bytesAvailable < 500L * 1024 * 1024
+        } catch (_: Exception) {
+            false
         }
     }
 

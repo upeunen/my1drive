@@ -324,6 +324,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _physicalArchiveSize = MutableStateFlow(0L)
     val physicalArchiveSize = _physicalArchiveSize.asStateFlow()
 
+    private val _isScrolling = MutableStateFlow(false)
+    val isScrolling = _isScrolling.asStateFlow()
+    fun setScrolling(scrolling: Boolean) {
+        _isScrolling.value = scrolling
+    }
+
     private val _askRestorePath = MutableStateFlow(prefs.getBoolean(PREF_ASK_RESTORE_PATH, false))
     val askRestorePath = _askRestorePath.asStateFlow()
 
@@ -583,12 +589,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 otgManager.activeArchiveUuid,
-                _isOtgConnected
-            ) { uuid, connected ->
-                Pair(uuid, connected)
-            }.collect { (uuid, connected) ->
+                _isOtgConnected,
+                _isScrolling
+            ) { uuid, connected, scrolling ->
+                Triple(uuid, connected, scrolling)
+            }.collect { (uuid, connected, scrolling) ->
                 updateMissingThumbnailsCount()
-                if (connected && uuid != null) {
+                if (connected && uuid != null && !scrolling) {
                     startSilentThumbnailSync()
                 } else {
                     silentThumbnailSyncJob?.cancel()
@@ -638,6 +645,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun refreshCacheStats() { viewModelScope.launch(Dispatchers.IO) { _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount()) } }
     fun clearPreviewCache() {
         viewModelScope.launch {
+            otgManager.onEject() // Safe eject/unmount to stop silent sync
             withContext(Dispatchers.IO) {
                 previewCache.clearAll()
                 db.mediaDao().deleteAll()
@@ -710,7 +718,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             try {
                 syncHelper.syncAllThumbnails(
                     activeUuid = activeUuid,
-                    isCancelled = { job?.isActive == false || !_isOtgConnected.value },
+                    isCancelled = { job?.isActive == false || !_isOtgConnected.value || _isScrolling.value },
                     onProgress = { _, _ -> }
                 )
             } catch (_: Exception) {

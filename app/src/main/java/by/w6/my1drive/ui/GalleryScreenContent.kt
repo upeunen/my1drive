@@ -142,7 +142,8 @@ import by.w6.my1drive.ui.components.mapStepToText
 fun PhotosRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
     isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
-    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
+    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit,
+    onScrollStateChanged: (Boolean) -> Unit = {}
 ) {
     val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val groupedItems by viewModel.groupedMediaItems.collectAsState()
@@ -236,7 +237,8 @@ fun PhotosRoute(
                 } else {
                     viewModel.deselectItems(ids)
                 }
-            }
+            },
+            onScrollStateChanged = onScrollStateChanged
         )
     }
 }
@@ -257,7 +259,8 @@ private data class YearGroup(
 fun ArchiveRoute(
     viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
     isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
-    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit
+    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit,
+    onScrollStateChanged: (Boolean) -> Unit = {}
 ) {
     val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
     val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
@@ -286,6 +289,9 @@ fun ArchiveRoute(
     }
 
     val listState = rememberLazyListState()
+    androidx.compose.runtime.LaunchedEffect(listState.isScrollInProgress) {
+        onScrollStateChanged(listState.isScrollInProgress)
+    }
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -1207,6 +1213,10 @@ fun GalleryScreenContent(
                     }
                 }
 
+                androidx.compose.runtime.LaunchedEffect(pagerState.isScrollInProgress) {
+                    viewModel.setScrolling(pagerState.isScrollInProgress)
+                }
+
                 androidx.compose.foundation.pager.HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
@@ -1235,7 +1245,8 @@ fun GalleryScreenContent(
                                     }
                                 }
                             },
-                            onItemLongClick = { item -> viewModel.toggleSelection(item.id) }
+                            onItemLongClick = { item -> viewModel.toggleSelection(item.id) },
+                            onScrollStateChanged = { viewModel.setScrolling(it) }
                         )
                         "archive" -> ArchiveRoute(
                             viewModel = viewModel,
@@ -1278,7 +1289,9 @@ fun GalleryScreenContent(
                                 } else {
                                     Toast.makeText(context, "Подключите нужный OTG накопитель", Toast.LENGTH_SHORT).show()
                                 }
-                            })
+                            },
+                            onScrollStateChanged = { viewModel.setScrolling(it) }
+                        )
                         "settings" -> {
                             val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
                             val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
