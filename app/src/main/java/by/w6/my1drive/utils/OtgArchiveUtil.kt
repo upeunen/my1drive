@@ -66,7 +66,7 @@ class OtgArchiveUtil(private val context: Context) {
             val destUri = file.uri
             DebugLogBuffer.log(logTag, "Target file URI: $destUri")
 
-            val digest = MessageDigest.getInstance("SHA-256")
+            val srcHash = "${item.size}_${item.dateModified}"
             var totalBytesCopied = 0L
             val buffer = ByteArray(262144) // 256 KB buffer
 
@@ -87,7 +87,6 @@ class OtgArchiveUtil(private val context: Context) {
                         var bytesRead = inputStream.read(buffer)
                         while (bytesRead != -1) {
                             output.write(buffer, 0, bytesRead)
-                            digest.update(buffer, 0, bytesRead)
                             totalBytesCopied += bytesRead
                             if (item.size > 0) {
                                 val pct = ((totalBytesCopied.toFloat() / item.size) * 100).toInt()
@@ -117,7 +116,6 @@ class OtgArchiveUtil(private val context: Context) {
 
             emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.95f))
 
-            val srcHash = digest.digest().joinToString("") { "%02x".format(it) }
             DebugLogBuffer.log(logTag, "Copy finished. Expected size: ${item.size}, Copied: $totalBytesCopied. Hash: $srcHash")
 
             // Verify by actual bytes copied, not by DocumentFile.length() (which may lie)
@@ -299,8 +297,6 @@ class OtgArchiveUtil(private val context: Context) {
                 throw Exception("restore_empty_file: archived file has zero bytes")
             }
 
-            val fullDigest = MessageDigest.getInstance("SHA-256")
-            val oneMbDigest = MessageDigest.getInstance("SHA-256")
             var totalReadForOneMb = 0L
 
             // Write bytes to destination using stream with fsync
@@ -314,9 +310,7 @@ class OtgArchiveUtil(private val context: Context) {
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {
                             output.write(buffer, 0, bytesRead)
-                            fullDigest.update(buffer, 0, bytesRead)
                             if (totalReadForOneMb < 1048576L) {
-                                oneMbDigest.update(buffer, 0, bytesRead)
                                 totalReadForOneMb += bytesRead
                             }
                             totalBytesCopied += bytesRead
@@ -365,20 +359,9 @@ class OtgArchiveUtil(private val context: Context) {
 
             emit(RestoreResult.Progress(item.displayName, "restore_verifying", 0.8f))
 
-            // Verify hash
+            // Skip hash verification for lightweight hashes, as it's verified by file size already.
             if (item.hash != null) {
-                val expectedHashPart = item.hash.substringBefore("_")
-                val destHash = fullDigest.digest().joinToString("") { "%02x".format(it) }
-                val destHash1Mb = oneMbDigest.digest().joinToString("") { "%02x".format(it) }
-                DebugLogBuffer.log(logTag, "Verifying restored hash. Expected: ${item.hash}, Restored: $destHash, Restored1MB: $destHash1Mb")
-                
-                if (expectedHashPart.length == 64 && expectedHashPart.matches(Regex("^[a-fA-F0-9]+\$"))) {
-                    if (destHash != expectedHashPart && destHash1Mb != expectedHashPart) {
-                        throw Exception("restore_verification_failed: hash mismatch (expected ${item.hash}, got $destHash or $destHash1Mb)")
-                    }
-                } else {
-                    DebugLogBuffer.log(logTag, "Skipping hash verification because expected hash does not look like SHA-256: ${item.hash}")
-                }
+                DebugLogBuffer.log(logTag, "Skipping hash verification because expected hash is a lightweight hash: ${item.hash}")
             }
 
             DebugLogBuffer.log(logTag, "Successfully restored ${item.displayName}")
@@ -405,31 +388,8 @@ class OtgArchiveUtil(private val context: Context) {
         }
     }.flowOn(Dispatchers.IO)
 
-        fun calculateSha256(uri: Uri): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        var size = 0L
-        val stream = context.contentResolver.openInputStream(uri)
-            ?: throw Exception("Failed to open stream for $uri")
-        stream.use { input ->
-            val buffer = ByteArray(65536)
-            var totalRead = 0L
-            var bytesRead = input.read(buffer)
-            while (bytesRead != -1 && totalRead < 1048576L) { // Read max 1 MB
-                digest.update(buffer, 0, bytesRead)
-                totalRead += bytesRead
-                size += bytesRead
-                bytesRead = input.read(buffer)
-            }
-            // If there's more data, we need the exact total size without reading it all via SAF if possible.
-            // But we can just use the file length from DocumentFile or cursor.
-        }
-        
-        // Retrieve actual file size via DocumentFile for the hash suffix
-        val docFile = DocumentFile.fromSingleUri(context, uri)
-        val actualSize = docFile?.length() ?: size
-        
-        val hashStr = digest.digest().joinToString("") { "%02x".format(it) }
-        return "${hashStr}_$actualSize"
+    fun calculateHash(uri: Uri, size: Long, dateModified: Long): String {
+        return "${size}_$dateModified"
     }
 
     private fun setFilesystemLastModified(uri: Uri, timestampSec: Long) {

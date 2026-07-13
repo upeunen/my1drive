@@ -814,7 +814,6 @@ class ArchiveSyncHelper(
                 return@flow
             }
 
-            val digest = MessageDigest.getInstance("SHA-256")
             val input = try {
                 application.contentResolver.openInputStream(item.uri)
                     ?: throw Exception("Failed to open input stream for ${item.displayName}")
@@ -823,29 +822,9 @@ class ArchiveSyncHelper(
                 return@flow
             }
 
-            var bytesUploaded = 0L
-            val hashingInputStream = object : java.io.FilterInputStream(input) {
-                override fun read(): Int {
-                    val b = super.read()
-                    if (b != -1) {
-                        digest.update(b.toByte())
-                        bytesUploaded++
-                    }
-                    return b
-                }
-                override fun read(b: ByteArray, off: Int, len: Int): Int {
-                    val readBytes = super.read(b, off, len)
-                    if (readBytes != -1) {
-                        digest.update(b, off, readBytes)
-                        bytesUploaded += readBytes
-                    }
-                    return readBytes
-                }
-            }
-
             emit(CopyVerifyResult.Progress(item.displayName, "uploading", 0.1f))
 
-            val uploadResult = vpsManager.uploadFile(hashingInputStream, item.displayName) { progress ->
+            val uploadResult = vpsManager.uploadFile(input, item.displayName) { progress ->
                 // Emit progress
                 val fraction = 0.1f + (progress.toFloat() / item.size) * 0.8f
                 // We could emit progress fractions up to 0.9f here
@@ -859,7 +838,7 @@ class ArchiveSyncHelper(
 
             emit(CopyVerifyResult.Progress(item.displayName, "verifying", 0.9f))
 
-            val srcHash = digest.digest().joinToString("") { "%02x".format(it) }
+            val srcHash = "${item.size}_${item.dateModified}"
 
             // Pre-cache thumbnail
             val precachedPath = try {

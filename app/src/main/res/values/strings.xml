@@ -203,4 +203,83 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="unreadable_otg_msg">The device is physically connected, but the Android operating system failed to mount it as storage.\n\nTry reconnecting the drive or checking the connection reliability.</string>
     <string name="unreadable_otg_why_link">Why is the storage unreadable?</string>
     <string name="unreadable_otg_explanation">Possible reasons:\n• Unsupported file system (e.g. NTFS). Android works best with FAT32 or exFAT.\n• Insufficient power supply or a low-quality OTG adapter.\n\nHow to fix it:\nYou can try formatting the USB drive to a supported format (FAT32/exFAT) using your smartphone\'s system storage settings.\n\nWarning: formatting will erase all data on the drive.</string>
+
+    <!-- Disconnected Info Dialog & Sharing -->
+    <string name="disconnected_info_title">Archive File Details</string>
+    <string name="info_file_name_title">File Name</string>
+    <string name="info_original_path_title">Original Path</string>
+    <string name="info_current_archive_path_title">Original Path on OTG</string>
+    <string name="info_file_size_title">File Size</string>
+    <string name="info_storage_drive_title">Storage Drive</string>
+    <string name="info_storage_uuid_title">Drive ID (UUID)</string>
+    <string name="btn_share">Share</string>
+    <string name="btn_copy">Copy</string>
+    <string name="toast_copied_to_clipboard">Copied to clipboard</string>
+    <string name="unknown_value">Unknown</string>
+    <string name="unknown_drive_name">Unknown drive</string>
+    <string name="share_file_chooser">Share file</string>
+    <string name="share_text_name">Name: %1$s</string>
+    <string name="share_text_archive_path">Archive path: %1$s</string>
+    <string name="share_text_size">Size: %1$s</string>
+    <string name="share_text_drive">Drive: %1$s</string>
+    <string name="share_text_uuid">Drive ID (UUID): %1$s</string>
+    <string name="write_protected_root_title">Root folder is write-protected</string>
+    <string name="write_protected_root_msg1">In your Android version, the root of the USB drive is write-protected by the system.</string>
+    <string name="write_protected_root_msg2">Please tap \"Select Again\". Then, in the system window that opens, create a new folder (top right button) or select an existing folder inside the drive.</string>
+    <string name="btn_select_again">Select Again</string>
+    <string name="exif_aperture">Aperture</string>
+    <string name="exif_shutter_speed">Shutter Speed</string>
+    <string name="exif_focal_length">Focal Length</string>
+    <string name="exif_resolution">Resolution</string>
+    <string name="exif_unit_s">s</string>
+    <string name="exif_unit_mm">mm</string>
+    <!-- Settings Tab -->
+    <string name="warning_internal_storage">⚠️ Warning: Internal storage folder selected. It is recommended to choose a folder on a USB flash drive for backups.</string>
+    <string name="setting_multi_archive_title">Work with multiple archives (drives)</string>
+    <string name="setting_show_offline_files">Show files from disconnected drives in gallery</string>
+    <string name="setting_connected_offline_drives">Connected and offline drives</string>
+    <string name="dialog_delete_archive_title">Delete archive?</string>
+    <string name="dialog_delete_archive_msg">Are you sure you want to delete the archive «%1$s»?\n\nThe local cache and file list for this drive will be removed from the phone. Files on the flash drive itself will remain untouched.</string>
+    <string name="btn_delete">Delete</string>
+    <string name="content_desc_delete_archive">Delete archive</string>
+    <string name="subtitle_folder">Folder: %1$s</string>
+    <string name="subtitle_uuid">UUID: %1$s</string>
+    <string name="archive_name_fallback">Archive %1$s</string>
+
+    <string name="vps_server_title">VPS Server</string>
+    <string name="vps_server_desc">(For advanced users, backup to a virtual server)</string>
+    <string name="toast_vps_enabled">VPS backup enabled</string>
+    <string name="toast_vps_disabled">VPS backup disabled</string>
+    <string name="vps_host">Host (IP address / domain)</string>
+    <string name="vps_port">Port</string>
+    <string name="vps_username">Username</string>
+    <string name="vps_password">Password</string>
+    <string name="vps_path">Archive path on VPS</string>
+    <string name="vps_limit">Archive limit on VPS (in GB)</string>
+    <string name="toast_vps_success">Connection successfully established and saved!</string>
+    <string name="toast_vps_error">Connection error: %1$s</string>
+    <string name="btn_vps_test">Test and save settings</string>
+    <string name="btn_vps_testing">Testing…</string>
+
+    <string name="archive_volume_free">Archive Volume (Free version)</string>
+    <string name="archive_volume_pro">Archive Volume</string>
+    <string name="archive_used_free">Used: %1$.1f MB of 128.0 MB (%2$.1f%%)</string>
+    <string name="archive_used_pro">Used: %1$.1f MB</string>
+    <string name="archive_limit_reached">Free version limit reached. Purchase PRO version or delete some files from the archive.</string>
+
+    <string name="maintenance_and_debug">Maintenance and Debugging</string>
+    <string name="low_storage_warning">Low storage space. Background caching suspended.</string>
+    <string name="view_debug_logs">View debug logs</string>
+    <string name="app_version">App version:</string>
+
+    <string name="vps_limit_exceeded">VPS limit exceeded (%1$s GB). Archiving cancelled.</string>
+    <string name="error_share_failed">Error sharing files</string>
+    <string name="error_open_file_failed">Failed to open file on the drive</string>
+    <string name="error_share_archived_failed">Error preparing archived file</string>
+    <string name="error_share_thumbnail_failed">Error preparing thumbnail</string>
+    <string name="error_otg_offline_no_thumbnail">Drive is disconnected and local thumbnail is missing</string>
+    <string name="error_thumbnail_not_found_local">Thumbnail file not found on device</string>
+    <string name="share_thumbnail">Share thumbnail</string>
+    <string name="error_share_files_failed">Error preparing files for sharing</string>
+    <string name="error_read_offline_file">Failed to read file \"%1$s\" (drive disconnected and no local thumbnail)</string>
 </resources>

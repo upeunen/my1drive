@@ -23,7 +23,7 @@ class ArchiveInteractor(
     private val scope: CoroutineScope,
     private val restoreState: MutableStateFlow<RestoreState>,
     private val restoringItemIds: MutableStateFlow<Set<String>>,
-    private val selectedIds: MutableStateFlow<Set<String>>
+    private val onItemDeselected: (String) -> Unit
 ) {
     private var restoringJob: Job? = null
     var isRestoreCancellationRequested = false
@@ -67,7 +67,7 @@ class ArchiveInteractor(
                             )
                             is RestoreResult.Success -> {
                                 successCount++
-                                selectedIds.value = selectedIds.value - result.item.id
+                                onItemDeselected(result.item.id)
                                 DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
                                 try {
                                     // 1. Remove from JSON metadata on OTG drive (source of truth)

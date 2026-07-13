@@ -1,9 +1,7 @@
 package by.w6.my1drive.ui
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,28 +17,26 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -60,17 +57,18 @@ import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
-import by.w6.my1drive.utils.OtgThumbnailRequest
+import by.w6.my1drive.domain.model.getOriginalFullPath
+import by.w6.my1drive.domain.model.getThumbnailModel
+import by.w6.my1drive.ui.components.InfoPropertyRow
+import by.w6.my1drive.utils.ExifHelper
+import by.w6.my1drive.utils.FormatterUtils
+import by.w6.my1drive.utils.MediaShareHelper
 import coil.ImageLoader
 import coil.compose.AsyncImage
-import java.io.File
-import java.util.Locale
-import android.content.Context
-import android.media.ExifInterface
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +81,7 @@ fun InfoDialog(
     onDismiss: () -> Unit
 ) {
     val sizeMb = remember(item.size) {
-        String.format(Locale.US, "%.2f MB", item.size.toFloat() / (1024 * 1024))
+        FormatterUtils.formatFileSize(item.size)
     }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -175,17 +173,7 @@ fun InfoDialog(
                         modifier = Modifier.size(48.dp)
                     )
                 } else {
-                    val imageModel: Any = if (item.status == MediaStatus.ARCHIVED_OTG && item.hash != null) {
-                        OtgThumbnailRequest(
-                            otgUri = item.otgUri ?: "",
-                            hash = item.hash,
-                            mimeType = item.mimeType,
-                            isConnected = isOtgConnected,
-                            existingCachePath = item.thumbnailPath
-                        )
-                    } else {
-                        item.uri
-                    }
+                    val imageModel = item.getThumbnailModel(isOtgConnected)
                     AsyncImage(
                         model = imageModel,
                         imageLoader = imageLoader,
@@ -234,45 +222,35 @@ fun InfoDialog(
             Spacer(modifier = Modifier.height(16.dp))
 
             // ── File details ──
-            InfoRow(label = stringResource(R.string.info_name, ""), value = item.displayName)
-            InfoRow(label = stringResource(R.string.info_type, ""), value = item.mimeType)
-            InfoRow(label = stringResource(R.string.info_size, ""), value = sizeMb)
+            InfoPropertyRow(label = stringResource(R.string.info_name, "").replace(":", ""), value = item.displayName)
+            InfoPropertyRow(label = stringResource(R.string.info_type, "").replace(":", ""), value = item.mimeType)
+            InfoPropertyRow(label = stringResource(R.string.info_size, "").replace(":", ""), value = sizeMb)
 
             val archiveName = archive?.name ?: item.archiveName
             archiveName?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                InfoRow(label = "Накопитель:", value = it)
+                InfoPropertyRow(label = "Накопитель", value = it)
             }
-
-
 
             item.archiveUuid?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                InfoRow(label = "ID накопителя (UUID):", value = it)
+                InfoPropertyRow(label = "ID накопителя (UUID)", value = it)
             }
 
-            item.originalRelativePath?.let {
-                Spacer(modifier = Modifier.height(4.dp))
-                InfoRow(label = stringResource(R.string.info_original_folder), value = it)
+            if (item.status == MediaStatus.ON_DEVICE) {
+                item.originalRelativePath?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    InfoPropertyRow(label = stringResource(R.string.info_original_folder).replace(":", ""), value = item.getOriginalFullPath())
+                }
             }
 
             // ── Path to original (OTG URI) ──
             item.otgUri?.let {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.info_otg_path),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+                InfoPropertyRow(
+                    label = stringResource(R.string.info_otg_path).replace(":", ""),
+                    value = MediaShareHelper.getReadableOtgPath(context, it),
+                    valueStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
                 )
             }
 
@@ -340,7 +318,7 @@ fun InfoDialog(
                                                 item.uri
                                             }
                                             if (uriToRead != null) {
-                                                readExifMetadata(context, uriToRead)
+                                                ExifHelper.readExifMetadata(context, uriToRead)
                                             } else {
                                                 emptyMap()
                                             }
@@ -376,7 +354,7 @@ fun InfoDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = { shareFileDetails(context, item, sizeMb, archive) },
+                    onClick = { MediaShareHelper.shareFileDetails(context, item, sizeMb, archive) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -385,7 +363,7 @@ fun InfoDialog(
                 }
 
                 OutlinedButton(
-                    onClick = { copyFileDetailsToClipboard(context, item, sizeMb, archive) },
+                    onClick = { MediaShareHelper.copyFileDetailsToClipboard(context, item, sizeMb, archive) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -408,164 +386,4 @@ fun InfoDialog(
             }
         }
     }
-}
-
-private fun readExifMetadata(context: Context, uri: Uri): Map<String, String> {
-    val metadata = mutableMapOf<String, String>()
-    try {
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            val exifInterface = ExifInterface(inputStream)
-            
-            val make = exifInterface.getAttribute(ExifInterface.TAG_MAKE)
-            val model = exifInterface.getAttribute(ExifInterface.TAG_MODEL)
-            if (!model.isNullOrEmpty()) {
-                val fullModel = if (!make.isNullOrEmpty() && !model.startsWith(make)) "$make $model" else model
-                metadata["Камера"] = fullModel.trim()
-            }
-            
-            val dateTime = exifInterface.getAttribute(ExifInterface.TAG_DATETIME)
-            if (!dateTime.isNullOrEmpty()) {
-                metadata["Дата съёмки"] = dateTime
-            }
-            
-            val aperture = exifInterface.getAttribute(ExifInterface.TAG_F_NUMBER)
-            if (!aperture.isNullOrEmpty()) {
-                metadata["Диафрагма"] = "f/$aperture"
-            }
-            
-            val shutterSpeed = exifInterface.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)
-            if (!shutterSpeed.isNullOrEmpty()) {
-                val speed = shutterSpeed.toDoubleOrNull()
-                metadata["Выдержка"] = if (speed != null && speed < 1.0) {
-                    "1/${(1.0 / speed).toInt()}"
-                } else {
-                    "$shutterSpeed с"
-                }
-            }
-            
-            val iso = exifInterface.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)
-            if (!iso.isNullOrEmpty()) {
-                metadata["ISO"] = iso
-            }
-            
-            val focalLength = exifInterface.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)
-            if (!focalLength.isNullOrEmpty()) {
-                val focalDouble = focalLength.substringBefore("/").toDoubleOrNull()
-                metadata["Фокусное расстояние"] = "${focalDouble ?: focalLength} мм"
-            }
-            
-            val width = exifInterface.getAttribute(ExifInterface.TAG_IMAGE_WIDTH)
-            val height = exifInterface.getAttribute(ExifInterface.TAG_IMAGE_LENGTH)
-            if (!width.isNullOrEmpty() && !height.isNullOrEmpty()) {
-                metadata["Разрешение"] = "${width}x${height}"
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-    return metadata
-}
-
-private fun getSharedImageUri(context: Context, sourceFile: File, displayName: String): Uri? {
-    return try {
-        val sharedTempDir = File(context.cacheDir, "shared_temp")
-        sharedTempDir.mkdirs()
-        val cleanName = displayName.substringBeforeLast(".") + "_preview.webp"
-        val tempFile = File(sharedTempDir, cleanName)
-        sourceFile.inputStream().use { input ->
-            tempFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            tempFile
-        )
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
-    }
-}
-
-private fun shareFileDetails(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
-    val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
-    val archiveUuid = item.archiveUuid ?: "Неизвестно"
-    val shareText = """
-        Имя: ${item.displayName}
-        Путь: ${item.otgUri ?: ""}
-        Размер: $sizeMb
-        Накопитель: $archiveName
-        ID накопителя (UUID): $archiveUuid
-    """.trimIndent()
-
-    val path = item.thumbnailPath ?: run {
-        val previewDir = File(context.filesDir, "my1drive_previews")
-        val cacheFile = File(previewDir, "${item.id}.my1d")
-        if (cacheFile.exists()) cacheFile.absolutePath else null
-    }
-
-    if (path != null) {
-        val file = File(path)
-        if (file.exists()) {
-            val uri = getSharedImageUri(context, file, item.displayName)
-            if (uri != null) {
-                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                    type = "image/webp"
-                    putExtra(android.content.Intent.EXTRA_SUBJECT, item.displayName)
-                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
-                return
-            }
-        }
-    }
-
-    // Fallback: text only
-    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_SUBJECT, item.displayName)
-        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-    }
-    context.startActivity(android.content.Intent.createChooser(intent, "Поделиться файлом"))
-}
-
-private fun copyFileDetailsToClipboard(context: Context, item: MediaItem, sizeMb: String, archive: by.w6.my1drive.data.local.ArchiveEntity?) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-    val archiveName = archive?.name ?: item.archiveName ?: "Неизвестный"
-    val archiveUuid = item.archiveUuid ?: "Неизвестно"
-    val shareText = """
-        Имя: ${item.displayName}
-        Путь: ${item.otgUri ?: ""}
-        Размер: $sizeMb
-        Накопитель: $archiveName
-        ID накопителя (UUID): $archiveUuid
-    """.trimIndent()
-
-    val path = item.thumbnailPath ?: run {
-        val previewDir = File(context.filesDir, "my1drive_previews")
-        val cacheFile = File(previewDir, "${item.id}.my1d")
-        if (cacheFile.exists()) cacheFile.absolutePath else null
-    }
-
-    if (path != null) {
-        val file = File(path)
-        if (file.exists()) {
-            val uri = getSharedImageUri(context, file, item.displayName)
-            if (uri != null) {
-                val clip = android.content.ClipData.newUri(context.contentResolver, "file_thumbnail", uri).apply {
-                    addItem(android.content.ClipData.Item(shareText))
-                }
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-    }
-
-    val clip = android.content.ClipData.newPlainText("file_details", shareText)
-    clipboard.setPrimaryClip(clip)
-    Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
 }

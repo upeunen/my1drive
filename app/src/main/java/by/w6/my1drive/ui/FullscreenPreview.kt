@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -786,8 +787,9 @@ private fun ImagePage(
         ),
         label = "selectionScale"
     )
+    val isOfflineOtg = item.status == MediaStatus.ARCHIVED_OTG && (!isOtgConnected || item.otgUri == null)
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
-        if (isOtgConnected && item.otgUri != null) {
+        if (!isOfflineOtg) {
             Uri.parse(item.otgUri)
         } else if (item.thumbnailPath != null) {
             Uri.fromFile(File(item.thumbnailPath))
@@ -1025,13 +1027,45 @@ private fun ImagePage(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = imageUri,
-                imageLoader = imageLoader,
-                contentDescription = item.displayName,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (!isOfflineOtg) {
+                AsyncImage(
+                    model = imageUri,
+                    imageLoader = imageLoader,
+                    contentDescription = item.displayName,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            if (isOfflineOtg) {
+                androidx.compose.foundation.layout.Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.Usb,
+                        contentDescription = "Drive offline",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.drive_known_disconnected),
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (item.archiveName != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = item.archiveName,
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1057,7 +1091,7 @@ private fun VideoPage(
         ),
         label = "selectionScale"
     )
-    val isOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
+    val isOffline = item.status == MediaStatus.ARCHIVED_OTG && (!isOtgConnected || item.otgUri == null)
     if (isOffline) {
         Box(
             modifier = Modifier
@@ -1067,14 +1101,14 @@ private fun VideoPage(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
-                    imageVector = Icons.Default.PlayCircle,
+                    imageVector = Icons.Default.Usb,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.3f),
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Видео недоступно (OTG отключен)",
+                    text = stringResource(R.string.drive_known_disconnected),
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium

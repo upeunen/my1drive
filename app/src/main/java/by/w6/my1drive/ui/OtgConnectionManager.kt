@@ -826,9 +826,9 @@ class OtgConnectionManager(
         return try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
             if (dir != null && dir.exists()) {
-                dir.listFiles()
-                    .filter { !it.isDirectory && it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" }
-                    .sumOf { it.length() }
+                by.w6.my1drive.ui.ArchiveSyncHelper.fastListFiles(application, dir.uri)
+                    .filter { it.mimeType != android.provider.DocumentsContract.Document.MIME_TYPE_DIR && it.name != ".my1drive_uuid" && it.name != ".my1drive_uuid.txt" }
+                    .sumOf { it.length }
             } else {
                 0L
             }

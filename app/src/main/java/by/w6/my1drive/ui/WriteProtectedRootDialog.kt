@@ -25,18 +25,18 @@ fun WriteProtectedRootDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Корень защищен от записи",
+                text = stringResource(by.w6.my1drive.R.string.write_protected_root_title),
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "В вашей версии Android корень USB-накопителя защищен от записи системой.",
+                    text = stringResource(by.w6.my1drive.R.string.write_protected_root_msg1),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "Пожалуйста, нажмите «Выбрать снова». Затем в открывшемся системном окне создайте новую папку (кнопка сверху справа) или выберите уже существующую папку внутри накопителя.",
+                    text = stringResource(by.w6.my1drive.R.string.write_protected_root_msg2),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -51,7 +51,7 @@ fun WriteProtectedRootDialog(
                 )
             ) {
                 Text(
-                    text = "Выбрать снова",
+                    text = stringResource(by.w6.my1drive.R.string.btn_select_again),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     softWrap = false
@@ -61,7 +61,7 @@ fun WriteProtectedRootDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Отмена",
+                    text = stringResource(by.w6.my1drive.R.string.btn_cancel),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     softWrap = false

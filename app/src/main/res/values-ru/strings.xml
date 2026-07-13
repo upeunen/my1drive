@@ -191,4 +191,83 @@
     <string name="unreadable_otg_msg">Устройство подключено физически, но операционной системе Android не удалось смонтировать его как накопитель.\n\nПопробуйте переподключить флешку или проверить надежность соединения.</string>
     <string name="unreadable_otg_why_link">Почему носитель не читается?</string>
     <string name="unreadable_otg_explanation">Возможные причины:\n• Неподдерживаемая файловая система (например, NTFS). Android лучше всего работает с FAT32 или exFAT.\n• Недостаточно питания для накопителя или некачественный OTG-переходник.\n\nКак это исправить:\nВы можете попробовать отформатировать флешку в поддерживаемый формат (FAT32/exFAT) средствами вашего смартфона в системных настройках памяти.\n\nПредупреждение: форматирование сотрет все данные с накопителя.</string>
+
+    <!-- Disconnected Info Dialog & Sharing -->
+    <string name="disconnected_info_title">Детали архивного файла</string>
+    <string name="info_file_name_title">Имя файла</string>
+    <string name="info_original_path_title">Исходный путь</string>
+    <string name="info_current_archive_path_title">Путь к оригиналу на OTG</string>
+    <string name="info_file_size_title">Размер файла</string>
+    <string name="info_storage_drive_title">Накопитель</string>
+    <string name="info_storage_uuid_title">ID накопителя (UUID)</string>
+    <string name="btn_share">Поделиться</string>
+    <string name="btn_copy">Копировать</string>
+    <string name="toast_copied_to_clipboard">Скопировано в буфер обмена</string>
+    <string name="unknown_value">Неизвестно</string>
+    <string name="unknown_drive_name">Неизвестный</string>
+    <string name="share_file_chooser">Поделиться файлом</string>
+    <string name="share_text_name">Имя: %1$s</string>
+    <string name="share_text_archive_path">Путь в архиве: %1$s</string>
+    <string name="share_text_size">Размер: %1$s</string>
+    <string name="share_text_drive">Накопитель: %1$s</string>
+    <string name="share_text_uuid">ID накопителя (UUID): %1$s</string>
+    <string name="write_protected_root_title">Корень защищен от записи</string>
+    <string name="write_protected_root_msg1">В вашей версии Android корень USB-накопителя защищен от записи системой.</string>
+    <string name="write_protected_root_msg2">Пожалуйста, нажмите «Выбрать снова». Затем в открывшемся системном окне создайте новую папку (кнопка сверху справа) или выберите уже существующую папку внутри накопителя.</string>
+    <string name="btn_select_again">Выбрать снова</string>
+    <string name="exif_aperture">Диафрагма</string>
+    <string name="exif_shutter_speed">Выдержка</string>
+    <string name="exif_focal_length">Фокусное расстояние</string>
+    <string name="exif_resolution">Разрешение</string>
+    <string name="exif_unit_s">с</string>
+    <string name="exif_unit_mm">мм</string>
+    <!-- Settings Tab -->
+    <string name="warning_internal_storage">⚠️ Внимание: Выбрана папка во внутренней памяти телефона. Для резервного копирования рекомендуется выбрать папку на USB флешке.</string>
+    <string name="setting_multi_archive_title">Работа с несколькими архивами (дисками)</string>
+    <string name="setting_show_offline_files">Отображать файлы с отключенных накопителей в галерее</string>
+    <string name="setting_connected_offline_drives">Подключенные и оффлайн-носители</string>
+    <string name="dialog_delete_archive_title">Удалить архив?</string>
+    <string name="dialog_delete_archive_msg">Вы действительно хотите удалить архив «%1$s»?\n\nЛокальный кэш и список файлов для этого носителя будут удалены с телефона. Файлы на самой флешке останутся нетронутыми.</string>
+    <string name="btn_delete">Удалить</string>
+    <string name="content_desc_delete_archive">Удалить архив</string>
+    <string name="subtitle_folder">Папка: %1$s</string>
+    <string name="subtitle_uuid">UUID: %1$s</string>
+    <string name="archive_name_fallback">Архив %1$s</string>
+
+    <string name="vps_server_title">VPS-сервер</string>
+    <string name="vps_server_desc">(Для опытных пользователей, сохранение на виртуальный сервер)</string>
+    <string name="toast_vps_enabled">VPS архивация включена</string>
+    <string name="toast_vps_disabled">VPS архивация выключена</string>
+    <string name="vps_host">Хост (IP-адрес / домен)</string>
+    <string name="vps_port">Порт</string>
+    <string name="vps_username">Имя пользователя</string>
+    <string name="vps_password">Пароль</string>
+    <string name="vps_path">Путь для архива на VPS</string>
+    <string name="vps_limit">Лимит архива на VPS (в ГБ)</string>
+    <string name="toast_vps_success">Подключение успешно установлено и сохранено!</string>
+    <string name="toast_vps_error">Ошибка подключения: %1$s</string>
+    <string name="btn_vps_test">Проверить и сохранить настройки</string>
+    <string name="btn_vps_testing">Проверка…</string>
+
+    <string name="archive_volume_free">Объем архива (Бесплатная версия)</string>
+    <string name="archive_volume_pro">Объем архива</string>
+    <string name="archive_used_free">Использовано: %1$.1f МБ из 128.0 МБ (%2$.1f%%)</string>
+    <string name="archive_used_pro">Использовано: %1$.1f МБ</string>
+    <string name="archive_limit_reached">Достигнут лимит бесплатной версии. Приобретите PRO версию или удалите часть файлов из архива.</string>
+
+    <string name="maintenance_and_debug">Обслуживание и отладка</string>
+    <string name="low_storage_warning">Мало места на устройстве. Фоновое кэширование приостановлено.</string>
+    <string name="view_debug_logs">Просмотр логов отладки</string>
+    <string name="app_version">Версия приложения:</string>
+
+    <string name="vps_limit_exceeded">Превышен настроенный лимит VPS (%1$s ГБ). Архивирование отменено.</string>
+    <string name="error_share_failed">Ошибка при отправке файлов</string>
+    <string name="error_open_file_failed">Не удалось открыть файл на накопителе</string>
+    <string name="error_share_archived_failed">Ошибка при подготовке файла из архива</string>
+    <string name="error_share_thumbnail_failed">Ошибка при подготовке эскиза</string>
+    <string name="error_otg_offline_no_thumbnail">Накопитель отключен и локальный эскиз отсутствует</string>
+    <string name="error_thumbnail_not_found_local">Файл эскиза не найден на устройстве</string>
+    <string name="share_thumbnail">Поделиться эскизом</string>
+    <string name="error_share_files_failed">Ошибка при подготовке файлов для отправки</string>
+    <string name="error_read_offline_file">Не удалось прочитать файл «%1$s» (накопитель отключен и нет локального эскиза)</string>
 </resources>

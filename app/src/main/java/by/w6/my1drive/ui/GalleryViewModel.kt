@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.flowOn
 import by.w6.my1drive.utils.ArchiveMetadataStore
 import by.w6.my1drive.utils.JsonEntry
@@ -80,29 +81,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val knownArchives = db.archiveDao().getAllFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _showFirstLaunchDialog = MutableStateFlow(false)
-    val showFirstLaunchDialog = _showFirstLaunchDialog.asStateFlow()
+    private val _dialogState = kotlinx.coroutines.flow.MutableStateFlow(DialogState())
+    val dialogState = _dialogState.asStateFlow()
 
-    private val _showUnknownDriveDialog = MutableStateFlow(false)
-    val showUnknownDriveDialog = _showUnknownDriveDialog.asStateFlow()
-
-    private val _showUnreadableOtgDialog = MutableStateFlow(false)
-    val showUnreadableOtgDialog = _showUnreadableOtgDialog.asStateFlow()
-
-    private val _showWriteProtectedRootDialog = MutableStateFlow(false)
-    val showWriteProtectedRootDialog = _showWriteProtectedRootDialog.asStateFlow()
-
-    private val _showLocalFolderDialog = MutableStateFlow(false)
-    val showLocalFolderDialog = _showLocalFolderDialog.asStateFlow()
-
-    private val _showNamingDialog = MutableStateFlow<Uri?>(null)
-    val showNamingDialog = _showNamingDialog.asStateFlow()
-
-    private val _showCreateArchiveGuideDialog = MutableStateFlow<Uri?>(null)
-    val showCreateArchiveGuideDialog = _showCreateArchiveGuideDialog.asStateFlow()
-
-    fun showCreateArchiveGuideDialog(uri: Uri) { _showCreateArchiveGuideDialog.value = uri }
-    fun dismissCreateArchiveGuideDialog() { _showCreateArchiveGuideDialog.value = null }
+    fun showCreateArchiveGuideDialog(uri: Uri) { _dialogState.update { it.copy(showCreateArchiveGuideDialog = uri) } }
+    fun dismissCreateArchiveGuideDialog() { _dialogState.update { it.copy(showCreateArchiveGuideDialog = null) } }
 
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
@@ -115,24 +98,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
-            onShowFirstLaunchDialog = { _showFirstLaunchDialog.value = it },
-            onShowUnknownDriveDialog = { _showUnknownDriveDialog.value = it },
-            onShowUnreadableOtgDialog = { _showUnreadableOtgDialog.value = it },
-            onShowWriteProtectedRootDialog = { _showWriteProtectedRootDialog.value = it },
-            onShowLocalFolderDialog = { _showLocalFolderDialog.value = it },
-            onShowNamingDialog = { _showNamingDialog.value = it },
-            onShowCreateArchiveGuideDialog = { _showCreateArchiveGuideDialog.value = it }
+            onShowFirstLaunchDialog = { v -> _dialogState.update { it.copy(showFirstLaunchDialog = v) } },
+            onShowUnknownDriveDialog = { v -> _dialogState.update { it.copy(showUnknownDriveDialog = v) } },
+            onShowUnreadableOtgDialog = { v -> _dialogState.update { it.copy(showUnreadableOtgDialog = v) } },
+            onShowWriteProtectedRootDialog = { v -> _dialogState.update { it.copy(showWriteProtectedRootDialog = v) } },
+            onShowLocalFolderDialog = { v -> _dialogState.update { it.copy(showLocalFolderDialog = v) } },
+            onShowNamingDialog = { v -> _dialogState.update { it.copy(showNamingDialog = v) } },
+            onShowCreateArchiveGuideDialog = { v -> _dialogState.update { it.copy(showCreateArchiveGuideDialog = v) } }
         )
     }
 
-    fun dismissFirstLaunchDialog() { _showFirstLaunchDialog.value = false }
-    fun dismissUnknownDriveDialog() { _showUnknownDriveDialog.value = false }
-    fun dismissUnreadableOtgDialog() { _showUnreadableOtgDialog.value = false }
-    fun dismissWriteProtectedRootDialog() { _showWriteProtectedRootDialog.value = false }
-    fun dismissLocalFolderDialog() { _showLocalFolderDialog.value = false }
-    fun dismissNamingDialog() { _showNamingDialog.value = null }
-    fun triggerWriteProtectedRootDialog() { _showWriteProtectedRootDialog.value = true }
-    fun showNamingDialog(uri: Uri) { _showNamingDialog.value = uri }
+    fun dismissFirstLaunchDialog() { _dialogState.update { it.copy(showFirstLaunchDialog = false) } }
+    fun dismissUnknownDriveDialog() { _dialogState.update { it.copy(showUnknownDriveDialog = false) } }
+    fun dismissUnreadableOtgDialog() { _dialogState.update { it.copy(showUnreadableOtgDialog = false) } }
+    fun dismissWriteProtectedRootDialog() { _dialogState.update { it.copy(showWriteProtectedRootDialog = false) } }
+    fun dismissLocalFolderDialog() { _dialogState.update { it.copy(showLocalFolderDialog = false) } }
+    fun dismissNamingDialog() { _dialogState.update { it.copy(showNamingDialog = null) } }
+    fun triggerWriteProtectedRootDialog() { _dialogState.update { it.copy(showWriteProtectedRootDialog = true) } }
+    fun showNamingDialog(uri: Uri) { _dialogState.update { it.copy(showNamingDialog = uri) } }
 
     private val archiveInteractor: ArchiveInteractor by lazy {
         ArchiveInteractor(
@@ -144,7 +127,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             scope = viewModelScope,
             restoreState = restoreState,
             restoringItemIds = _restoringItemIds,
-            selectedIds = _selectedIds
+            onItemDeselected = { id -> selectionManager.deselectItems(listOf(id)) }
         )
     }
 
@@ -162,16 +145,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 otgManager.setCheckingConnection(false)
             },
             onArchiveSuccess = { items ->
-                deleteDeviceItems(items)
+                this@GalleryViewModel.mediaOperationInteractor.startDeletingWithPermissionCheck(items)
             },
             onItemArchived = { item ->
-                _selectedIds.value = _selectedIds.value - item.id
+                selectionManager.deselectItems(listOf(item.id))
             },
             onPreviewCached = { hash, path ->
                 onPreviewCached(hash, path)
             }
         )
     }
+
 
     fun onPause() {
         otgManager.pausePolling()
@@ -186,108 +170,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val mediaItems: StateFlow<List<MediaItem>> = repository.getMediaItemsFlow()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    private val _deviceSortMode = MutableStateFlow(
-        try {
-            DeviceSortMode.valueOf(
-                prefs.getString("device_sort_mode", DeviceSortMode.BY_PHOTO_DATE.name) ?: DeviceSortMode.BY_PHOTO_DATE.name
-            )
-        } catch (e: Exception) {
-            DeviceSortMode.BY_PHOTO_DATE
-        }
-    )
-    val deviceSortMode = _deviceSortMode.asStateFlow()
+    val displayManager = GalleryDisplayManager(application, prefs, viewModelScope, mediaItems)
+    
+    val deviceSortMode = displayManager.deviceSortMode
+    fun setDeviceSortMode(mode: DeviceSortMode) { displayManager.setDeviceSortMode(mode) }
 
-    fun setDeviceSortMode(mode: DeviceSortMode) {
-        _deviceSortMode.value = mode
-        prefs.edit().putString("device_sort_mode", mode.name).apply()
-    }
+    val gridColumnsCount = displayManager.gridColumnsCount
+    fun setGridColumnsCount(count: Int) { displayManager.setGridColumnsCount(count) }
 
-    private val _gridColumnsCount = MutableStateFlow(
-        prefs.getInt("grid_columns_count", 3)
-    )
-    val gridColumnsCount = _gridColumnsCount.asStateFlow()
+    val groupedMediaItems = displayManager.groupedMediaItems
 
-    fun setGridColumnsCount(count: Int) {
-        _gridColumnsCount.value = count
-        prefs.edit().putInt("grid_columns_count", count).apply()
-    }
+    val archiveSortMode = displayManager.archiveSortMode
+    fun setArchiveSortMode(mode: ArchiveSortMode) { displayManager.setArchiveSortMode(mode) }
 
-    val groupedMediaItems: StateFlow<List<GalleryItem>> = combine(
-        mediaItems,
-        deviceSortMode
-    ) { list, sortMode ->
-        val localItems = list.filter { it.status == MediaStatus.ON_DEVICE }.run {
-            if (sortMode == DeviceSortMode.BY_RESTORE_DATE) {
-                sortedByDescending { it.dateAdded ?: 0L }
-            } else {
-                sortedByDescending { it.dateModified }
-            }
-        }
-        val resultList = mutableListOf<GalleryItem>()
-        val grouped = localItems.groupBy { item ->
-            val date = if (sortMode == DeviceSortMode.BY_RESTORE_DATE) {
-                item.dateAdded ?: 0L
-            } else {
-                item.dateModified
-            }
-            formatDateHeader(date)
-        }
-        for ((headerText, items) in grouped) {
-            resultList.add(GalleryItem.Header(headerText))
-            items.forEach { resultList.add(GalleryItem.Media(it)) }
-        }
-        resultList
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val archivedGroupedItems = displayManager.archivedGroupedItems
 
-    private val _archiveSortMode = MutableStateFlow(
-        try {
-            ArchiveSortMode.valueOf(
-                prefs.getString("archive_sort_mode", ArchiveSortMode.BY_PHOTO_DATE.name) ?: ArchiveSortMode.BY_PHOTO_DATE.name
-            )
-        } catch (e: Exception) {
-            ArchiveSortMode.BY_PHOTO_DATE
-        }
-    )
-    val archiveSortMode = _archiveSortMode.asStateFlow()
-
-    fun setArchiveSortMode(mode: ArchiveSortMode) {
-        _archiveSortMode.value = mode
-        prefs.edit().putString("archive_sort_mode", mode.name).apply()
-    }
-
-    val archivedGroupedItems: StateFlow<List<GalleryItem>> = combine(
-        mediaItems,
-        archiveSortMode
-    ) { list, sortMode ->
-        val archivedList = list.filter {
-            it.status == MediaStatus.ARCHIVED_OTG &&
-            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
-        }.run {
-            if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                sortedByDescending { it.dateArchived ?: 0L }
-            } else {
-                sortedByDescending { it.dateModified }
-            }
-        }
-
-        val resultList = mutableListOf<GalleryItem>()
-        val grouped = archivedList.groupBy { item ->
-            val date = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                item.dateArchived ?: 0L
-            } else {
-                item.dateModified
-            }
-            formatDateHeader(date)
-        }
-        for ((headerText, items) in grouped) {
-            resultList.add(GalleryItem.Header(headerText))
-            items.forEach { resultList.add(GalleryItem.Media(it)) }
-        }
-        resultList
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
-    val selectedIds = _selectedIds.asStateFlow()
+    val selectionManager = SelectionManager()
+    val selectedIds = selectionManager.selectedIds
 
     private val _restoringItemIds = MutableStateFlow<Set<String>>(emptySet())
     val restoringItemIds = _restoringItemIds.asStateFlow()
@@ -304,6 +203,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isOtgConnected = MutableStateFlow(false)
     val isOtgConnected: StateFlow<Boolean> = _isOtgConnected.asStateFlow()
 
+    val mediaOperationInteractor: MediaOperationInteractor by lazy {
+        MediaOperationInteractor(
+            application = application,
+            repository = repository,
+            scope = viewModelScope,
+            otgManager = otgManager,
+            archiveInteractor = archiveInteractor,
+            isOtgConnected = isOtgConnected
+        )
+    }
     val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
     val archivingItemIds: StateFlow<Set<String>> = syncHelper.archivingItemIds
     val copiedItemIds: StateFlow<Set<String>> = syncHelper.copiedItemIds
@@ -349,160 +258,32 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isStorageLow = MutableStateFlow(false)
     val isStorageLow = _isStorageLow.asStateFlow()
 
-    private val _isSharingPreparing = MutableStateFlow(false)
-    val isSharingPreparing = _isSharingPreparing.asStateFlow()
+    val isSharingPreparing = mediaOperationInteractor.isSharingPreparing
 
-    private val _showCreateFolderDialog = MutableStateFlow(false)
-    val showCreateFolderDialog = _showCreateFolderDialog.asStateFlow()
+    val showCreateFolderDialog = mediaOperationInteractor.showCreateFolderDialog
 
     private var pendingArchiveTask: Pair<List<MediaItem>, Uri>? = null
-    private var pendingDeleteTask: List<MediaItem>? = null
-    private val missingFoldersQueue = mutableListOf<String>()
 
-    private fun getFolderToRequest(relativePath: String?): String {
-        if (relativePath.isNullOrEmpty()) return ""
-        val clean = relativePath.trim('/', '\\').replace('\\', '/')
-        val segments = clean.split('/').filter { it.isNotEmpty() }
-        if (segments.isEmpty()) return ""
 
-        // If the path starts with Android, any subdirectory other than Android/media (like Android/data or Android/obb) is blocked.
-        // If it starts with Android/media, we can request Android/media or a subfolder of it.
-        if (segments.first().equals("Android", ignoreCase = true)) {
-            if (segments.size >= 2 && segments[1].equals("media", ignoreCase = true)) {
-                if (segments.size > 2) {
-                    val parentSegments = segments.dropLast(1)
-                    val parentPath = parentSegments.joinToString("/")
-                    if (parentPath.equals("Android/media", ignoreCase = true)) {
-                        return "Android/media"
-                    }
-                    return parentPath
-                } else {
-                    return "Android/media"
-                }
-            } else {
-                return "Android/media"
-            }
-        }
 
-        // If there is only 1 segment (e.g. "DCIM", "Pictures", "MyFolder"), parent would be root, which is blocked.
-        // So request the folder itself.
-        if (segments.size == 1) {
-            return segments.first()
-        }
-
-        // If there are multiple segments, one level higher is dropLast(1)
-        val parentSegments = segments.dropLast(1)
-        val parentPath = parentSegments.joinToString("/")
-        if (parentPath.isEmpty() || parentPath.equals("Android", ignoreCase = true)) {
-            return segments.first()
-        }
-        return parentPath
-    }
-
-    private fun hasPermissionForFolder(context: Context, folderName: String): Boolean {
-        if (folderName.isEmpty()) return false
-        val persisted = context.contentResolver.persistedUriPermissions
-        val reqSegments = folderName.split('/', '\\').filter { it.isNotEmpty() }
-        return persisted.any { perm ->
-            if (perm.uri.authority == "com.android.externalstorage.documents") {
-                try {
-                    val docId = DocumentsContract.getTreeDocumentId(perm.uri)
-                    val volumeId = docId.substringBefore(":", "primary")
-                    val path = docId.substringAfter(":", "").trim('/', '\\')
-                    val permSegments = path.split('/', '\\').filter { it.isNotEmpty() }
-                    if (volumeId.equals("primary", ignoreCase = true)) {
-                        if (permSegments.isEmpty()) {
-                            true
-                        } else if (permSegments.size <= reqSegments.size) {
-                            permSegments.indices.all { i ->
-                                permSegments[i].equals(reqSegments[i], ignoreCase = true)
-                            }
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                } catch (e: Exception) {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-    }
-
-    private fun requestNextFolderPermission() {
-        if (missingFoldersQueue.isNotEmpty()) {
-            val nextFolder = missingFoldersQueue.first()
-            showArchiveFolderAccessDialog(nextFolder)
-        } else {
-            val archiveTask = pendingArchiveTask
-            if (archiveTask != null) {
-                syncHelper.startArchiving(archiveTask.first, archiveTask.second)
-                pendingArchiveTask = null
-            }
-            val deleteTask = pendingDeleteTask
-            if (deleteTask != null) {
-                val itemsToDelete = deleteTask
-                pendingDeleteTask = null
-                deleteDeviceItems(itemsToDelete.filter { it.status == MediaStatus.ON_DEVICE })
-                archiveInteractor.deleteArchivedItems(itemsToDelete.filter { it.status == MediaStatus.ARCHIVED_OTG })
-            }
-        }
-    }
 
     fun onFolderPermissionGranted(uri: Uri) {
-        if (missingFoldersQueue.isNotEmpty()) {
-            val folder = missingFoldersQueue.removeAt(0)
-            DebugLogBuffer.log("GalleryViewModel", "Permission granted for folder: $folder. Remaining: ${missingFoldersQueue.size}")
-            requestNextFolderPermission()
+        if (mediaOperationInteractor.missingFoldersQueue.isNotEmpty()) {
+            val folder = mediaOperationInteractor.missingFoldersQueue.removeAt(0)
+            DebugLogBuffer.log("GalleryViewModel", "Permission granted for folder: $folder. Remaining: ${mediaOperationInteractor.missingFoldersQueue.size}")
+            mediaOperationInteractor.requestNextFolderPermission()
         }
     }
 
     fun onFolderPermissionCancelled() {
-        missingFoldersQueue.clear()
-        pendingArchiveTask = null
-        pendingDeleteTask = null
+        mediaOperationInteractor.missingFoldersQueue.clear()
+        mediaOperationInteractor.pendingArchiveTask = null
+        mediaOperationInteractor.pendingDeleteTask = null
         _showArchiveFolderAccessDialog.value = false
         _archiveAccessFolderPath.value = null
         DebugLogBuffer.log("GalleryViewModel", "Folder permission request cancelled. Aborting task.")
     }
 
-    private fun findMatchingTreeUriForFile(context: Context, relativePath: String?): Uri? {
-        val folderName = getFolderToRequest(relativePath)
-        if (folderName.isEmpty()) return null
-        val persisted = context.contentResolver.persistedUriPermissions
-        val reqSegments = folderName.split('/', '\\').filter { it.isNotEmpty() }
-        val matchedPerm = persisted.firstOrNull { perm ->
-            if (perm.uri.authority == "com.android.externalstorage.documents") {
-                try {
-                    val docId = DocumentsContract.getTreeDocumentId(perm.uri)
-                    val volumeId = docId.substringBefore(":", "primary")
-                    val path = docId.substringAfter(":", "").trim('/', '\\')
-                    val permSegments = path.split('/', '\\').filter { it.isNotEmpty() }
-                    if (volumeId.equals("primary", ignoreCase = true)) {
-                        if (permSegments.isEmpty()) {
-                            true
-                        } else if (permSegments.size <= reqSegments.size) {
-                            permSegments.indices.all { i ->
-                                permSegments[i].equals(reqSegments[i], ignoreCase = true)
-                            }
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                } catch (e: Exception) {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-        return matchedPerm?.uri
-    }
 
         // ─── Archive folder access dialog ───
 
@@ -527,18 +308,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             // После подтверждения откроется SAF через коллбэк в MainActivity
         }
 
-        // ─── Thumbnail sync state (must be before init) ───
+        // ─── Thumbnail sync state ───
 
-    private val _isSyncingThumbnails = MutableStateFlow(false)
-    val isSyncingThumbnails = _isSyncingThumbnails.asStateFlow()
+    val thumbnailManager = ThumbnailSyncManager(
+        db = db,
+        syncHelper = syncHelper,
+        scope = viewModelScope,
+        activeArchiveUuidFlow = otgManager.activeArchiveUuid,
+        isOtgConnectedFlow = _isOtgConnected,
+        isScrollingFlow = _isScrolling,
+        refreshCacheStats = { refreshCacheStats() }
+    )
 
-    private val _syncThumbnailsProgress = MutableStateFlow(Pair(0, 0))
-    val syncThumbnailsProgress = _syncThumbnailsProgress.asStateFlow()
+    val isSyncingThumbnails = thumbnailManager.isSyncingThumbnails
+    val syncThumbnailsProgress = thumbnailManager.syncThumbnailsProgress
+    val missingThumbnailsCount = thumbnailManager.missingThumbnailsCount
 
-    private val _missingThumbnailsCount = MutableStateFlow(0)
-    val missingThumbnailsCount = _missingThumbnailsCount.asStateFlow()
-
-        // ─── Init ───
 
     init {
         // Restore saved OTG URI
@@ -601,7 +386,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 if (connected && uuid != null && !scrolling) {
                     startSilentThumbnailSync()
                 } else {
-                    silentThumbnailSyncJob?.cancel()
+                    thumbnailManager.cancelSilentThumbnailSync()
                 }
             }
         }
@@ -616,7 +401,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 if (sharedTempDir.exists() && sharedTempDir.isDirectory) {
                     sharedTempDir.deleteRecursively()
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("GalleryViewModel", "Cache stats update failed: ${e.message}")
+            }
         }
     }
 
@@ -675,71 +462,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private var thumbnailSyncJob: kotlinx.coroutines.Job? = null
-    private var silentThumbnailSyncJob: kotlinx.coroutines.Job? = null
-
-    fun getMissingThumbnailsCount(): Int {
-        return 0 // computed via state update
-    }
+    fun getMissingThumbnailsCount(): Int = thumbnailManager.missingThumbnailsCount.value
 
     fun updateMissingThumbnailsCount() {
-        // Guard against rare case of being called before field init via coroutine
-        val countFlow = _missingThumbnailsCount ?: return
-        val activeUuid = try { otgManager.activeArchiveUuid.value } catch (_: Exception) { return }
-        if (activeUuid == null) {
-            countFlow.value = 0
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            val count = db.mediaDao().getWithoutPreviewCount(activeUuid)
-            countFlow.value = count
-        }
+        thumbnailManager.updateMissingThumbnailsCount()
     }
 
     fun startThumbnailSync() {
-        val activeUuid = otgManager.activeArchiveUuid.value ?: return
-        _isSyncingThumbnails.value = true
-        _syncThumbnailsProgress.value = Pair(0, 0)
-        thumbnailSyncJob = viewModelScope.launch {
-            val job = coroutineContext[kotlinx.coroutines.Job]
-            try {
-                syncHelper.syncAllThumbnails(
-                    activeUuid = activeUuid,
-                    isCancelled = { job?.isActive == false },
-                    onProgress = { current, total ->
-                        _syncThumbnailsProgress.value = Pair(current, total)
-                    }
-                )
-            } finally {
-                _isSyncingThumbnails.value = false
-                updateMissingThumbnailsCount()
-                refreshCacheStats()
-            }
-        }
+        thumbnailManager.startThumbnailSync()
     }
 
     fun cancelThumbnailSync() {
-        thumbnailSyncJob?.cancel()
-        _isSyncingThumbnails.value = false
+        thumbnailManager.cancelThumbnailSync()
     }
 
     fun startSilentThumbnailSync() {
-        val activeUuid = otgManager.activeArchiveUuid.value ?: return
-        silentThumbnailSyncJob?.cancel()
-        silentThumbnailSyncJob = viewModelScope.launch {
-            val job = coroutineContext[kotlinx.coroutines.Job]
-            try {
-                syncHelper.syncAllThumbnails(
-                    activeUuid = activeUuid,
-                    isCancelled = { job?.isActive == false || !_isOtgConnected.value || _isScrolling.value },
-                    onProgress = { _, _ -> }
-                )
-            } catch (_: Exception) {
-            } finally {
-                updateMissingThumbnailsCount()
-                refreshCacheStats()
-            }
-        }
+        thumbnailManager.startSilentThumbnailSync()
     }
 
     fun deleteArchive(uuid: String) {
@@ -768,7 +506,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)
         val context = getApplication<Application>()
-        if (!hasPermissionForFolder(context, "DCIM")) {
+        if (!mediaOperationInteractor.hasPermissionForFolder(context, "DCIM")) {
             _pendingDeviceFolderToRequest.value = "DCIM"
             otgManager.showLocalFolderPrompt()
         }
@@ -777,7 +515,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun ejectOtg() {
         // Остановить синхронизацию миниатюр перед извлечением
         cancelThumbnailSync()
-        _syncThumbnailsProgress.value = Pair(0, 0)
+        thumbnailManager.resetProgress()
         otgManager.onEject()
     }
 
@@ -791,14 +529,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     // ─── Selection ───
 
-    fun toggleSelection(itemId: String) { _selectedIds.value = _selectedIds.value.toMutableSet().apply { if (contains(itemId)) remove(itemId) else add(itemId) } }
-    fun clearSelection() { _selectedIds.value = emptySet() }
-    fun selectItems(itemIds: Collection<String>) {
-        _selectedIds.value = _selectedIds.value.toMutableSet().apply { addAll(itemIds) }
-    }
-    fun deselectItems(itemIds: Collection<String>) {
-        _selectedIds.value = _selectedIds.value.toMutableSet().apply { removeAll(itemIds.toSet()) }
-    }
+    fun toggleSelection(itemId: String) { selectionManager.toggleSelection(itemId) }
+    fun clearSelection() { selectionManager.clearSelection() }
+    fun selectItems(itemIds: Collection<String>) { selectionManager.selectItems(itemIds) }
+    fun deselectItems(itemIds: Collection<String>) { selectionManager.deselectItems(itemIds) }
 
     // ─── Sync & Archive delegated ───
 
@@ -809,8 +543,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun syncArchive() { syncHelper.syncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissSync() { syncHelper.dismissSync() }
     fun startArchiving(targetUri: Uri) {
-        val selected = mediaItems.value.filter { it.id in _selectedIds.value }
-        DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${_selectedIds.value.size}, matchedSelected=${selected.size}")
+        val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
+        DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${selectionManager.selectedIds.value.size}, matchedSelected=${selected.size}")
         if (selected.isEmpty()) {
             DebugLogBuffer.log("GalleryViewModel", "startArchiving: selected list is empty, aborting.")
             return
@@ -822,7 +556,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val archivedItemsSize = mediaItems.value.filter { it.status == MediaStatus.ARCHIVED_OTG }.sumOf { it.size }
             val newSelectionSize = selected.sumOf { it.size }
             if (archivedItemsSize + newSelectionSize > limitBytes) {
-                Toast.makeText(getApplication(), "Превышен настроенный лимит VPS (${limitGb} ГБ). Архивирование отменено.", Toast.LENGTH_LONG).show()
+                Toast.makeText(getApplication(), getApplication<Application>().getString(by.w6.my1drive.R.string.vps_limit_exceeded, limitGb.toString()), Toast.LENGTH_LONG).show()
                 return
             }
         }
@@ -839,21 +573,21 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val context = getApplication<Application>()
-        val uniqueFolders = selected.map { getFolderToRequest(it.originalRelativePath) }
+        val uniqueFolders = selected.map { mediaOperationInteractor.getFolderToRequest(it.originalRelativePath) }
             .filter { it.isNotEmpty() }
             .toSet()
 
-        val missingFolders = uniqueFolders.filter { !hasPermissionForFolder(context, it) }
+        val missingFolders = uniqueFolders.filter { !mediaOperationInteractor.hasPermissionForFolder(context, it) }
 
         if (missingFolders.isNotEmpty()) {
-            pendingArchiveTask = selected to targetUri
-            missingFoldersQueue.clear()
-            missingFoldersQueue.addAll(missingFolders)
-            requestNextFolderPermission()
-            _selectedIds.value = emptySet()
+            mediaOperationInteractor.pendingArchiveTask = selected to targetUri
+            mediaOperationInteractor.missingFoldersQueue.clear()
+            mediaOperationInteractor.missingFoldersQueue.addAll(missingFolders)
+            mediaOperationInteractor.requestNextFolderPermission()
+            selectionManager.clearSelection()
         } else {
             syncHelper.startArchiving(selected, targetUri)
-            _selectedIds.value = emptySet()
+            selectionManager.clearSelection()
         }
     }
 
@@ -863,7 +597,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val limitBytes = limitGb.toLong() * 1024 * 1024 * 1024
             val archivedItemsSize = mediaItems.value.filter { it.status == MediaStatus.ARCHIVED_OTG }.sumOf { it.size }
             if (archivedItemsSize + item.size > limitBytes) {
-                Toast.makeText(getApplication(), "Превышен настроенный лимит VPS (${limitGb} ГБ). Архивирование отменено.", Toast.LENGTH_LONG).show()
+                Toast.makeText(getApplication(), getApplication<Application>().getString(by.w6.my1drive.R.string.vps_limit_exceeded, limitGb.toString()), Toast.LENGTH_LONG).show()
                 return
             }
         }
@@ -878,12 +612,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val context = getApplication<Application>()
-        val folder = getFolderToRequest(item.originalRelativePath)
-        if (folder.isNotEmpty() && !hasPermissionForFolder(context, folder)) {
-            pendingArchiveTask = listOf(item) to targetUri
-            missingFoldersQueue.clear()
-            missingFoldersQueue.add(folder)
-            requestNextFolderPermission()
+        val folder = mediaOperationInteractor.getFolderToRequest(item.originalRelativePath)
+        if (folder.isNotEmpty() && !mediaOperationInteractor.hasPermissionForFolder(context, folder)) {
+            mediaOperationInteractor.pendingArchiveTask = listOf(item) to targetUri
+            mediaOperationInteractor.missingFoldersQueue.clear()
+            mediaOperationInteractor.missingFoldersQueue.add(folder)
+            mediaOperationInteractor.requestNextFolderPermission()
         } else {
             syncHelper.startArchiving(listOf(item), targetUri)
         }
@@ -899,7 +633,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _deviceDeleteSender = MutableStateFlow<IntentSender?>(null)
     val deviceDeleteSender: StateFlow<IntentSender?> = _deviceDeleteSender.asStateFlow()
 
-    private val _deviceDeletePendingItems = mutableListOf<MediaItem>()
 
     // ─── Delete state ───
 
@@ -907,7 +640,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val pendingDelete: StateFlow<List<MediaItem>?> = _pendingDelete.asStateFlow()
 
     fun requestDeleteSelected() {
-        val selected = mediaItems.value.filter { it.id in _selectedIds.value }
+        val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
         if (selected.isNotEmpty()) {
             _pendingDelete.value = selected
         }
@@ -916,26 +649,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun confirmDelete() {
         val items = _pendingDelete.value ?: return
         _pendingDelete.value = null
-        _selectedIds.value = emptySet()
-        startDeletingWithPermissionCheck(items)
+        selectionManager.clearSelection()
+        this@GalleryViewModel.mediaOperationInteractor.startDeletingWithPermissionCheck(items)
     }
 
     fun dismissDelete() { _pendingDelete.value = null }
 
     /** Called when user confirms device delete in system dialog */
-    fun onDeviceDeleteConfirmed() {
-        val items = _deviceDeletePendingItems.toList()
-        _deviceDeleteSender.value = null
-        _deviceDeletePendingItems.clear()
-        if (items.isEmpty()) return
-        directDeleteDeviceItems(items)
-    }
+    fun onDeviceDeleteConfirmed() = mediaOperationInteractor.onDeviceDeleteResult(true)
 
     /** Called when user cancels device delete in system dialog */
-    fun onDeviceDeleteCancelled() {
-        _deviceDeleteSender.value = null
-        _deviceDeletePendingItems.clear()
-    }
+    fun onDeviceDeleteCancelled() = mediaOperationInteractor.onDeviceDeleteResult(false)
 
     private fun findFileInTree(context: Context, treeUri: Uri, relativePath: String?, displayName: String): DocumentFile? {
         val cleanPath = relativePath?.trim('/', '\\') ?: ""
@@ -1006,98 +730,20 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** Unified device delete: works on all API levels, bypasses system prompt on API 30+ if deviceDirectoryUri is set */
-    private fun deleteDeviceItems(items: List<MediaItem>) {
-        if (items.isEmpty()) return
-        val context = getApplication<Application>()
-        val remainingItems = mutableListOf<MediaItem>()
-        var anyDeleted = false
-        for (item in items) {
-            val treeUri = findMatchingTreeUriForFile(context, item.originalRelativePath)
-            val doc = if (treeUri != null) {
-                findFileInTree(context, treeUri, item.originalRelativePath, item.displayName)
-            } else null
-            if (doc != null && doc.exists() && doc.delete()) {
-                anyDeleted = true
-                // Scan the file path so MediaStore removes it
-                val externalDir = android.os.Environment.getExternalStorageDirectory()
-                val relPath = item.originalRelativePath?.trim('/', '\\') ?: ""
-                val fileOnDisk = if (relPath.isNotEmpty()) {
-                    java.io.File(externalDir, "$relPath/${item.displayName}")
-                } else {
-                    java.io.File(externalDir, item.displayName)
-                }
-                android.media.MediaScannerConnection.scanFile(
-                    context,
-                    arrayOf(fileOnDisk.absolutePath),
-                    arrayOf(item.mimeType)
-                ) { _, _ ->
-                    viewModelScope.launch {
-                        repository.refresh()
-                    }
-                }
-            } else {
-                remainingItems.add(item)
-            }
-        }
-        if (anyDeleted && remainingItems.isEmpty()) {
-            // All items were deleted via SAF
-            return
-        }
-        if (remainingItems.isNotEmpty()) {
-            fallbackDeleteDeviceItems(remainingItems)
-        }
-    }
-
-    private fun fallbackDeleteDeviceItems(items: List<MediaItem>) {
-        val context = getApplication<Application>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, items.map { it.uri })
-                _deviceDeleteSender.value = pendingIntent.intentSender
-                _deviceDeletePendingItems.clear()
-                _deviceDeletePendingItems.addAll(items)
-            } catch (_: Exception) {
-                directDeleteDeviceItems(items)
-            }
-        } else {
-            directDeleteDeviceItems(items)
-        }
-    }
-
-    private fun directDeleteDeviceItems(items: List<MediaItem>) {
-        val context = getApplication<Application>()
-        val remaining = items.toMutableList()
-        for (item in items) {
-            try {
-                context.contentResolver.delete(item.uri, null, null)
-                remaining.remove(item)
-            } catch (e: SecurityException) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
-                    _deviceDeleteSender.value = e.userAction.actionIntent.intentSender
-                    _deviceDeletePendingItems.clear()
-                    _deviceDeletePendingItems.addAll(remaining)
-                    return
-                }
-            } catch (_: Exception) { }
-        }
-        // Removed local folder prompt from deletion to ask in setup phase instead
-        _deviceDeletePendingItems.clear()
-        viewModelScope.launch { repository.refresh() }
-    }
 
     // ─── Restore ───
 
     fun setAskRestorePath(value: Boolean) { _askRestorePath.value = value; prefs.edit().putBoolean(PREF_ASK_RESTORE_PATH, value).apply() }
 
     fun requestRestore() {
-        val selected = mediaItems.value.filter { it.id in _selectedIds.value && it.status == MediaStatus.ARCHIVED_OTG }
+        val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value && it.status == MediaStatus.ARCHIVED_OTG }
         if (selected.isEmpty()) return
         archiveInteractor.startRestoring(selected, null)
-        _selectedIds.value = emptySet()
+        selectionManager.clearSelection()
     }
 
-    fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, null); _selectedIds.value = emptySet() } }
-    fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, uri); _selectedIds.value = emptySet() } }
+    fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, null); selectionManager.clearSelection() } }
+    fun restoreToChosenFolder(uri: Uri) { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, uri); selectionManager.clearSelection() } }
     fun dismissRestoreRequest() { pendingRestoreItems = emptyList(); _restoreRequest.value = null }
     
     fun resolveRestoreConflict(decision: by.w6.my1drive.ui.RestoreConflictDecision) {
@@ -1112,56 +758,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     // ─── Immediate Delete (fullscreen preview) ───
 
-    fun deleteSingleItemImmediate(item: MediaItem) {
-        startDeletingWithPermissionCheck(listOf(item))
-    }
-
-    private fun startDeletingWithPermissionCheck(items: List<MediaItem>) {
-        val context = getApplication<Application>()
-        val deviceItems = items.filter { it.status == MediaStatus.ON_DEVICE }
-        val archivedItems = items.filter { it.status == MediaStatus.ARCHIVED_OTG }
-        
-        val uniqueFolders = deviceItems.map { getFolderToRequest(it.originalRelativePath) }
-            .filter { it.isNotEmpty() }
-            .toSet()
-            
-        val missingFolders = uniqueFolders.filter { !hasPermissionForFolder(context, it) }
-
-        if (missingFolders.isNotEmpty()) {
-            pendingDeleteTask = items
-            missingFoldersQueue.clear()
-            missingFoldersQueue.addAll(missingFolders)
-            requestNextFolderPermission()
-        } else {
-            deleteDeviceItems(deviceItems)
-            archiveInteractor.deleteArchivedItems(archivedItems)
-        }
-    }
+    fun deleteSingleItemImmediate(item: MediaItem) = mediaOperationInteractor.startDeletingWithPermissionCheck(listOf(item))
 
     // ─── Create folder ───
 
-    fun requestCreateFolder() { _showCreateFolderDialog.value = true }
-    fun dismissCreateFolderDialog() { _showCreateFolderDialog.value = false }
-
-        fun createFolderOnOtg(folderName: String) {
-        otgManager.otgDirectoryUri.value?.let { uri ->
-            viewModelScope.launch(Dispatchers.IO) { try { DocumentFile.fromTreeUri(getApplication(), uri)?.createDirectory(folderName) } catch (_: Exception) { } }
-        }
-        _showCreateFolderDialog.value = false
-    }
+    fun requestCreateFolder() = mediaOperationInteractor.requestCreateFolder()
+    fun dismissCreateFolderDialog() = mediaOperationInteractor.dismissCreateFolderDialog()
+    fun createFolderOnOtg(folderName: String) = mediaOperationInteractor.createFolderOnOtg(folderName)
 
     // ─── Helpers ───
 
-    private fun formatDateHeader(dateSeconds: Long): String {
-        val dateMs = dateSeconds * 1000; val now = Calendar.getInstance(); val tc = Calendar.getInstance().apply { timeInMillis = dateMs }
-        val ctx = getApplication<Application>()
-        return when {
-            DateUtils.isToday(dateMs) -> ctx.getString(R.string.date_today)
-            isYesterday(tc, now) -> ctx.getString(R.string.date_yesterday)
-            tc.get(Calendar.YEAR) == now.get(Calendar.YEAR) -> SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date(dateMs))
-            else -> SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(dateMs))
-        }
-    }
 
     val otgDirectoryDisplayName: StateFlow<String?> = otgManager.otgDirectoryUri.map { uri ->
         if (uri == null) return@map null
@@ -1194,222 +800,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         return physicalArchiveSize.value
     }
 
-    fun shareMediaItem(item: MediaItem, context: Context, onError: (String) -> Unit) {
-        if (item.status == MediaStatus.ON_DEVICE) {
-            try {
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = item.mimeType
-                    putExtra(Intent.EXTRA_STREAM, item.uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(Intent.createChooser(intent, "Поделиться"))
-            } catch (e: Exception) {
-                onError(e.localizedMessage ?: "Ошибка при отправке файла")
-            }
-        } else if (item.status == MediaStatus.ARCHIVED_OTG) {
-            val activeUuid = otgManager.activeArchiveUuid.value
-            val isCurrentConnected = isOtgConnected.value && item.archiveUuid == activeUuid
-            
-            if (isCurrentConnected && !item.otgUri.isNullOrEmpty()) {
-                _isSharingPreparing.value = true
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        val otgUri = Uri.parse(item.otgUri)
-                        val inputStream = context.contentResolver.openInputStream(otgUri)
-                            ?: throw Exception("Не удалось открыть файл на накопителе")
-
-                        val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
-                        val tempFile = File(sharedTempDir, item.displayName)
-                        
-                        inputStream.use { input ->
-                            tempFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-
-                        val fileUri = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            tempFile
-                        )
-
-                        _isSharingPreparing.value = false
-
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = item.mimeType
-                            putExtra(Intent.EXTRA_STREAM, fileUri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Поделиться"))
-                    } catch (e: Exception) {
-                        _isSharingPreparing.value = false
-                        viewModelScope.launch(Dispatchers.Main) {
-                            onError(e.localizedMessage ?: "Ошибка при подготовке файла из архива")
-                        }
-                    }
-                }
-            } else {
-                val thumbPath = item.thumbnailPath
-                if (thumbPath.isNullOrEmpty()) {
-                    onError("Накопитель отключен и локальный эскиз отсутствует")
-                    return
-                }
-                _isSharingPreparing.value = true
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        val thumbFile = File(thumbPath)
-                        if (!thumbFile.exists()) {
-                            throw Exception("Файл эскиза не найден на устройстве")
-                        }
-                        
-                        val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
-                        val tempFile = File(sharedTempDir, item.displayName)
-                        thumbFile.inputStream().use { input ->
-                            tempFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                        
-                        val fileUri = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            tempFile
-                        )
-                        _isSharingPreparing.value = false
-                        
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = item.mimeType
-                            putExtra(Intent.EXTRA_STREAM, fileUri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Поделиться эскизом"))
-                    } catch (e: Exception) {
-                        _isSharingPreparing.value = false
-                        viewModelScope.launch(Dispatchers.Main) {
-                            onError(e.localizedMessage ?: "Ошибка при подготовке эскиза")
-                        }
-                    }
-                }
-            }
-        }
-    }
+    fun shareMediaItem(item: MediaItem, context: Context, onError: (String) -> Unit) = mediaOperationInteractor.shareMediaItem(item, context, onError)
     fun shareSelectedItems(context: Context, onError: (String) -> Unit) {
-        val selected = mediaItems.value.filter { it.id in _selectedIds.value }
-        if (selected.isEmpty()) return
-
-        val onDeviceItems = selected.filter { it.status == MediaStatus.ON_DEVICE }
-        val archivedItems  = selected.filter { it.status == MediaStatus.ARCHIVED_OTG }
-
-        if (archivedItems.isEmpty()) {
-            // All on-device — share directly without copying
-            val uris = ArrayList(onDeviceItems.map { it.uri })
-            val mimeType = commonMimeType(onDeviceItems)
-            val intent = if (uris.size == 1) {
-                Intent(Intent.ACTION_SEND).apply {
-                    type = onDeviceItems.first().mimeType
-                    putExtra(Intent.EXTRA_STREAM, uris.first())
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-            } else {
-                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                    type = mimeType
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-            }
-            try {
-                context.startActivity(Intent.createChooser(intent, context.getString(R.string.preview_share)))
-            } catch (e: Exception) {
-                onError(e.localizedMessage ?: "Ошибка при отправке файлов")
-            }
-        } else {
-            // Some files are in OTG archive — need to copy to cache first
-            _isSharingPreparing.value = true
-            viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    val sharedTempDir = File(context.cacheDir, "shared_temp").also { it.mkdirs() }
-                    val uris = ArrayList<Uri>()
-                    val activeUuid = otgManager.activeArchiveUuid.value
-                    val isOtgConnectedVal = isOtgConnected.value
-
-                    // Add on-device items directly (no copy needed)
-                    onDeviceItems.forEach { uris.add(it.uri) }
-
-                    // Copy archived items (original if connected, thumbnail if offline)
-                    for (item in archivedItems) {
-                        val isCurrentConnected = isOtgConnectedVal && item.archiveUuid == activeUuid
-                        var copied = false
-                        
-                        if (isCurrentConnected && !item.otgUri.isNullOrEmpty()) {
-                            try {
-                                val otgUri = Uri.parse(item.otgUri)
-                                val inputStream = context.contentResolver.openInputStream(otgUri)
-                                if (inputStream != null) {
-                                    val tempFile = File(sharedTempDir, item.displayName)
-                                    inputStream.use { input ->
-                                        tempFile.outputStream().use { output -> input.copyTo(output) }
-                                    }
-                                    uris.add(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile))
-                                    copied = true
-                                }
-                            } catch (_: Exception) {}
-                        }
-                        
-                        if (!copied) {
-                            // Try copying local thumbnail as fallback
-                            val thumbPath = item.thumbnailPath
-                            if (!thumbPath.isNullOrEmpty()) {
-                                val thumbFile = File(thumbPath)
-                                if (thumbFile.exists()) {
-                                    val tempFile = File(sharedTempDir, item.displayName)
-                                    try {
-                                        thumbFile.inputStream().use { input ->
-                                            tempFile.outputStream().use { output -> input.copyTo(output) }
-                                        }
-                                        uris.add(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile))
-                                        copied = true
-                                    } catch (_: Exception) {}
-                                }
-                            }
-                        }
-                        
-                        if (!copied) {
-                            throw Exception("Не удалось прочитать файл «${item.displayName}» (накопитель отключен и нет локального эскиза)")
-                        }
-                    }
-
-                    _isSharingPreparing.value = false
-
-                    val mimeType = commonMimeType(selected)
-                    val intent = if (uris.size == 1) {
-                        Intent(Intent.ACTION_SEND).apply {
-                            type = selected.first().mimeType
-                            putExtra(Intent.EXTRA_STREAM, uris.first())
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                    } else {
-                        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                            type = mimeType
-                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                    }
-                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.preview_share)))
-                } catch (e: Exception) {
-                    _isSharingPreparing.value = false
-                    viewModelScope.launch(Dispatchers.Main) {
-                        onError(e.localizedMessage ?: "Ошибка при подготовке файлов для отправки")
-                    }
-                }
-            }
-        }
-    }
-
-    private fun commonMimeType(items: List<MediaItem>): String {
-        return when {
-            items.all { it.mimeType.startsWith("image/") } -> "image/*"
-            items.all { it.mimeType.startsWith("video/") } -> "video/*"
-            else -> "*/*"
-        }
+        val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
+        mediaOperationInteractor.shareSelectedItems(selected, context, onError)
     }
 }

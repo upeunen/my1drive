@@ -59,12 +59,18 @@ class PreviewCacheManager(
     fun getCacheFileCount(): Int =
         previewDir.listFiles()?.size ?: 0
 
-    /** Returns the cache File for a given hash - uses .my1d extension to hide from other apps */
-    fun cacheFileFor(hash: String): File =
-        File(previewDir, "$hash.my1d")
+    /** Returns the cache File for a given id - uses .my1d extension to hide from other apps */
+    fun cacheFileFor(id: String): File =
+        File(previewDir, "$id.my1d")
 
     /** The actual extension for cache files */
     fun cacheExtension(): String = ".my1d"
+
+    /** Helper to get the absolute path of a cached preview if it exists */
+    fun getCachedPreviewPath(id: String): String? {
+        val cacheFile = cacheFileFor(id)
+        return if (cacheFile.exists()) cacheFile.absolutePath else null
+    }
 
     /**
      * Evicts oldest previews (by MediaEntity.lastAccessed) until cache fits within [maxBytes].

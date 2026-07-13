@@ -1269,10 +1269,13 @@ fun GalleryScreenContent(
                                     if (isItemActive) {
                                         val grouped = viewModel.archivedGroupedItems.value
                                         val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
-                                        val index = allMediaItems.indexOfFirst { it.id == item.id }
+                                        val filteredItems = allMediaItems.filter { m -> 
+                                            m.status != by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG || (isOtgConnected && m.archiveUuid == currentActiveUuid)
+                                        }
+                                        val index = filteredItems.indexOfFirst { it.id == item.id }
                                         if (index >= 0) {
                                             onSetActivePreview(FullscreenState(
-                                                items = allMediaItems,
+                                                items = filteredItems,
                                                 initialIndex = index,
                                                 sourceTab = SourceTab.ARCHIVE
                                             ))
@@ -1488,7 +1491,8 @@ fun GalleryScreenContent(
             )
         }
 
-        val showNamingDialog by viewModel.showNamingDialog.collectAsState()
+        val dialogState by viewModel.dialogState.collectAsState()
+        val showNamingDialog = dialogState.showNamingDialog
         showNamingDialog?.let { uri ->
             ArchiveNamingDialog(
                 onConfirm = { name ->
@@ -1501,7 +1505,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val showCreateArchiveGuide by viewModel.showCreateArchiveGuideDialog.collectAsState()
+        val showCreateArchiveGuide = dialogState.showCreateArchiveGuideDialog
         showCreateArchiveGuide?.let { uri ->
             CreateArchiveGuideDialog(
                 onConfirm = {
@@ -1515,7 +1519,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val showFirstLaunch by viewModel.showFirstLaunchDialog.collectAsState()
+        val showFirstLaunch = dialogState.showFirstLaunchDialog
         if (showFirstLaunch) {
             LaunchedEffect(Unit) {
                 viewModel.dismissFirstLaunchDialog()
@@ -1523,7 +1527,7 @@ fun GalleryScreenContent(
             }
         }
 
-                val showLocalFolder by viewModel.showLocalFolderDialog.collectAsState()
+        val showLocalFolder = dialogState.showLocalFolderDialog
         val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
         if (showLocalFolder) {
             LocalFolderDialog(
@@ -1548,7 +1552,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val showUnknownDrive by viewModel.showUnknownDriveDialog.collectAsState()
+        val showUnknownDrive = dialogState.showUnknownDriveDialog
         if (showUnknownDrive) {
             LaunchedEffect(Unit) {
                 viewModel.dismissUnknownDriveDialog()
@@ -1630,7 +1634,7 @@ fun GalleryScreenContent(
         }
 
 
-        val showWriteProtectedRoot by viewModel.showWriteProtectedRootDialog.collectAsState()
+        val showWriteProtectedRoot = dialogState.showWriteProtectedRootDialog
         if (showWriteProtectedRoot) {
             WriteProtectedRootDialog(
                 onRetry = {
