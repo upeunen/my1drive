@@ -34,21 +34,39 @@ import by.w6.my1drive.utils.VpsConnectionManager
 
 
 /** Helper for archive/manual-sync operations extracted from GalleryViewModel */
-class ArchiveSyncHelper(
+class ArchiveSyncHelper private constructor(
     private val application: Application,
     private val db: AppDatabase,
     private val repository: MediaRepository,
     private val archiveUtil: OtgArchiveUtil,
     private val prefs: android.content.SharedPreferences,
-    private val previewCache: PreviewCacheManager,
-    private val scope: kotlinx.coroutines.CoroutineScope,
-    private val onOperationComplete: () -> Unit = {},
-    private val onArchiveSuccess: (List<MediaItem>) -> Unit = {},
-    private val onItemArchived: ((MediaItem) -> Unit)? = null,
-    private val onPreviewCached: ((hash: String, path: String) -> Unit)? = null
+    private val previewCache: PreviewCacheManager
 ) {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+
+    val operationCompleteEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val archiveSuccessEvent = kotlinx.coroutines.flow.MutableSharedFlow<List<MediaItem>>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val itemArchivedEvent = kotlinx.coroutines.flow.MutableSharedFlow<MediaItem>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val previewCachedEvent = kotlinx.coroutines.flow.MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
 
     companion object {
+        @Volatile
+        private var INSTANCE: ArchiveSyncHelper? = null
+
+        fun getInstance(application: Application): ArchiveSyncHelper {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: buildInstance(application).also { INSTANCE = it }
+            }
+        }
+
+        private fun buildInstance(application: Application): ArchiveSyncHelper {
+            val db = AppDatabase.getDatabase(application)
+            val repository = by.w6.my1drive.data.repository.MediaRepositoryImpl(application, db.mediaDao())
+            val archiveUtil = OtgArchiveUtil(application)
+            val prefs = application.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
+            val previewCache = PreviewCacheManager(application, db.mediaDao())
+            return ArchiveSyncHelper(application, db, repository, archiveUtil, prefs, previewCache)
+        }
         private val operationMutex = Mutex()
         
         data class FastDocumentFile(
@@ -365,7 +383,7 @@ class ArchiveSyncHelper(
                 }
             } finally {
                 isSilentSyncing = false
-                onOperationComplete()
+                operationCompleteEvent.tryEmit(Unit)
             }
         }
     }
@@ -605,7 +623,7 @@ class ArchiveSyncHelper(
                     DebugLogBuffer.log("ManualSync", "Stacktrace: $sw")
                 } finally {
                     _syncProgressState.value = SyncProgressState(isSyncing = false)
-                    onOperationComplete()
+                    operationCompleteEvent.tryEmit(Unit)
                 }
             }
         }
@@ -703,7 +721,7 @@ class ArchiveSyncHelper(
                             copied.add(success)
                             _copiedItemIds.value = _copiedItemIds.value + item.id
                             DebugLogBuffer.log(logTag, "Item success: ${item.displayName}")
-                            onItemArchived?.invoke(item)
+                            itemArchivedEvent.tryEmit(item)
                         }
                         isSkipped -> {
                             skipped.add(item to skipReason)
@@ -731,7 +749,7 @@ class ArchiveSyncHelper(
             if (copied.isNotEmpty()) {
                 processArchivedResults(copied, targetUri, errorSummary)
                 // Уведомить ViewModel об успешно заархивированных файлах
-                onArchiveSuccess(copied.map { it.item })
+                archiveSuccessEvent.tryEmit(copied.map { it.item })
             } else {
                 val combinedError = errorSummary ?: "Ошибка архивирования"
                 _archiveState.value = ArchiveState(
@@ -739,7 +757,7 @@ class ArchiveSyncHelper(
                     skippedFiles = skippedFiles,
                     pendingQueueSize = archiveQueue.size
                 )
-                onOperationComplete()
+                operationCompleteEvent.tryEmit(Unit)
             }
         }
     }
@@ -797,7 +815,7 @@ class ArchiveSyncHelper(
                 pendingQueueSize = archiveQueue.size
             )
         } finally {
-            onOperationComplete()
+            operationCompleteEvent.tryEmit(Unit)
         }
     }
 
@@ -882,7 +900,7 @@ class ArchiveSyncHelper(
             if (cacheFile.exists() && cacheFile.length() > 0) {
                 // Already cached
                 db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
-                onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
+                previewCachedEvent.tryEmit(Pair(entity.id, cacheFile.absolutePath))
                 success = true
             } else {
                 try {
@@ -897,7 +915,7 @@ class ArchiveSyncHelper(
                         }
                         bitmap.recycle()
                         db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
-                        onPreviewCached?.invoke(entity.id, cacheFile.absolutePath)
+                        previewCachedEvent.tryEmit(Pair(entity.id, cacheFile.absolutePath))
                         success = true
                     }
                 } catch (e: Exception) {

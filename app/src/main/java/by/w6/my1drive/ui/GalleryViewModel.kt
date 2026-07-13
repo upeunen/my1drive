@@ -131,29 +131,34 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
-    private val syncHelper: ArchiveSyncHelper by lazy {
-        ArchiveSyncHelper(
-            application = application,
-            db = db,
-            repository = repository,
-            archiveUtil = archiveUtil,
-            prefs = prefs,
-            previewCache = previewCache,
-            scope = viewModelScope,
-            onOperationComplete = {
+    private val syncHelper: ArchiveSyncHelper
+        get() = ArchiveSyncHelper.getInstance(getApplication())
+
+    init {
+        viewModelScope.launch {
+            syncHelper.operationCompleteEvent.collect {
                 otgManager.updateArchiveSize()
                 otgManager.setCheckingConnection(false)
-            },
-            onArchiveSuccess = { items ->
-                this@GalleryViewModel.mediaOperationInteractor.startDeletingWithPermissionCheck(items)
-            },
-            onItemArchived = { item ->
+            }
+        }
+        
+        viewModelScope.launch {
+            syncHelper.archiveSuccessEvent.collect { items ->
+                mediaOperationInteractor.startDeletingWithPermissionCheck(items)
+            }
+        }
+        
+        viewModelScope.launch {
+            syncHelper.itemArchivedEvent.collect { item ->
                 selectionManager.deselectItems(listOf(item.id))
-            },
-            onPreviewCached = { hash, path ->
+            }
+        }
+        
+        viewModelScope.launch {
+            syncHelper.previewCachedEvent.collect { (hash, path) ->
                 onPreviewCached(hash, path)
             }
-        )
+        }
     }
 
 
