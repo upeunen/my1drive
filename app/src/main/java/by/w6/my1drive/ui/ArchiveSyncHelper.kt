@@ -80,9 +80,13 @@ class ArchiveSyncHelper private constructor(
         fun fastListFiles(context: android.content.Context, dirUri: android.net.Uri, isCancelled: () -> Boolean = { false }): List<FastDocumentFile> {
             val results = mutableListOf<FastDocumentFile>()
             try {
-                val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
-                    dirUri,
+                val docId = try {
                     android.provider.DocumentsContract.getDocumentId(dirUri)
+                } catch (e: Exception) {
+                    android.provider.DocumentsContract.getTreeDocumentId(dirUri)
+                }
+                val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                    dirUri, docId
                 )
                 val projection = arrayOf(
                     android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,

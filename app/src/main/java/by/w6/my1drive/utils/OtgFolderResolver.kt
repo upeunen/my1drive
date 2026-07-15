@@ -13,6 +13,12 @@ object OtgFolderResolver {
     fun extractVolumeId(uri: Uri): String? {
         val path = uri.path ?: return null
 
+        val rootSegment = path.substringAfter("/root/", "")
+        if (rootSegment.isNotEmpty()) {
+            val rawId = rootSegment.substringBefore(":")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) return rawId
+        }
+
         val docSegment = path.substringAfter("/document/", "")
         if (docSegment.isNotEmpty()) {
             val rawId = docSegment.substringBefore(":")
@@ -93,9 +99,13 @@ object OtgFolderResolver {
             }
 
             // 2. Scan first-level subdirectories using fast ContentResolver query
-            val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
-                rootUri,
+            val docId = try {
                 android.provider.DocumentsContract.getDocumentId(rootUri)
+            } catch (e: Exception) {
+                android.provider.DocumentsContract.getTreeDocumentId(rootUri)
+            }
+            val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                rootUri, docId
             )
             val projection = arrayOf(
                 android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,

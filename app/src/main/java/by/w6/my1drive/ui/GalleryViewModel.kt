@@ -215,7 +215,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             scope = viewModelScope,
             otgManager = otgManager,
             archiveInteractor = archiveInteractor,
-            isOtgConnected = isOtgConnected
+            isOtgConnected = isOtgConnected,
+            onArchiveTaskReady = { items, targetUri ->
+                syncHelper.startArchiving(items, targetUri)
+            }
         )
     }
     val archiveState: StateFlow<ArchiveState> = syncHelper.archiveState
@@ -633,10 +636,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissError() { syncHelper.dismissError() }
     fun refresh() { repository.refresh() }
 
-    // ─── Device delete sender (for system dialog on Q+) ───
-
-    private val _deviceDeleteSender = MutableStateFlow<IntentSender?>(null)
-    val deviceDeleteSender: StateFlow<IntentSender?> = _deviceDeleteSender.asStateFlow()
+    val deviceDeleteSender: StateFlow<IntentSender?> = mediaOperationInteractor.deviceDeleteSender
 
 
     // ─── Delete state ───

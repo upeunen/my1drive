@@ -233,6 +233,26 @@ class OtgArchiveUtil(private val context: Context) {
                     DebugLogBuffer.log(logTag, "Remapped blocked Android relative path to: $relativePath")
                 }
 
+                // Bypassing Android restriction: MediaStore Images must be in DCIM/ or Pictures/. Video must be in DCIM/, Movies/ or Pictures/.
+                val cleanRel = relativePath.trim('/', '\\')
+                val firstSegment = cleanRel.substringBefore('/')
+                if (mimeType.startsWith("image/")) {
+                    if (!firstSegment.equals("DCIM", ignoreCase = true) && !firstSegment.equals("Pictures", ignoreCase = true)) {
+                        relativePath = if (cleanRel.isNotEmpty()) "Pictures/$cleanRel/" else "Pictures/"
+                        DebugLogBuffer.log(logTag, "Remapped disallowed Image relative path to: $relativePath")
+                    }
+                } else if (mimeType.startsWith("video/")) {
+                    if (!firstSegment.equals("DCIM", ignoreCase = true) && !firstSegment.equals("Movies", ignoreCase = true) && !firstSegment.equals("Pictures", ignoreCase = true)) {
+                        relativePath = if (cleanRel.isNotEmpty()) "Movies/$cleanRel/" else "Movies/"
+                        DebugLogBuffer.log(logTag, "Remapped disallowed Video relative path to: $relativePath")
+                    }
+                }
+                
+                // Ensure trailing slash
+                if (relativePath.isNotEmpty() && !relativePath.endsWith("/")) {
+                    relativePath = "$relativePath/"
+                }
+
                 DebugLogBuffer.log(logTag, "Restoring via MediaStore to original path: $relativePath")
                 val collection = if (mimeType.startsWith("video/")) {
                     MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)

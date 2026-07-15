@@ -31,7 +31,8 @@ class MediaOperationInteractor(
     private val scope: CoroutineScope,
     private val otgManager: OtgConnectionManager,
     private val archiveInteractor: ArchiveInteractor,
-    private val isOtgConnected: StateFlow<Boolean>
+    private val isOtgConnected: StateFlow<Boolean>,
+    private val onArchiveTaskReady: (List<MediaItem>, Uri) -> Unit = { _, _ -> }
 ) {
     // ─── Delete State ───
     private val _deviceDeleteSender = MutableStateFlow<IntentSender?>(null)
@@ -364,8 +365,12 @@ class MediaOperationInteractor(
                     if (parts.size >= 2) {
                         val volume = parts[0]
                         val path = parts[1].trim('/', '\\')
-                        if (volume.equals("primary", ignoreCase = true) && path.equals(folderName, ignoreCase = true)) {
-                            return true
+                        if (volume.equals("primary", ignoreCase = true)) {
+                            if (path.isEmpty()) return true
+                            val cleanFolder = folderName.trim('/', '\\')
+                            if (cleanFolder.equals(path, ignoreCase = true) || cleanFolder.startsWith("$path/", ignoreCase = true) || cleanFolder.startsWith("$path\\", ignoreCase = true)) {
+                                return true
+                            }
                         }
                     }
                 } catch (_: Exception) {}
@@ -387,28 +392,20 @@ class MediaOperationInteractor(
             val archTask = pendingArchiveTask
             pendingArchiveTask = null
             if (archTask != null) {
-                // Call back to GalleryViewModel's syncHelper? 
-                // We cannot easily call syncHelper here without passing it.
-                // Instead, we will let GalleryViewModel handle the queue for archiving,
-                // OR we can pass a callback.
+                onArchiveTaskReady(archTask.first, archTask.second)
             }
             return
         }
         val nextFolder = missingFoldersQueue.first()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val sm = application.getSystemService(Context.STORAGE_SERVICE) as android.os.storage.StorageManager
-            val intent = sm.primaryStorageVolume.createOpenDocumentTreeIntent()
-            var uriStr = intent.getParcelableExtra<Uri>(DocumentsContract.EXTRA_INITIAL_URI)?.toString() ?: ""
-            if (uriStr.isNotEmpty()) {
-                uriStr = uriStr.replace("/root/", "/document/")
-                uriStr += "%3A$nextFolder"
-                intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, Uri.parse(uriStr))
-            }
-            _folderPermissionRequest.value = intent
-        } else {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            _folderPermissionRequest.value = intent
+        val clean = nextFolder.trim('/', '\\').replace('\\', '/')
+        val docId = if (clean.isNotEmpty()) "primary:$clean" else "primary:"
+        val treeUri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A")
+        val initialUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
+        
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri)
         }
+        _folderPermissionRequest.value = intent
     }
 
     fun onFolderPermissionResult(success: Boolean, uri: Uri?) {
@@ -432,9 +429,6 @@ class MediaOperationInteractor(
 
     private fun findMatchingTreeUriForFile(context: Context, relativePath: String?): Uri? {
         val cleanPath = relativePath?.trim('/', '\\') ?: ""
-        val folderSegment = cleanPath.substringBefore('/', "")
-        if (folderSegment.isEmpty()) return null
-        
         val permissions = context.contentResolver.persistedUriPermissions
         for (perm in permissions) {
             if (perm.isWritePermission) {
@@ -442,9 +436,13 @@ class MediaOperationInteractor(
                     val treeDocId = DocumentsContract.getTreeDocumentId(perm.uri)
                     val parts = treeDocId.split(":")
                     if (parts.size >= 2) {
+                        val volume = parts[0]
                         val path = parts[1].trim('/', '\\')
-                        if (parts[0].equals("primary", ignoreCase = true) && path.equals(folderSegment, ignoreCase = true)) {
-                            return perm.uri
+                        if (volume.equals("primary", ignoreCase = true)) {
+                            if (path.isEmpty()) return perm.uri
+                            if (cleanPath.equals(path, ignoreCase = true) || cleanPath.startsWith("$path/", ignoreCase = true) || cleanPath.startsWith("$path\\", ignoreCase = true)) {
+                                return perm.uri
+                            }
                         }
                     }
                 } catch (_: Exception) {}

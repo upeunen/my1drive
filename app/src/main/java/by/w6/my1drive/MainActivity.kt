@@ -21,6 +21,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
@@ -76,23 +79,31 @@ class MainActivity : ComponentActivity() {
     }
 
         /** Returns true if the URI points to a non-primary (removable) storage volume */
-            private fun isRemovableStorageUri(uri: Uri): Boolean {
-                val path = uri.path ?: return false
-                // Try /document/ segment first (for subfolder URIs from DocumentFile.createDirectory)
-                val docSegment = path.substringAfter("/document/", "")
-                if (docSegment.isNotEmpty()) {
-                    val rawId = docSegment.substringBefore(":").substringBefore("/")
-                    if (rawId.isNotEmpty() && !rawId.contains("/")) {
-                        return !rawId.equals("primary", ignoreCase = true)
-                    }
-                }
-                // Fallback to /tree/ segment
-                val treeSegment = path.substringAfter("/tree/", "")
-                if (treeSegment.isEmpty()) return false
-                val rawId = treeSegment.substringBefore(":").substringBefore("/")
-                if (rawId.contains("/")) return false // garbled parse, can't determine
+    private fun isRemovableStorageUri(uri: Uri): Boolean {
+        val path = uri.path ?: return false
+        // Try /root/ segment (for system-generated volume intents)
+        val rootSegment = path.substringAfter("/root/", "")
+        if (rootSegment.isNotEmpty()) {
+            val rawId = rootSegment.substringBefore(":").substringBefore("/")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) {
                 return !rawId.equals("primary", ignoreCase = true)
             }
+        }
+        // Try /document/ segment first (for subfolder URIs from DocumentFile.createDirectory)
+        val docSegment = path.substringAfter("/document/", "")
+        if (docSegment.isNotEmpty()) {
+            val rawId = docSegment.substringBefore(":").substringBefore("/")
+            if (rawId.isNotEmpty() && !rawId.contains("/")) {
+                return !rawId.equals("primary", ignoreCase = true)
+            }
+        }
+        // Fallback to /tree/ segment
+        val treeSegment = path.substringAfter("/tree/", "")
+        if (treeSegment.isEmpty()) return false
+        val rawId = treeSegment.substringBefore(":").substringBefore("/")
+        if (rawId.contains("/")) return false // garbled parse, can't determine
+        return !rawId.equals("primary", ignoreCase = true)
+    }
 
     private fun handleOtgFolderSelected(uri: Uri) {
         try {
@@ -164,6 +175,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val folderPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uri = result.data?.data
+            if (uri != null) {
+                try {
+                    val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                    viewModel.mediaOperationInteractor.onFolderPermissionResult(true, uri)
+                } catch (e: Exception) {
+                    viewModel.mediaOperationInteractor.onFolderPermissionResult(false, null)
+                }
+            } else {
+                viewModel.mediaOperationInteractor.onFolderPermissionResult(false, null)
+            }
+        } else {
+            viewModel.mediaOperationInteractor.onFolderPermissionResult(false, null)
+        }
+        viewModel.mediaOperationInteractor.clearFolderPermissionRequest()
+    }
+
     private val deviceFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -233,106 +266,108 @@ class MainActivity : ComponentActivity() {
 
         private fun selectOtgFolder() {
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: start")
-        val isUnknownDrive = viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.UNKNOWN_DRIVE_CONNECTED || viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.NO_URI_CONFIGURED
-        val currentOtgUri = if (isUnknownDrive) null else viewModel.otgDirectoryUri.value
-        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: currentOtgUri=$currentOtgUri, isUnknown=$isUnknownDrive")
-
         val isPhysConnected = viewModel.otgManager.physicalConnected.value
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: isPhysConnected=$isPhysConnected")
 
-        // 1. If we already have a valid saved URI for this known drive, launch with it as initial hint
+        // 1. Try manual URI resolution pointing to the root of the removable drive first
+        val otgRoot = otgStorageRootUri(this)
+        
+        if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using manual otgRoot: $otgRoot")
+            try {
+                otgFolderLauncher.launch(otgRoot)
+                return
+            } catch (_: Exception) {}
+        }
+
+        // 2. If root is null but physically connected, wait for mount
+        if (otgRoot == null && isPhysConnected) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root null but phys connected, waiting for mount...")
+            lifecycleScope.launch {
+                val progressToast = Toast.makeText(this@MainActivity, "Ожидание монтирования накопителя...", Toast.LENGTH_SHORT)
+                progressToast.show()
+                var resolvedRoot: Uri? = null
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < 4000L) { // wait up to 4 seconds
+                    delay(500)
+                    resolvedRoot = otgStorageRootUri(this@MainActivity)
+                    if (resolvedRoot != null) {
+                        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root resolved after delay: $resolvedRoot")
+                        break
+                    }
+                }
+                progressToast.cancel()
+                val finalUri = if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) resolvedRoot else null
+                try {
+                    otgFolderLauncher.launch(finalUri)
+                } catch (_: Exception) {
+                    try { otgFolderLauncher.launch(null) } catch (_: Exception) {}
+                }
+            }
+            return
+        }
+
+        // 3. Fallback to saved currentOtgUri only if drive is not physically connected or root resolution failed
+        val isUnknownDrive = viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.UNKNOWN_DRIVE_CONNECTED || viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.NO_URI_CONFIGURED
+        val currentOtgUri = if (isUnknownDrive) null else viewModel.otgDirectoryUri.value
         if (currentOtgUri != null) {
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri")
+            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri: $currentOtgUri")
             try {
                 otgFolderLauncher.launch(currentOtgUri)
                 return
             } catch (_: Exception) {}
         }
 
-        // 2. If physical volume is connected, try launching the StorageVolume direct intent first (API 29+)
-        if (isPhysConnected) {
-            val sm = getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager
-            val volumes = try {
-                @Suppress("DEPRECATION")
-                sm?.storageVolumes ?: emptyList()
-            } catch (_: Exception) { emptyList() }
-            
-            for (volume in volumes) {
-                if (!volume.isPrimary && volume.state == android.os.Environment.MEDIA_MOUNTED) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        try {
-                            val intent = volume.createOpenDocumentTreeIntent()
-                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launching direct intent from volume")
-                            otgFolderDirectLauncher.launch(intent)
-                            return
-                        } catch (e: Exception) {
-                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: failed direct launch: ${e.localizedMessage}")
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Fallback: try manual URI resolution
-        val otgRoot = otgStorageRootUri(this)
-        val initialUri = when {
-            otgRoot != null && isRemovableStorageUri(otgRoot) -> {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using manual otgRoot")
-                otgRoot
-            }
-            else -> {
-                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: manual root null or not removable, using null")
-                null
-            }
-        }
-        
         try {
-            otgFolderLauncher.launch(initialUri)
-        } catch (e: Exception) {
-            try {
-                otgFolderLauncher.launch(null)
-            } catch (_: Exception) {}
+            otgFolderLauncher.launch(null)
+        } catch (_: Exception) {
+            try { otgFolderLauncher.launch(null) } catch (_: Exception) {}
         }
     }
 
     private fun otgStorageRootUri(context: Context): Uri? {
-            val sm = context.getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager ?: return null
-            val volumes: List<android.os.storage.StorageVolume> = try {
-                @Suppress("DEPRECATION")
-                sm.storageVolumes.toList()
-            } catch (_: Exception) { return null }
-            for (volume in volumes) {
-                if (!volume.isPrimary && volume.state == android.os.Environment.MEDIA_MOUNTED) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        try {
-                            val intent = volume.createOpenDocumentTreeIntent()
-                            val uri = intent.getParcelableExtra<Uri>(DocumentsContract.EXTRA_INITIAL_URI)
-                            if (uri != null) {
-                                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: extracted initial uri from volume intent: $uri")
-                                return uri
-                            }
-                        } catch (e: Exception) {
-                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: failed to get intent from volume: ${e.localizedMessage}")
+        val sm = context.getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager ?: return null
+        val volumes: List<android.os.storage.StorageVolume> = try {
+            @Suppress("DEPRECATION")
+            sm.storageVolumes.toList()
+        } catch (_: Exception) { return null }
+        for (volume in volumes) {
+            if (!volume.isPrimary && volume.state == android.os.Environment.MEDIA_MOUNTED) {
+                // 1. Try to extract EXTRA_INITIAL_URI from system intent (most reliable on Android 10+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        val intent = volume.createOpenDocumentTreeIntent()
+                        val uri = androidx.core.content.IntentCompat.getParcelableExtra(intent, DocumentsContract.EXTRA_INITIAL_URI, Uri::class.java)
+                        if (uri != null) {
+                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: extracted initial uri from volume intent: $uri")
+                            return uri
                         }
-                    }
-                    var uuid = volume.uuid
-                    val volDirectory = volume.directory
-                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: volume uuid=$uuid, directory=$volDirectory")
-                    // Fallback для Samsung: если uuid == null, используем имя последней папки из пути
-                    if (uuid == null && volDirectory != null) {
-                        val pathParts = volDirectory.absolutePath.split("/")
-                        if (pathParts.isNotEmpty()) {
-                            uuid = pathParts.last()
-                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: derived uuid from directory: $uuid")
-                        }
-                    }
-                    if (uuid != null) {
-                        return DocumentsContract.buildTreeDocumentUri("com.android.externalstorage.documents", "$uuid:")
+                    } catch (e: Exception) {
+                        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: failed to get intent from volume: ${e.localizedMessage}")
                     }
                 }
+
+                // 2. Fallback using UUID
+                var uuid = volume.uuid
+                val volDirectory = volume.directory
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: volume uuid=$uuid, directory=$volDirectory")
+                // Fallback для Samsung: если uuid == null, используем имя последней папки из пути
+                if (uuid == null && volDirectory != null) {
+                    val pathParts = volDirectory.absolutePath.split("/")
+                    if (pathParts.isNotEmpty()) {
+                        uuid = pathParts.last()
+                        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: derived uuid from directory: $uuid")
+                    }
+                }
+                if (uuid != null) {
+                    val uri = DocumentsContract.buildTreeDocumentUri("com.android.externalstorage.documents", "$uuid:")
+                    by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "otgStorageRootUri: built manual document URI: $uri")
+                    return uri
+                }
             }
-            return null
         }
+        return null
+    }
 
     private val permissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -497,6 +532,13 @@ class MainActivity : ComponentActivity() {
                     deviceDeleteSender?.let { sender ->
                         val intentSenderRequest = IntentSenderRequest.Builder(sender).build()
                         deviceDeleteLauncher.launch(intentSenderRequest)
+                    }
+                }
+
+                val folderPermissionRequest by viewModel.mediaOperationInteractor.folderPermissionRequest.collectAsState()
+                LaunchedEffect(folderPermissionRequest) {
+                    folderPermissionRequest?.let { intent ->
+                        folderPermissionLauncher.launch(intent)
                     }
                 }
 
