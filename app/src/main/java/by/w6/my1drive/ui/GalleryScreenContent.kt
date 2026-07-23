@@ -1057,6 +1057,27 @@ fun GalleryScreenContent(
         )
     }
 
+    if (showEjectConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showEjectConfirmDialog = false },
+            title = { Text(stringResource(R.string.dialog_eject_title), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.dialog_eject_message)) },
+            confirmButton = {
+                Button(onClick = {
+                    showEjectConfirmDialog = false
+                    viewModel.ejectOtg()
+                }) {
+                    Text(stringResource(R.string.action_eject), maxLines = 1, softWrap = false)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEjectConfirmDialog = false }) {
+                    Text(stringResource(R.string.action_cancel), maxLines = 1, softWrap = false)
+                }
+            }
+        )
+    }
+
     if (showChangeFolderConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showChangeFolderConfirmDialog = false },

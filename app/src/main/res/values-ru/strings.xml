@@ -270,4 +270,8 @@
     <string name="share_thumbnail">Поделиться эскизом</string>
     <string name="error_share_files_failed">Ошибка при подготовке файлов для отправки</string>
     <string name="error_read_offline_file">Не удалось прочитать файл «%1$s» (накопитель отключен и нет локального эскиза)</string>
+    <string name="dialog_eject_title">Извлечь накопитель?</string>
+    <string name="dialog_eject_message">Вы уверены, что хотите безопасно извлечь съемный носитель?</string>
+    <string name="action_eject">Извлечь</string>
+    <string name="action_cancel">Отмена</string>
 </resources>

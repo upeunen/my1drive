@@ -294,4 +294,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="dialog_got_it">Понятно</string>
     <string name="tooltip_title_hint">Подсказка</string>
     <string name="tooltip_media_moved">Ваши тяжелые оригиналы теперь находятся на съемном носителе, а в памяти телефона освободилось место.</string>
+    <string name="dialog_eject_title">Eject drive?</string>
+    <string name="dialog_eject_message">Are you sure you want to safely eject the drive?</string>
+    <string name="action_eject">Eject</string>
+    <string name="action_cancel">Cancel</string>
 </resources>
