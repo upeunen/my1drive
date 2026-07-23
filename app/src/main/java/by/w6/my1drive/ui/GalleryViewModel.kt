@@ -152,6 +152,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         
         viewModelScope.launch {
             syncHelper.archiveSuccessEvent.collect { items ->
+                val newPhotos = items.count { !it.mimeType.startsWith("video/") }
+                val newVideos = items.count { it.mimeType.startsWith("video/") }
+                if (newPhotos > 0) {
+                    limitRepository.photosArchivedCount += newPhotos
+                }
+                if (newVideos > 0) {
+                    limitRepository.videosArchivedCount += newVideos
+                }
                 mediaOperationInteractor.startDeletingWithPermissionCheck(items)
             }
         }
