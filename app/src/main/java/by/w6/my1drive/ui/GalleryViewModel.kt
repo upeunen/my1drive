@@ -84,8 +84,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _dialogState = kotlinx.coroutines.flow.MutableStateFlow(DialogState())
     val dialogState = _dialogState.asStateFlow()
 
+    val limitRepository = by.w6.my1drive.data.local.LimitRepository(application)
+    val photosArchivedCount = limitRepository.photosArchivedCountFlow
+    val videosArchivedCount = limitRepository.videosArchivedCountFlow
+    val isPremiumUnlocked = limitRepository.isPremiumUnlockedFlow
+
     fun showCreateArchiveGuideDialog(uri: Uri) { _dialogState.update { it.copy(showCreateArchiveGuideDialog = uri) } }
     fun dismissCreateArchiveGuideDialog() { _dialogState.update { it.copy(showCreateArchiveGuideDialog = null) } }
+    
+    fun showPaywall() { _dialogState.update { it.copy(showPaywall = true) } }
+    fun dismissPaywall() { _dialogState.update { it.copy(showPaywall = false) } }
 
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
@@ -806,8 +814,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun shareMediaItem(item: MediaItem, context: Context, onError: (String) -> Unit) = mediaOperationInteractor.shareMediaItem(item, context, onError)
+
     fun shareSelectedItems(context: Context, onError: (String) -> Unit) {
         val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
-        mediaOperationInteractor.shareSelectedItems(selected, context, onError)
+        if (selected.isNotEmpty()) {
+            mediaOperationInteractor.shareSelectedItems(selected, context, onError)
+            selectionManager.clearSelection()
+        }
     }
 }

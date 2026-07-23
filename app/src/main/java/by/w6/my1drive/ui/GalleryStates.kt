@@ -5,6 +5,7 @@ import by.w6.my1drive.domain.model.MediaItem
 
 data class DialogState(
     val showFirstLaunchDialog: Boolean = false,
+    val showPaywall: Boolean = false,
     val showUnknownDriveDialog: Boolean = false,
     val showUnreadableOtgDialog: Boolean = false,
     val showWriteProtectedRootDialog: Boolean = false,

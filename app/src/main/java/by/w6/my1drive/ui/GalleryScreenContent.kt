@@ -150,6 +150,10 @@ fun PhotosRoute(
     val sortMode by viewModel.deviceSortMode.collectAsState()
     val archivingItemIds by viewModel.archivingItemIds.collectAsState()
     val copiedItemIds by viewModel.copiedItemIds.collectAsState()
+    
+    val photosArchivedCount by viewModel.photosArchivedCount.collectAsState(initial = 0)
+    val videosArchivedCount by viewModel.videosArchivedCount.collectAsState(initial = 0)
+    val isPremiumUnlocked by viewModel.isPremiumUnlocked.collectAsState(initial = false)
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -158,6 +162,40 @@ fun PhotosRoute(
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
 
     Column(modifier = Modifier.fillMaxSize()) {
+        if (!isPremiumUnlocked) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(surfaceVariantColor)
+                    .clickable { viewModel.showPaywall() }
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Бесплатная версия. Доступно: ${100 - photosArchivedCount}/100 фото, ${5 - videosArchivedCount}/5 видео",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = onSurfaceVariantColor,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "PRO: Безлимит",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = primaryColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1635,6 +1673,20 @@ fun GalleryScreenContent(
 
 
         val showWriteProtectedRoot = dialogState.showWriteProtectedRootDialog
+
+        val showPaywall = dialogState.showPaywall
+        if (showPaywall) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissPaywall() },
+                title = { Text("Купить Безлимит") },
+                text = { Text("Здесь будет интерфейс Пейвола (UI еще в разработке).") },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissPaywall() }) {
+                        Text("Закрыть")
+                    }
+                }
+            )
+        }
         if (showWriteProtectedRoot) {
             WriteProtectedRootDialog(
                 onRetry = {
