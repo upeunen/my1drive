@@ -23,17 +23,31 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.My1Drive">
+        
+        <meta-data
+            android:name="console_app_id_value"
+            android:value="@string/CONSOLE_APPLICATION_ID" />
+        <meta-data
+            android:name="sdk_pay_scheme_value"
+            android:value="my1drivepay" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.My1Drive"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density">
             <!-- Standard launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- RuStore Pay Deeplink -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="my1drivepay" />
             </intent-filter>
             <!-- Ask to be default handler when any USB device is attached -->
             <intent-filter>

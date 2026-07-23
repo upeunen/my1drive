@@ -282,4 +282,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="share_thumbnail">Share thumbnail</string>
     <string name="error_share_files_failed">Error preparing files for sharing</string>
     <string name="error_read_offline_file">Failed to read file \"%1$s\" (drive disconnected and no local thumbnail)</string>
+
+    <!-- RuStore Pay -->
+    <string name="CONSOLE_APPLICATION_ID">2063735639</string>
 </resources>
