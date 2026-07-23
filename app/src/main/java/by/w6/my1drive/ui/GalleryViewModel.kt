@@ -107,13 +107,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
-            onShowFirstLaunchDialog = { v -> if (v) _activeDialog.value = AppDialog.FirstLaunch else _activeDialog.value = null },
-            onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else _activeDialog.value = null },
-            onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else _activeDialog.value = null },
-            onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else _activeDialog.value = null },
-            onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else _activeDialog.value = null },
-            onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else _activeDialog.value = null },
-            onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else _activeDialog.value = null }
+            onShowFirstLaunchDialog = { v -> if (v) _activeDialog.value = AppDialog.FirstLaunch else if (_activeDialog.value is AppDialog.FirstLaunch) _activeDialog.value = null },
+            onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else if (_activeDialog.value is AppDialog.UnknownDrive) _activeDialog.value = null },
+            onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else if (_activeDialog.value is AppDialog.UnreadableOtg) _activeDialog.value = null },
+            onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
+            onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else if (_activeDialog.value is AppDialog.LocalFolder) _activeDialog.value = null },
+            onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null },
+            onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null }
         )
     }
 
