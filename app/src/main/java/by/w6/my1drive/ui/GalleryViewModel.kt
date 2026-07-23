@@ -147,74 +147,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow(GalleryUiState())
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            launch { displayManager.groupedMediaItems.collect { v -> _uiState.update { it.copy(groupedItems = v) } } }
-            launch { displayManager.archivedGroupedItems.collect { v -> _uiState.update { it.copy(archivedGroupedItems = v) } } }
-            launch { mediaItems.collect { v -> _uiState.update { it.copy(mediaItems = v) } } }
-            launch { otgManager.activeArchiveUuid.collect { v -> _uiState.update { it.copy(activeArchiveUuid = v) } } }
-            launch { displayManager.deviceSortMode.collect { v -> _uiState.update { it.copy(deviceSortMode = v) } } }
-            launch { displayManager.archiveSortMode.collect { v -> _uiState.update { it.copy(archiveSortMode = v) } } }
-            launch { archivingItemIds.collect { v -> _uiState.update { it.copy(archivingItemIds = v) } } }
-            launch { _restoringItemIds.collect { v -> _uiState.update { it.copy(restoringItemIds = v) } } }
-            launch { copiedItemIds.collect { v -> _uiState.update { it.copy(copiedItemIds = v) } } }
-            launch { photosArchivedCount.collect { v -> _uiState.update { it.copy(photosArchivedCount = v) } } }
-            launch { videosArchivedCount.collect { v -> _uiState.update { it.copy(videosArchivedCount = v) } } }
-            launch { isPremiumUnlocked.collect { v -> _uiState.update { it.copy(isPremiumUnlocked = v) } } }
-            launch { isSilentSyncingFlow.collect { v -> _uiState.update { it.copy(isSilentSyncing = v) } } }
-            launch { syncState.collect { v -> _uiState.update { it.copy(syncState = v) } } }
-            launch { mediaOperationInteractor.isSharingPreparing.collect { v -> _uiState.update { it.copy(isSharingPreparing = v) } } }
-            launch { otgManager.isCheckingConnection.collect { v -> _uiState.update { it.copy(isCheckingConnection = v) } } }
-            launch { gridColumnsCount.collect { v -> _uiState.update { it.copy(gridColumnsCount = v) } } }
-            launch { otgManager.archiveSize.collect { v -> _uiState.update { it.copy(physicalArchiveSize = v) } } }
-            launch { otgDirectoryDisplayName.collect { v -> _uiState.update { it.copy(otgDirectoryDisplayName = v) } } }
-            launch { thumbnailManager.isSyncingThumbnails.collect { v -> _uiState.update { it.copy(isSyncingThumbnails = v) } } }
-            launch { missingThumbnailsCount.collect { v -> _uiState.update { it.copy(missingThumbnailsCount = v) } } }
-            launch { isStorageLow.collect { v -> _uiState.update { it.copy(isStorageLow = v) } } }
-            launch { _activeDialog.collect { v -> _uiState.update { it.copy(activeDialog = v) } } }
-            launch { pendingDelete.collect { v -> _uiState.update { it.copy(pendingDelete = v) } } }
-        }
-        viewModelScope.launch {
-            syncHelper.operationCompleteEvent.collect {
-                otgManager.updateArchiveSize()
-                otgManager.setCheckingConnection(false)
-            }
-        }
-        
-        viewModelScope.launch {
-            syncHelper.archiveSuccessEvent.collect { items ->
-                val newPhotos = items.count { !it.mimeType.startsWith("video/") }
-                val newVideos = items.count { it.mimeType.startsWith("video/") }
-                if (newPhotos > 0) {
-                    limitRepository.photosArchivedCount += newPhotos
-                }
-                if (newVideos > 0) {
-                    limitRepository.videosArchivedCount += newVideos
-                }
-
-                // Show Success Dialog
-                val freedSpaceBytes = items.sumOf { it.size.toLong() }
-                val freedSpaceGb = freedSpaceBytes / (1024f * 1024f * 1024f)
-                val spaceBeforeGb = android.os.Environment.getDataDirectory().usableSpace / (1024f * 1024f * 1024f)
-                val spaceAfterGb = spaceBeforeGb + freedSpaceGb
-                _activeDialog.value = AppDialog.Success(SuccessDialogData(spaceBeforeGb, spaceAfterGb))
-
-                mediaOperationInteractor.startDeletingWithPermissionCheck(items)
-            }
-        }
-        
-        viewModelScope.launch {
-            syncHelper.itemArchivedEvent.collect { item ->
-                selectionManager.deselectItems(listOf(item.id))
-            }
-        }
-        
-        viewModelScope.launch {
-            syncHelper.previewCachedEvent.collect { (hash, path) ->
-                onPreviewCached(hash, path)
-            }
-        }
-    }
+    
 
 
     fun onPause() {
@@ -865,6 +798,76 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (selected.isNotEmpty()) {
             mediaOperationInteractor.shareSelectedItems(selected, context, onError)
             selectionManager.clearSelection()
+        }
+    }
+
+
+    init {
+        viewModelScope.launch {
+            launch { displayManager.groupedMediaItems.collect { v -> _uiState.update { it.copy(groupedItems = v) } } }
+            launch { displayManager.archivedGroupedItems.collect { v -> _uiState.update { it.copy(archivedGroupedItems = v) } } }
+            launch { mediaItems.collect { v -> _uiState.update { it.copy(mediaItems = v) } } }
+            launch { otgManager.activeArchiveUuid.collect { v -> _uiState.update { it.copy(activeArchiveUuid = v) } } }
+            launch { displayManager.deviceSortMode.collect { v -> _uiState.update { it.copy(deviceSortMode = v) } } }
+            launch { displayManager.archiveSortMode.collect { v -> _uiState.update { it.copy(archiveSortMode = v) } } }
+            launch { archivingItemIds.collect { v -> _uiState.update { it.copy(archivingItemIds = v) } } }
+            launch { _restoringItemIds.collect { v -> _uiState.update { it.copy(restoringItemIds = v) } } }
+            launch { copiedItemIds.collect { v -> _uiState.update { it.copy(copiedItemIds = v) } } }
+            launch { photosArchivedCount.collect { v -> _uiState.update { it.copy(photosArchivedCount = v) } } }
+            launch { videosArchivedCount.collect { v -> _uiState.update { it.copy(videosArchivedCount = v) } } }
+            launch { isPremiumUnlocked.collect { v -> _uiState.update { it.copy(isPremiumUnlocked = v) } } }
+            launch { isSilentSyncingFlow.collect { v -> _uiState.update { it.copy(isSilentSyncing = v) } } }
+            launch { syncState.collect { v -> _uiState.update { it.copy(syncState = v) } } }
+            launch { mediaOperationInteractor.isSharingPreparing.collect { v -> _uiState.update { it.copy(isSharingPreparing = v) } } }
+            launch { otgManager.isCheckingConnection.collect { v -> _uiState.update { it.copy(isCheckingConnection = v) } } }
+            launch { gridColumnsCount.collect { v -> _uiState.update { it.copy(gridColumnsCount = v) } } }
+            launch { otgManager.archiveSize.collect { v -> _uiState.update { it.copy(physicalArchiveSize = v) } } }
+            launch { otgDirectoryDisplayName.collect { v -> _uiState.update { it.copy(otgDirectoryDisplayName = v) } } }
+            launch { thumbnailManager.isSyncingThumbnails.collect { v -> _uiState.update { it.copy(isSyncingThumbnails = v) } } }
+            launch { missingThumbnailsCount.collect { v -> _uiState.update { it.copy(missingThumbnailsCount = v) } } }
+            launch { isStorageLow.collect { v -> _uiState.update { it.copy(isStorageLow = v) } } }
+            launch { _activeDialog.collect { v -> _uiState.update { it.copy(activeDialog = v) } } }
+            launch { pendingDelete.collect { v -> _uiState.update { it.copy(pendingDelete = v) } } }
+        }
+        viewModelScope.launch {
+            syncHelper.operationCompleteEvent.collect {
+                otgManager.updateArchiveSize()
+                otgManager.setCheckingConnection(false)
+            }
+        }
+        
+        viewModelScope.launch {
+            syncHelper.archiveSuccessEvent.collect { items ->
+                val newPhotos = items.count { !it.mimeType.startsWith("video/") }
+                val newVideos = items.count { it.mimeType.startsWith("video/") }
+                if (newPhotos > 0) {
+                    limitRepository.photosArchivedCount += newPhotos
+                }
+                if (newVideos > 0) {
+                    limitRepository.videosArchivedCount += newVideos
+                }
+
+                // Show Success Dialog
+                val freedSpaceBytes = items.sumOf { it.size.toLong() }
+                val freedSpaceGb = freedSpaceBytes / (1024f * 1024f * 1024f)
+                val spaceBeforeGb = android.os.Environment.getDataDirectory().usableSpace / (1024f * 1024f * 1024f)
+                val spaceAfterGb = spaceBeforeGb + freedSpaceGb
+                _activeDialog.value = AppDialog.Success(SuccessDialogData(spaceBeforeGb, spaceAfterGb))
+
+                mediaOperationInteractor.startDeletingWithPermissionCheck(items)
+            }
+        }
+        
+        viewModelScope.launch {
+            syncHelper.itemArchivedEvent.collect { item ->
+                selectionManager.deselectItems(listOf(item.id))
+            }
+        }
+        
+        viewModelScope.launch {
+            syncHelper.previewCachedEvent.collect { (hash, path) ->
+                onPreviewCached(hash, path)
+            }
         }
     }
 }
