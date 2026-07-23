@@ -68,7 +68,7 @@ class OtgArchiveUtil(private val context: Context) {
 
             val srcHash = "${item.size}_${item.dateModified}"
             var totalBytesCopied = 0L
-            val buffer = ByteArray(262144) // 256 KB buffer
+            val buffer = ByteArray(2 * 1024 * 1024) // 2 MB buffer for faster OTG writing
 
             DebugLogBuffer.log(logTag, "Opening streams for copy...")
             val input = try {
@@ -86,6 +86,7 @@ class OtgArchiveUtil(private val context: Context) {
                         var lastEmittedStep = -1
                         var bytesRead = inputStream.read(buffer)
                         while (bytesRead != -1) {
+                            kotlinx.coroutines.yield()
                             output.write(buffer, 0, bytesRead)
                             totalBytesCopied += bytesRead
                             if (item.size > 0) {
@@ -325,10 +326,11 @@ class OtgArchiveUtil(private val context: Context) {
                 java.io.FileOutputStream(pfd.fileDescriptor).use { output ->
                     context.contentResolver.openInputStream(otgUri)?.use { input ->
                         var lastEmittedPercent = -1
-                        val buffer = ByteArray(65536)
+                        val buffer = ByteArray(2 * 1024 * 1024) // 2 MB buffer
                         var totalBytesCopied = 0L
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {
+                            kotlinx.coroutines.yield()
                             output.write(buffer, 0, bytesRead)
                             if (totalReadForOneMb < 1048576L) {
                                 totalReadForOneMb += bytesRead
