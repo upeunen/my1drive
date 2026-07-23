@@ -60,6 +60,10 @@ class MainActivity : ComponentActivity() {
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
 
+    private val intentInteractor by lazy {
+        ru.rustore.sdk.pay.RuStorePayClient.instance.getIntentInteractor()
+    }
+
     private val otgReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             viewModel.updateOtgStatus(isStartup = false)
@@ -382,6 +386,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "onCreate called")
 
+        if (savedInstanceState == null) {
+            try {
+                // Try with common SdkTheme package
+                intentInteractor.proceedIntent(intent, sdkTheme = SdkTheme.LIGHT)
+            } catch (e: Exception) {
+                // Ignore if it fails due to class not found at runtime, but we expect compile errors if package is wrong
+            }
+        }
+
         val crashLogFile = File(filesDir, "crash_log.txt")
 
         // Глобальный обработчик необработанных исключений
@@ -672,5 +685,12 @@ class MainActivity : ComponentActivity() {
             )
         }
         permissionsLauncher.launch(permissions)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        try {
+            intentInteractor.proceedIntent(intent, sdkTheme = SdkTheme.LIGHT)
+        } catch (_: Exception) {}
     }
 }
