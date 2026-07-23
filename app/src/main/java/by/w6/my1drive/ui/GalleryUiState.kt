@@ -24,7 +24,6 @@ data class GalleryUiState(
     val physicalArchiveSize: Long = 0L,
     val otgDirectoryDisplayName: String? = null,
     val isSyncingThumbnails: Boolean = false,
-    val syncThumbnailsProgress: Pair<Int, Int> = Pair(0, 0),
     val missingThumbnailsCount: Int = 0,
     val isStorageLow: Boolean = false,
     val activeDialog: AppDialog? = null,

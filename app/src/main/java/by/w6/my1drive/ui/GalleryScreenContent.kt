@@ -1347,7 +1347,7 @@ fun GalleryScreenContent(
                             val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
                             val activeArchiveUuid = uiState.activeArchiveUuid
                             val isSyncingThumbnails = uiState.isSyncingThumbnails
-                            val syncThumbnailsProgress = uiState.syncThumbnailsProgress
+                            val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsState()
                             val missingThumbnailsCount = uiState.missingThumbnailsCount
                             val isStorageLow = uiState.isStorageLow
 

@@ -169,7 +169,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             launch { otgManager.archiveSize.collect { v -> _uiState.update { it.copy(physicalArchiveSize = v) } } }
             launch { otgDirectoryDisplayName.collect { v -> _uiState.update { it.copy(otgDirectoryDisplayName = v) } } }
             launch { thumbnailManager.isSyncingThumbnails.collect { v -> _uiState.update { it.copy(isSyncingThumbnails = v) } } }
-            launch { thumbnailManager.syncThumbnailsProgress.collect { v -> _uiState.update { it.copy(syncThumbnailsProgress = v) } } }
             launch { missingThumbnailsCount.collect { v -> _uiState.update { it.copy(missingThumbnailsCount = v) } } }
             launch { isStorageLow.collect { v -> _uiState.update { it.copy(isStorageLow = v) } } }
             launch { _activeDialog.collect { v -> _uiState.update { it.copy(activeDialog = v) } } }
