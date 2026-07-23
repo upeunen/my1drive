@@ -512,7 +512,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteArchive(uuid: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val itemsToDelete = db.mediaDao().getAllSync().filter { it.archiveUuid == uuid }
+            val itemsToDelete = db.mediaDao().getByArchiveUuidSync(uuid)
             itemsToDelete.forEach { entity ->
                 entity.thumbnailPath?.let { path ->
                     val file = java.io.File(path)
@@ -669,24 +669,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     // ─── Delete state ───
 
-    private val _pendingDelete = MutableStateFlow<List<MediaItem>?>(null)
-    val pendingDelete: StateFlow<List<MediaItem>?> = _pendingDelete.asStateFlow()
+    val pendingDelete: StateFlow<List<MediaItem>?> = mediaOperationInteractor.pendingDelete
 
     fun requestDeleteSelected() {
         val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
-        if (selected.isNotEmpty()) {
-            _pendingDelete.value = selected
-        }
+        mediaOperationInteractor.requestDelete(selected)
     }
 
     fun confirmDelete() {
-        val items = _pendingDelete.value ?: return
-        _pendingDelete.value = null
         selectionManager.clearSelection()
-        this@GalleryViewModel.mediaOperationInteractor.startDeletingWithPermissionCheck(items)
+        mediaOperationInteractor.confirmDelete()
     }
 
-    fun dismissDelete() { _pendingDelete.value = null }
+    fun dismissDelete() = mediaOperationInteractor.dismissDelete()
 
     /** Called when user confirms device delete in system dialog */
     fun onDeviceDeleteConfirmed() = mediaOperationInteractor.onDeviceDeleteResult(true)

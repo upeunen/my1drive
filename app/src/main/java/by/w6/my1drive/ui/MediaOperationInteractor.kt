@@ -43,6 +43,19 @@ class MediaOperationInteractor(
     private val _folderPermissionRequest = MutableStateFlow<Intent?>(null)
     val folderPermissionRequest = _folderPermissionRequest.asStateFlow()
 
+    private val _pendingDelete = MutableStateFlow<List<MediaItem>?>(null)
+    val pendingDelete: StateFlow<List<MediaItem>?> = _pendingDelete.asStateFlow()
+
+    fun requestDelete(items: List<MediaItem>) {
+        if (items.isNotEmpty()) {
+            _pendingDelete.value = items
+        }
+    }
+
+    fun dismissDelete() {
+        _pendingDelete.value = null
+    }
+
     val missingFoldersQueue = mutableListOf<String>()
     var pendingDeleteTask: List<MediaItem>? = null
     var pendingArchiveTask: Pair<List<MediaItem>, Uri>? = null
@@ -263,7 +276,9 @@ class MediaOperationInteractor(
         }
     }
 
-    fun confirmDelete(items: List<MediaItem>) {
+    fun confirmDelete() {
+        val items = _pendingDelete.value ?: return
+        _pendingDelete.value = null
         startDeletingWithPermissionCheck(items)
     }
 

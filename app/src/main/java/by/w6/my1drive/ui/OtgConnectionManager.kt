@@ -45,6 +45,29 @@ class OtgConnectionManager(
     private val onShowNamingDialog: (Uri?) -> Unit = {},
     private val onShowCreateArchiveGuideDialog: (Uri) -> Unit = {}
 ) {
+    private var lastFirstLaunchState: Boolean? = null
+    private fun invokeShowFirstLaunchDialog(show: Boolean) {
+        if (lastFirstLaunchState != show) {
+            lastFirstLaunchState = show
+            onShowFirstLaunchDialog(show)
+        }
+    }
+
+    private var lastUnknownDriveState: Boolean? = null
+    private fun invokeShowUnknownDriveDialog(show: Boolean) {
+        if (lastUnknownDriveState != show) {
+            lastUnknownDriveState = show
+            onShowUnknownDriveDialog(show)
+        }
+    }
+
+    private var lastUnreadableOtgState: Boolean? = null
+    private fun invokeShowUnreadableOtgDialog(show: Boolean) {
+        if (lastUnreadableOtgState != show) {
+            lastUnreadableOtgState = show
+            onShowUnreadableOtgDialog(show)
+        }
+    }
     companion object {
         private const val PREF_OTG_URI = "otg_directory_uri"
         private const val PREF_DEVICE_URI = "device_directory_uri"
@@ -173,7 +196,7 @@ class OtgConnectionManager(
                 // (до dismiss или выбора папки).
                 // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
                 if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null && !isEjectedButStillPluggedIn) {
-                    onShowFirstLaunchDialog(true)
+                    invokeShowFirstLaunchDialog(true)
                     firstLaunchHandled = true
                 }
 
@@ -200,7 +223,7 @@ class OtgConnectionManager(
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")
-        onShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
+        invokeShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
 
         scope.launch {
             var uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
@@ -440,7 +463,7 @@ class OtgConnectionManager(
     }
 
     fun dismissFirstLaunchDialog() {
-        onShowFirstLaunchDialog(false)
+        invokeShowFirstLaunchDialog(false)
 
 
         // Не сбрасываем firstLaunchHandled — он сбрасывается в onPhysicalConnectionChanged
@@ -448,7 +471,7 @@ class OtgConnectionManager(
     }
 
     fun dismissUnknownDriveDialog() {
-        onShowUnknownDriveDialog(false)
+        invokeShowUnknownDriveDialog(false)
     }
 
     /**
@@ -470,7 +493,7 @@ class OtgConnectionManager(
         }
         _status.value = DriveStatus.NO_URI_CONFIGURED
         _archiveSize.value = 0L
-        onShowUnknownDriveDialog(false)
+        invokeShowUnknownDriveDialog(false)
         // Сбросить флаги, чтобы при подключённой флешке снова показать приветствие
         wasPhysicalConnected = false
         firstLaunchHandled = true
@@ -543,7 +566,7 @@ class OtgConnectionManager(
                     db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
                     db.mediaDao().migrateLegacyArchiveUuid(uuid)
                     driveErrorCount = 0
-                    onShowUnknownDriveDialog(false)
+                    invokeShowUnknownDriveDialog(false)
                     unknownDriveDialogHandled = false
                     return DriveStatus.KNOWN_DRIVE_CONNECTED
                 }
@@ -613,7 +636,7 @@ class OtgConnectionManager(
             db.mediaDao().migrateLegacyArchiveUuid(cUuid)
 
             driveErrorCount = 0
-            onShowUnknownDriveDialog(false)
+            invokeShowUnknownDriveDialog(false)
             unknownDriveDialogHandled = false
             return DriveStatus.KNOWN_DRIVE_CONNECTED
         }
@@ -661,13 +684,13 @@ class OtgConnectionManager(
                         DriveStatus.KNOWN_DRIVE_DISCONNECTED
                     } else {
                         if (!firstLaunchHandled) {
-                            onShowFirstLaunchDialog(true)
+                            invokeShowFirstLaunchDialog(true)
                             firstLaunchHandled = true
                         }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
-                    onShowUnknownDriveDialog(false)
+                    invokeShowUnknownDriveDialog(false)
                     unknownDriveDialogHandled = false
                     DriveStatus.KNOWN_DRIVE_DISCONNECTED
                 }
@@ -710,29 +733,29 @@ class OtgConnectionManager(
                         db.mediaDao().migrateLegacyArchiveUuid(uuid)
 
                         driveErrorCount = 0
-                        onShowUnknownDriveDialog(false)
+                        invokeShowUnknownDriveDialog(false)
                         unknownDriveDialogHandled = false
                         DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
                         if (!firstLaunchHandled) {
-                            onShowFirstLaunchDialog(true)
+                            invokeShowFirstLaunchDialog(true)
                             firstLaunchHandled = true
                         }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
                     if (!firstLaunchHandled) {
-                        onShowFirstLaunchDialog(true)
+                        invokeShowFirstLaunchDialog(true)
                         firstLaunchHandled = true
                     }
                     DriveStatus.UNKNOWN_DRIVE_CONNECTED
                 }
             } else {
-                onShowUnknownDriveDialog(false)
+                invokeShowUnknownDriveDialog(false)
                 DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
         } catch (e: Exception) {
-            onShowUnknownDriveDialog(false)
+            invokeShowUnknownDriveDialog(false)
             DriveStatus.KNOWN_DRIVE_DISCONNECTED
         }
     }

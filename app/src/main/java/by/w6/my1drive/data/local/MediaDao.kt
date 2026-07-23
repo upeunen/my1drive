@@ -36,6 +36,9 @@ interface MediaDao {
     @Query("SELECT * FROM media_archive ORDER BY dateModified DESC")
     fun getAllSync(): List<MediaEntity>
 
+    @Query("SELECT * FROM media_archive WHERE archiveUuid = :archiveUuid")
+    fun getByArchiveUuidSync(archiveUuid: String): List<MediaEntity>
+
     /** Update LRU timestamp when a preview is loaded for this item */
     @Query("UPDATE media_archive SET lastAccessed = :timestamp WHERE id = :id")
     fun updateLastAccessed(id: String, timestamp: Long)
