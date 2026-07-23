@@ -173,8 +173,10 @@ fun PhotosRoute(
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
+                val maxPhotos = by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS
+                val maxVideos = by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS
                 Text(
-                    text = "Бесплатная версия. Доступно: ${100 - photosArchivedCount}/100 фото, ${5 - videosArchivedCount}/5 видео",
+                    text = "Бесплатная версия. Доступно: ${(maxPhotos - photosArchivedCount).coerceAtLeast(0)}/$maxPhotos фото, ${(maxVideos - videosArchivedCount).coerceAtLeast(0)}/$maxVideos видео",
                     style = MaterialTheme.typography.bodyMedium,
                     color = onSurfaceVariantColor,
                     fontWeight = FontWeight.Medium
@@ -1530,233 +1532,15 @@ fun GalleryScreenContent(
             )
         }
 
-        val dialogState by viewModel.dialogState.collectAsState()
-        val showNamingDialog = dialogState.showNamingDialog
-        showNamingDialog?.let { uri ->
-            ArchiveNamingDialog(
-                onConfirm = { name ->
-                    viewModel.otgManager.saveOtgArchive(uri, name)
-                    viewModel.refresh()
-                },
-                onDismiss = {
-                    viewModel.dismissNamingDialog()
-                }
-            )
-        }
-
-        val showCreateArchiveGuide = dialogState.showCreateArchiveGuideDialog
-        showCreateArchiveGuide?.let { uri ->
-            CreateArchiveGuideDialog(
-                onConfirm = {
-                    viewModel.dismissCreateArchiveGuideDialog()
-                    // После подтверждения показываем окно для ввода имени архива
-                    viewModel.showNamingDialog(uri)
-                },
-                onDismiss = {
-                    viewModel.dismissCreateArchiveGuideDialog()
-                }
-            )
-        }
-
-        val showFirstLaunch = dialogState.showFirstLaunchDialog
-        if (showFirstLaunch) {
-            LaunchedEffect(Unit) {
-                viewModel.dismissFirstLaunchDialog()
-                onSetShowOtgGuide(true)
-            }
-        }
-
-        val showLocalFolder = dialogState.showLocalFolderDialog
-        val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
-        if (showLocalFolder) {
-            LocalFolderDialog(
-                folderPath = pendingFolder ?: "DCIM",
-                onSelectFolder = {
-                    onSelectDeviceDirectory()
-                },
-                onDismiss = { viewModel.dismissLocalFolderDialog() }
-            )
-        }
-
-        val showArchiveFolderAccess by viewModel.showArchiveFolderAccessDialog.collectAsState()
-        val archiveFolderPath by viewModel.archiveAccessFolderPath.collectAsState()
-        if (showArchiveFolderAccess && archiveFolderPath != null) {
-            ArchiveFolderAccessDialog(
-                folderPath = archiveFolderPath!!,
-                onSelectFolder = {
-                    viewModel.confirmArchiveFolderAccess()
-                    onSelectDeviceDirectory()
-                },
-                onDismiss = { viewModel.dismissArchiveFolderAccessDialog() }
-            )
-        }
-
-        val showUnknownDrive = dialogState.showUnknownDriveDialog
-        if (showUnknownDrive) {
-            LaunchedEffect(Unit) {
-                viewModel.dismissUnknownDriveDialog()
-                onSetShowOtgGuide(true)
-            }
-        }
-
-        if (showEjectConfirmDialog) {
-            AlertDialog(
-                onDismissRequest = { showEjectConfirmDialog = false },
-                title = { Text("Извлечь накопитель?", fontWeight = FontWeight.Bold) },
-                text = { Text("Вы уверены, что хотите отключить USB-накопитель в приложении? Для возобновления работы потребуется выбрать папку заново.") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showEjectConfirmDialog = false
-                            viewModel.ejectOtg()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text(
-                            text = "Извлечь",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showEjectConfirmDialog = false }) {
-                        Text(
-                            text = "Отмена",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                }
-            )
-        }
-
-        val isEjecting by viewModel.isEjecting.collectAsState()
-        if (isEjecting) {
-            AlertDialog(
-                onDismissRequest = {},
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text("Подготовка к извлечению", fontWeight = FontWeight.Bold)
-                    }
-                },
-                text = { Text("Завершаем запись данных и сбрасываем кеш на диск. Не извлекайте диск до появления подтверждения…") },
-                confirmButton = {}
-            )
-        }
-
-        val showEjectSuccess by viewModel.showEjectSuccessDialog.collectAsState()
-        if (showEjectSuccess) {
-            AlertDialog(
-                onDismissRequest = { viewModel.otgManager.dismissEjectSuccessDialog() },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Можно извлекать", fontWeight = FontWeight.Bold)
-                    }
-                },
-                text = { Text(stringResource(R.string.eject_success_toast)) },
-                confirmButton = {
-                    Button(onClick = { viewModel.otgManager.dismissEjectSuccessDialog() }) {
-                        Text(stringResource(R.string.btn_ok), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
-                    }
-                }
-            )
-        }
-
-
-        val showWriteProtectedRoot = dialogState.showWriteProtectedRootDialog
-
-        val showPaywall = dialogState.showPaywall
-        if (showPaywall) {
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissPaywall() },
-                title = { Text("Купить Безлимит") },
-                text = { Text("Здесь будет интерфейс Пейвола (UI еще в разработке).") },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.dismissPaywall() }) {
-                        Text("Закрыть")
-                    }
-                }
-            )
-        }
-        if (showWriteProtectedRoot) {
-            WriteProtectedRootDialog(
-                onRetry = {
-                    viewModel.dismissWriteProtectedRootDialog()
-                    onSelectOtgDirectory()
-                },
-                onDismiss = {
-                    viewModel.dismissWriteProtectedRootDialog()
-                }
-            )
-        }
-
-        val showSuccessDialog = dialogState.showSuccessDialog
-        if (showSuccessDialog != null) {
-            by.w6.my1drive.ui.screens.SuccessDialog(
-                storageBeforeGb = showSuccessDialog.storageBeforeGb,
-                storageAfterGb = showSuccessDialog.storageAfterGb,
-                onDismiss = { viewModel.dismissSuccessDialog() },
-                onViewOnUsbClick = {
-                    viewModel.dismissSuccessDialog()
-                    onNavigateToTab("archive")
-                }
-            )
-        }
-
-        val showUsbTooltip = dialogState.showUsbTooltip
-        if (showUsbTooltip && currentScreenRoute == "archive") {
-            AlertDialog(
-                onDismissRequest = { viewModel.markUsbTooltipSeen() },
-                title = { Text(stringResource(id = R.string.tooltip_title_hint)) },
-                text = { Text(stringResource(id = R.string.tooltip_media_moved)) },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.markUsbTooltipSeen() }) {
-                        Text(stringResource(id = R.string.dialog_got_it))
-                    }
-                }
-            )
-        }
-
-        val showLimitReachedDialog by viewModel.showLimitReachedDialog.collectAsState()
-        if (showLimitReachedDialog) {
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissLimitReachedDialog() },
-                title = { Text("Лимит бесплатной версии", fontWeight = FontWeight.Bold) },
-                text = { Text("Вы достигли лимита бесплатной версии в 128 МБ. Для продолжения архивации необходимо приобрести PRO версию либо удалить часть фото из архива.") },
-                confirmButton = {
-                    Button(onClick = { viewModel.dismissLimitReachedDialog() }) {
-                        Text(
-                            text = "ОК",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        Toast.makeText(context, "Покупка PRO версии временно недоступна", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Text(
-                            text = "Купить PRO",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                }
-            )
-        }
+        val activeDialog by viewModel.activeDialog.collectAsState()
+        by.w6.my1drive.ui.components.dialogs.AppDialogCoordinator(
+            activeDialog = activeDialog,
+            viewModel = viewModel,
+            currentScreenRoute = currentScreenRoute,
+            onSelectOtgDirectory = onSelectOtgDirectory,
+            onSelectDeviceDirectory = onSelectDeviceDirectory,
+            onNavigateToTab = onNavigateToTab
+        )
 
         showDisconnectedOtgItemInfo?.let { item ->
             val archive = remember(knownArchives, item.archiveUuid) {

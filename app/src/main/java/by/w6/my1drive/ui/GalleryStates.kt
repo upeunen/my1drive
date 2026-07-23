@@ -5,22 +5,21 @@ import by.w6.my1drive.domain.model.MediaItem
 
 data class SuccessDialogData(val storageBeforeGb: Float, val storageAfterGb: Float)
 
-data class DialogState(
-    val showFirstLaunchDialog: Boolean = false,
-    val showPaywall: Boolean = false,
-    val showUnknownDriveDialog: Boolean = false,
-    val showUnreadableOtgDialog: Boolean = false,
-    val showWriteProtectedRootDialog: Boolean = false,
-    val showLocalFolderDialog: Boolean = false,
-    val showNamingDialog: Uri? = null,
-    val showCreateArchiveGuideDialog: Uri? = null,
-    val showLimitReachedDialog: Boolean = false,
-    val showCreateFolderDialog: Boolean = false,
-    val showArchiveFolderAccessDialog: Boolean = false,
-    val archiveAccessFolderPath: String? = null,
-    val showSuccessDialog: SuccessDialogData? = null,
-    val showUsbTooltip: Boolean = false
-)
+sealed class AppDialog {
+    object FirstLaunch : AppDialog()
+    object Paywall : AppDialog()
+    object UnknownDrive : AppDialog()
+    object UnreadableOtg : AppDialog()
+    object WriteProtectedRoot : AppDialog()
+    object LocalFolder : AppDialog()
+    data class Naming(val uri: Uri) : AppDialog()
+    data class CreateArchiveGuide(val uri: Uri) : AppDialog()
+    object LimitReached : AppDialog()
+    object CreateFolder : AppDialog()
+    data class ArchiveFolderAccess(val folderPath: String?) : AppDialog()
+    data class Success(val data: SuccessDialogData) : AppDialog()
+    object UsbTooltip : AppDialog()
+}
 
 data class SyncState(
     val isSyncingThumbnails: Boolean = false,

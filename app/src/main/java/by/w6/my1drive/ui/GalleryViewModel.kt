@@ -82,19 +82,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val knownArchives = db.archiveDao().getAllFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _dialogState = kotlinx.coroutines.flow.MutableStateFlow(DialogState(showUsbTooltip = !prefs.getBoolean(PREF_HAS_SEEN_USB_TOOLTIP, false)))
-    val dialogState = _dialogState.asStateFlow()
+    private val _activeDialog = kotlinx.coroutines.flow.MutableStateFlow<AppDialog?>(
+        if (!prefs.getBoolean(PREF_HAS_SEEN_USB_TOOLTIP, false)) AppDialog.UsbTooltip else null
+    )
+    val activeDialog = _activeDialog.asStateFlow()
 
     val limitRepository = by.w6.my1drive.data.local.LimitRepository(application)
     val photosArchivedCount = limitRepository.photosArchivedCountFlow
     val videosArchivedCount = limitRepository.videosArchivedCountFlow
     val isPremiumUnlocked = limitRepository.isPremiumUnlockedFlow
 
-    fun showCreateArchiveGuideDialog(uri: Uri) { _dialogState.update { it.copy(showCreateArchiveGuideDialog = uri) } }
-    fun dismissCreateArchiveGuideDialog() { _dialogState.update { it.copy(showCreateArchiveGuideDialog = null) } }
+    fun showCreateArchiveGuideDialog(uri: Uri) { _activeDialog.value = AppDialog.CreateArchiveGuide(uri) }
     
-    fun showPaywall() { _dialogState.update { it.copy(showPaywall = true) } }
-    fun dismissPaywall() { _dialogState.update { it.copy(showPaywall = false) } }
+    fun showPaywall() { _activeDialog.value = AppDialog.Paywall }
 
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
@@ -107,30 +107,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
-            onShowFirstLaunchDialog = { v -> _dialogState.update { it.copy(showFirstLaunchDialog = v) } },
-            onShowUnknownDriveDialog = { v -> _dialogState.update { it.copy(showUnknownDriveDialog = v) } },
-            onShowUnreadableOtgDialog = { v -> _dialogState.update { it.copy(showUnreadableOtgDialog = v) } },
-            onShowWriteProtectedRootDialog = { v -> _dialogState.update { it.copy(showWriteProtectedRootDialog = v) } },
-            onShowLocalFolderDialog = { v -> _dialogState.update { it.copy(showLocalFolderDialog = v) } },
-            onShowNamingDialog = { v -> _dialogState.update { it.copy(showNamingDialog = v) } },
-            onShowCreateArchiveGuideDialog = { v -> _dialogState.update { it.copy(showCreateArchiveGuideDialog = v) } }
+            onShowFirstLaunchDialog = { v -> if (v) _activeDialog.value = AppDialog.FirstLaunch else _activeDialog.value = null },
+            onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else _activeDialog.value = null },
+            onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else _activeDialog.value = null },
+            onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else _activeDialog.value = null },
+            onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else _activeDialog.value = null },
+            onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else _activeDialog.value = null },
+            onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else _activeDialog.value = null }
         )
     }
 
-    fun dismissFirstLaunchDialog() { _dialogState.update { it.copy(showFirstLaunchDialog = false) } }
-    fun dismissUnknownDriveDialog() { _dialogState.update { it.copy(showUnknownDriveDialog = false) } }
-    fun dismissUnreadableOtgDialog() { _dialogState.update { it.copy(showUnreadableOtgDialog = false) } }
-    fun dismissWriteProtectedRootDialog() { _dialogState.update { it.copy(showWriteProtectedRootDialog = false) } }
-    fun dismissLocalFolderDialog() { _dialogState.update { it.copy(showLocalFolderDialog = false) } }
-    fun dismissNamingDialog() { _dialogState.update { it.copy(showNamingDialog = null) } }
-    fun dismissSuccessDialog() { _dialogState.update { it.copy(showSuccessDialog = null) } }
+    fun dismissDialog() { _activeDialog.value = null }
     fun markUsbTooltipSeen() { 
         prefs.edit().putBoolean(PREF_HAS_SEEN_USB_TOOLTIP, true).apply()
-        _dialogState.update { it.copy(showUsbTooltip = false) } 
+        if (_activeDialog.value is AppDialog.UsbTooltip) _activeDialog.value = null 
     }
 
-    fun triggerWriteProtectedRootDialog() { _dialogState.update { it.copy(showWriteProtectedRootDialog = true) } }
-    fun showNamingDialog(uri: Uri) { _dialogState.update { it.copy(showNamingDialog = uri) } }
+    fun triggerWriteProtectedRootDialog() { _activeDialog.value = AppDialog.WriteProtectedRoot }
+    fun showNamingDialog(uri: Uri) { _activeDialog.value = AppDialog.Naming(uri) }
 
     private val archiveInteractor: ArchiveInteractor by lazy {
         ArchiveInteractor(
@@ -173,7 +167,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 val freedSpaceGb = freedSpaceBytes / (1024f * 1024f * 1024f)
                 val spaceBeforeGb = android.os.Environment.getDataDirectory().usableSpace / (1024f * 1024f * 1024f)
                 val spaceAfterGb = spaceBeforeGb + freedSpaceGb
-                _dialogState.update { it.copy(showSuccessDialog = SuccessDialogData(spaceBeforeGb, spaceAfterGb)) }
+                _activeDialog.value = AppDialog.Success(SuccessDialogData(spaceBeforeGb, spaceAfterGb))
 
                 mediaOperationInteractor.startDeletingWithPermissionCheck(items)
             }
@@ -260,9 +254,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private var isRestoreCancellationRequested = false
     val syncState: StateFlow<String?> = syncHelper.syncState
     val syncProgressState: StateFlow<SyncProgressState> = syncHelper.syncProgressState
-
-    private val _showLimitReachedDialog = MutableStateFlow(false)
-    val showLimitReachedDialog = _showLimitReachedDialog.asStateFlow()
 
     val showEjectSuccessDialog: StateFlow<Boolean> = otgManager.showEjectSuccessDialog
     val isEjecting: StateFlow<Boolean> = otgManager.isEjecting
@@ -600,12 +591,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        if (IS_LIMIT_ACTIVE) {
-            val currentArchivedSize = physicalArchiveSize.value
-            val newSelectionSize = selected.sumOf { it.size }
-            val totalProjectedSize = currentArchivedSize + newSelectionSize
-            if (totalProjectedSize > ARCHIVE_SIZE_LIMIT) {
-                _showLimitReachedDialog.value = true
+        if (!limitRepository.isPremiumUnlocked) {
+            val newPhotos = selected.count { !it.mimeType.startsWith("video/") }
+            val newVideos = selected.count { it.mimeType.startsWith("video/") }
+            
+            val totalProjectedPhotos = limitRepository.photosArchivedCount + newPhotos
+            val totalProjectedVideos = limitRepository.videosArchivedCount + newVideos
+            
+            if (totalProjectedPhotos > by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS || 
+                totalProjectedVideos > by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS) {
+                _activeDialog.value = AppDialog.LimitReached
                 DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, aborting.")
                 return
             }
@@ -640,12 +635,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 return
             }
         }
-        if (IS_LIMIT_ACTIVE) {
-            val currentArchivedSize = physicalArchiveSize.value
-            val totalProjectedSize = currentArchivedSize + item.size
+        if (!limitRepository.isPremiumUnlocked) {
+            val isVideo = item.mimeType.startsWith("video/")
+            val totalProjectedPhotos = limitRepository.photosArchivedCount + if (!isVideo) 1 else 0
+            val totalProjectedVideos = limitRepository.videosArchivedCount + if (isVideo) 1 else 0
 
-            if (totalProjectedSize > ARCHIVE_SIZE_LIMIT) {
-                _showLimitReachedDialog.value = true
+            if (totalProjectedPhotos > by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS ||
+                totalProjectedVideos > by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS) {
+                _activeDialog.value = AppDialog.LimitReached
                 return
             }
         }
@@ -830,7 +827,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         return target.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && target.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)
     }
 
-    fun dismissLimitReachedDialog() { _showLimitReachedDialog.value = false }
+    fun dismissLimitReachedDialog() { _activeDialog.value = null }
 
     fun getArchivedSize(): Long {
         return physicalArchiveSize.value
