@@ -22,9 +22,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("my1drive-release.jks")
-            storePassword = "my1drive2026"
+            storePassword = "qw487534qq163547"
             keyAlias = "my1drive"
-            keyPassword = "my1drive2026"
+            keyPassword = "qw487534qq163547"
         }
     }
 
