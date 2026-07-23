@@ -285,4 +285,13 @@ The records remain in the database. Connect the correct drive to restore access.
 
     <!-- RuStore Pay -->
     <string name="CONSOLE_APPLICATION_ID">2063735639</string>
+
+    <!-- Dialogs and Tooltips -->
+    <string name="success_dialog_title">Архивация завершена!</string>
+    <string name="success_dialog_freed_space">Освобождено: было %1$s ГБ → стало %2$s ГБ</string>
+    <string name="success_dialog_view_on_media">Посмотреть на носителе</string>
+    <string name="dialog_close">Закрыть</string>
+    <string name="dialog_got_it">Понятно</string>
+    <string name="tooltip_title_hint">Подсказка</string>
+    <string name="tooltip_media_moved">Ваши тяжелые оригиналы теперь находятся на съемном носителе, а в памяти телефона освободилось место.</string>
 </resources>

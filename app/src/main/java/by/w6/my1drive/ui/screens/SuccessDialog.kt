@@ -4,6 +4,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 
 @Composable
 fun SuccessDialog(
@@ -12,22 +14,22 @@ fun SuccessDialog(
     onDismiss: () -> Unit,
     onViewOnUsbClick: () -> Unit
 ) {
+    val beforeStr = String.format(java.util.Locale.US, "%.2f", storageBeforeGb)
+    val afterStr = String.format(java.util.Locale.US, "%.2f", storageAfterGb)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Архивация завершена!") },
+        title = { Text(text = stringResource(id = R.string.success_dialog_title)) },
         text = { 
-            val beforeStr = String.format(java.util.Locale.US, "%.2f", storageBeforeGb)
-            val afterStr = String.format(java.util.Locale.US, "%.2f", storageAfterGb)
-            Text(text = "Освобождено: было $beforeStr ГБ → стало $afterStr ГБ") 
+            Text(text = stringResource(id = R.string.success_dialog_freed_space, beforeStr, afterStr)) 
         },
         confirmButton = {
             TextButton(onClick = onViewOnUsbClick) {
-                Text("Посмотреть на носителе")
+                Text(stringResource(id = R.string.success_dialog_view_on_media))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Закрыть")
+                Text(stringResource(id = R.string.dialog_close))
             }
         }
     )

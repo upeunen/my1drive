@@ -1700,6 +1700,33 @@ fun GalleryScreenContent(
             )
         }
 
+        val showSuccessDialog = dialogState.showSuccessDialog
+        if (showSuccessDialog != null) {
+            by.w6.my1drive.ui.screens.SuccessDialog(
+                storageBeforeGb = showSuccessDialog.storageBeforeGb,
+                storageAfterGb = showSuccessDialog.storageAfterGb,
+                onDismiss = { viewModel.dismissSuccessDialog() },
+                onViewOnUsbClick = {
+                    viewModel.dismissSuccessDialog()
+                    onNavigateToTab("archive")
+                }
+            )
+        }
+
+        val showUsbTooltip = dialogState.showUsbTooltip
+        if (showUsbTooltip && currentScreenRoute == "archive") {
+            AlertDialog(
+                onDismissRequest = { viewModel.markUsbTooltipSeen() },
+                title = { Text(stringResource(id = R.string.tooltip_title_hint)) },
+                text = { Text(stringResource(id = R.string.tooltip_media_moved)) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.markUsbTooltipSeen() }) {
+                        Text(stringResource(id = R.string.dialog_got_it))
+                    }
+                }
+            )
+        }
+
         val showLimitReachedDialog by viewModel.showLimitReachedDialog.collectAsState()
         if (showLimitReachedDialog) {
             AlertDialog(
