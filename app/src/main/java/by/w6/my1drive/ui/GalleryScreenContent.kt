@@ -145,15 +145,16 @@ fun PhotosRoute(
     onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit,
     onScrollStateChanged: (Boolean) -> Unit = {}
 ) {
-    val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
-    val groupedItems by viewModel.groupedMediaItems.collectAsState()
-    val sortMode by viewModel.deviceSortMode.collectAsState()
-    val archivingItemIds by viewModel.archivingItemIds.collectAsState()
-    val copiedItemIds by viewModel.copiedItemIds.collectAsState()
+      val uiState by viewModel.uiState.collectAsState()
+    val activeArchiveUuid = uiState.activeArchiveUuid
+    val groupedItems = uiState.groupedItems
+    val sortMode = uiState.deviceSortMode
+    val archivingItemIds = uiState.archivingItemIds
+    val copiedItemIds = uiState.copiedItemIds
     
-    val photosArchivedCount by viewModel.photosArchivedCount.collectAsState(initial = 0)
-    val videosArchivedCount by viewModel.videosArchivedCount.collectAsState(initial = 0)
-    val isPremiumUnlocked by viewModel.isPremiumUnlocked.collectAsState(initial = false)
+    val photosArchivedCount = uiState.photosArchivedCount
+    val videosArchivedCount = uiState.videosArchivedCount
+    val isPremiumUnlocked = uiState.isPremiumUnlocked
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val transparentColor = Color.Transparent
@@ -302,13 +303,14 @@ fun ArchiveRoute(
     onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit,
     onScrollStateChanged: (Boolean) -> Unit = {}
 ) {
-    val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
-    val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
-    val sortMode by viewModel.archiveSortMode.collectAsState()
-    val archivingItemIds by viewModel.archivingItemIds.collectAsState()
-    val restoringItemIds by viewModel.restoringItemIds.collectAsState()
-    val copiedItemIds by viewModel.copiedItemIds.collectAsState()
-    val isSilentSyncing by viewModel.isSilentSyncingFlow.collectAsState()
+      val uiState by viewModel.uiState.collectAsState()
+    val activeArchiveUuid = uiState.activeArchiveUuid
+    val archivedGroupedItems = uiState.archivedGroupedItems
+    val sortMode = uiState.archiveSortMode
+    val archivingItemIds = uiState.archivingItemIds
+    val restoringItemIds = uiState.restoringItemIds
+    val copiedItemIds = uiState.copiedItemIds
+    val isSilentSyncing = uiState.isSilentSyncing
     val archiveState by viewModel.archiveState.collectAsState()
     val restoreState by viewModel.restoreState.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
@@ -972,12 +974,13 @@ fun GalleryScreenContent(
     onSelectDateRangeClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {}
 ) {
-    val pendingDelete by viewModel.pendingDelete.collectAsState()
-    val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
+      val uiState by viewModel.uiState.collectAsState()
+    val pendingDelete = uiState.pendingDelete
+    val activeArchiveUuid = uiState.activeArchiveUuid
     val knownArchives by viewModel.knownArchives.collectAsState()
-    val isSharingPreparing by viewModel.isSharingPreparing.collectAsState()
-    val isCheckingConnection by viewModel.otgManager.isCheckingConnection.collectAsState()
-    val isSilentSyncing by viewModel.isSilentSyncingFlow.collectAsState()
+    val isSharingPreparing = uiState.isSharingPreparing
+    val isCheckingConnection = uiState.isCheckingConnection
+    val isSilentSyncing = uiState.isSilentSyncing
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
@@ -1000,10 +1003,10 @@ fun GalleryScreenContent(
     var showDebugLogsDialog by remember { mutableStateOf(false) }
     var showEjectConfirmDialog by remember { mutableStateOf(false) }
     var showOfflineShareConfirm by remember { mutableStateOf(false) }
-    val groupedItems by viewModel.groupedMediaItems.collectAsState()
-    val archivedGroupedItems by viewModel.archivedGroupedItems.collectAsState()
-    val mediaItems by viewModel.mediaItems.collectAsState()
-    val gridColumnsCount by viewModel.gridColumnsCount.collectAsState()
+    val groupedItems = uiState.groupedItems
+    val archivedGroupedItems = uiState.archivedGroupedItems
+    val mediaItems = uiState.mediaItems
+    val gridColumnsCount = uiState.gridColumnsCount
 
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
 
@@ -1338,13 +1341,13 @@ fun GalleryScreenContent(
                             onScrollStateChanged = { viewModel.setScrolling(it) }
                         )
                         "settings" -> {
-                            val physicalArchiveSize by viewModel.physicalArchiveSize.collectAsState()
-                            val otgDirectoryDisplayName by viewModel.otgDirectoryDisplayName.collectAsState()
-                            val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsState()
-                            val isSyncingThumbnails by viewModel.isSyncingThumbnails.collectAsState()
-                            val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsState()
-                            val missingThumbnailsCount by viewModel.missingThumbnailsCount.collectAsState()
-                            val isStorageLow by viewModel.isStorageLow.collectAsState()
+                            val physicalArchiveSize = uiState.physicalArchiveSize
+                            val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
+                            val activeArchiveUuid = uiState.activeArchiveUuid
+                            val isSyncingThumbnails = uiState.isSyncingThumbnails
+                            val syncThumbnailsProgress = uiState.syncThumbnailsProgress
+                            val missingThumbnailsCount = uiState.missingThumbnailsCount
+                            val isStorageLow = uiState.isStorageLow
 
                             LaunchedEffect(Unit) {
                                 viewModel.updateMissingThumbnailsCount()
@@ -1532,7 +1535,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val activeDialog by viewModel.activeDialog.collectAsState()
+        val activeDialog = uiState.activeDialog
         by.w6.my1drive.ui.components.dialogs.AppDialogCoordinator(
             activeDialog = activeDialog,
             viewModel = viewModel,
