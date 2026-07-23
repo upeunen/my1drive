@@ -162,6 +162,9 @@ class OtgConnectionManager(
                 if (!otgPluggedIn) {
                     unknownDriveDialogHandled = false
                     firstLaunchHandled = false
+                    lastFirstLaunchState = null
+                    lastUnknownDriveState = null
+                    lastUnreadableOtgState = null
                     if (isEjectedButStillPluggedIn) {
                         isEjectedButStillPluggedIn = false
                         _showEjectSuccessDialog.value = false
@@ -431,6 +434,10 @@ class OtgConnectionManager(
 
             if (!otgPluggedIn) {
                 unknownDriveDialogHandled = false
+                firstLaunchHandled = false
+                lastFirstLaunchState = null
+                lastUnknownDriveState = null
+                lastUnreadableOtgState = null
                 if (isEjectedButStillPluggedIn) {
                     isEjectedButStillPluggedIn = false
                     _showEjectSuccessDialog.value = false
@@ -737,17 +744,9 @@ class OtgConnectionManager(
                         unknownDriveDialogHandled = false
                         DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
-                        if (!firstLaunchHandled) {
-                            invokeShowFirstLaunchDialog(true)
-                            firstLaunchHandled = true
-                        }
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
-                    if (!firstLaunchHandled) {
-                        invokeShowFirstLaunchDialog(true)
-                        firstLaunchHandled = true
-                    }
                     DriveStatus.UNKNOWN_DRIVE_CONNECTED
                 }
             } else {

@@ -288,7 +288,8 @@ fun PhotosRoute(
 private data class MonthGroup(
     val monthIndex: Int,
     val monthName: String,
-    val items: List<MediaItem>
+    val items: List<MediaItem>,
+    val chunkedItems: List<List<MediaItem>>
 )
 
 private data class YearGroup(
@@ -399,7 +400,8 @@ fun ArchiveRoute(
                 MonthGroup(
                     monthIndex = monthIdx,
                     monthName = monthName,
-                    items = monthItems
+                    items = monthItems,
+                    chunkedItems = monthItems.chunked(gridColumnsCount)
                 )
             }.sortedByDescending { it.monthIndex }
 
