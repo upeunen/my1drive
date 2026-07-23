@@ -19,6 +19,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("my1drive-release.jks")
+            storePassword = "my1drive2026"
+            keyAlias = "my1drive"
+            keyPassword = "my1drive2026"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -26,6 +35,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -71,6 +81,9 @@ dependencies {
 
     // SSH/SFTP Support
     implementation(libs.jsch)
+    
+    // AppMetrica Analytics
+    implementation("io.appmetrica.analytics:analytics:7.3.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
