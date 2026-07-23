@@ -641,9 +641,12 @@ class ArchiveSyncHelper private constructor(
     private var isArchiveJobRunning = false
     private var isCancellationRequested = false
 
+    private var activeArchiveJob: kotlinx.coroutines.Job? = null
+
     fun cancelArchiving() {
         isCancellationRequested = true
         archiveQueue.clear()
+        activeArchiveJob?.cancel()
     }
 
     /** Add items to archive queue. If nothing is running, starts immediately. */
@@ -656,7 +659,7 @@ class ArchiveSyncHelper private constructor(
         _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
         if (!isArchiveJobRunning) {
             isArchiveJobRunning = true
-            scope.launch { processArchiveQueue() }
+            activeArchiveJob = scope.launch { processArchiveQueue() }
         }
     }
 

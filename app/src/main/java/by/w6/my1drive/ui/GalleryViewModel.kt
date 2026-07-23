@@ -540,7 +540,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun cancelRestoring() {
-        archiveInteractor.isRestoreCancellationRequested = true
+        archiveInteractor.cancelRestore()
     }
 
     // ─── Selection ───

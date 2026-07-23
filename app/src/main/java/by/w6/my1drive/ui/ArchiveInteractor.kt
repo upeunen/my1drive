@@ -34,6 +34,11 @@ class ArchiveInteractor(
         conflictDeferred?.complete(decision)
     }
 
+    fun cancelRestore() {
+        isRestoreCancellationRequested = true
+        restoringJob?.cancel()
+    }
+
     fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
         restoringItemIds.value = items.map { it.id }.toSet()
         isRestoreCancellationRequested = false
