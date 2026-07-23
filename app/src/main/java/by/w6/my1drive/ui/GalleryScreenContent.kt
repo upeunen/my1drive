@@ -958,6 +958,7 @@ fun GalleryScreenContent(
     onClearSelection: () -> Unit,
     onToggleSelection: (String) -> Unit = {},
     onSetActivePreview: (FullscreenState?) -> Unit,
+    onNavigateToTab: (String) -> Unit = {},
     onSetShowInfoDialog: (MediaItem?) -> Unit,
     onSetShowOtgGuide: (Boolean) -> Unit,
     previewCacheManager: PreviewCacheManager,

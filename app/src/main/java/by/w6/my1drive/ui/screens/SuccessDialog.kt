@@ -16,11 +16,13 @@ fun SuccessDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Архивация завершена!") },
         text = { 
-            Text(text = "Освобождено: было $storageBeforeGb ГБ → стало $storageAfterGb ГБ") 
+            val beforeStr = String.format(java.util.Locale.US, "%.2f", storageBeforeGb)
+            val afterStr = String.format(java.util.Locale.US, "%.2f", storageAfterGb)
+            Text(text = "Освобождено: было $beforeStr ГБ → стало $afterStr ГБ") 
         },
         confirmButton = {
             TextButton(onClick = onViewOnUsbClick) {
-                Text("Посмотреть на флешке")
+                Text("Посмотреть на носителе")
             }
         },
         dismissButton = {

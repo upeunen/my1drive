@@ -3,6 +3,8 @@ package by.w6.my1drive.ui
 import android.net.Uri
 import by.w6.my1drive.domain.model.MediaItem
 
+data class SuccessDialogData(val storageBeforeGb: Float, val storageAfterGb: Float)
+
 data class DialogState(
     val showFirstLaunchDialog: Boolean = false,
     val showPaywall: Boolean = false,
@@ -15,7 +17,9 @@ data class DialogState(
     val showLimitReachedDialog: Boolean = false,
     val showCreateFolderDialog: Boolean = false,
     val showArchiveFolderAccessDialog: Boolean = false,
-    val archiveAccessFolderPath: String? = null
+    val archiveAccessFolderPath: String? = null,
+    val showSuccessDialog: SuccessDialogData? = null,
+    val showUsbTooltip: Boolean = false
 )
 
 data class SyncState(

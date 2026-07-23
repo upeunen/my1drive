@@ -47,6 +47,7 @@ import java.io.File
 
 private const val PREFS_NAME = "my1drive_prefs"
 private const val PREF_ASK_RESTORE_PATH = "ask_restore_path"
+private const val PREF_HAS_SEEN_USB_TOOLTIP = "has_seen_usb_tooltip"
 private const val PREF_OTG_URI = "otg_directory_uri"
 private const val PREF_DEVICE_URI = "device_directory_uri"
 private const val PREF_KNOWN_ARCHIVE_ID = "known_archive_uuid"
@@ -81,7 +82,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val knownArchives = db.archiveDao().getAllFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _dialogState = kotlinx.coroutines.flow.MutableStateFlow(DialogState())
+    private val _dialogState = kotlinx.coroutines.flow.MutableStateFlow(DialogState(showUsbTooltip = !prefs.getBoolean(PREF_HAS_SEEN_USB_TOOLTIP, false)))
     val dialogState = _dialogState.asStateFlow()
 
     val limitRepository = by.w6.my1drive.data.local.LimitRepository(application)
@@ -122,6 +123,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissWriteProtectedRootDialog() { _dialogState.update { it.copy(showWriteProtectedRootDialog = false) } }
     fun dismissLocalFolderDialog() { _dialogState.update { it.copy(showLocalFolderDialog = false) } }
     fun dismissNamingDialog() { _dialogState.update { it.copy(showNamingDialog = null) } }
+    fun dismissSuccessDialog() { _dialogState.update { it.copy(showSuccessDialog = null) } }
+    fun markUsbTooltipSeen() { 
+        prefs.edit().putBoolean(PREF_HAS_SEEN_USB_TOOLTIP, true).apply()
+        _dialogState.update { it.copy(showUsbTooltip = false) } 
+    }
+
     fun triggerWriteProtectedRootDialog() { _dialogState.update { it.copy(showWriteProtectedRootDialog = true) } }
     fun showNamingDialog(uri: Uri) { _dialogState.update { it.copy(showNamingDialog = uri) } }
 
@@ -160,6 +167,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 if (newVideos > 0) {
                     limitRepository.videosArchivedCount += newVideos
                 }
+
+                // Show Success Dialog
+                val freedSpaceBytes = items.sumOf { it.size.toLong() }
+                val freedSpaceGb = freedSpaceBytes / (1024f * 1024f * 1024f)
+                val spaceBeforeGb = android.os.Environment.getDataDirectory().usableSpace / (1024f * 1024f * 1024f)
+                val spaceAfterGb = spaceBeforeGb + freedSpaceGb
+                _dialogState.update { it.copy(showSuccessDialog = SuccessDialogData(spaceBeforeGb, spaceAfterGb)) }
+
                 mediaOperationInteractor.startDeletingWithPermissionCheck(items)
             }
         }
