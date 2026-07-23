@@ -2,6 +2,7 @@ package by.w6.my1drive.domain.usecase
 
 import android.content.Context
 import android.widget.Toast
+import by.w6.my1drive.analytics.AppAnalytics
 import by.w6.my1drive.data.local.LimitRepository
 import by.w6.my1drive.domain.model.MediaItem
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,7 @@ class ArchiveUseCase(
 
         // Soft Cap первой сессии
         if (limitRepository.trustLevel == 0 && items.size > 20) {
+            AppAnalytics.logSoftCapTriggered(items.size)
             Toast.makeText(context, "Первая архивация ограничена 20 файлами", Toast.LENGTH_LONG).show()
             allowedItems = items.take(20)
         }

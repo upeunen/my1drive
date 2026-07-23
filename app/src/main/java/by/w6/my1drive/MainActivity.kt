@@ -54,6 +54,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.text.font.FontFamily
 
+import ru.rustore.sdk.pay.*
+import ru.rustore.sdk.pay.model.*
+
 class MainActivity : ComponentActivity() {
 
     private val viewModel: GalleryViewModel by viewModels()

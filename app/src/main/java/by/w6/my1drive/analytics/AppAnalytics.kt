@@ -46,4 +46,18 @@ object AppAnalytics {
     fun logPurchaseSuccess() {
         AppMetrica.reportEvent("purchase_success")
     }
+
+    fun logPurchaseCancelled() {
+        AppMetrica.reportEvent("purchase_cancelled")
+    }
+
+    fun logPurchaseError(errorMessage: String) {
+        val params = mapOf("error_message" to errorMessage)
+        AppMetrica.reportEvent("purchase_error", params.toMap())
+    }
+
+    fun logSoftCapTriggered(originalFilesCount: Int) {
+        val params = mapOf("original_files_count" to originalFilesCount)
+        AppMetrica.reportEvent("soft_cap_triggered", params.toMap())
+    }
 }
