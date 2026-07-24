@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center_horizontal"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/toolbar_close_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/sdk_pay_spacer_s"
+        android:src="@drawable/sdk_pay_ic_arrow_back_outline" />
+
+    <TextView
+        android:id="@+id/toolbar_title"
+        style="@style/Subheadline10"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/sdk_pay_toolbar_title_margin_end"
+        android:layout_weight="1"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="?attr/sdk_pay_text_primary"
+        tools:text="Купоны" />
+
+</LinearLayout>

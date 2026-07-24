@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <include
+        android:id="@+id/basic_purchase_button_layout"
+        layout="@layout/sdk_pay_purchase_button_layout"
+        android:visibility="gone" />
+
+    <include
+        android:id="@+id/sbp_purchase_button"
+        layout="@layout/sdk_pay_sbp_purchase_button"
+        android:visibility="gone" />
+
+    <include
+        android:id="@+id/sber_pay_purchase_button"
+        layout="@layout/sdk_pay_sber_pay_purchase_button"
+        android:visibility="gone" />
+
+    <include
+        android:id="@+id/erip_purchase_button"
+        layout="@layout/sdk_pay_erip_purchase_button"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/sdk_pay_bonuses_accumulate_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_xxxs"
+        android:layout_marginEnd="@dimen/sdk_pay_spacer_xxxl"
+        android:background="@drawable/sdk_pay_bg_accumulate_bonuses"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/sdk_pay_spacer_xxs"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/sdk_pay_bonuses_accumulate_count"
+            style="@style/Subheadline20"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/sdk_pay_bg_accumulate_bonuses_count"
+            android:drawableEnd="@drawable/sdk_pay_ic_bonuses"
+            android:drawablePadding="@dimen/sdk_pay_spacer_xxxs"
+            android:gravity="center"
+            android:textColor="?attr/sdk_pay_text_primary"
+            app:drawableEndCompat="@drawable/sdk_pay_ic_bonuses" />
+
+    </LinearLayout>
+
+</FrameLayout>

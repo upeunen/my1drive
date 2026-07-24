@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+        android:layout_marginVertical="@dimen/sdk_pay_spacer_xs"
+        android:background="@drawable/sdk_pay_action_button_background"
+        android:backgroundTint="?attr/sdk_pay_sbp_button_color"
+        android:foreground="@drawable/sdk_pay_ripple_foreground"
+        android:gravity="center"
+        android:orientation="horizontal"
+        tools:ignore="UseCompoundDrawables,UselessParent">
+
+        <TextView
+            android:id="@+id/sbp_purchase_button_price"
+            style="@style/Theme.ActionButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="false"
+            android:textColor="?attr/sdk_pay_text_quaternary_constant"
+            tools:text="Купить за 300 ₽" />
+
+        <ImageView
+            android:id="@+id/sbp_button_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xs"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sdk_pay_ic_sbp" />
+
+    </LinearLayout>
+
+</FrameLayout>

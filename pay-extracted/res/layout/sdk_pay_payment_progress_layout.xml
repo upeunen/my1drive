@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/progress_indicator"
+        android:layout_width="@dimen/sdk_pay_progress_bar_size"
+        android:layout_height="@dimen/sdk_pay_progress_bar_size"
+        android:indeterminate="true"
+        app:indicatorColor="?attr/sdk_pay_icon_accent"
+        app:trackCornerRadius="@dimen/sdk_pay_progress_bar_radius" />
+
+    <TextView
+        android:id="@+id/sdk_pay_payment_progress_text"
+        style="@style/Body.Body10"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_xxxl"
+        android:gravity="center_horizontal"
+        android:text="@string/sdk_pay_waiting_payment_result_text"
+        android:textColor="?attr/sdk_pay_text_primary" />
+
+</LinearLayout>

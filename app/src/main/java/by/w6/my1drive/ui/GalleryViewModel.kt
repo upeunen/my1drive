@@ -24,6 +24,10 @@ import by.w6.my1drive.utils.DebugLogBuffer
 import by.w6.my1drive.utils.OtgArchiveUtil
 import by.w6.my1drive.utils.PreviewCacheManager
 import by.w6.my1drive.utils.RestoreResult
+
+import io.appmetrica.analytics.AppMetrica
+import io.appmetrica.analytics.profile.Attribute
+import io.appmetrica.analytics.profile.UserProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -120,7 +124,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
-    fun dismissDialog() { _activeDialog.value = null }
+    fun dismissDialog() { 
+        _activeDialog.value = null
+        pendingItemsToDelete?.let { items ->
+            mediaOperationInteractor.startDeletingWithPermissionCheck(items)
+            pendingItemsToDelete = null
+        }
+    }
     fun markUsbTooltipSeen() { 
         prefs.edit().putBoolean(PREF_HAS_SEEN_USB_TOOLTIP, true).apply()
         if (_activeDialog.value is AppDialog.UsbTooltip) _activeDialog.value = null 
@@ -558,7 +568,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun syncArchive() { syncHelper.syncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissSync() { syncHelper.dismissSync() }
     fun startArchiving(targetUri: Uri) {
-        val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
+        var selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
         DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${selectionManager.selectedIds.value.size}, matchedSelected=${selected.size}")
         if (selected.isEmpty()) {
             DebugLogBuffer.log("GalleryViewModel", "startArchiving: selected list is empty, aborting.")
@@ -577,22 +587,42 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         if (!limitRepository.isPremiumUnlocked) {
-            val newPhotos = selected.count { !it.mimeType.startsWith("video/") }
-            val newVideos = selected.count { it.mimeType.startsWith("video/") }
+            val photos = selected.filter { !it.mimeType.startsWith("video/") }
+            val videos = selected.filter { it.mimeType.startsWith("video/") }
             
-            val totalProjectedPhotos = limitRepository.photosArchivedCount + newPhotos
-            val totalProjectedVideos = limitRepository.videosArchivedCount + newVideos
+            val allowedPhotosCount = (by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS - limitRepository.photosArchivedCount).coerceAtLeast(0)
+            val allowedVideosCount = (by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS - limitRepository.videosArchivedCount).coerceAtLeast(0)
             
-            if (totalProjectedPhotos > by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS || 
-                totalProjectedVideos > by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS) {
+            val allowedPhotos = photos.take(allowedPhotosCount)
+            val allowedVideos = videos.take(allowedVideosCount)
+            
+            val pendingPhotos = photos.size - allowedPhotos.size
+            val pendingVideos = videos.size - allowedVideos.size
+            
+            if (pendingPhotos > 0 || pendingVideos > 0) {
+                AppMetrica.reportEvent("soft_cap_triggered")
+                pendingForPaywallPhotos = pendingPhotos
+                pendingForPaywallVideos = pendingVideos
                 
-                val missingPhotos = if (newPhotos > 0) newPhotos else 0 // simplified, could calculate precisely
-                val missingVideos = if (newVideos > 0) newVideos else 0
-                
-                showPaywall(missingPhotos, missingVideos)
-                DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, showing paywall.")
-                return
+                val allowedItems = allowedPhotos + allowedVideos
+                if (allowedItems.isEmpty()) {
+                    showPaywall(pendingPhotos, pendingVideos)
+                    pendingForPaywallPhotos = 0
+                    pendingForPaywallVideos = 0
+                    DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, no items allowed, showing paywall.")
+                    return
+                } else {
+                    // Update 'selected' to only contain allowed items
+                    selected = allowedItems
+                    DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit exceeded, archiving partial ${selected.size} items.")
+                }
+            } else {
+                pendingForPaywallPhotos = 0
+                pendingForPaywallVideos = 0
             }
+        } else {
+            pendingForPaywallPhotos = 0
+            pendingForPaywallVideos = 0
         }
 
         val context = getApplication<Application>()
@@ -656,8 +686,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissError() { syncHelper.dismissError() }
     fun refresh() { repository.refresh() }
 
-    val deviceDeleteSender: StateFlow<IntentSender?> = mediaOperationInteractor.deviceDeleteSender
+    val deviceDeleteSender = mediaOperationInteractor.deviceDeleteSender
 
+    private var pendingForPaywallPhotos = 0
+    private var pendingForPaywallVideos = 0
+    private var pendingItemsToDelete: List<MediaItem>? = null
 
     // ─── Delete state ───
 
@@ -916,13 +949,29 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     limitRepository.videosArchivedCount += newVideos
                 }
 
-                // Show Success Dialog
+                // Show Success Dialog or Paywall
                 val freedSpaceBytes = items.sumOf { it.size.toLong() }
                 val currentFreeSpaceBytes = android.os.Environment.getDataDirectory().usableSpace
                 val totalSpaceBytes = android.os.Environment.getDataDirectory().totalSpace
-                _activeDialog.value = AppDialog.Success(SuccessDialogData(freedSpaceBytes, currentFreeSpaceBytes, totalSpaceBytes))
-
-                mediaOperationInteractor.startDeletingWithPermissionCheck(items)
+                
+                // Analytics
+                val freedMb = freedSpaceBytes / (1024 * 1024)
+                AppMetrica.reportEvent("archive_session_end", """{"freed_mb": $freedMb}""")
+                if (limitRepository.trustLevel == 0) {
+                    val profile = UserProfile.newBuilder().apply(Attribute.customNumber("trust_level").withValue(1.0)).build()
+                    AppMetrica.reportUserProfile(profile)
+                    limitRepository.trustLevel = 1
+                }
+                
+                if (pendingForPaywallPhotos > 0 || pendingForPaywallVideos > 0) {
+                    pendingItemsToDelete = items
+                    showPaywall(pendingForPaywallPhotos, pendingForPaywallVideos)
+                    pendingForPaywallPhotos = 0
+                    pendingForPaywallVideos = 0
+                } else {
+                    _activeDialog.value = AppDialog.Success(SuccessDialogData(freedSpaceBytes, currentFreeSpaceBytes, totalSpaceBytes))
+                    mediaOperationInteractor.startDeletingWithPermissionCheck(items)
+                }
             }
         }
         

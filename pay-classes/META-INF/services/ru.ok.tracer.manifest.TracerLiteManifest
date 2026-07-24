@@ -1,0 +1,1 @@
+ru.rustore.sdk.pay.TracerLibraryManifest

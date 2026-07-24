@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="@dimen/sdk_pay_coupon_item_width"
+    android:layout_height="@dimen/sdk_pay_coupon_item_height"
+    android:background="@drawable/sdk_pay_coupon_list_item_background"
+    android:orientation="horizontal"
+    android:padding="@dimen/sdk_pay_spacer_s">
+
+    <FrameLayout
+        android:id="@+id/sdk_pay_coupon_icon_bg"
+        android:layout_width="@dimen/sdk_pay_coupon_item_icon_size"
+        android:layout_height="@dimen/sdk_pay_coupon_item_icon_size"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/sdk_pay_coupon_item_bg">
+
+        <ImageView
+            android:id="@+id/sdk_pay_coupon_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:src="@drawable/sdk_pay_ic_coupon_item" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_xs"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/sdk_pay_coupon_item_nominal"
+            style="@style/Subheadline20"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="500,00 ₽" />
+
+        <TextView
+            android:id="@+id/sdk_pay_coupon_item_interval"
+            style="@style/Captions.Caption20"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="15 июл — 24 авг 2024" />
+
+    </LinearLayout>
+
+    <ru.rustore.sdk.pay.internal.presentation.ui.view.SdkPaySwitchView
+        android:id="@+id/sdk_pay_coupon_item_switch"
+        android:layout_width="@dimen/sdk_pay_switch_width"
+        android:layout_height="@dimen/sdk_pay_switch_height"
+        android:layout_gravity="center_vertical" />
+
+</LinearLayout>

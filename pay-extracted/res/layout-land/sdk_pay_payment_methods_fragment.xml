@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/sdk_pay_surface_primary"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <include
+            android:id="@+id/payment_methods_toolbar"
+            layout="@layout/sdk_pay_toolbar_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xs" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/payment_methods_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginHorizontal="@dimen/sdk_pay_spacer_xs"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/sdk_pay_spacer_s" />
+
+        <include
+            android:id="@+id/basic_purchase_button_layout"
+            layout="@layout/sdk_pay_purchase_button_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/sbp_purchase_button"
+            layout="@layout/sdk_pay_sbp_purchase_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/sber_pay_purchase_button"
+            layout="@layout/sdk_pay_sber_pay_purchase_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/subscription_promo_tariff_purchase_content"
+            layout="@layout/sdk_pay_sub_promo_tariff_purchase_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/payment_methods_progress_indicator_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:minHeight="@dimen/sdk_pay_bottom_sheet_dialog_content_min_height"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/payment_methods_progress_indicator"
+            android:layout_width="@dimen/sdk_pay_progress_bar_size"
+            android:layout_height="@dimen/sdk_pay_progress_bar_size"
+            android:indeterminate="true"
+            app:indicatorColor="?attr/sdk_pay_icon_accent"
+            app:trackCornerRadius="@dimen/sdk_pay_progress_bar_radius" />
+
+    </LinearLayout>
+
+</FrameLayout>

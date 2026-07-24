@@ -86,6 +86,9 @@ dependencies {
     // AppMetrica Analytics
     implementation("io.appmetrica.analytics:analytics:7.3.0")
 
+    // EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

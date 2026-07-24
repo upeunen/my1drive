@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+    <alpha
+        android:duration="@integer/sdk_pay_fade_anim_duration_ms"
+        android:fromAlpha="1"
+        android:toAlpha="0" />
+    <translate
+        android:duration="@integer/sdk_pay_translate_anim_duration_ms"
+        android:fromXDelta="0%"
+        android:fromYDelta="0%"
+        android:toXDelta="3%"
+        android:toYDelta="0%" />
+</set>

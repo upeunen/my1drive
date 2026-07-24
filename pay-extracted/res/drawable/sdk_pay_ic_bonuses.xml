@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M12.379,12.902C12.52,13.062 12.44,13.315 12.234,13.363L7.439,14.496C7.296,14.53 7.205,14.348 7.316,14.252L10.653,11.36C10.769,11.26 10.944,11.272 11.045,11.387L12.379,12.902Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M9.397,10.648C9.723,10.735 9.818,11.155 9.562,11.376L6.718,13.841C6.502,14.028 6.168,13.949 6.058,13.685L4.529,10.045C4.393,9.721 4.687,9.381 5.024,9.471L9.397,10.648Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M5.231,13.524C5.29,13.665 5.113,13.787 5.004,13.679L1.78,10.512C1.644,10.379 1.676,10.151 1.843,10.062L3.016,9.432C3.234,9.315 3.504,9.411 3.6,9.64L5.231,13.524Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M13.307,12.23C13.253,12.45 12.976,12.518 12.827,12.349L11.521,10.866C11.429,10.761 11.427,10.603 11.518,10.496L14.254,7.285C14.35,7.172 14.531,7.266 14.495,7.41L13.307,12.23Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M10.218,9.484C10.301,9.798 10.016,10.085 9.704,10.001L4.975,8.729C4.663,8.645 4.558,8.251 4.787,8.021L8.264,4.529C8.492,4.299 8.883,4.405 8.965,4.72L10.218,9.484Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M13.756,5.962C14.008,6.08 14.079,6.408 13.898,6.62L11.583,9.338C11.363,9.596 10.946,9.5 10.859,9.171L9.72,4.837C9.629,4.491 9.98,4.195 10.302,4.346L13.756,5.962Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M3.193,8.24C3.211,8.411 3.123,8.576 2.973,8.657L1.912,9.226C1.698,9.341 1.45,9.147 1.509,8.91L2.551,4.689C2.589,4.536 2.81,4.551 2.826,4.708L3.193,8.24Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M7.25,3.563C7.609,3.588 7.772,4.027 7.517,4.284L4.488,7.327C4.238,7.578 3.811,7.425 3.774,7.071L3.434,3.791C3.407,3.529 3.621,3.307 3.881,3.325L7.25,3.563Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M13.464,4.746C13.577,4.856 13.45,5.042 13.307,4.975L9.679,3.277C9.539,3.211 9.478,3.044 9.543,2.903L10.006,1.894C10.087,1.717 10.316,1.674 10.454,1.809L13.464,4.746Z" />
+    <path
+        android:fillColor="?attr/sdk_pay_icon_accent"
+        android:pathData="M8.827,2.785C8.778,2.892 8.669,2.957 8.553,2.948L5.064,2.702C4.904,2.691 4.886,2.461 5.042,2.424L8.914,1.508C9.141,1.454 9.33,1.687 9.232,1.9L8.827,2.785Z" />
+</vector>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/sdk_pay_spacer_s"
+    android:foreground="@drawable/sdk_pay_ripple_foreground"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/bank_logo"
+            android:layout_width="@dimen/sdk_pay_payment_method_item_logo_size"
+            android:layout_height="@dimen/sdk_pay_payment_method_item_logo_size"
+            android:layout_marginVertical="@dimen/sdk_pay_spacer_s"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/card_info"
+            style="@style/Body.Body10"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="@dimen/sdk_pay_spacer_s"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+        <ImageView
+            android:id="@+id/payment_system_logo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xxs"
+            android:importantForAccessibility="no"
+            android:minWidth="@dimen/sdk_pay_payment_method_item_system_logo_min_width"
+            android:minHeight="@dimen/sdk_pay_payment_method_item_system_logo_min_height" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/selection_marker"
+        android:layout_width="@dimen/sdk_pay_payment_method_item_done_icon_size"
+        android:layout_height="@dimen/sdk_pay_payment_method_item_done_icon_size"
+        android:layout_gravity="end"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_s"
+        android:layout_marginEnd="@dimen/sdk_pay_spacer_s"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sdk_pay_ic_done"
+        android:visibility="gone" />
+
+</FrameLayout>

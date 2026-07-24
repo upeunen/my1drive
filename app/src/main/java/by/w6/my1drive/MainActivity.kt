@@ -398,6 +398,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        viewModel.billingManager.checkPurchases { hasPremium ->
+            viewModel.limitRepository.isPremiumUnlocked = hasPremium
+        }
+
         val crashLogFile = File(filesDir, "crash_log.txt")
 
         // Глобальный обработчик необработанных исключений

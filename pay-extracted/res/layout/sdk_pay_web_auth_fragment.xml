@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginHorizontal="@dimen/sdk_pay_spacer_m"
+    android:clickable="true"
+    android:focusable="true">
+
+    <WebView
+        android:id="@+id/auth_web_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/sdk_pay_bottom_sheet_dialog_content_min_height"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_l"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_m"
+        android:fadeScrollbars="false"
+        android:scrollbarThumbVertical="?attr/sdk_pay_icon_quaternary"
+        android:scrollbars="vertical" />
+
+</FrameLayout>

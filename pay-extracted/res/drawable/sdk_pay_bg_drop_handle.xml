@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="?attr/sdk_pay_icon_tertiary" />
+
+    <corners android:radius="@dimen/sdk_pay_drop_handle_radius" />
+</shape>

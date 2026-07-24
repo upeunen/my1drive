@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/sdk_pay_bg_product_details"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/product_image"
+            android:layout_width="@dimen/sdk_pay_product_image_size"
+            android:layout_height="@dimen/sdk_pay_product_image_size"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:layout_marginTop="@dimen/sdk_pay_spacer_s"
+            android:layout_marginBottom="@dimen/sdk_pay_spacer_s"
+            android:importantForAccessibility="no" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginHorizontal="@dimen/sdk_pay_spacer_s"
+            android:layout_marginVertical="@dimen/sdk_pay_spacer_xs"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/product_title"
+                style="@style/Body.Body10"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/sdk_pay_text_primary"
+                tools:text="Devil May Cry: Peak of Combat" />
+
+            <TextView
+                android:id="@+id/product_subtitle"
+                style="@style/Body.Body30"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/sdk_pay_spacer_xxxs"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/sdk_pay_text_secondary"
+                tools:text="Цифровая покупка" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

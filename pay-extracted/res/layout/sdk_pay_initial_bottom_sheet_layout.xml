@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_bottom_sheet"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/sdk_pay_overlay_primary_alpha">
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/bottom_sheet_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:maxWidth="@dimen/sdk_pay_bottom_sheet_dialog_max_width"
+            android:background="@drawable/sdk_pay_background_initial_dialog"
+            android:orientation="vertical"
+            tools:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/sdk_pay_spacer_l">
+
+                <View
+                    android:layout_width="@dimen/sdk_pay_drop_handle_width"
+                    android:layout_height="@dimen/sdk_pay_drop_handle_height"
+                    android:layout_gravity="center"
+                    android:background="@drawable/sdk_pay_bg_drop_handle" />
+
+            </FrameLayout>
+
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/pay_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </LinearLayout>
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+</FrameLayout>

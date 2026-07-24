@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/sdk_pay_spacer_m"
+    android:touchscreenBlocksFocus="true">
+
+    <ImageView
+        android:id="@+id/sdk_pay_rustore_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="@dimen/sdk_pay_component_horizontal_padding"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sdk_pay_ic_rustore_logo_sdk_pay" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|end"
+        android:orientation="vertical">
+
+        <include
+            android:id="@+id/user_info"
+            layout="@layout/sdk_pay_user_info_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:visibility="gone" />
+
+        <Space
+            android:id="@+id/test_mode_marker_spaser"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/sdk_pay_spacer_xxs"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/test_mode_marker"
+            style="@style/Captions.Caption20"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginEnd="@dimen/sdk_pay_component_horizontal_padding"
+            android:background="@drawable/sdk_pay_bg_test_mode"
+            android:text="@string/sdk_pay_test_purchase_mode"
+            android:textColor="?attr/sdk_pay_rainbow_purple"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</FrameLayout>

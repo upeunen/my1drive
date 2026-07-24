@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/sdk_pay_divider_height"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_s"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_xs">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/sdk_pay_divider_primary" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/mobile_phone_item_content_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_xs"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="@drawable/sdk_pay_ripple_foreground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        tools:ignore="UseCompoundDrawables">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sdk_pay_ic_mobile_phone" />
+
+        <TextView
+            style="@style/Body.Body10"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="@dimen/sdk_pay_spacer_s"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:layout_weight="1"
+            android:text="@string/sdk_pay_payment_method_mobile_phone"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+        <ImageView
+            android:id="@+id/selection_marker"
+            android:layout_width="@dimen/sdk_pay_payment_method_item_done_icon_size"
+            android:layout_height="@dimen/sdk_pay_payment_method_item_done_icon_size"
+            android:layout_marginEnd="@dimen/sdk_pay_spacer_s"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sdk_pay_ic_done"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Body.Body30"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/sdk_pay_coast_title"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+        <TextView
+            android:id="@+id/sdk_pay_details_original_price"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xs"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="500,00 ₽" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/sdk_pay_price_discount_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Body.Body30"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/sdk_pay_coupon_discount_title"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+        <TextView
+            android:id="@+id/sdk_pay_discount"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xs"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_rainbow_red"
+            tools:text="-200,00 ₽" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/sdk_pay_price_bonuses_discount_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Body.Body30"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/sdk_pay_bonuses_discount_title"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+        <TextView
+            android:id="@+id/sdk_pay_bonuses_discount"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xs"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_rainbow_red"
+            tools:text="-250,00 ₽" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Subheadline20"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/sdk_pay_to_pay_title"
+            android:textColor="?attr/sdk_pay_text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/sdk_pay_total_price"
+            style="@style/Subheadline20"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_xs"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_text_primary"
+            android:textStyle="bold"
+            tools:text="300,00 ₽" />
+
+    </LinearLayout>
+
+</LinearLayout>

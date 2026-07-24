@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="@dimen/sdk_pay_payment_method_item_width"
+    android:layout_height="@dimen/sdk_pay_payment_method_item_height"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@drawable/sdk_pay_ripple_foreground"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="@dimen/sdk_pay_spacer_s"
+    tools:ignore="UseCompoundDrawables">
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sdk_pay_ic_mobile_phone" />
+
+    <TextView
+        style="@style/Captions.Caption20"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginTop="@dimen/sdk_pay_spacer_xs"
+        android:text="@string/sdk_pay_payment_method_mobile_phone"
+        android:textColor="?attr/sdk_pay_text_primary" />
+
+</LinearLayout>

@@ -1,0 +1,7 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <solid android:color="?attr/sdk_pay_surface_accent" />
+
+    <corners android:radius="@dimen/sdk_pay_border_radius_s" />
+</shape>

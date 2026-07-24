@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/sdk_pay_surface_primary"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:id="@+id/email_input_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            style="@style/Subheadline10"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/sdk_pay_spacer_s"
+            android:gravity="center_horizontal"
+            android:maxLines="1"
+            android:text="@string/sdk_pay_enter_email_text"
+            android:textColor="?attr/sdk_pay_text_primary"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/email_field"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+            android:layout_marginTop="@dimen/sdk_pay_spacer_xs"
+            app:boxBackgroundColor="?attr/sdk_pay_surface_input"
+            app:boxCornerRadiusBottomEnd="@dimen/sdk_pay_border_radius_m"
+            app:boxCornerRadiusBottomStart="@dimen/sdk_pay_border_radius_m"
+            app:boxCornerRadiusTopEnd="@dimen/sdk_pay_border_radius_m"
+            app:boxCornerRadiusTopStart="@dimen/sdk_pay_border_radius_m"
+            app:boxStrokeColor="?attr/sdk_pay_stroke_accent"
+            app:boxStrokeWidth="0dp"
+            app:endIconDrawable="@drawable/sdk_pay_ic_clear"
+            app:endIconMode="clear_text"
+            app:endIconTint="?attr/sdk_pay_icon_tertiary"
+            app:helperTextTextAppearance="@style/Body.Body30"
+            app:helperTextTextColor="?attr/sdk_pay_text_negative"
+            app:hintEnabled="false">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/email_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/sdk_pay_email_hint"
+                android:imeOptions="actionSend"
+                android:inputType="textEmailAddress"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:textColor="?attr/sdk_pay_text_primary"
+                android:textColorHint="?attr/sdk_pay_text_secondary"
+                android:textCursorDrawable="@drawable/sdk_pay_custom_email_cursor"
+                android:theme="@style/EmailTextInputHandle" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/error_message_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xxxl"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:ignore="UseCompoundDrawables">
+
+        <ImageView
+            android:layout_width="@dimen/sdk_pay_receipt_sending_error_image_size"
+            android:layout_height="@dimen/sdk_pay_receipt_sending_error_image_size"
+            android:layout_gravity="center_horizontal"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sdk_pay_illustration_fail_result" />
+
+        <TextView
+            style="@style/Body.Body10"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+            android:layout_marginTop="@dimen/sdk_pay_spacer_m"
+            android:gravity="center"
+            android:text="@string/sdk_pay_failure_receipt_sending_text"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/send_receipt_button"
+        style="@style/Theme.ActionButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_s"
+        android:backgroundTint="?attr/sdk_pay_surface_accent"
+        android:text="@string/sdk_pay_send_check_text"
+        android:textColor="?attr/sdk_pay_text_quaternary_constant"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/error_buttons_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/retry_button"
+            style="@style/Theme.ActionButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="@dimen/sdk_pay_spacer_s"
+            android:backgroundTint="?attr/sdk_pay_surface_accent"
+            android:text="@string/sdk_pay_retry_action"
+            android:textColor="?attr/sdk_pay_text_quaternary_constant" />
+
+        <Button
+            android:id="@+id/cancel_button"
+            style="@style/Theme.ActionButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="@dimen/sdk_pay_spacer_s"
+            android:backgroundTint="?attr/sdk_pay_surface_secondary"
+            android:text="@string/sdk_pay_cancel_action"
+            android:textColor="?attr/sdk_pay_text_accent" />
+
+    </LinearLayout>
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/receipt_sending_progress_indicator"
+        android:layout_width="@dimen/sdk_pay_progress_bar_size"
+        android:layout_height="@dimen/sdk_pay_progress_bar_size"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:indicatorColor="?attr/sdk_pay_icon_accent"
+        app:trackCornerRadius="@dimen/sdk_pay_progress_bar_radius" />
+
+</FrameLayout>

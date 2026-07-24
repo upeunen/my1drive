@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/price"
+                style="@style/Headlines.Headline20"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/sdk_pay_text_primary"
+                android:textStyle="bold"
+                tools:text="300,00 ₽" />
+
+            <Space
+                android:layout_width="@dimen/sdk_pay_spacer_xs"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/original_price"
+                style="@style/Body.Body30"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:textColor="?attr/sdk_pay_text_tertiary"
+                android:visibility="gone"
+                tools:text="300,00 ₽" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/purchase_interval"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sdk_pay_spacer_xxxs"
+            android:text="@string/sdk_pay_one_time_purchase_title"
+            android:textColor="?attr/sdk_pay_text_secondary" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/details_discount_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:src="@drawable/sdk_pay_ic_arrow_down" />
+
+</LinearLayout>

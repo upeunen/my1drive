@@ -7,6 +7,7 @@ import ru.rustore.sdk.pay.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import io.appmetrica.analytics.AppMetrica
 
 class RuStoreBillingManager(private val application: Application) {
 
@@ -55,18 +56,22 @@ class RuStoreBillingManager(private val application: Application) {
             .addOnSuccessListener { result ->
                 when (result) {
                     is ApplicationPurchaseResult.Success -> {
+                        AppMetrica.reportEvent("purchase_success")
                         _purchaseState.value = PurchaseState.Success
                     }
                     is ApplicationPurchaseResult.Cancelled -> {
+                        AppMetrica.reportEvent("purchase_cancelled")
                         _purchaseState.value = PurchaseState.Idle
                         Log.d("RuStoreBilling", "Purchase cancelled")
                     }
                     is ApplicationPurchaseResult.Failure -> {
+                        AppMetrica.reportEvent("purchase_error")
                         _purchaseState.value = PurchaseState.Error("Purchase failed")
                     }
                 }
             }
             .addOnFailureListener { error ->
+                AppMetrica.reportEvent("purchase_error")
                 Log.e("RuStoreBilling", "Purchase exception", error)
                 _purchaseState.value = PurchaseState.Error(error.message ?: "Purchase exception")
             }

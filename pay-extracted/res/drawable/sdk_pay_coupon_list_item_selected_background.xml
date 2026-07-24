@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <corners android:radius="@dimen/sdk_pay_border_radius_l" />
+
+    <stroke
+        android:width="@dimen/sdk_pay_coupon_item_bg_bolder_width"
+        android:color="?attr/sdk_pay_stroke_accent" />
+
+    <solid android:color="?attr/sdk_pay_surface_primary" />
+
+</shape>

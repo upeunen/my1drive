@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/sdk_pay_spacer_l"
+    android:foreground="@drawable/sdk_pay_ripple_foreground"
+    android:orientation="horizontal"
+    tools:ignore="UseCompoundDrawables">
+
+    <FrameLayout
+        android:layout_width="@dimen/sdk_pay_bank_app_logo_external_size"
+        android:layout_height="@dimen/sdk_pay_bank_app_logo_external_size"
+        android:background="@drawable/sdk_pay_bank_app_logo_background">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            app:cardCornerRadius="@dimen/sdk_pay_bank_app_logo_corner_radius"
+            app:cardElevation="0dp">
+
+            <ImageView
+                android:id="@+id/bank_app_logo"
+                android:layout_width="@dimen/sdk_pay_bank_app_logo_size"
+                android:layout_height="@dimen/sdk_pay_bank_app_logo_size"
+                android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                android:importantForAccessibility="no" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/bank_app_name"
+        style="@style/Body.Body10"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+        android:textColor="?attr/sdk_pay_text_primary" />
+
+</LinearLayout>

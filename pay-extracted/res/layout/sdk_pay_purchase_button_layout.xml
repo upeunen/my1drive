@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <Button
+        android:id="@+id/purchase_button"
+        style="@style/Theme.ActionButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+        android:layout_marginVertical="@dimen/sdk_pay_spacer_xs"
+        android:backgroundTint="?attr/sdk_pay_surface_accent"
+        android:textColor="?attr/sdk_pay_text_quaternary_constant"
+        tools:text="Купить за 300,00 ₽" />
+
+</FrameLayout>

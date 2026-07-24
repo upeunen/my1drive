@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginHorizontal="@dimen/sdk_pay_component_horizontal_padding"
+    android:background="?attr/sdk_pay_surface_primary"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingBottom="@dimen/sdk_pay_spacer_xs">
+
+    <ImageView
+        android:id="@+id/sdk_pay_rustore_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/sdk_pay_component_horizontal_padding"
+        android:importantForAccessibility="no"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_m"
+        android:src="@drawable/sdk_pay_ic_rustore_logo_sdk_pay" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        tools:ignore="UseCompoundDrawables">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sdk_pay_illustration_mail_success" />
+
+        <TextView
+            android:id="@+id/success_send_title"
+            style="@style/Body.Body10"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/sdk_pay_spacer_xxxl"
+            android:text="@string/sdk_pay_success_receipt_sending_text"
+            android:textAlignment="center"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+        <TextView
+            android:id="@+id/email_value_text"
+            style="@style/Body.Body10"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textAlignment="center"
+            android:textColor="?attr/sdk_pay_text_primary"
+            android:textStyle="bold"
+            tools:text="t.test@mail.ru" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/close_button"
+        style="@style/Theme.ActionButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="@dimen/sdk_pay_spacer_s"
+        android:backgroundTint="?attr/sdk_pay_surface_accent"
+        android:text="@string/sdk_pay_success_receipt_sending_action_text"
+        android:textColor="?attr/sdk_pay_text_quaternary_constant" />
+
+</FrameLayout>

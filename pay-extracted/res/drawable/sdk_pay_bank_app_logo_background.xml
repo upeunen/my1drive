@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="@dimen/sdk_pay_bank_app_logo_background_radius" />
+
+    <solid android:color="?attr/sdk_pay_stroke_primary" />
+</shape>

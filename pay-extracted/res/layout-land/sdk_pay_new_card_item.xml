@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/sdk_pay_spacer_xs"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@drawable/sdk_pay_ripple_foreground">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginVertical="@dimen/sdk_pay_spacer_s"
+        android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+        android:orientation="horizontal"
+        tools:ignore="UseCompoundDrawables">
+
+        <ImageView
+            android:layout_width="@dimen/sdk_pay_payment_method_item_logo_size"
+            android:layout_height="@dimen/sdk_pay_payment_method_item_logo_size"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sdk_pay_ic_new_card" />
+
+        <TextView
+            style="@style/Body.Body10"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:text="@string/sdk_pay_payment_method_new_card"
+            android:textColor="?attr/sdk_pay_text_primary" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginVertical="@dimen/sdk_pay_spacer_s"
+        android:layout_marginEnd="@dimen/sdk_pay_spacer_s"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sdk_pay_ic_arrow_right" />
+
+</FrameLayout>

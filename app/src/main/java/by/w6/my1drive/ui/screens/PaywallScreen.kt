@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.billing.RuStoreBillingManager
 import by.w6.my1drive.billing.PurchaseState
+import io.appmetrica.analytics.AppMetrica
 
 @Composable
 fun PaywallScreen(
@@ -24,6 +25,7 @@ fun PaywallScreen(
     val product by billingManager.premiumProduct.collectAsState()
 
     LaunchedEffect(Unit) {
+        AppMetrica.reportEvent("paywall_shown")
         billingManager.loadProducts()
     }
 
@@ -45,26 +47,27 @@ fun PaywallScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                if (missingPhotos > 0 || missingVideos > 0) {
+                    Text(
+                        text = stringResource(R.string.paywall_description_partial, missingPhotos, missingVideos),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.paywall_description),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
                 Text(
-                    text = stringResource(R.string.paywall_description),
+                    text = stringResource(R.string.paywall_disclaimer),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-
-                if (missingPhotos > 0 || missingVideos > 0) {
-                    val limitText = buildString {
-                        append("Не удалось заархивировать: ")
-                        if (missingPhotos > 0) append("$missingPhotos фото ")
-                        if (missingVideos > 0) append("$missingVideos видео")
-                    }
-                    Text(
-                        text = limitText,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
 
                 when (val state = purchaseState) {
                     is PurchaseState.Loading -> {

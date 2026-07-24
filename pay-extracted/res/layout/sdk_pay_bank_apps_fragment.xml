@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/sdk_pay_surface_primary"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical">
+
+    <include
+        layout="@layout/sdk_pay_toolbar_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/sdk_pay_spacer_xs" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/empty_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+            android:layout_marginTop="@dimen/sdk_pay_spacer_m"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:ignore="UseCompoundDrawables">
+
+            <ImageView
+                android:id="@+id/sbp_logo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:importantForAccessibility="no"
+                android:src="@drawable/sdk_pay_illustration_sbp_full_logo" />
+
+            <TextView
+                android:id="@+id/no_bank_apps_text"
+                style="@style/Body.Body30"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/sdk_pay_spacer_m"
+                android:text="@string/sdk_pay_bank_apps_empty_text"
+                android:textColor="?attr/sdk_pay_text_primary" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/bank_apps_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/Body.Body30"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+                android:layout_marginTop="@dimen/sdk_pay_spacer_xs"
+                android:text="@string/sdk_pay_bank_apps_subtitle"
+                android:textColor="?attr/sdk_pay_text_primary" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/bank_apps_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginHorizontal="@dimen/sdk_pay_spacer_l"
+                android:layout_marginVertical="@dimen/sdk_pay_spacer_xs"
+                android:orientation="vertical"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        </LinearLayout>
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/bank_apps_progress_indicator"
+            android:layout_width="@dimen/sdk_pay_progress_bar_size"
+            android:layout_height="@dimen/sdk_pay_progress_bar_size"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="?attr/sdk_pay_icon_accent"
+            app:trackCornerRadius="@dimen/sdk_pay_progress_bar_radius" />
+
+    </FrameLayout>
+
+</LinearLayout>

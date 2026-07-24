@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <corners android:radius="@dimen/sdk_pay_coupon_item_icon_radius" />
+
+    <solid android:color="?attr/sdk_pay_rainbow_raspberry_pink_subdued" />
+</shape>

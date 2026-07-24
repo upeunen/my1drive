@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <corners android:radius="@dimen/sdk_pay_border_radius_pill" />
+
+    <solid android:color="?attr/sdk_pay_surface_accent_subdued" />
+
+    <padding
+        android:bottom="@dimen/sdk_pay_spacer_xxxs"
+        android:left="@dimen/sdk_pay_spacer_xxxs"
+        android:right="@dimen/sdk_pay_spacer_xxxs"
+        android:top="@dimen/sdk_pay_spacer_xxxs" />
+
+</shape>

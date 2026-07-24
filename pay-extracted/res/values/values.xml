@@ -1,0 +1,485 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sdk_pay_bg_primary_dark">#000000</color>
+    <color name="sdk_pay_bg_primary_light">#F2F3F5</color>
+    <color name="sdk_pay_bg_secondary_dark">#1A1C20</color>
+    <color name="sdk_pay_bg_secondary_light">#FFFFFF</color>
+    <color name="sdk_pay_divider_primary_dark">#464C54</color>
+    <color name="sdk_pay_divider_primary_light">#EBEDF0</color>
+    <color name="sdk_pay_erip_button_color_dark">#FF8F2B</color>
+    <color name="sdk_pay_erip_button_color_light">#EE7D43</color>
+    <color name="sdk_pay_icon_accent_dark">#2994FF</color>
+    <color name="sdk_pay_icon_accent_light">#0077FF</color>
+    <color name="sdk_pay_icon_constant_dark">#FFFFFF</color>
+    <color name="sdk_pay_icon_constant_light">#FFFFFF</color>
+    <color name="sdk_pay_icon_negative_dark">#E34949</color>
+    <color name="sdk_pay_icon_negative_light">#FF3347</color>
+    <color name="sdk_pay_icon_primary_dark">#EBF1F6</color>
+    <color name="sdk_pay_icon_primary_light">#222222</color>
+    <color name="sdk_pay_icon_quaternary_dark">#393E45</color>
+    <color name="sdk_pay_icon_quaternary_light">#E1E3E6</color>
+    <color name="sdk_pay_icon_tertiary_dark">#838D99</color>
+    <color name="sdk_pay_icon_tertiary_light">#99A2AD</color>
+    <color name="sdk_pay_overlay_primary_alpha">#0000005C</color>
+    <color name="sdk_pay_rainbow_blue_subdued_dark">#3B4452</color>
+    <color name="sdk_pay_rainbow_blue_subdued_light">#E5F1FF</color>
+    <color name="sdk_pay_rainbow_green_dark">#37B837</color>
+    <color name="sdk_pay_rainbow_green_light">#4BB34B</color>
+    <color name="sdk_pay_rainbow_green_subdued_dark">#213E29</color>
+    <color name="sdk_pay_rainbow_green_subdued_light">#E4F4E4</color>
+    <color name="sdk_pay_rainbow_purple_dark">#9985FF</color>
+    <color name="sdk_pay_rainbow_purple_light">#735CE6</color>
+    <color name="sdk_pay_rainbow_purple_subdued_dark">#3A3658</color>
+    <color name="sdk_pay_rainbow_purple_subdued_light">#F1EFFC</color>
+    <color name="sdk_pay_rainbow_raspberry_pink_dark">#F060C0</color>
+    <color name="sdk_pay_rainbow_raspberry_pink_light">#E03FAB</color>
+    <color name="sdk_pay_rainbow_raspberry_pink_subdued_dark">#502D48</color>
+    <color name="sdk_pay_rainbow_raspberry_pink_subdued_light">#FCECF7</color>
+    <color name="sdk_pay_rainbow_red_dark">#E34949</color>
+    <color name="sdk_pay_rainbow_red_light">#FF3347</color>
+    <color name="sdk_pay_rainbow_violet_dark">#A94FFF</color>
+    <color name="sdk_pay_rainbow_violet_light">#792EC0</color>
+    <color name="sdk_pay_rainbow_violet_subdued_dark">#3E2958</color>
+    <color name="sdk_pay_rainbow_violet_subdued_light">#F2EAF9</color>
+    <color name="sdk_pay_ripple_effect">#1A6D7885</color>
+    <color name="sdk_pay_sber_pay_button_color_dark">#0CA552</color>
+    <color name="sdk_pay_sber_pay_button_color_light">#21A038</color>
+    <color name="sdk_pay_sbp_button_color_dark">#342B59</color>
+    <color name="sdk_pay_sbp_button_color_light">#1D1346</color>
+    <color name="sdk_pay_sbp_icon_text_color_dark">#FFFFFF</color>
+    <color name="sdk_pay_sbp_icon_text_color_light">#000000</color>
+    <color name="sdk_pay_snackbar_color_dark">#F5393E45</color>
+    <color name="sdk_pay_snackbar_color_light">#000000</color>
+    <color name="sdk_pay_stroke_accent_dark">#2994FF</color>
+    <color name="sdk_pay_stroke_accent_light">#0077FF</color>
+    <color name="sdk_pay_stroke_monochrome_dark">#FFFFFF</color>
+    <color name="sdk_pay_stroke_monochrome_light">#FFFFFF</color>
+    <color name="sdk_pay_stroke_negative_dark">#E34949</color>
+    <color name="sdk_pay_stroke_negative_light">#FF3347</color>
+    <color name="sdk_pay_stroke_primary_dark">#393E45</color>
+    <color name="sdk_pay_stroke_primary_light">#E1E3E6</color>
+    <color name="sdk_pay_stroke_tertiary_dark">#1A1C20</color>
+    <color name="sdk_pay_stroke_tertiary_light">#FFFFFF</color>
+    <color name="sdk_pay_surface_accent_dark">#0072E5</color>
+    <color name="sdk_pay_surface_accent_light">#0077FF</color>
+    <color name="sdk_pay_surface_accent_subdued_dark">#192E44</color>
+    <color name="sdk_pay_surface_accent_subdued_light">#E5F1FF</color>
+    <color name="sdk_pay_surface_input_dark">#2D3137</color>
+    <color name="sdk_pay_surface_input_light">#F2F3F5</color>
+    <color name="sdk_pay_surface_primary_dark">#171C22</color>
+    <color name="sdk_pay_surface_primary_light">#FFFFFF</color>
+    <color name="sdk_pay_surface_secondary_dark">#282B30</color>
+    <color name="sdk_pay_surface_secondary_light">#F7F7F7</color>
+    <color name="sdk_pay_surface_tertiary_dark">#393E45</color>
+    <color name="sdk_pay_surface_tertiary_light">#EBEDF0</color>
+    <color name="sdk_pay_text_accent_dark">#2994FF</color>
+    <color name="sdk_pay_text_accent_light">#0077FF</color>
+    <color name="sdk_pay_text_negative_dark">#E34949</color>
+    <color name="sdk_pay_text_negative_light">#FF3347</color>
+    <color name="sdk_pay_text_primary_dark">#EBF1F6</color>
+    <color name="sdk_pay_text_primary_light">#222222</color>
+    <color name="sdk_pay_text_quaternary_constant_dark">#FFFFFF</color>
+    <color name="sdk_pay_text_quaternary_constant_light">#FFFFFF</color>
+    <color name="sdk_pay_text_secondary_dark">#9BA6B1</color>
+    <color name="sdk_pay_text_secondary_light">#6D7885</color>
+    <color name="sdk_pay_text_tertiary_dark">#838D99</color>
+    <color name="sdk_pay_text_tertiary_light">#99A2AD</color>
+    <dimen name="sdk_pay_bank_app_logo_background_radius">10dp</dimen>
+    <dimen name="sdk_pay_bank_app_logo_corner_radius">9dp</dimen>
+    <dimen name="sdk_pay_bank_app_logo_external_size">38dp</dimen>
+    <dimen name="sdk_pay_bank_app_logo_size">36dp</dimen>
+    <dimen name="sdk_pay_border_radius_l">16dp</dimen>
+    <dimen name="sdk_pay_border_radius_m">12dp</dimen>
+    <dimen name="sdk_pay_border_radius_pill">999dp</dimen>
+    <dimen name="sdk_pay_border_radius_s">8dp</dimen>
+    <dimen name="sdk_pay_border_radius_xl">24dp</dimen>
+    <dimen name="sdk_pay_border_radius_xs">4dp</dimen>
+    <dimen name="sdk_pay_border_radius_xxl">32dp</dimen>
+    <dimen name="sdk_pay_border_radius_xxxl">48dp</dimen>
+    <dimen name="sdk_pay_bottom_sheet_dialog_content_min_height">480dp</dimen>
+    <dimen name="sdk_pay_bottom_sheet_dialog_max_width">1000000dp</dimen>
+    <dimen name="sdk_pay_bottom_sheet_image_product_radius">10dp</dimen>
+    <dimen name="sdk_pay_bottom_sheet_top_border_radius">15dp</dimen>
+    <dimen name="sdk_pay_calculations_cell_lang_margin">36dp</dimen>
+    <dimen name="sdk_pay_component_horizontal_padding">10dp</dimen>
+    <dimen name="sdk_pay_coupon_item_bg_bolder_width">1dp</dimen>
+    <dimen name="sdk_pay_coupon_item_height">60dp</dimen>
+    <dimen name="sdk_pay_coupon_item_icon_radius">1332dp</dimen>
+    <dimen name="sdk_pay_coupon_item_icon_size">36dp</dimen>
+    <dimen name="sdk_pay_coupon_item_width">220dp</dimen>
+    <dimen name="sdk_pay_divider_height">8dp</dimen>
+    <dimen name="sdk_pay_drop_handle_height">4dp</dimen>
+    <dimen name="sdk_pay_drop_handle_radius">100dp</dimen>
+    <dimen name="sdk_pay_drop_handle_width">32dp</dimen>
+    <dimen name="sdk_pay_island_item_radius">20dp</dimen>
+    <dimen name="sdk_pay_payment_method_bank_icon_size">20dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_done_icon_size">24dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_height">72dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_icon_size">20dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_logo_size">24dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_min_height">64dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_stroke_width">1dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_system_logo_min_height">20dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_system_logo_min_width">24dp</dimen>
+    <dimen name="sdk_pay_payment_method_item_width">112dp</dimen>
+    <dimen name="sdk_pay_payment_method_selection_marker_margin_top">36dp</dimen>
+    <dimen name="sdk_pay_payment_method_system_height">14dp</dimen>
+    <dimen name="sdk_pay_payment_result_image_margin_top">40dp</dimen>
+    <dimen name="sdk_pay_product_image_size">50dp</dimen>
+    <dimen name="sdk_pay_progress_bar_radius">4dp</dimen>
+    <dimen name="sdk_pay_progress_bar_size">40dp</dimen>
+    <dimen name="sdk_pay_receipt_sending_error_image_size">140dp</dimen>
+    <dimen name="sdk_pay_sber_pay_button_icon_top_margin">1dp</dimen>
+    <dimen name="sdk_pay_select_payment_method_horizontal_margin">8dp</dimen>
+    <dimen name="sdk_pay_small_progress_bar_size">20dp</dimen>
+    <dimen name="sdk_pay_spacer_l">20dp</dimen>
+    <dimen name="sdk_pay_spacer_m">16dp</dimen>
+    <dimen name="sdk_pay_spacer_s">12dp</dimen>
+    <dimen name="sdk_pay_spacer_xl">24dp</dimen>
+    <dimen name="sdk_pay_spacer_xs">8dp</dimen>
+    <dimen name="sdk_pay_spacer_xxl">28dp</dimen>
+    <dimen name="sdk_pay_spacer_xxs">4dp</dimen>
+    <dimen name="sdk_pay_spacer_xxxl">32dp</dimen>
+    <dimen name="sdk_pay_spacer_xxxs">2dp</dimen>
+    <dimen name="sdk_pay_switch_height">32dp</dimen>
+    <dimen name="sdk_pay_switch_width">52dp</dimen>
+    <dimen name="sdk_pay_toolbar_title_margin_end">48dp</dimen>
+    <dimen name="sdk_pay_user_info_action_icon_size">20dp</dimen>
+    <dimen name="sdk_pay_user_info_avatar_size">20dp</dimen>
+    <dimen name="sdk_pay_user_info_name_margin_start">6dp</dimen>
+    <integer name="sdk_pay_fade_anim_duration_ms">200</integer>
+    <integer name="sdk_pay_translate_anim_duration_ms">300</integer>
+    <plurals name="sdk_pay_days_count">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дней</item>
+    </plurals>
+    <plurals name="sdk_pay_months_count">
+        <item quantity="one">%d месяц</item>
+        <item quantity="few">%d месяца</item>
+        <item quantity="many">%d месяцев</item>
+        <item quantity="other">%d месяцев</item>
+    </plurals>
+    <plurals name="sdk_pay_years_count">
+        <item quantity="one">%d год</item>
+        <item quantity="few">%d года</item>
+        <item quantity="many">%d лет</item>
+        <item quantity="other">%d лет</item>
+    </plurals>
+    <string name="payment_result_success_message">Оплата прошла</string>
+    <string name="sdk_pay_add_payment_method_button">Добавить способ оплаты</string>
+    <string name="sdk_pay_application_purchase_subtitle">Покупка приложения</string>
+    <string name="sdk_pay_bank_apps_empty_text">На вашем устройстве не установлено приложение банка, через которое можно подтвердить оплату</string>
+    <string name="sdk_pay_bank_apps_subtitle">Для проведения оплаты вы будете перенаправлены в приложение банка</string>
+    <string name="sdk_pay_bank_apps_title">Выберите банк</string>
+    <string name="sdk_pay_bonuses_coupon_max_discount">Купон уже дал максимальную скидку</string>
+    <string name="sdk_pay_bonuses_discount_title">Скидка баллами</string>
+    <string name="sdk_pay_bonuses_min_price">Покупка уже по минимальной цене</string>
+    <string name="sdk_pay_bonuses_nothing_to_redeem">– списать нечего</string>
+    <string name="sdk_pay_bonuses_select_locked_message">Запущен процесс оплаты покупки, поэтому включить оплату баллами невозможно</string>
+    <string name="sdk_pay_bonuses_selection_error">Не удалось включить оплату баллами, попробуйте снова</string>
+    <string name="sdk_pay_bonuses_title">Баллы</string>
+    <string name="sdk_pay_bonuses_total_count">У вас %d</string>
+    <string name="sdk_pay_bonuses_unavailable">Бонусы недоступны</string>
+    <string name="sdk_pay_bonuses_unselect_error">Не удалось отключить оплату баллами, попробуйте снова</string>
+    <string name="sdk_pay_bonuses_unselect_locked_message">Запущен процесс оплаты покупки, поэтому отключить оплату баллами невозможно</string>
+    <string name="sdk_pay_bonuses_withdraw_count">– спишем %d</string>
+    <string name="sdk_pay_cancel_action">Отменить</string>
+    <string name="sdk_pay_coast_title">Стоимость</string>
+    <string name="sdk_pay_confirm_payment_method_button">Подтвердить способ оплаты</string>
+    <string name="sdk_pay_coupon_connection_error_message">Проверьте подключение и обновите страницу</string>
+    <string name="sdk_pay_coupon_connection_error_title">Нет интернета</string>
+    <string name="sdk_pay_coupon_connection_update">Обновить</string>
+    <string name="sdk_pay_coupon_discount_title">Скидка по купону</string>
+    <string name="sdk_pay_coupon_end_date_title">до %s</string>
+    <string name="sdk_pay_coupon_not_selected_title">Выберите для скидки</string>
+    <string name="sdk_pay_coupon_select_locked_message">Запущен процесс оплаты покупки, поэтому выбрать купон невозможно</string>
+    <string name="sdk_pay_coupon_selected_title">Выбран 1 из %d</string>
+    <string name="sdk_pay_coupon_selection_connection_error">Не удалось применить купон, пропал интернет</string>
+    <string name="sdk_pay_coupon_selection_error">Не удалось применить купон, попробуйте ещё раз</string>
+    <string name="sdk_pay_coupon_selection_hint">Выбрать можно только один купон</string>
+    <string name="sdk_pay_coupon_single_not_selected_title">Примените скидку</string>
+    <string name="sdk_pay_coupon_single_selected_title">Скидка применена</string>
+    <string name="sdk_pay_coupon_unselect_error">Не удалось отменить применение купона</string>
+    <string name="sdk_pay_coupon_unselect_locked_message">Запущен процесс оплаты покупки, поэтому отменить купон невозможно</string>
+    <string name="sdk_pay_coupons_title">Купоны</string>
+    <string name="sdk_pay_day" translatable="false">день</string>
+    <string name="sdk_pay_email_hint" translatable="false">E-mail</string>
+    <string name="sdk_pay_empty_field_text">Поле не заполнено</string>
+    <string name="sdk_pay_enter_email_text">Введите электронную почту</string>
+    <string name="sdk_pay_error_already_purchased_app">Вы уже купили это приложение</string>
+    <string name="sdk_pay_error_already_purchased_product">Вы уже купили этот товар</string>
+    <string name="sdk_pay_error_cannot_purchase_app">Пока это приложение нельзя купить. Попробуйте позже</string>
+    <string name="sdk_pay_error_cannot_purchase_product">Пока этот продукт нельзя купить. Попробуйте позже</string>
+    <string name="sdk_pay_error_cant_pay">Не удалось оплатить. Попробуйте ещё раз</string>
+    <string name="sdk_pay_error_common">Оплата не работает. Попробуйте позже</string>
+    <string name="sdk_pay_error_invalid_console_app_id">Оплата временно не работает. Мы уже чиним поломку, зайдите позже</string>
+    <string name="sdk_pay_error_invalid_purchase">Пока этот продукт нельзя купить. Попробуйте позже</string>
+    <string name="sdk_pay_error_rustore_not_installed">Скачайте RuStore и войдите в аккаунт, чтобы оплатить покупку</string>
+    <string name="sdk_pay_error_rustore_outdated">Обновите RuStore, чтобы оплатить покупку</string>
+    <string name="sdk_pay_error_rustore_unauthorized">Войдите в аккаунт RuStore, чтобы оплатить покупку</string>
+    <string name="sdk_pay_error_unknown_purchase_status">Платёж в обработке. Вы можете закрыть это окно</string>
+    <string name="sdk_pay_failure_receipt_sending_text">Не удалось отправить чек на почту.\nПопробуйте ещё раз</string>
+    <string name="sdk_pay_month" translatable="false">месяц</string>
+    <string name="sdk_pay_offer_consent">Продолжая, вы принимаете оферту</string>
+    <string name="sdk_pay_offer_link_text">оферту</string>
+    <string name="sdk_pay_one_time_purchase_title">Разовая оплата</string>
+    <string name="sdk_pay_payment_method_erip">ЕРИП</string>
+    <string name="sdk_pay_payment_method_mobile_phone">Счёт телефона</string>
+    <string name="sdk_pay_payment_method_new_card">Новая карта</string>
+    <string name="sdk_pay_payment_method_sber_pay" translatable="false">SberPay</string>
+    <string name="sdk_pay_payment_method_sbp">СБП</string>
+    <string name="sdk_pay_payment_method_title">Способ оплаты</string>
+    <string name="sdk_pay_payment_result_bank_app_error_message">Приложение «%s» устарело. Обновите его или выберите другой способ оплаты</string>
+    <string name="sdk_pay_payment_result_payment_methods_button">К способам оплаты</string>
+    <string name="sdk_pay_proceed_purchase_button">Продолжить оплату за %s</string>
+    <string name="sdk_pay_product_purchase_subtitle">Покупка товара</string>
+    <string name="sdk_pay_purchase_button">Купить за %s</string>
+    <string name="sdk_pay_retry_action">Повторить</string>
+    <string name="sdk_pay_send_check_text">Отправить чек</string>
+    <string name="sdk_pay_send_receipt_by_mail_text">Отправить чек на почту</string>
+    <string name="sdk_pay_subs_combine_period_purchase_interval_title">%1$s, затем %2$s</string>
+    <string name="sdk_pay_subs_not_required_period_purchase_button">Начать за %s</string>
+    <string name="sdk_pay_subs_promo_period_price_title">Бесплатно %s</string>
+    <string name="sdk_pay_subs_promo_period_purchase_title">Для проверки спишем и вернём 1₽</string>
+    <string name="sdk_pay_subs_promo_period_purchase_with_offer_title">Для проверки спишем и вернём 1₽.\nПродолжая, вы принимаете оферту</string>
+    <string name="sdk_pay_subs_single_standard_period_details_title">Раз в %s</string>
+    <string name="sdk_pay_subs_standard_period_details_title">Затем раз в %s</string>
+    <string name="sdk_pay_subs_standard_period_price_title">%1$s раз в %2$s</string>
+    <string name="sdk_pay_subs_standard_period_purchase_button">Подписаться за %s</string>
+    <string name="sdk_pay_subs_standard_period_purchase_interval_title">Регулярное списание</string>
+    <string name="sdk_pay_subs_start_period_details_title">Далее %s</string>
+    <string name="sdk_pay_subs_start_period_price_title">%1$s за %2$s</string>
+    <string name="sdk_pay_subs_start_period_purchase_interval_title">Затем — %1$s</string>
+    <string name="sdk_pay_subscription_purchase_subtitle">Покупка подписки</string>
+    <string name="sdk_pay_subscription_subtitle">Подписка</string>
+    <string name="sdk_pay_subscription_transfer_error_message">Не удалось обновить способ оплаты</string>
+    <string name="sdk_pay_subscription_transfer_success_message">Способ оплаты обновлён. Подписка «%s» продолжит работать на тех же условиях</string>
+    <string name="sdk_pay_success_receipt_sending_action_text">Хорошо</string>
+    <string name="sdk_pay_success_receipt_sending_text">Отправили чек на почту</string>
+    <string name="sdk_pay_test_purchase_mode">Тестовая покупка</string>
+    <string name="sdk_pay_to_pay_title">К оплате</string>
+    <string name="sdk_pay_unauthorized_user_purchase_conditions">Продолжая, вы принимаете оферту и политику обработки данных</string>
+    <string name="sdk_pay_unauthorized_user_purchase_conditions_policy">политику обработки данных</string>
+    <string name="sdk_pay_waiting_payment_result_text">Ожидаем результат оплаты,\nэто может занять немного времени</string>
+    <string name="sdk_pay_waiting_subscription_update_result_text">Добавляем способ оплаты,\nэто может занять немного времени</string>
+    <string name="sdk_pay_wrong_email_text">Неверный формат почты</string>
+    <string name="sdk_pay_year" translatable="false">год</string>
+    <style name="Body.Body10" parent="Widget.MaterialComponents.TextView">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">16sp</item>
+        <item name="lineHeight">20sp</item>
+        <item name="fontWeight">400</item>
+    </style>
+    <style name="Body.Body30" parent="Widget.MaterialComponents.TextView">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">14sp</item>
+        <item name="fontWeight">400</item>
+        <item name="lineHeight">18sp</item>
+    </style>
+    <style name="BottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@drawable/sdk_pay_background_initial_dialog</item>
+    </style>
+    <style name="Captions.Caption20" parent="Widget.MaterialComponents.TextView">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">12sp</item>
+        <item name="fontWeight">400</item>
+        <item name="lineHeight">14sp</item>
+    </style>
+    <style name="EmailTextInputHandle">
+        <item name="colorControlActivated">?attr/sdk_pay_icon_accent</item>
+    </style>
+    <style name="Headlines.Headline20" parent="Widget.MaterialComponents.TextView">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">20sp</item>
+        <item name="fontWeight">500</item>
+        <item name="lineHeight">24sp</item>
+    </style>
+    <style name="RuStorePayBottomSheetDialogTheme" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/BottomSheetStyle</item>
+        <item name="android:windowSoftInputMode">stateUnchanged</item>
+    </style>
+    <style name="Subheadline10" parent="Widget.MaterialComponents.TextView">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">16sp</item>
+        <item name="fontWeight">500</item>
+        <item name="lineHeight">20sp</item>
+    </style>
+    <style name="Subheadline20" parent="Widget.MaterialComponents.TextView">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">14sp</item>
+        <item name="fontWeight">500</item>
+        <item name="lineHeight">18sp</item>
+    </style>
+    <style name="Theme.ActionButton" parent="Widget.AppCompat.Button.Colored">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">16sp</item>
+        <item name="fontWeight">500</item>
+        <item name="lineHeight">20sp</item>
+        <item name="android:background">@drawable/sdk_pay_action_button_background</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+    <style name="Theme.MediumButton" parent="Widget.AppCompat.Button.Colored">
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+        <item name="android:textSize">14sp</item>
+        <item name="fontWeight">500</item>
+        <item name="lineHeight">18sp</item>
+        <item name="android:background">@drawable/sdk_pay_medium_button_background</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:paddingStart">@dimen/sdk_pay_spacer_s</item>
+        <item name="android:paddingEnd">@dimen/sdk_pay_spacer_s</item>
+        <item name="android:paddingTop">@dimen/sdk_pay_spacer_xs</item>
+        <item name="android:paddingBottom">@dimen/sdk_pay_spacer_xs</item>
+        <item name="android:minHeight">0dp</item>
+    </style>
+    <style name="Theme.RuStorePay" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="colorControlHighlight">@color/sdk_pay_ripple_effect</item>
+        <item name="bottomSheetDialogTheme">@style/RuStorePayBottomSheetDialogTheme</item>
+        <item name="fontFamily">@font/vksans_font_family</item>
+        <item name="android:fontFamily">@font/vksans_font_family</item>
+    </style>
+    <style name="Theme.RuStorePay.Dark" parent="Theme.RuStorePay">
+        <item name="sdk_pay_bg_primary">@color/sdk_pay_bg_primary_dark</item>
+        <item name="sdk_pay_bg_secondary">@color/sdk_pay_bg_secondary_dark</item>
+        <item name="sdk_pay_surface_secondary">@color/sdk_pay_surface_secondary_dark</item>
+        <item name="sdk_pay_surface_primary">@color/sdk_pay_surface_primary_dark</item>
+        <item name="sdk_pay_surface_tertiary">@color/sdk_pay_surface_tertiary_dark</item>
+        <item name="sdk_pay_surface_accent">@color/sdk_pay_surface_accent_dark</item>
+        <item name="sdk_pay_surface_accent_subdued">@color/sdk_pay_surface_accent_subdued_dark</item>
+        <item name="sdk_pay_surface_input">@color/sdk_pay_surface_input_dark</item>
+        <item name="sdk_pay_divider_primary">@color/sdk_pay_divider_primary_dark</item>
+        <item name="sdk_pay_text_quaternary_constant">@color/sdk_pay_text_quaternary_constant_dark</item>
+        <item name="sdk_pay_text_primary">@color/sdk_pay_text_primary_dark</item>
+        <item name="sdk_pay_text_accent">@color/sdk_pay_text_accent_dark</item>
+        <item name="sdk_pay_text_negative">@color/sdk_pay_text_negative_dark</item>
+        <item name="sdk_pay_text_secondary">@color/sdk_pay_text_secondary_dark</item>
+        <item name="sdk_pay_text_tertiary">@color/sdk_pay_text_tertiary_dark</item>
+        <item name="sdk_pay_icon_primary">@color/sdk_pay_icon_primary_dark</item>
+        <item name="sdk_pay_icon_accent">@color/sdk_pay_icon_accent_dark</item>
+        <item name="sdk_pay_icon_quaternary">@color/sdk_pay_icon_quaternary_dark</item>
+        <item name="sdk_pay_icon_constant">@color/sdk_pay_icon_constant_dark</item>
+        <item name="sdk_pay_icon_tertiary">@color/sdk_pay_icon_tertiary_dark</item>
+        <item name="sdk_pay_icon_negative">@color/sdk_pay_icon_negative_dark</item>
+        <item name="sdk_pay_stroke_accent">@color/sdk_pay_stroke_accent_dark</item>
+        <item name="sdk_pay_stroke_negative">@color/sdk_pay_stroke_negative_dark</item>
+        <item name="sdk_pay_stroke_primary">@color/sdk_pay_stroke_primary_dark</item>
+        <item name="sdk_pay_stroke_tertiary">@color/sdk_pay_stroke_tertiary_dark</item>
+        <item name="sdk_pay_stroke_monochrome">@color/sdk_pay_stroke_monochrome_dark</item>
+        <item name="sdk_pay_rainbow_purple">@color/sdk_pay_rainbow_purple_dark</item>
+        <item name="sdk_pay_rainbow_purple_subdued">@color/sdk_pay_rainbow_purple_subdued_dark</item>
+        <item name="sdk_pay_rainbow_violet">@color/sdk_pay_rainbow_violet_dark</item>
+        <item name="sdk_pay_rainbow_violet_subdued">@color/sdk_pay_rainbow_violet_subdued_dark</item>
+        <item name="sdk_pay_rainbow_raspberry_pink">@color/sdk_pay_rainbow_raspberry_pink_dark</item>
+        <item name="sdk_pay_rainbow_raspberry_pink_subdued">@color/sdk_pay_rainbow_raspberry_pink_subdued_dark</item>
+        <item name="sdk_pay_rainbow_green">@color/sdk_pay_rainbow_green_dark</item>
+        <item name="sdk_pay_rainbow_green_subdued">@color/sdk_pay_rainbow_green_subdued_dark</item>
+        <item name="sdk_pay_rainbow_red">@color/sdk_pay_rainbow_red_dark</item>
+        <item name="sdk_pay_rainbow_blue_subdued">@color/sdk_pay_rainbow_blue_subdued_dark</item>
+        <item name="sdk_pay_snackbar_color">@color/sdk_pay_snackbar_color_dark</item>
+        <item name="sdk_pay_sbp_button_color">@color/sdk_pay_sbp_button_color_dark</item>
+        <item name="sdk_pay_sber_pay_button_color">@color/sdk_pay_sber_pay_button_color_dark</item>
+        <item name="sdk_pay_erip_button_color">@color/sdk_pay_erip_button_color_dark</item>
+        <item name="sdk_pay_sbp_icon_text_color">@color/sdk_pay_sbp_icon_text_color_dark</item>
+    </style>
+    <style name="Theme.RuStorePay.Light" parent="Theme.RuStorePay">
+        <item name="sdk_pay_bg_primary">@color/sdk_pay_bg_primary_light</item>
+        <item name="sdk_pay_bg_secondary">@color/sdk_pay_bg_secondary_light</item>
+        <item name="sdk_pay_surface_secondary">@color/sdk_pay_surface_secondary_light</item>
+        <item name="sdk_pay_surface_primary">@color/sdk_pay_surface_primary_light</item>
+        <item name="sdk_pay_surface_tertiary">@color/sdk_pay_surface_tertiary_light</item>
+        <item name="sdk_pay_surface_accent">@color/sdk_pay_surface_accent_light</item>
+        <item name="sdk_pay_surface_accent_subdued">@color/sdk_pay_surface_accent_subdued_light</item>
+        <item name="sdk_pay_surface_input">@color/sdk_pay_surface_input_light</item>
+        <item name="sdk_pay_divider_primary">@color/sdk_pay_divider_primary_light</item>
+        <item name="sdk_pay_text_quaternary_constant">@color/sdk_pay_text_quaternary_constant_light</item>
+        <item name="sdk_pay_text_primary">@color/sdk_pay_text_primary_light</item>
+        <item name="sdk_pay_text_accent">@color/sdk_pay_text_accent_light</item>
+        <item name="sdk_pay_text_negative">@color/sdk_pay_text_negative_light</item>
+        <item name="sdk_pay_text_secondary">@color/sdk_pay_text_secondary_light</item>
+        <item name="sdk_pay_text_tertiary">@color/sdk_pay_text_tertiary_light</item>
+        <item name="sdk_pay_icon_primary">@color/sdk_pay_icon_primary_light</item>
+        <item name="sdk_pay_icon_accent">@color/sdk_pay_icon_accent_light</item>
+        <item name="sdk_pay_icon_quaternary">@color/sdk_pay_icon_quaternary_light</item>
+        <item name="sdk_pay_icon_constant">@color/sdk_pay_icon_constant_light</item>
+        <item name="sdk_pay_icon_tertiary">@color/sdk_pay_icon_tertiary_light</item>
+        <item name="sdk_pay_icon_negative">@color/sdk_pay_icon_negative_light</item>
+        <item name="sdk_pay_stroke_accent">@color/sdk_pay_stroke_accent_light</item>
+        <item name="sdk_pay_stroke_negative">@color/sdk_pay_stroke_negative_light</item>
+        <item name="sdk_pay_stroke_primary">@color/sdk_pay_stroke_primary_light</item>
+        <item name="sdk_pay_stroke_tertiary">@color/sdk_pay_stroke_tertiary_light</item>
+        <item name="sdk_pay_stroke_monochrome">@color/sdk_pay_stroke_tertiary_light</item>
+        <item name="sdk_pay_rainbow_purple">@color/sdk_pay_rainbow_purple_light</item>
+        <item name="sdk_pay_rainbow_purple_subdued">@color/sdk_pay_rainbow_purple_subdued_light</item>
+        <item name="sdk_pay_rainbow_violet">@color/sdk_pay_rainbow_violet_light</item>
+        <item name="sdk_pay_rainbow_violet_subdued">@color/sdk_pay_rainbow_violet_subdued_light</item>
+        <item name="sdk_pay_rainbow_raspberry_pink">@color/sdk_pay_rainbow_raspberry_pink_light</item>
+        <item name="sdk_pay_rainbow_raspberry_pink_subdued">@color/sdk_pay_rainbow_raspberry_pink_subdued_light</item>
+        <item name="sdk_pay_rainbow_green">@color/sdk_pay_rainbow_green_light</item>
+        <item name="sdk_pay_rainbow_green_subdued">@color/sdk_pay_rainbow_green_subdued_light</item>
+        <item name="sdk_pay_rainbow_red">@color/sdk_pay_rainbow_red_light</item>
+        <item name="sdk_pay_rainbow_blue_subdued">@color/sdk_pay_rainbow_blue_subdued_light</item>
+        <item name="sdk_pay_snackbar_color">@color/sdk_pay_snackbar_color_light</item>
+        <item name="sdk_pay_sbp_button_color">@color/sdk_pay_sbp_button_color_light</item>
+        <item name="sdk_pay_sber_pay_button_color">@color/sdk_pay_sber_pay_button_color_light</item>
+        <item name="sdk_pay_erip_button_color">@color/sdk_pay_erip_button_color_light</item>
+        <item name="sdk_pay_sbp_icon_text_color">@color/sdk_pay_sbp_icon_text_color_light</item>
+    </style>
+    <declare-styleable name="SdkTheme">
+        <attr format="color" name="sdk_pay_bg_primary"/>
+        <attr format="color" name="sdk_pay_bg_secondary"/>
+        <attr format="color" name="sdk_pay_surface_secondary"/>
+        <attr format="color" name="sdk_pay_surface_primary"/>
+        <attr format="color" name="sdk_pay_surface_tertiary"/>
+        <attr format="color" name="sdk_pay_surface_accent"/>
+        <attr format="color" name="sdk_pay_surface_accent_subdued"/>
+        <attr format="color" name="sdk_pay_surface_input"/>
+        <attr format="color" name="sdk_pay_divider_primary"/>
+        <attr format="color" name="sdk_pay_text_quaternary_constant"/>
+        <attr format="color" name="sdk_pay_text_primary"/>
+        <attr format="color" name="sdk_pay_text_accent"/>
+        <attr format="color" name="sdk_pay_text_negative"/>
+        <attr format="color" name="sdk_pay_text_secondary"/>
+        <attr format="color" name="sdk_pay_text_tertiary"/>
+        <attr format="color" name="sdk_pay_icon_primary"/>
+        <attr format="color" name="sdk_pay_icon_accent"/>
+        <attr format="color" name="sdk_pay_icon_quaternary"/>
+        <attr format="color" name="sdk_pay_icon_constant"/>
+        <attr format="color" name="sdk_pay_icon_tertiary"/>
+        <attr format="color" name="sdk_pay_icon_negative"/>
+        <attr format="color" name="sdk_pay_stroke_accent"/>
+        <attr format="color" name="sdk_pay_stroke_negative"/>
+        <attr format="color" name="sdk_pay_stroke_primary"/>
+        <attr format="color" name="sdk_pay_stroke_tertiary"/>
+        <attr format="color" name="sdk_pay_stroke_monochrome"/>
+        <attr format="color" name="sdk_pay_rainbow_purple"/>
+        <attr format="color" name="sdk_pay_rainbow_purple_subdued"/>
+        <attr format="color" name="sdk_pay_rainbow_violet"/>
+        <attr format="color" name="sdk_pay_rainbow_violet_subdued"/>
+        <attr format="color" name="sdk_pay_rainbow_raspberry_pink"/>
+        <attr format="color" name="sdk_pay_rainbow_raspberry_pink_subdued"/>
+        <attr format="color" name="sdk_pay_rainbow_green"/>
+        <attr format="color" name="sdk_pay_rainbow_green_subdued"/>
+        <attr format="color" name="sdk_pay_rainbow_red"/>
+        <attr format="color" name="sdk_pay_rainbow_blue_subdued"/>
+        <attr format="color" name="sdk_pay_snackbar_color"/>
+        <attr format="color" name="sdk_pay_sbp_button_color"/>
+        <attr format="color" name="sdk_pay_sber_pay_button_color"/>
+        <attr format="color" name="sdk_pay_erip_button_color"/>
+        <attr format="color" name="sdk_pay_sbp_icon_text_color"/>
+    </declare-styleable>
+</resources>

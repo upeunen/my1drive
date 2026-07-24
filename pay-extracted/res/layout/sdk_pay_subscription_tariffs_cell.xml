@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/promo_tariff_cell"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/promo_tariff_interval"
+            style="@style/Body.Body30"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="30 дней" />
+
+        <TextView
+            android:id="@+id/promo_tariff_price"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="0 ₽" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/start_tariff_cell"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/start_tariff_interval"
+            style="@style/Body.Body30"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="Далее 10 дней" />
+
+        <TextView
+            android:id="@+id/start_tariff_price"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="49 ₽" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/standard_tariff_cell"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/standard_tariff_interval"
+            style="@style/Body.Body30"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="Затем в месяц" />
+
+        <TextView
+            android:id="@+id/standard_tariff_price"
+            style="@style/Body.Body30"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_text_primary"
+            tools:text="299 ₽" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="@dimen/sdk_pay_spacer_xs"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Subheadline20"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/sdk_pay_to_pay_title"
+            android:textColor="?attr/sdk_pay_text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/subscription_total_price"
+            style="@style/Subheadline20"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sdk_pay_spacer_s"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/sdk_pay_text_primary"
+            android:textStyle="bold"
+            tools:text="0 ₽" />
+
+    </LinearLayout>
+
+</LinearLayout>

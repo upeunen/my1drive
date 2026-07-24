@@ -342,6 +342,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="action_select_all">ВЫДЕЛИТЬ</string>
     <string name="action_deselect">Снять выделение</string>    <string name="paywall_title">Безлимитный Архив</string>
     <string name="paywall_description">Вы достигли лимита бесплатной версии. Купите безлимит, чтобы архивировать неограниченное количество фото и видео!</string>
+    <string name="paywall_description_partial">Мы перенесли часть файлов, но %1$d фото и %2$d видео остались на устройстве из-за достижения лимита. Купите безлимит, чтобы продолжить архивацию без ограничений!</string>
+    <string name="paywall_disclaimer">Разовая покупка, дающая статус PRO навсегда</string>
     <string name="paywall_buy_button">Купить за %1$s</string>
     <string name="paywall_loading">Загрузка...</string>
     <string name="paywall_success">Покупка успешно завершена!</string>

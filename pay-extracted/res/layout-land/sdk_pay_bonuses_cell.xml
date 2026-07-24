@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/sdk_pay_bonuses_cell_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="@dimen/sdk_pay_spacer_l"
+    android:orientation="vertical">
+
+    <Space
+        android:id="@+id/sdk_pay_bonuses_top_space"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" />
+
+    <View
+        android:id="@+id/sdk_pay_bonuses_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_gravity="center_vertical"
+        android:background="?attr/sdk_pay_divider_primary" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="@dimen/sdk_pay_spacer_xs"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Body.Body10"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/sdk_pay_bonuses_title"
+                android:textColor="?attr/sdk_pay_text_primary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/sdk_pay_spacer_xxxs"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/sdk_pay_bonuses_total_count"
+                    style="@style/Body.Body30"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawableRight="@drawable/sdk_pay_ic_bonuses"
+                    android:drawablePadding="@dimen/sdk_pay_spacer_xxxs"
+                    android:layout_marginEnd="@dimen/sdk_pay_spacer_xxs"
+                    android:textColor="?attr/sdk_pay_text_secondary"
+                    app:drawableEndCompat="@drawable/sdk_pay_ic_bonuses"
+                    tools:text="У вас 250" />
+
+                <TextView
+                    android:id="@+id/sdk_pay_bonuses_withdraw_count"
+                    style="@style/Body.Body30"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/sdk_pay_text_secondary"
+                    tools:text="– спишем 99" />
+
+                <TextView
+                    android:id="@+id/sdk_pay_bonuses_status_text"
+                    style="@style/Body.Body30"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:textColor="?attr/sdk_pay_text_secondary"
+                    tools:text="Бонусы недоступны" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <ru.rustore.sdk.pay.internal.presentation.ui.view.SdkPaySwitchView
+            android:id="@+id/sdk_pay_bonuses_switcher"
+            android:layout_width="@dimen/sdk_pay_switch_width"
+            android:layout_height="@dimen/sdk_pay_switch_height"
+            android:layout_gravity="center_vertical" />
+
+    </LinearLayout>
+
+</LinearLayout>
