@@ -3,6 +3,7 @@ package by.w6.my1drive.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +29,10 @@ fun LocalFolderDialog(
     onSelectFolder: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val rawResourceId = androidx.compose.runtime.remember(context) {
+        context.resources.getIdentifier("instr", "raw", context.packageName)
+    }
     val folderName = folderPath.substringAfterLast('/').ifEmpty { folderPath }
     AlertDialog(
         onDismissRequest = { /* Не позволяем закрывать диалог кнопкой Назад или кликом снаружи */ },
@@ -48,6 +53,21 @@ fun LocalFolderDialog(
         },
         text = {
             Column {
+                if (rawResourceId != 0) {
+                    androidx.compose.material3.Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .padding(bottom = 12.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        ArchiveFolderVideoPlayer(rawResourceId = rawResourceId)
+                    }
+                }
+
                 Text(
                     text = "Разрешите доступ к папке $folderPath на устройстве, чтобы архивация и удаление файлов происходили автоматически без подтверждений.",
                     style = MaterialTheme.typography.bodyMedium,

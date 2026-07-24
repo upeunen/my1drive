@@ -95,7 +95,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun showCreateArchiveGuideDialog(uri: Uri) { _activeDialog.value = AppDialog.CreateArchiveGuide(uri) }
     
-    fun showPaywall() { _activeDialog.value = AppDialog.Paywall }
+    fun showPaywall(missingPhotos: Int = 0, missingVideos: Int = 0) { _activeDialog.value = AppDialog.Paywall(missingPhotos, missingVideos) }
+    
+    val billingManager = by.w6.my1drive.billing.RuStoreBillingManager(application)
 
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
@@ -324,6 +326,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
 
     init {
+        billingManager.checkPurchases { isPremium ->
+            if (isPremium) {
+                limitRepository.isPremiumUnlocked = true
+            }
+        }
+        
         // Restore saved OTG URI
         val savedUri = prefs.getString(PREF_OTG_URI, null)?.let {
             try { Uri.parse(it) } catch (e: Exception) {
@@ -577,8 +585,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             
             if (totalProjectedPhotos > by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS || 
                 totalProjectedVideos > by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS) {
-                _activeDialog.value = AppDialog.LimitReached
-                DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, aborting.")
+                
+                val missingPhotos = if (newPhotos > 0) newPhotos else 0 // simplified, could calculate precisely
+                val missingVideos = if (newVideos > 0) newVideos else 0
+                
+                showPaywall(missingPhotos, missingVideos)
+                DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, showing paywall.")
                 return
             }
         }
@@ -619,7 +631,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
             if (totalProjectedPhotos > by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS ||
                 totalProjectedVideos > by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS) {
-                _activeDialog.value = AppDialog.LimitReached
+                val missingPhotos = if (!isVideo) 1 else 0
+                val missingVideos = if (isVideo) 1 else 0
+                showPaywall(missingPhotos, missingVideos)
+                DebugLogBuffer.log("GalleryViewModel", "archiveSingleFile: limit reached, showing paywall.")
                 return
             }
         }
@@ -799,7 +814,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         return target.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && target.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)
     }
 
-    fun dismissLimitReachedDialog() { _activeDialog.value = null }
+
 
     fun getArchivedSize(): Long {
         return physicalArchiveSize.value
@@ -903,10 +918,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
                 // Show Success Dialog
                 val freedSpaceBytes = items.sumOf { it.size.toLong() }
-                val freedSpaceGb = freedSpaceBytes / (1024f * 1024f * 1024f)
-                val spaceBeforeGb = android.os.Environment.getDataDirectory().usableSpace / (1024f * 1024f * 1024f)
-                val spaceAfterGb = spaceBeforeGb + freedSpaceGb
-                _activeDialog.value = AppDialog.Success(SuccessDialogData(spaceBeforeGb, spaceAfterGb))
+                val currentFreeSpaceBytes = android.os.Environment.getDataDirectory().usableSpace
+                val totalSpaceBytes = android.os.Environment.getDataDirectory().totalSpace
+                _activeDialog.value = AppDialog.Success(SuccessDialogData(freedSpaceBytes, currentFreeSpaceBytes, totalSpaceBytes))
 
                 mediaOperationInteractor.startDeletingWithPermissionCheck(items)
             }

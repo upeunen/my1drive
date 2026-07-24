@@ -340,5 +340,12 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="dialog_restore_error_title">Ошибка восстановления</string>
     <string name="dialog_change_folder_desc">Смена папки архива может нарушить текущую синхронизацию. Вы уверены, что хотите продолжить?</string>
     <string name="action_select_all">ВЫДЕЛИТЬ</string>
-    <string name="action_deselect">Снять выделение</string>
+    <string name="action_deselect">Снять выделение</string>    <string name="paywall_title">Безлимитный Архив</string>
+    <string name="paywall_description">Вы достигли лимита бесплатной версии. Купите безлимит, чтобы архивировать неограниченное количество фото и видео!</string>
+    <string name="paywall_buy_button">Купить за %1$s</string>
+    <string name="paywall_loading">Загрузка...</string>
+    <string name="paywall_success">Покупка успешно завершена!</string>
+    <string name="paywall_error">Ошибка покупки: %1$s</string>
+    <string name="paywall_close">Закрыть</string>
+
 </resources>

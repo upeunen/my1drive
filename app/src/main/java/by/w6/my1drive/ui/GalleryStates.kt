@@ -3,18 +3,18 @@ package by.w6.my1drive.ui
 import android.net.Uri
 import by.w6.my1drive.domain.model.MediaItem
 
-data class SuccessDialogData(val storageBeforeGb: Float, val storageAfterGb: Float)
+data class SuccessDialogData(val freedSpaceBytes: Long, val currentFreeSpaceBytes: Long, val totalSpaceBytes: Long)
 
 sealed class AppDialog {
     object FirstLaunch : AppDialog()
-    object Paywall : AppDialog()
+    data class Paywall(val missingPhotos: Int, val missingVideos: Int) : AppDialog()
     object UnknownDrive : AppDialog()
     object UnreadableOtg : AppDialog()
     object WriteProtectedRoot : AppDialog()
     object LocalFolder : AppDialog()
     data class Naming(val uri: Uri) : AppDialog()
     data class CreateArchiveGuide(val uri: Uri) : AppDialog()
-    object LimitReached : AppDialog()
+
     object CreateFolder : AppDialog()
     data class ArchiveFolderAccess(val folderPath: String?) : AppDialog()
     data class Success(val data: SuccessDialogData) : AppDialog()

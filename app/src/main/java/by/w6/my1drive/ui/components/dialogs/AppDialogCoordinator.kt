@@ -44,15 +44,20 @@ fun AppDialogCoordinator(
             )
         }
         is AppDialog.Paywall -> {
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissDialog() },
-                title = { Text("Купить Безлимит") },
-                text = { Text("Здесь будет интерфейс Пейвола (UI еще в разработке).") },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.dismissDialog() }) {
-                        Text("Закрыть")
-                    }
-                }
+            val context = androidx.compose.ui.platform.LocalContext.current
+            by.w6.my1drive.ui.screens.PaywallScreen(
+                billingManager = viewModel.billingManager,
+                missingPhotos = activeDialog.missingPhotos,
+                missingVideos = activeDialog.missingVideos,
+                onSuccess = {
+                    viewModel.dismissDialog()
+                    android.widget.Toast.makeText(
+                        context, 
+                        "Безлимит активирован! Можете продолжать.", 
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                },
+                onDismiss = { viewModel.dismissDialog() }
             )
         }
         is AppDialog.UnknownDrive -> {
@@ -126,36 +131,7 @@ fun AppDialogCoordinator(
                 )
             }
         }
-        is AppDialog.LimitReached -> {
-            val context = androidx.compose.ui.platform.LocalContext.current
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissLimitReachedDialog() },
-                title = { Text("Лимит бесплатной версии", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
-                text = { Text("Вы достигли лимита бесплатной версии в 128 МБ. Для продолжения архивации необходимо приобрести PRO версию либо удалить часть фото из архива.") },
-                confirmButton = {
-                    androidx.compose.material3.Button(onClick = { viewModel.dismissLimitReachedDialog() }) {
-                        Text(
-                            text = "ОК",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        android.widget.Toast.makeText(context, "Покупка PRO версии временно недоступна", android.widget.Toast.LENGTH_SHORT).show()
-                    }) {
-                        Text(
-                            text = "Купить PRO",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                }
-            )
-        }
+
         is AppDialog.CreateFolder -> {}
         is AppDialog.ArchiveFolderAccess -> {}
     }

@@ -31,6 +31,11 @@ fun FirstLaunchDialog(
     onStart: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val rawResourceId = androidx.compose.runtime.remember(context) {
+        context.resources.getIdentifier("otg_guide", "raw", context.packageName)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -50,6 +55,21 @@ fun FirstLaunchDialog(
         },
         text = {
             Column {
+                if (rawResourceId != 0) {
+                    androidx.compose.material3.Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .padding(bottom = 12.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        VideoGuidePlayer(rawResourceId = rawResourceId)
+                    }
+                }
+
                 Text(
                     text = stringResource(R.string.welcome_msg),
                     style = MaterialTheme.typography.bodyMedium,
