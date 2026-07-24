@@ -177,6 +177,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun setArchiveSortMode(mode: ArchiveSortMode) { displayManager.setArchiveSortMode(mode) }
 
     val archivedGroupedItems = displayManager.archivedGroupedItems
+    
+    val archiveYearGroups = displayManager.archiveYearGroups
+    
+    val archiveFilterUuid = displayManager.archiveFilterUuid
+    fun setArchiveFilterUuid(uuid: String?) { displayManager.setArchiveFilterUuid(uuid) }
 
     val selectionManager = SelectionManager()
     val selectedIds = selectionManager.selectedIds
@@ -806,6 +811,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             launch { displayManager.groupedMediaItems.collect { v -> _uiState.update { it.copy(groupedItems = v) } } }
             launch { displayManager.archivedGroupedItems.collect { v -> _uiState.update { it.copy(archivedGroupedItems = v) } } }
+            launch { archiveYearGroups.collect { v -> _uiState.update { it.copy(archiveYearGroups = v) } } }
             launch { mediaItems.collect { v -> _uiState.update { it.copy(mediaItems = v) } } }
             launch { otgManager.activeArchiveUuid.collect { v -> _uiState.update { it.copy(activeArchiveUuid = v) } } }
             launch { displayManager.deviceSortMode.collect { v -> _uiState.update { it.copy(deviceSortMode = v) } } }

@@ -298,4 +298,15 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="dialog_eject_message">Are you sure you want to safely eject the drive?</string>
     <string name="action_eject">Eject</string>
     <string name="action_cancel">Cancel</string>
+    <string name="free_version_limits">Бесплатная версия. Доступно: %1$d/%2$d фото, %3$d/%4$d видео</string>
+    <string name="pro_unlimited">PRO: Безлимит</string>
+    <string name="sort_by">Сортировка: </string>
+    <string name="sort_photo_date">Дата фото</string>
+    <string name="sort_restore_date">Дата разархивации</string>
+    <string name="sort_archive_date">Дата архивации</string>
+    <string name="filter_all">Все</string>
+    <string name="items_count">%1$d элементов</string>
+    <string name="select_all_month">Выбрать все за месяц</string>
+    <string name="collapse">Свернуть</string>
+    <string name="expand">Развернуть</string>
 </resources>

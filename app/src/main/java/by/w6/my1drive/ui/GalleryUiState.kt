@@ -6,6 +6,7 @@ import by.w6.my1drive.ui.GalleryItem
 data class GalleryUiState(
     val groupedItems: List<GalleryItem> = emptyList(),
     val archivedGroupedItems: List<GalleryItem> = emptyList(),
+    val archiveYearGroups: List<by.w6.my1drive.ui.model.YearGroup> = emptyList(),
     val mediaItems: List<MediaItem> = emptyList(),
     val activeArchiveUuid: String? = null,
     val deviceSortMode: DeviceSortMode = DeviceSortMode.BY_PHOTO_DATE,

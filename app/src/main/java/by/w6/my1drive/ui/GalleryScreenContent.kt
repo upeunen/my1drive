@@ -1,4 +1,4 @@
-package by.w6.my1drive.ui
+﻿package by.w6.my1drive.ui
 
 import android.net.Uri
 import android.widget.Toast
@@ -140,696 +140,6 @@ import by.w6.my1drive.ui.components.ProgressPanel
 import by.w6.my1drive.ui.components.mapStepToText
 
 @Composable
-fun PhotosRoute(
-    viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
-    isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
-    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit,
-    onScrollStateChanged: (Boolean) -> Unit = {}
-) {
-      val uiState by viewModel.uiState.collectAsState()
-    val activeArchiveUuid = uiState.activeArchiveUuid
-    val groupedItems = uiState.groupedItems
-    val sortMode = uiState.deviceSortMode
-    val archivingItemIds = uiState.archivingItemIds
-    val copiedItemIds = uiState.copiedItemIds
-    
-    val photosArchivedCount = uiState.photosArchivedCount
-    val videosArchivedCount = uiState.videosArchivedCount
-    val isPremiumUnlocked = uiState.isPremiumUnlocked
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val transparentColor = Color.Transparent
-    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (!isPremiumUnlocked) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(surfaceVariantColor)
-                    .clickable { viewModel.showPaywall() }
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val maxPhotos = by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS
-                val maxVideos = by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS
-                Text(
-                    text = "Бесплатная версия. Доступно: ${(maxPhotos - photosArchivedCount).coerceAtLeast(0)}/$maxPhotos фото, ${(maxVideos - videosArchivedCount).coerceAtLeast(0)}/$maxVideos видео",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = onSurfaceVariantColor,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "PRO: Безлимит",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = primaryColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Сортировка: ",
-                style = MaterialTheme.typography.bodySmall,
-                color = onSurfaceVariantColor
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Row(
-                modifier = Modifier
-                    .background(
-                        color = surfaceVariantColor,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(2.dp)
-            ) {
-                val isByPhotoActive = sortMode == DeviceSortMode.BY_PHOTO_DATE
-                val photoDateBgColor by animateColorAsState(if (isByPhotoActive) primaryColor else transparentColor, label = "photoDateBg")
-                val photoDateTextColor by animateColorAsState(if (isByPhotoActive) onPrimaryColor else onSurfaceVariantColor, label = "photoDateText")
-
-                Box(
-                    modifier = Modifier
-                        .background(photoDateBgColor, RoundedCornerShape(14.dp))
-                        .clickable { viewModel.setDeviceSortMode(DeviceSortMode.BY_PHOTO_DATE) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Дата фото",
-                        color = photoDateTextColor,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                val isByRestoreActive = sortMode == DeviceSortMode.BY_RESTORE_DATE
-                val restoreDateBgColor by animateColorAsState(if (isByRestoreActive) primaryColor else transparentColor, label = "restoreDateBg")
-                val restoreDateTextColor by animateColorAsState(if (isByRestoreActive) onPrimaryColor else onSurfaceVariantColor, label = "restoreDateText")
-
-                Box(
-                    modifier = Modifier
-                        .background(restoreDateBgColor, RoundedCornerShape(14.dp))
-                        .clickable { viewModel.setDeviceSortMode(DeviceSortMode.BY_RESTORE_DATE) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Дата разархивации",
-                        color = restoreDateTextColor,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        PhotosGridTab(
-            groupedItems = groupedItems,
-            selectedIds = selectedIds,
-            imageLoader = imageLoader,
-            isOtgConnected = isOtgConnected,
-            activeArchiveUuid = activeArchiveUuid,
-            archivingItemIds = archivingItemIds,
-            copiedItemIds = copiedItemIds,
-            gridColumnsCount = gridColumnsCount,
-            actionBarHeightPx = actionBarHeightPx,
-            onItemClick = onItemClick,
-            onItemLongClick = onItemLongClick,
-            onSelectItems = { ids, select ->
-                if (select) {
-                    viewModel.selectItems(ids)
-                } else {
-                    viewModel.deselectItems(ids)
-                }
-            },
-            onScrollStateChanged = onScrollStateChanged
-        )
-    }
-}
-
-
-private data class MonthGroup(
-    val monthIndex: Int,
-    val monthName: String,
-    val items: List<MediaItem>,
-    val chunkedItems: List<List<MediaItem>>
-)
-
-private data class YearGroup(
-    val year: Int,
-    val months: List<MonthGroup>
-)
-
-@Composable
-fun ArchiveRoute(
-    viewModel: GalleryViewModel, selectedIds: Set<String>, imageLoader: ImageLoader,
-    isOtgConnected: Boolean, gridColumnsCount: Int = 3, actionBarHeightPx: Float = 0f,
-    onItemClick: (MediaItem) -> Unit, onItemLongClick: (MediaItem) -> Unit,
-    onScrollStateChanged: (Boolean) -> Unit = {}
-) {
-      val uiState by viewModel.uiState.collectAsState()
-    val activeArchiveUuid = uiState.activeArchiveUuid
-    val archivedGroupedItems = uiState.archivedGroupedItems
-    val sortMode = uiState.archiveSortMode
-    val archivingItemIds = uiState.archivingItemIds
-    val restoringItemIds = uiState.restoringItemIds
-    val copiedItemIds = uiState.copiedItemIds
-    val isSilentSyncing = uiState.isSilentSyncing
-    val archiveState by viewModel.archiveState.collectAsState()
-    val restoreState by viewModel.restoreState.collectAsState()
-    val syncState by viewModel.syncState.collectAsState()
-    val syncProgressState by viewModel.syncProgressState.collectAsState()
-    val knownArchives by viewModel.knownArchives.collectAsState()
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
-    var showOffline by remember { mutableStateOf(prefs.getBoolean("show_offline_archives", false)) }
-    
-    androidx.compose.runtime.DisposableEffect(prefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
-            if (key == "show_offline_archives") {
-                showOffline = sharedPreferences.getBoolean(key, false)
-            }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
-    }
-
-    val listState = rememberLazyListState()
-    androidx.compose.runtime.LaunchedEffect(listState.isScrollInProgress) {
-        onScrollStateChanged(listState.isScrollInProgress)
-    }
-    val coroutineScope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val currentSelectedIds by androidx.compose.runtime.rememberUpdatedState(selectedIds)
-    val currentActionBarHeightPx by androidx.compose.runtime.rememberUpdatedState(actionBarHeightPx)
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val transparentColor = Color.Transparent
-    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
-
-    // Фильтр по носителям: null = все, иначе uuid выбранной флешки
-    var filterUuid by remember { mutableStateOf<String?>(null) }
-
-    // Автоматически переключаем фильтр на подключенную флешку при её подключении
-    LaunchedEffect(isOtgConnected, activeArchiveUuid) {
-        if (isOtgConnected && activeArchiveUuid != null) {
-            filterUuid = activeArchiveUuid
-        }
-    }
-
-    // Карта uuid → Color по стабильному хэшу UUID
-    val archiveColorMap = remember(knownArchives) {
-        knownArchives.associate { archive ->
-            archive.uuid to archiveStripeColor(archive.uuid)
-        }
-    }
-
-    // 1. Извлекаем плоский список архивных медиафайлов (с учётом фильтра)
-    val archivedItems = remember(archivedGroupedItems, filterUuid) {
-        archivedGroupedItems.filterIsInstance<GalleryItem.Media>().map { it.item }
-            .let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
-    }
-
-    // 2. Группируем архивные медиафайлы по Годам и Месяцам
-    val yearGroups = remember(archivedItems, sortMode) {
-        archivedItems.groupBy { item ->
-            val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                item.dateArchived ?: item.dateModified
-            } else {
-                item.dateModified
-            }
-            val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
-            cal.get(Calendar.YEAR)
-        }.map { (year, yearItems) ->
-            val monthGroups = yearItems.groupBy { item ->
-                val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                    item.dateArchived ?: item.dateModified
-                } else {
-                    item.dateModified
-                }
-                val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
-                cal.get(Calendar.MONTH)
-            }.map { (monthIdx, monthItems) ->
-                val sampleTimestamp = (monthItems.firstOrNull()?.run {
-                    if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) dateArchived ?: dateModified else dateModified
-                } ?: 0L) * 1000
-                
-                val monthName = SimpleDateFormat("LLLL", Locale.getDefault()).format(Date(sampleTimestamp))
-                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-
-                MonthGroup(
-                    monthIndex = monthIdx,
-                    monthName = monthName,
-                    items = monthItems,
-                    chunkedItems = monthItems.chunked(gridColumnsCount)
-                )
-            }.sortedByDescending { it.monthIndex }
-
-            YearGroup(
-                year = year,
-                months = monthGroups
-            )
-        }.sortedByDescending { it.year }
-    }
-
-    val expandedMonths = remember { mutableStateMapOf<String, Boolean>() }
-    var hasInitializedDefaults by remember { androidx.compose.runtime.mutableStateOf(false) }
-
-    androidx.compose.runtime.LaunchedEffect(yearGroups) {
-        if (!hasInitializedDefaults && yearGroups.isNotEmpty()) {
-            val currentCal = Calendar.getInstance()
-            val curYear = currentCal.get(Calendar.YEAR)
-            val curMonth = currentCal.get(Calendar.MONTH)
-            val curKey = "${curYear}_${curMonth}"
-            expandedMonths[curKey] = true
-
-            yearGroups.firstOrNull()?.months?.firstOrNull()?.let { firstMonth ->
-                val firstYear = yearGroups.first().year
-                val firstKey = "${firstYear}_${firstMonth.monthIndex}"
-                expandedMonths[firstKey] = true
-            }
-            hasInitializedDefaults = true
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        val isManualSyncing = syncProgressState.isSyncing
-        val isOperationRunning = isSilentSyncing || archiveState.isArchiving || restoreState.isRestoring || isManualSyncing
-
-        // Строка фильтра по флешкам с горизонтальной прокруткой и современными чипами
-        if (showOffline && knownArchives.size > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // «Все» чип
-                val allActive = filterUuid == null
-                val allActiveScale by animateFloatAsState(targetValue = if (allActive) 1.0f else 0.95f, label = "allActiveScale")
-                val allActiveBgColor by animateColorAsState(
-                    targetValue = if (allActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    label = "allActiveBg"
-                )
-                val allActiveContentColor by animateColorAsState(
-                    targetValue = if (allActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                    label = "allActiveContent"
-                )
-                val allActiveBorderColor = if (allActive) Color.Transparent else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-
-                Row(
-                    modifier = Modifier
-                        .graphicsLayer(scaleX = allActiveScale, scaleY = allActiveScale)
-                        .height(32.dp)
-                        .background(allActiveBgColor, RoundedCornerShape(16.dp))
-                        .border(1.dp, allActiveBorderColor, RoundedCornerShape(16.dp))
-                        .clickable { filterUuid = null }
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SdStorage,
-                        contentDescription = null,
-                        tint = allActiveContentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "Все",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = allActiveContentColor
-                    )
-                }
-
-                // Чипы для каждой флешки
-                knownArchives.forEach { archive ->
-                    val baseColor = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
-                    val isActive = filterUuid == archive.uuid
-                    val isCurrentConnected = isOtgConnected && activeArchiveUuid == archive.uuid
-                    
-                    val chipScale by animateFloatAsState(targetValue = if (isActive) 1.0f else 0.95f, label = "chipScale")
-                    val chipBgColor by animateColorAsState(
-                        targetValue = if (isActive) baseColor else baseColor.copy(alpha = 0.4f),
-                        label = "chipBg"
-                    )
-                    val chipContentColor by animateColorAsState(
-                        targetValue = if (isActive) Color.White else baseColor,
-                        label = "chipContent"
-                    )
-                    val chipBorderColor = if (isActive) Color.Transparent else baseColor.copy(alpha = 0.2f)
-
-                    Row(
-                        modifier = Modifier
-                            .graphicsLayer(scaleX = chipScale, scaleY = chipScale)
-                            .height(32.dp)
-                            .background(chipBgColor, RoundedCornerShape(16.dp))
-                            .border(1.dp, chipBorderColor, RoundedCornerShape(16.dp))
-                            .clickable {
-                                filterUuid = if (isActive) null else archive.uuid
-                            }
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (isCurrentConnected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF4CAF50), CircleShape)
-                                    .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.UsbOff,
-                                contentDescription = "Offline",
-                                tint = chipContentColor.copy(alpha = 0.7f),
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                        
-                        Text(
-                            text = archive.name.ifBlank { archive.folderName.take(10).ifBlank { archive.uuid.take(6) } },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = chipContentColor
-                        )
-                    }
-                }
-            }
-        }
-
-
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (isOperationRunning) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Сортировка: ",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = onSurfaceVariantColor
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Row(
-                    modifier = Modifier
-                        .background(
-                            color = surfaceVariantColor,
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .padding(2.dp)
-                ) {
-                    val isByPhotoActive = sortMode == ArchiveSortMode.BY_PHOTO_DATE
-                    val photoDateBgColor by animateColorAsState(if (isByPhotoActive) primaryColor else transparentColor, label = "archivePhotoBg")
-                    val photoDateTextColor by animateColorAsState(if (isByPhotoActive) onPrimaryColor else onSurfaceVariantColor, label = "archivePhotoText")
-
-                    Box(
-                        modifier = Modifier
-                            .background(photoDateBgColor, RoundedCornerShape(14.dp))
-                            .clickable { viewModel.setArchiveSortMode(ArchiveSortMode.BY_PHOTO_DATE) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Дата фото",
-                            color = photoDateTextColor,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    val isByArchiveActive = sortMode == ArchiveSortMode.BY_ARCHIVE_DATE
-                    val archiveDateBgColor by animateColorAsState(if (isByArchiveActive) primaryColor else transparentColor, label = "archiveDateBg")
-                    val archiveDateTextColor by animateColorAsState(if (isByArchiveActive) onPrimaryColor else onSurfaceVariantColor, label = "archiveDateText")
-
-                    Box(
-                        modifier = Modifier
-                            .background(archiveDateBgColor, RoundedCornerShape(14.dp))
-                            .clickable { viewModel.setArchiveSortMode(ArchiveSortMode.BY_ARCHIVE_DATE) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Дата архивации",
-                            color = archiveDateTextColor,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        Box(modifier = Modifier.weight(1f)) {
-            if (yearGroups.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.SdStorage,
-                            contentDescription = stringResource(R.string.empty_category),
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.LightGray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.empty_category),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned { containerCoordinates = it }
-                ) {
-                    yearGroups.forEach { yearGroup ->
-                        // 1. Заголовок года
-                        item(key = "year_${yearGroup.year}") {
-                            Text(
-                                text = yearGroup.year.toString(),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                            )
-                        }
-
-                        // 2. Месяцы в этом году
-                        yearGroup.months.forEach { monthGroup ->
-                            val monthKey = "${yearGroup.year}_${monthGroup.monthIndex}"
-                            val isExpanded = expandedMonths[monthKey] ?: false
-
-                            // Карточка месяца (кнопка-аккордеон)
-                            item(key = "month_header_$monthKey") {
-                                Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                    ),
-                                    onClick = {
-                                        expandedMonths[monthKey] = !isExpanded
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = monthGroup.monthName,
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                text = "${monthGroup.items.size} элементов",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            if (selectedIds.isNotEmpty()) {
-                                                val allSelected = monthGroup.items.isNotEmpty() && monthGroup.items.all { selectedIds.contains(it.id) }
-                                                IconButton(
-                                                     onClick = {
-                                                         val ids = monthGroup.items.map { it.id }
-                                                         if (allSelected) {
-                                                             viewModel.deselectItems(ids)
-                                                         } else {
-                                                             viewModel.selectItems(ids)
-                                                         }
-                                                     },
-                                                     modifier = Modifier.size(24.dp)
-                                                 ) {
-                                                     Icon(
-                                                         imageVector = if (allSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircleOutline,
-                                                         contentDescription = "Выбрать все за месяц",
-                                                         tint = if (allSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                                         modifier = Modifier.size(24.dp)
-                                                     )
-                                                 }
-                                            }
-                                            Icon(
-                                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                                contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 3. Сетка фотографий (если раскрыто)
-                            if (isExpanded) {
-                                val chunkedItems = monthGroup.items.chunked(gridColumnsCount)
-                                items(chunkedItems, key = { chunk -> "chunk_${chunk.first().id}" }) { rowItems ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        for (i in 0 until gridColumnsCount) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                            ) {
-                                                if (i < rowItems.size) {
-                                                    val mediaItem = rowItems[i]
-                                                    val isSelected = selectedIds.contains(mediaItem.id)
-                                                    val isArchiving = archivingItemIds.contains(mediaItem.id)
-                                                    val isRestoring = restoringItemIds.contains(mediaItem.id)
-                                                    val isCopied = copiedItemIds.contains(mediaItem.id)
-                                                    var itemCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-                                                    GooglePhotosGridItem(
-                                                        item = mediaItem,
-                                                        isSelected = isSelected,
-                                                        isArchiving = isArchiving || isRestoring,
-                                                        isCopied = isCopied,
-                                                        imageLoader = imageLoader,
-                                                        isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
-                                                        archiveStripeOverrideColor = if (showOffline && knownArchives.size > 1) archiveColorMap[mediaItem.archiveUuid] else null,
-                                                        modifier = Modifier.onGloballyPositioned { itemCoordinates = it },
-                                                        onClick = {
-                                                            onItemClick(mediaItem)
-                                                            val itemCoords = itemCoordinates
-                                                            val containerCoords = containerCoordinates
-                                                            if (itemCoords != null && containerCoords != null && itemCoords.isAttached && containerCoords.isAttached) {
-                                                                val itemBounds = itemCoords.boundsInWindow()
-                                                                val containerBounds = containerCoords.boundsInWindow()
-                                                                val itemTop = itemBounds.top
-                                                                val itemBottom = itemBounds.bottom
-                                                                val itemHeight = itemBounds.height
-                                                                val containerTop = containerBounds.top
-                                                                var containerBottom = containerBounds.bottom
-                                                                
-                                                                if (currentSelectedIds.isNotEmpty()) {
-                                                                    containerBottom -= currentActionBarHeightPx
-                                                                }
-                                                                
-                                                                val hiddenTop = containerTop - itemTop
-                                                                val hiddenBottom = itemBottom - containerBottom
-                                                                val thirdOfHeight = itemHeight / 3f
-                                                                
-                                                                if (hiddenTop > thirdOfHeight || hiddenBottom > thirdOfHeight) {
-                                                                    coroutineScope.launch {
-                                                                        kotlinx.coroutines.delay(150)
-                                                                        if (itemCoords.isAttached && containerCoords.isAttached) {
-                                                                            val itemBoundsNew = itemCoords.boundsInWindow()
-                                                                            val containerBoundsNew = containerCoords.boundsInWindow()
-                                                                            val itemTopNew = itemBoundsNew.top
-                                                                            val itemBottomNew = itemBoundsNew.bottom
-                                                                            val itemHeightNew = itemBoundsNew.height
-                                                                            val containerTopNew = containerBoundsNew.top
-                                                                            var containerBottomNew = containerBoundsNew.bottom
-                                                                            if (currentSelectedIds.isNotEmpty()) {
-                                                                                containerBottomNew -= currentActionBarHeightPx
-                                                                            }
-                                                                            val hiddenTopNew = containerTopNew - itemTopNew
-                                                                            val hiddenBottomNew = itemBottomNew - containerBottomNew
-                                                                            val thirdOfHeightNew = itemHeightNew / 3f
-                                                                            if (hiddenTopNew > thirdOfHeightNew) {
-                                                                                listState.animateScrollBy(-hiddenTopNew)
-                                                                            } else if (hiddenBottomNew > thirdOfHeightNew) {
-                                                                                listState.animateScrollBy(hiddenBottomNew)
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        },
-                                                        onLongClick = { onItemLongClick(mediaItem) }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun MissingFilesDialog(missingNames: List<String>, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -850,16 +160,16 @@ fun UnknownDriveDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Usb, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Неизвестный носитель", fontWeight = FontWeight.Bold)
+                Text("РќРµРёР·РІРµСЃС‚РЅС‹Р№ РЅРѕСЃРёС‚РµР»СЊ", fontWeight = FontWeight.Bold)
             }
         },
         text = {
-            Text("Подключен неизвестный носитель. Создать новый архив, или если вернётся старый — сможете его синхронизировать")
+            Text("РџРѕРґРєР»СЋС‡РµРЅ РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РЅРѕСЃРёС‚РµР»СЊ. РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ Р°СЂС…РёРІ, РёР»Рё РµСЃР»Рё РІРµСЂРЅС‘С‚СЃСЏ СЃС‚Р°СЂС‹Р№ вЂ” СЃРјРѕР¶РµС‚Рµ РµРіРѕ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ")
         },
         confirmButton = {
             Button(onClick = onCreateNew) {
                 Text(
-                    text = "Создать новый",
+                    text = "РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№",
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -869,7 +179,7 @@ fun UnknownDriveDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Закрыть",
+                    text = "Р—Р°РєСЂС‹С‚СЊ",
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -1018,10 +328,10 @@ fun GalleryScreenContent(
         var dontWarnAgain by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { showOfflineShareConfirm = false },
-            title = { Text("Поделиться эскизами?") },
+            title = { Text("РџРѕРґРµР»РёС‚СЊСЃСЏ СЌСЃРєРёР·Р°РјРё?") },
             text = {
                 Column {
-                    Text("Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.")
+                    Text("РќРµРєРѕС‚РѕСЂС‹Рµ РёР· РІС‹Р±СЂР°РЅРЅС‹С… С„Р°Р№Р»РѕРІ РЅР°С…РѕРґСЏС‚СЃСЏ РЅР° РѕС‚РєР»СЋС‡РµРЅРЅС‹С… РЅР°РєРѕРїРёС‚РµР»СЏС…. Р‘СѓРґСѓС‚ РѕС‚РїСЂР°РІР»РµРЅС‹ РёС… СЌСЃРєРёР·С‹ РЅРёР·РєРѕРіРѕ СЂР°Р·СЂРµС€РµРЅРёСЏ.")
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1034,7 +344,7 @@ fun GalleryScreenContent(
                             onCheckedChange = null
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("я понимаю, больше не нужно предупреждать", style = MaterialTheme.typography.bodyMedium)
+                        Text("СЏ РїРѕРЅРёРјР°СЋ, Р±РѕР»СЊС€Рµ РЅРµ РЅСѓР¶РЅРѕ РїСЂРµРґСѓРїСЂРµР¶РґР°С‚СЊ", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             },
@@ -1048,12 +358,12 @@ fun GalleryScreenContent(
                         android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
                     }
                 }) {
-                    Text("Поделиться", maxLines = 1, softWrap = false)
+                    Text("РџРѕРґРµР»РёС‚СЊСЃСЏ", maxLines = 1, softWrap = false)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showOfflineShareConfirm = false }) {
-                    Text("Отмена", maxLines = 1, softWrap = false)
+                    Text("РћС‚РјРµРЅР°", maxLines = 1, softWrap = false)
                 }
             }
         )
@@ -1083,19 +393,19 @@ fun GalleryScreenContent(
     if (showChangeFolderConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showChangeFolderConfirmDialog = false },
-            title = { Text("Сменить папку архива?", fontWeight = FontWeight.Bold) },
-            text = { Text("Смена папки архива может нарушить текущую синхронизацию. Вы уверены, что хотите продолжить?") },
+            title = { Text("РЎРјРµРЅРёС‚СЊ РїР°РїРєСѓ Р°СЂС…РёРІР°?", fontWeight = FontWeight.Bold) },
+            text = { Text("РЎРјРµРЅР° РїР°РїРєРё Р°СЂС…РёРІР° РјРѕР¶РµС‚ РЅР°СЂСѓС€РёС‚СЊ С‚РµРєСѓС‰СѓСЋ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёСЋ. Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ РїСЂРѕРґРѕР»Р¶РёС‚СЊ?") },
             confirmButton = {
                 Button(onClick = {
                     showChangeFolderConfirmDialog = false
                     onSelectOtgDirectory()
                 }) {
-                    Text("Сменить", maxLines = 1, softWrap = false)
+                    Text("РЎРјРµРЅРёС‚СЊ", maxLines = 1, softWrap = false)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showChangeFolderConfirmDialog = false }) {
-                    Text("Отмена", maxLines = 1, softWrap = false)
+                    Text("РћС‚РјРµРЅР°", maxLines = 1, softWrap = false)
                 }
             }
         )
@@ -1168,15 +478,15 @@ fun GalleryScreenContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Все
+                    // Р’СЃРµ
                     androidx.compose.material3.AssistChip(
                         onClick = {
                             viewModel.selectItems(visibleItemsForChips.map { it.id })
                             isGroupExpanded = false
                         },
-                        label = { Text("Все") }
+                        label = { Text("Р’СЃРµ") }
                     )
-                    // С датой
+                    // РЎ РґР°С‚РѕР№
                     androidx.compose.material3.AssistChip(
                         onClick = {
                             if (firstSelectedItem != null) {
@@ -1192,9 +502,9 @@ fun GalleryScreenContent(
                             isGroupExpanded = false
                         },
                         enabled = firstSelectedItem != null,
-                        label = { Text("С датой") }
+                        label = { Text("РЎ РґР°С‚РѕР№") }
                     )
-                    // В папке
+                    // Р’ РїР°РїРєРµ
                     androidx.compose.material3.AssistChip(
                         onClick = {
                             if (firstSelectedItem != null) {
@@ -1207,24 +517,24 @@ fun GalleryScreenContent(
                             isGroupExpanded = false
                         },
                         enabled = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty(),
-                        label = { Text("В папке") }
+                        label = { Text("Р’ РїР°РїРєРµ") }
                     )
-                    // Диапазон
+                    // Р”РёР°РїР°Р·РѕРЅ
                     androidx.compose.material3.AssistChip(
                         onClick = {
                             onSelectDateRangeClick()
                             isGroupExpanded = false
                         },
-                        label = { Text("Диапазон") }
+                        label = { Text("Р”РёР°РїР°Р·РѕРЅ") }
                     )
                 }
             }
 
-            // Прогресс-панель архивации/восстановления/синхронизации
+            // РџСЂРѕРіСЂРµСЃСЃ-РїР°РЅРµР»СЊ Р°СЂС…РёРІР°С†РёРё/РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ/СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
             if (archiveState.isArchiving) {
-                val queue = if (archiveState.pendingQueueSize > 0) " (+${archiveState.pendingQueueSize} в очереди)" else ""
+                val queue = if (archiveState.pendingQueueSize > 0) " (+${archiveState.pendingQueueSize} РІ РѕС‡РµСЂРµРґРё)" else ""
                 ProgressPanel(
-                    title = "Архивация",
+                    title = "РђСЂС…РёРІР°С†РёСЏ",
                     fileName = archiveState.currentFileName,
                     currentIndex = archiveState.currentFileIndex,
                     totalFiles = archiveState.totalFiles,
@@ -1236,7 +546,7 @@ fun GalleryScreenContent(
                 )
             } else if (restoreState.isRestoring) {
                 ProgressPanel(
-                    title = "Восстановление",
+                    title = "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ",
                     fileName = restoreState.currentFileName,
                     currentIndex = restoreState.currentFileIndex,
                     totalFiles = restoreState.totalFiles,
@@ -1247,13 +557,13 @@ fun GalleryScreenContent(
                 )
             } else if (syncProgressState.isSyncing) {
                 ProgressPanel(
-                    title = "Синхронизация архива",
+                    title = "РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ Р°СЂС…РёРІР°",
                     fileName = syncProgressState.currentFileName,
                     currentIndex = syncProgressState.currentFileIndex,
                     totalFiles = syncProgressState.totalFiles,
                     progressFraction = syncProgressState.progressFraction,
                     icon = Icons.Default.Sync,
-                    statusText = if (syncProgressState.totalFiles > 0) "Вычисление хэшей..." else "Поиск файлов..."
+                    statusText = if (syncProgressState.totalFiles > 0) "Р’С‹С‡РёСЃР»РµРЅРёРµ С…СЌС€РµР№..." else "РџРѕРёСЃРє С„Р°Р№Р»РѕРІ..."
                 )
             }
 
@@ -1342,7 +652,7 @@ fun GalleryScreenContent(
                                 if (isItemActive || item.hasCachedPreview) {
                                     viewModel.toggleSelection(item.id)
                                 } else {
-                                    Toast.makeText(context, "Подключите нужный OTG накопитель", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "РџРѕРґРєР»СЋС‡РёС‚Рµ РЅСѓР¶РЅС‹Р№ OTG РЅР°РєРѕРїРёС‚РµР»СЊ", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             onScrollStateChanged = { viewModel.setScrolling(it) }
@@ -1461,12 +771,12 @@ fun GalleryScreenContent(
         archiveState.error?.let { err ->
             AlertDialog(
                 onDismissRequest = { viewModel.dismissArchiveError() },
-                title = { Text("Ошибка архивирования") },
+                title = { Text("РћС€РёР±РєР° Р°СЂС…РёРІРёСЂРѕРІР°РЅРёСЏ") },
                 text = { Text(err) },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissArchiveError() }) {
                         Text(
-                            text = "ОК",
+                            text = "РћРљ",
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
@@ -1479,7 +789,7 @@ fun GalleryScreenContent(
                         val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", err))
                     }) {
-                        Text("Скопировать лог")
+                        Text("РЎРєРѕРїРёСЂРѕРІР°С‚СЊ Р»РѕРі")
                     }
                 }
             )
@@ -1489,12 +799,12 @@ fun GalleryScreenContent(
             val context = LocalContext.current
             AlertDialog(
                 onDismissRequest = { viewModel.dismissRestoreError() },
-                title = { Text("Ошибка восстановления") },
+                title = { Text("РћС€РёР±РєР° РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ") },
                 text = { Text(err) },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissRestoreError() }) {
                         Text(
-                            text = "ОК",
+                            text = "РћРљ",
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
@@ -1506,7 +816,7 @@ fun GalleryScreenContent(
                         val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", err))
                     }) {
-                        Text("Скопировать лог")
+                        Text("РЎРєРѕРїРёСЂРѕРІР°С‚СЊ Р»РѕРі")
                     }
                 }
             )
@@ -1521,7 +831,7 @@ fun GalleryScreenContent(
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSync() }) {
                         Text(
-                            text = "ОК",
+                            text = "РћРљ",
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
@@ -1529,13 +839,13 @@ fun GalleryScreenContent(
                     }
                 },
                 dismissButton = {
-                    if (stateMessage.contains("Ошибка", ignoreCase = true)) {
+                    if (stateMessage.contains("РћС€РёР±РєР°", ignoreCase = true)) {
                         val context = LocalContext.current
                         androidx.compose.material3.TextButton(onClick = {
                             val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", stateMessage))
                         }) {
-                            Text("Скопировать лог")
+                            Text("РЎРєРѕРїРёСЂРѕРІР°С‚СЊ Р»РѕРі")
                         }
                     }
                 }
@@ -1667,7 +977,7 @@ fun SelectionHelperPanel(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
-            text = "ВЫДЕЛИТЬ",
+            text = "Р’Р«Р”Р•Р›РРўР¬",
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 2.dp)
@@ -1684,9 +994,9 @@ fun SelectionHelperPanel(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Chip 1: Все
+                    // Chip 1: Р’СЃРµ
                     SelectionHelperChip(
-                        text = "Все",
+                        text = "Р’СЃРµ",
                         icon = Icons.Outlined.CheckCircleOutline,
                         onClick = {
                             val allIds = visibleItems.map { it.id }
@@ -1695,9 +1005,9 @@ fun SelectionHelperPanel(
                         shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_RIGHT),
                         modifier = Modifier.weight(1f)
                     )
-                    // Chip 2: С этой датой
+                    // Chip 2: РЎ СЌС‚РѕР№ РґР°С‚РѕР№
                     SelectionHelperChip(
-                        text = "С датой",
+                        text = "РЎ РґР°С‚РѕР№",
                         icon = Icons.Outlined.CalendarToday,
                         enabled = hasSelected,
                         onClick = {
@@ -1721,9 +1031,9 @@ fun SelectionHelperPanel(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Chip 3: В этой папке
+                    // Chip 3: Р’ СЌС‚РѕР№ РїР°РїРєРµ
                     SelectionHelperChip(
-                        text = "В папке",
+                        text = "Р’ РїР°РїРєРµ",
                         icon = Icons.Outlined.Folder,
                         enabled = hasFolder,
                         onClick = {
@@ -1736,9 +1046,9 @@ fun SelectionHelperPanel(
                         shape = ConcaveCutoutShape(CutoutCorner.TOP_RIGHT),
                         modifier = Modifier.weight(1f)
                     )
-                    // Chip 4: Выбрать диапазон
+                    // Chip 4: Р’С‹Р±СЂР°С‚СЊ РґРёР°РїР°Р·РѕРЅ
                     SelectionHelperChip(
-                        text = "Диапазон",
+                        text = "Р”РёР°РїР°Р·РѕРЅ",
                         icon = Icons.Outlined.DateRange,
                         onClick = onSelectDateRangeClick,
                         shape = ConcaveCutoutShape(CutoutCorner.TOP_LEFT),
@@ -1759,7 +1069,7 @@ fun SelectionHelperPanel(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Снять выделение",
+                    contentDescription = "РЎРЅСЏС‚СЊ РІС‹РґРµР»РµРЅРёРµ",
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1936,7 +1246,7 @@ fun DateRangePickerDialog(
                 }
             ) {
                 Text(
-                    text = "Выбрать",
+                    text = "Р’С‹Р±СЂР°С‚СЊ",
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -1946,7 +1256,7 @@ fun DateRangePickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Отмена",
+                    text = "РћС‚РјРµРЅР°",
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -1958,7 +1268,7 @@ fun DateRangePickerDialog(
             state = state,
             title = {
                 Text(
-                    text = "Выберите диапазон дат",
+                    text = "Р’С‹Р±РµСЂРёС‚Рµ РґРёР°РїР°Р·РѕРЅ РґР°С‚",
                     modifier = Modifier.padding(start = 24.dp, top = 24.dp)
                 )
             },
@@ -1973,16 +1283,16 @@ fun DateRangePickerDialog(
 
 fun mapStepToText(step: String): String {
     return when {
-        step == "preparing" || step == "restore_preparing" -> "Подготовка..."
-        step == "verifying" || step == "restore_verifying" -> "Проверка целостности..."
-        step == "copying" -> "Копирование в архив..."
-        step == "restore_reading" -> "Чтение из архива..."
-        step == "restore_writing" -> "Запись на устройство..."
+        step == "preparing" || step == "restore_preparing" -> "РџРѕРґРіРѕС‚РѕРІРєР°..."
+        step == "verifying" || step == "restore_verifying" -> "РџСЂРѕРІРµСЂРєР° С†РµР»РѕСЃС‚РЅРѕСЃС‚Рё..."
+        step == "copying" -> "РљРѕРїРёСЂРѕРІР°РЅРёРµ РІ Р°СЂС…РёРІ..."
+        step == "restore_reading" -> "Р§С‚РµРЅРёРµ РёР· Р°СЂС…РёРІР°..."
+        step == "restore_writing" -> "Р—Р°РїРёСЃСЊ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРѕ..."
         step.startsWith("restore_writing_percent:") -> {
             val pct = step.substringAfter(":")
-            "Запись на устройство... ($pct%)"
+            "Р—Р°РїРёСЃСЊ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРѕ... ($pct%)"
         }
-        else -> "Обработка..."
+        else -> "РћР±СЂР°Р±РѕС‚РєР°..."
     }
 }
 
@@ -2037,7 +1347,7 @@ fun ProgressPanel(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "$title ($currentIndex из $totalFiles)",
+                        text = "$title ($currentIndex РёР· $totalFiles)",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -2094,7 +1404,7 @@ fun ProgressPanel(
                         )
                     ) {
                         Text(
-                            text = "Прервать",
+                            text = "РџСЂРµСЂРІР°С‚СЊ",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold
                         )

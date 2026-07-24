@@ -20,6 +20,9 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+import by.w6.my1drive.ui.model.MonthGroup
+import by.w6.my1drive.ui.model.YearGroup
+
 class GalleryDisplayManager(
     private val context: Context,
     private val prefs: SharedPreferences,
@@ -67,6 +70,13 @@ class GalleryDisplayManager(
     fun setArchiveSortMode(mode: ArchiveSortMode) {
         _archiveSortMode.value = mode
         prefs.edit().putString("archive_sort_mode", mode.name).apply()
+    }
+
+    private val _archiveFilterUuid = MutableStateFlow<String?>(null)
+    val archiveFilterUuid = _archiveFilterUuid.asStateFlow()
+
+    fun setArchiveFilterUuid(uuid: String?) {
+        _archiveFilterUuid.value = uuid
     }
 
     private fun isYesterday(tc: Calendar, now: Calendar): Boolean {
@@ -143,5 +153,56 @@ class GalleryDisplayManager(
             items.forEach { resultList.add(GalleryItem.Media(it)) }
         }
         resultList
+    }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
+
+    val archiveYearGroups: StateFlow<List<YearGroup>> = combine(
+        mediaItems,
+        archiveSortMode,
+        archiveFilterUuid,
+        gridColumnsCount
+    ) { list, sortMode, filterUuid, columnsCount ->
+        val archivedItems = list.filter {
+            it.status == MediaStatus.ARCHIVED_OTG &&
+                    (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
+        }.let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
+
+        archivedItems.groupBy { item ->
+            val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                item.dateArchived ?: item.dateModified
+            } else {
+                item.dateModified
+            }
+            val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
+            cal.get(Calendar.YEAR)
+        }.map { (year, yearItems) ->
+            val monthGroups = yearItems.groupBy { item ->
+                val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                    item.dateArchived ?: item.dateModified
+                } else {
+                    item.dateModified
+                }
+                val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
+                cal.get(Calendar.MONTH)
+            }.map { (monthIdx, monthItems) ->
+                val sampleTimestamp = (monthItems.firstOrNull()?.run {
+                    if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) dateArchived ?: dateModified else dateModified
+                } ?: 0L) * 1000
+                
+                val monthName = SimpleDateFormat("LLLL", Locale.getDefault()).format(Date(sampleTimestamp))
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+                MonthGroup(
+                    monthIndex = monthIdx,
+                    monthName = monthName,
+                    items = monthItems,
+                    chunkedItems = monthItems.chunked(columnsCount)
+                )
+            }.sortedByDescending { it.monthIndex }
+
+            YearGroup(
+                year = year,
+                months = monthGroups
+            )
+        }.sortedByDescending { it.year }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
 }
