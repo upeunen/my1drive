@@ -197,6 +197,14 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="step_restore_writing_pct">Запись на устройство... (%1$s%%)</string>
     <string name="step_processing">Обработка...</string>
     <string name="progress_title_format">%1$s (%2$d из %3$d)</string>
+    <string name="tab_in_folder">В папке</string>
+    <string name="tab_date_range">Диапазон</string>
+    <string name="status_computing_hashes">Вычисление хэшей...</string>
+    <string name="status_searching_files">Поиск файлов...</string>
+    <string name="status_in_queue"> (+%1$d в очереди)</string>
+    <string name="title_archiving">Архивация</string>
+    <string name="title_restoring">Восстановление</string>
+    <string name="title_syncing">Синхронизация архива</string>
 
     <!-- Unreadable OTG warning -->
     <string name="unreadable_otg_title">USB Device Detected</string>
@@ -288,8 +296,10 @@ The records remain in the database. Connect the correct drive to restore access.
 
     <!-- Dialogs and Tooltips -->
     <string name="success_dialog_title">Архивация завершена!</string>
-    <string name="success_dialog_freed_space">Освобождено: было %1$s ГБ → стало %2$s ГБ</string>
-    <string name="success_dialog_view_on_media">Посмотреть на носителе</string>
+    <string name="success_dialog_freed_space">Освобождено: %1$s ГБ</string>
+    <string name="success_dialog_free_space_now">Свободно сейчас: %1$s ГБ</string>
+    <string name="success_dialog_storage_usage">%1$s ГБ занято из %2$s ГБ</string>
+    <string name="success_dialog_view_in_archive_info">Ваши файлы можно посмотреть на вкладке архив.</string>
     <string name="dialog_close">Закрыть</string>
     <string name="dialog_got_it">Понятно</string>
     <string name="tooltip_title_hint">Подсказка</string>
@@ -309,4 +319,26 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="select_all_month">Выбрать все за месяц</string>
     <string name="collapse">Свернуть</string>
     <string name="expand">Развернуть</string>
+    <string name="title_unknown_drive">Неизвестный носитель</string>
+    <string name="desc_unknown_drive">Подключен неизвестный носитель. Создать новый архив, или если вернётся старый — сможете его синхронизировать</string>
+    <string name="action_close">Закрыть</string>
+    <string name="dialog_share_thumbnails_title">Поделиться эскизами?</string>
+    <string name="dialog_do_not_warn">я понимаю, больше не нужно предупреждать</string>
+    <string name="dialog_error_title">Ошибка</string>
+    <string name="dialog_select_date_range">Выберите диапазон дат</string>
+    <string name="dialog_share_thumbnails_desc">Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.</string>
+    <string name="action_share">Поделиться</string>
+    <string name="action_select">Выбрать</string>
+    <string name="action_change">Сменить</string>
+    <string name="toast_connect_otg">Подключите нужный OTG накопитель</string>
+    <string name="tab_all">Все</string>
+    <string name="dialog_change_folder_title">Сменить папку архива?</string>
+    <string name="tab_with_date">С датой</string>
+    <string name="action_ok">ОК</string>
+    <string name="dialog_archive_error_title">Ошибка архивирования</string>
+    <string name="action_copy_log">Скопировать лог</string>
+    <string name="dialog_restore_error_title">Ошибка восстановления</string>
+    <string name="dialog_change_folder_desc">Смена папки архива может нарушить текущую синхронизацию. Вы уверены, что хотите продолжить?</string>
+    <string name="action_select_all">ВЫДЕЛИТЬ</string>
+    <string name="action_deselect">Снять выделение</string>
 </resources>

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
+import by.w6.my1drive.ui.components.DateRangePickerDialog
 import androidx.compose.material3.MaterialTheme
 import by.w6.my1drive.domain.model.MediaStatus
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -278,11 +281,11 @@ fun GalleryScreen(
         }
         DateRangePickerDialog(
             onDismiss = { showDateRangePicker = false },
-            onDateRangeSelected = { startMillis, endMillis ->
+            onDateRangeSelected = { startMillis: Long?, endMillis: Long? ->
                 showDateRangePicker = false
                 if (startMillis != null && endMillis != null) {
-                    val startSec = startMillis / 1000
-                    val endSec = (endMillis / 1000) + 86399
+                    val startSec = startMillis / 1000L
+                    val endSec = (endMillis / 1000L) + 86399L
                     val matching = visibleItems.filter { item ->
                         item.dateModified in startSec..endSec
                     }.map { it.id }

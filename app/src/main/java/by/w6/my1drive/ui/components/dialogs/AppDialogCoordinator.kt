@@ -13,10 +13,10 @@ import by.w6.my1drive.ui.AppDialog
 import by.w6.my1drive.ui.GalleryViewModel
 import by.w6.my1drive.ui.ArchiveNamingDialog
 import by.w6.my1drive.ui.CreateArchiveGuideDialog
+import by.w6.my1drive.ui.components.UnknownDriveDialog
 import by.w6.my1drive.ui.FirstLaunchDialog
 import by.w6.my1drive.ui.LocalFolderDialog
 import by.w6.my1drive.ui.screens.SuccessDialog
-import by.w6.my1drive.ui.UnknownDriveDialog
 // import by.w6.my1drive.ui.UnreadableOtgDialog
 import by.w6.my1drive.ui.WriteProtectedRootDialog
 
@@ -106,13 +106,10 @@ fun AppDialogCoordinator(
         }
         is AppDialog.Success -> {
             SuccessDialog(
-                storageBeforeGb = activeDialog.data.storageBeforeGb,
-                storageAfterGb = activeDialog.data.storageAfterGb,
-                onDismiss = { viewModel.dismissDialog() },
-                onViewOnUsbClick = {
-                    viewModel.dismissDialog()
-                    onNavigateToTab("archive")
-                }
+                freedSpaceBytes = activeDialog.data.freedSpaceBytes,
+                currentFreeSpaceBytes = activeDialog.data.currentFreeSpaceBytes,
+                totalSpaceBytes = activeDialog.data.totalSpaceBytes,
+                onDismiss = { viewModel.dismissDialog() }
             )
         }
         is AppDialog.UsbTooltip -> {

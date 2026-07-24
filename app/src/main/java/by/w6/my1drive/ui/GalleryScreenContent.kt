@@ -138,120 +138,10 @@ import by.w6.my1drive.ui.components.OtgRequiredBanner
 import by.w6.my1drive.ui.components.ConnectingUsbBanner
 import by.w6.my1drive.ui.components.ProgressPanel
 import by.w6.my1drive.ui.components.mapStepToText
-
-@Composable
-fun MissingFilesDialog(missingNames: List<String>, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.auto_sync_missing_title), fontWeight = FontWeight.Bold) },
-        text = { Text(stringResource(R.string.auto_sync_missing_msg, missingNames.joinToString("\n"))) },
-        confirmButton = { Button(onClick = onDismiss) { Text(text = stringResource(R.string.btn_ok), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false) } }
-    )
-}
-
-@Composable
-fun UnknownDriveDialog(
-    onCreateNew: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Usb, contentDescription = null, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("РќРµРёР·РІРµСЃС‚РЅС‹Р№ РЅРѕСЃРёС‚РµР»СЊ", fontWeight = FontWeight.Bold)
-            }
-        },
-        text = {
-            Text("РџРѕРґРєР»СЋС‡РµРЅ РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РЅРѕСЃРёС‚РµР»СЊ. РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ Р°СЂС…РёРІ, РёР»Рё РµСЃР»Рё РІРµСЂРЅС‘С‚СЃСЏ СЃС‚Р°СЂС‹Р№ вЂ” СЃРјРѕР¶РµС‚Рµ РµРіРѕ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ")
-        },
-        confirmButton = {
-            Button(onClick = onCreateNew) {
-                Text(
-                    text = "РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№",
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = "Р—Р°РєСЂС‹С‚СЊ",
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        }
-    )
-}
-
-@Composable
-fun DeleteConfirmDialog(
-    pendingDelete: List<MediaItem>,
-    isArchiveTab: Boolean,
-    isOtgConnected: Boolean,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = if (pendingDelete.size == 1) stringResource(R.string.delete_confirm_title) else "${stringResource(R.string.delete_confirm_title)} (${pendingDelete.size})",
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column {
-                if (pendingDelete.size == 1) {
-                    Text(stringResource(R.string.delete_confirm_msg, pendingDelete.first().displayName))
-                } else {
-                    Text(stringResource(R.string.action_delete_files_question, pendingDelete.size))
-                }
-                if (isArchiveTab) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.delete_archived_warning),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text(
-                    text = if (pendingDelete.size == 1) {
-                        if (isArchiveTab) stringResource(R.string.btn_delete_otg) else stringResource(R.string.btn_delete_file)
-                    } else {
-                        stringResource(R.string.action_delete_all)
-                    },
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(R.string.btn_cancel),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        }
-    )
-}
+import by.w6.my1drive.ui.components.MissingFilesDialog
+import by.w6.my1drive.ui.components.UnknownDriveDialog
+import by.w6.my1drive.ui.components.DeleteConfirmDialog
+import by.w6.my1drive.ui.components.DateRangePickerDialog
 
 @Composable
 fun GalleryScreenContent(
@@ -532,9 +422,9 @@ fun GalleryScreenContent(
 
             // РџСЂРѕРіСЂРµСЃСЃ-РїР°РЅРµР»СЊ Р°СЂС…РёРІР°С†РёРё/РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ/СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
             if (archiveState.isArchiving) {
-                val queue = if (archiveState.pendingQueueSize > 0) " (+${archiveState.pendingQueueSize} РІ РѕС‡РµСЂРµРґРё)" else ""
+                val queue = if (archiveState.pendingQueueSize > 0) stringResource(R.string.status_in_queue, archiveState.pendingQueueSize) else ""
                 ProgressPanel(
-                    title = "РђСЂС…РёРІР°С†РёСЏ",
+                    title = stringResource(R.string.title_archiving),
                     fileName = archiveState.currentFileName,
                     currentIndex = archiveState.currentFileIndex,
                     totalFiles = archiveState.totalFiles,
@@ -546,7 +436,7 @@ fun GalleryScreenContent(
                 )
             } else if (restoreState.isRestoring) {
                 ProgressPanel(
-                    title = "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ",
+                    title = stringResource(R.string.title_restoring),
                     fileName = restoreState.currentFileName,
                     currentIndex = restoreState.currentFileIndex,
                     totalFiles = restoreState.totalFiles,
@@ -557,13 +447,13 @@ fun GalleryScreenContent(
                 )
             } else if (syncProgressState.isSyncing) {
                 ProgressPanel(
-                    title = "РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ Р°СЂС…РёРІР°",
+                    title = stringResource(R.string.title_syncing),
                     fileName = syncProgressState.currentFileName,
                     currentIndex = syncProgressState.currentFileIndex,
                     totalFiles = syncProgressState.totalFiles,
                     progressFraction = syncProgressState.progressFraction,
                     icon = Icons.Default.Sync,
-                    statusText = if (syncProgressState.totalFiles > 0) "Р’С‹С‡РёСЃР»РµРЅРёРµ С…СЌС€РµР№..." else "РџРѕРёСЃРє С„Р°Р№Р»РѕРІ..."
+                    statusText = if (syncProgressState.totalFiles > 0) stringResource(R.string.status_computing_hashes) else stringResource(R.string.status_searching_files)
                 )
             }
 
@@ -1229,192 +1119,5 @@ class ConcaveCutoutShape(
         return Outline.Generic(path)
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DateRangePickerDialog(
-    onDismiss: () -> Unit,
-    onDateRangeSelected: (startDateMillis: Long?, endDateMillis: Long?) -> Unit
-) {
-    val state = rememberDateRangePickerState()
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onDateRangeSelected(state.selectedStartDateMillis, state.selectedEndDateMillis)
-                }
-            ) {
-                Text(
-                    text = "Р’С‹Р±СЂР°С‚СЊ",
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = "РћС‚РјРµРЅР°",
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            }
-        }
-    ) {
-        DateRangePicker(
-            state = state,
-            title = {
-                Text(
-                    text = "Р’С‹Р±РµСЂРёС‚Рµ РґРёР°РїР°Р·РѕРЅ РґР°С‚",
-                    modifier = Modifier.padding(start = 24.dp, top = 24.dp)
-                )
-            },
-            headline = {
-                // Default headline behaves fine, but we can customize if needed
-            },
-            showModeToggle = false,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-fun mapStepToText(step: String): String {
-    return when {
-        step == "preparing" || step == "restore_preparing" -> "РџРѕРґРіРѕС‚РѕРІРєР°..."
-        step == "verifying" || step == "restore_verifying" -> "РџСЂРѕРІРµСЂРєР° С†РµР»РѕСЃС‚РЅРѕСЃС‚Рё..."
-        step == "copying" -> "РљРѕРїРёСЂРѕРІР°РЅРёРµ РІ Р°СЂС…РёРІ..."
-        step == "restore_reading" -> "Р§С‚РµРЅРёРµ РёР· Р°СЂС…РёРІР°..."
-        step == "restore_writing" -> "Р—Р°РїРёСЃСЊ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРѕ..."
-        step.startsWith("restore_writing_percent:") -> {
-            val pct = step.substringAfter(":")
-            "Р—Р°РїРёСЃСЊ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРѕ... ($pct%)"
-        }
-        else -> "РћР±СЂР°Р±РѕС‚РєР°..."
-    }
-}
-
-@Composable
-fun ProgressPanel(
-    title: String,
-    fileName: String,
-    currentIndex: Int,
-    totalFiles: Int,
-    progressFraction: Float,
-    extraInfo: String = "",
-    icon: ImageVector,
-    statusText: String? = null,
-    onCancel: (() -> Unit)? = null
-) {
-
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val cardPulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.40f,
-        targetValue = 0.60f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = cardPulseAlpha)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "$title ($currentIndex РёР· $totalFiles)",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    if (fileName.isNotEmpty()) {
-                        Text(
-                            text = fileName + extraInfo,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    if (!statusText.isNullOrEmpty()) {
-                        Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "${(progressFraction * 100).toInt()}%",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                LinearProgressIndicator(
-                    progress = { progressFraction.coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primaryContainer,
-                    strokeCap = StrokeCap.Round
-                )
-                if (onCancel != null) {
-                    Spacer(modifier = Modifier.width(16.dp))
-                    androidx.compose.material3.TextButton(
-                        onClick = onCancel,
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        modifier = Modifier.height(28.dp),
-                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text(
-                            text = "РџСЂРµСЂРІР°С‚СЊ",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-
 
 
