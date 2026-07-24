@@ -10,6 +10,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
+import androidx.navigation.compose.composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -945,6 +946,7 @@ fun DeleteConfirmDialog(
 @Composable
 fun GalleryScreenContent(
     modifier: Modifier,
+    navController: androidx.navigation.NavHostController,
     selectedIds: Set<String>,
     otgDirectoryUri: Uri?,
     isOtgConnected: Boolean,
@@ -1262,35 +1264,15 @@ fun GalleryScreenContent(
             if (otgDirectoryUri == null) OtgRequiredBanner()
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                val pages = listOf("photos", "archive", "settings")
-                val pagerState = androidx.compose.foundation.pager.rememberPagerState(
-                    initialPage = pages.indexOf(currentScreenRoute).coerceAtLeast(0),
-                    pageCount = { pages.size }
-                )
-
-                androidx.compose.runtime.LaunchedEffect(currentScreenRoute) {
-                    val targetPage = pages.indexOf(currentScreenRoute)
-                    if (targetPage >= 0 && targetPage != pagerState.currentPage) {
-                        pagerState.animateScrollToPage(targetPage)
-                    }
-                }
-
-                androidx.compose.runtime.LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
-                    if (!pagerState.isScrollInProgress) {
-                        onNavigate(pages[pagerState.currentPage])
-                    }
-                }
-
-                androidx.compose.runtime.LaunchedEffect(pagerState.isScrollInProgress) {
-                    viewModel.setScrolling(pagerState.isScrollInProgress)
-                }
-
-                androidx.compose.foundation.pager.HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize()
-                ) { page ->
-                    when (pages.getOrNull(page)) {
-                        "photos" -> PhotosRoute(
+                androidx.navigation.compose.NavHost(
+                    navController = navController,
+                    startDestination = "photos",
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(200)) },
+                    exitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) }
+                ) {
+                    composable("photos") {
+                        PhotosRoute(
                             viewModel = viewModel,
                             selectedIds = selectedIds,
                             imageLoader = imageLoader,
@@ -1316,7 +1298,9 @@ fun GalleryScreenContent(
                             onItemLongClick = { item -> viewModel.toggleSelection(item.id) },
                             onScrollStateChanged = { viewModel.setScrolling(it) }
                         )
-                        "archive" -> ArchiveRoute(
+                    }
+                    composable("archive") {
+                        ArchiveRoute(
                             viewModel = viewModel,
                             selectedIds = selectedIds,
                             imageLoader = imageLoader,
@@ -1363,7 +1347,8 @@ fun GalleryScreenContent(
                             },
                             onScrollStateChanged = { viewModel.setScrolling(it) }
                         )
-                        "settings" -> {
+                    }
+                    composable("settings") {
                             val physicalArchiveSize = uiState.physicalArchiveSize
                             val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
                             val activeArchiveUuid = uiState.activeArchiveUuid
@@ -1400,7 +1385,6 @@ fun GalleryScreenContent(
                                 onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() },
                                 isStorageLow = isStorageLow
                             )
-                        }
                     }
                 }
             }

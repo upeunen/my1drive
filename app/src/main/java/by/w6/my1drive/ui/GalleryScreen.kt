@@ -33,6 +33,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -76,7 +79,9 @@ fun GalleryScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    var currentScreenRoute by remember { mutableStateOf("photos") }
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentScreenRoute = navBackStackEntry?.destination?.route ?: "photos"
     var showDateRangePicker by remember { mutableStateOf(false) }
     var selectionOriginRoute by remember { mutableStateOf<String?>(null) }
     var activePreviewState by remember { mutableStateOf<FullscreenState?>(null) }
@@ -139,7 +144,13 @@ fun GalleryScreen(
         if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
             viewModel.clearSelection()
         }
-        currentScreenRoute = route
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            this.restoreState = true
+        }
     }
 
     Scaffold(
@@ -166,6 +177,7 @@ fun GalleryScreen(
             ) {
                 GalleryScreenContent(
                     modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    navController = navController,
                     selectedIds = selectedIds,
                     otgDirectoryUri = otgDirectoryUri,
                     isOtgConnected = isOtgConnected,
