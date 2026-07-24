@@ -27,9 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -79,7 +76,6 @@ fun ArchiveRoute(
     }
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val currentSelectedIds by rememberUpdatedState(selectedIds)
     val currentActionBarHeightPx by rememberUpdatedState(actionBarHeightPx)
 
@@ -344,7 +340,6 @@ fun ArchiveRoute(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxSize()
-                        .onGloballyPositioned { containerCoordinates = it }
                 ) {
                     yearGroups.forEach { yearGroup ->
                         // 1. Заголовок года
@@ -450,7 +445,6 @@ fun ArchiveRoute(
                                                     val isArchiving = archivingItemIds.contains(mediaItem.id)
                                                     val isRestoring = restoringItemIds.contains(mediaItem.id)
                                                     val isCopied = copiedItemIds.contains(mediaItem.id)
-                                                    var itemCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
                                                     GooglePhotosGridItem(
                                                         item = mediaItem,
                                                         isSelected = isSelected,
@@ -459,36 +453,9 @@ fun ArchiveRoute(
                                                         imageLoader = imageLoader,
                                                         isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
                                                         archiveStripeOverrideColor = if (showOffline && knownArchives.size > 1) archiveColorMap[mediaItem.archiveUuid] else null,
-                                                        modifier = Modifier.onGloballyPositioned { itemCoordinates = it },
+                                                        modifier = Modifier,
                                                         onClick = {
                                                             onItemClick(mediaItem)
-                                                            val itemCoords = itemCoordinates
-                                                            val containerCoords = containerCoordinates
-                                                            if (itemCoords != null && containerCoords != null && itemCoords.isAttached && containerCoords.isAttached) {
-                                                                val itemBounds = itemCoords.boundsInWindow()
-                                                                val containerBounds = containerCoords.boundsInWindow()
-                                                                val itemTop = itemBounds.top
-                                                                val itemBottom = itemBounds.bottom
-                                                                val itemHeight = itemBounds.height
-                                                                val containerTop = containerBounds.top
-                                                                var containerBottom = containerBounds.bottom
-                                                                
-                                                                if (currentSelectedIds.isNotEmpty()) {
-                                                                    containerBottom -= currentActionBarHeightPx
-                                                                }
-                                                                
-                                                                val hiddenTop = containerTop - itemTop
-                                                                val hiddenBottom = itemBottom - containerBottom
-                                                                val thirdOfHeight = itemHeight / 3f
-                                                                
-                                                                if (hiddenTop > thirdOfHeight || hiddenBottom > thirdOfHeight) {
-                                                                    coroutineScope.launch {
-                                                                        listState.animateScrollBy(
-                                                                            if (hiddenTop > thirdOfHeight) -hiddenTop else hiddenBottom
-                                                                        )
-                                                                    }
-                                                                }
-                                                            }
                                                         },
                                                         onLongClick = { onItemLongClick(mediaItem) }
                                                     )

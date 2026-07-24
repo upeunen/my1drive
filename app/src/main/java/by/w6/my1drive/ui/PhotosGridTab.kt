@@ -32,12 +32,8 @@ import coil.ImageLoader
 
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -64,9 +60,8 @@ fun PhotosGridTab(
     }
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val currentSelectedIds by androidx.compose.runtime.rememberUpdatedState(selectedIds)
-    val currentActionBarHeightPx by androidx.compose.runtime.rememberUpdatedState(actionBarHeightPx)
+    val currentSelectedIds by rememberUpdatedState(selectedIds)
+    val currentActionBarHeightPx by rememberUpdatedState(actionBarHeightPx)
 
     if (groupedItems.isEmpty()) {
         Box(
@@ -95,7 +90,6 @@ fun PhotosGridTab(
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .onGloballyPositioned { containerCoordinates = it }
         ) {
             items(
                 items = groupedItems,
@@ -144,7 +138,6 @@ fun PhotosGridTab(
                         val isSelected = selectedIds.contains(item.item.id)
                         val isArchiving = archivingItemIds.contains(item.item.id)
                         val isCopied = copiedItemIds.contains(item.item.id)
-                        var itemCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
                         GooglePhotosGridItem(
                             item = item.item,
                             isSelected = isSelected,
@@ -152,54 +145,9 @@ fun PhotosGridTab(
                             isOtgConnected = if (item.item.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && item.item.archiveUuid == activeArchiveUuid) else isOtgConnected,
                             isArchiving = isArchiving,
                             isCopied = isCopied,
-                            modifier = Modifier.onGloballyPositioned { itemCoordinates = it },
+                            modifier = Modifier,
                             onClick = {
                                 onItemClick(item.item)
-                                val itemCoords = itemCoordinates
-                                val containerCoords = containerCoordinates
-                                if (itemCoords != null && containerCoords != null && itemCoords.isAttached && containerCoords.isAttached) {
-                                    val itemBounds = itemCoords.boundsInWindow()
-                                    val containerBounds = containerCoords.boundsInWindow()
-                                    val itemTop = itemBounds.top
-                                    val itemBottom = itemBounds.bottom
-                                    val itemHeight = itemBounds.height
-                                    val containerTop = containerBounds.top
-                                    var containerBottom = containerBounds.bottom
-                                    
-                                    if (currentSelectedIds.isNotEmpty()) {
-                                        containerBottom -= currentActionBarHeightPx
-                                    }
-                                    
-                                    val hiddenTop = containerTop - itemTop
-                                    val hiddenBottom = itemBottom - containerBottom
-                                    val thirdOfHeight = itemHeight / 3f
-                                    
-                                    if (hiddenTop > thirdOfHeight || hiddenBottom > thirdOfHeight) {
-                                        coroutineScope.launch {
-                                            kotlinx.coroutines.delay(150)
-                                            if (itemCoords.isAttached && containerCoords.isAttached) {
-                                                val itemBoundsNew = itemCoords.boundsInWindow()
-                                                val containerBoundsNew = containerCoords.boundsInWindow()
-                                                val itemTopNew = itemBoundsNew.top
-                                                val itemBottomNew = itemBoundsNew.bottom
-                                                val itemHeightNew = itemBoundsNew.height
-                                                val containerTopNew = containerBoundsNew.top
-                                                var containerBottomNew = containerBoundsNew.bottom
-                                                if (currentSelectedIds.isNotEmpty()) {
-                                                    containerBottomNew -= currentActionBarHeightPx
-                                                }
-                                                val hiddenTopNew = containerTopNew - itemTopNew
-                                                val hiddenBottomNew = itemBottomNew - containerBottomNew
-                                                val thirdOfHeightNew = itemHeightNew / 3f
-                                                if (hiddenTopNew > thirdOfHeightNew) {
-                                                    gridState.animateScrollBy(-hiddenTopNew)
-                                                } else if (hiddenBottomNew > thirdOfHeightNew) {
-                                                    gridState.animateScrollBy(hiddenBottomNew)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             },
                             onLongClick = { onItemLongClick(item.item) }
                         )

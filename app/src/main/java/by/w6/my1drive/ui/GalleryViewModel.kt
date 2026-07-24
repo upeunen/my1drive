@@ -43,6 +43,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.core.content.FileProvider
+import by.w6.my1drive.ui.model.YearGroup
 import java.io.File
 
 private const val PREFS_NAME = "my1drive_prefs"
@@ -144,8 +145,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         get() = ArchiveSyncHelper.getInstance(getApplication())
 
 
-    private val _uiState = MutableStateFlow(GalleryUiState())
-    val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
+    // uiState is initialized at the bottom of the class
 
     
 
@@ -437,12 +437,21 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private var lastStorageCheckTime = 0L
+    private var lastStorageCheckResult = false
+
     private fun checkIsStorageLow(): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - lastStorageCheckTime < 60_000L) {
+            return lastStorageCheckResult
+        }
         return try {
             val context = getApplication<Application>()
             val stat = android.os.StatFs(context.filesDir.absolutePath)
             val bytesAvailable = stat.availableBlocksLong * stat.blockSizeLong
-            bytesAvailable < 500L * 1024 * 1024
+            lastStorageCheckResult = bytesAvailable < 500L * 1024 * 1024
+            lastStorageCheckTime = now
+            lastStorageCheckResult
         } catch (_: Exception) {
             false
         }
@@ -807,33 +816,72 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
 
+    val uiState: StateFlow<GalleryUiState> = combine(
+        listOf(
+            displayManager.groupedMediaItems,
+            displayManager.archivedGroupedItems,
+            archiveYearGroups,
+            mediaItems,
+            otgManager.activeArchiveUuid,
+            displayManager.deviceSortMode,
+            displayManager.archiveSortMode,
+            archivingItemIds,
+            _restoringItemIds,
+            copiedItemIds,
+            photosArchivedCount,
+            videosArchivedCount,
+            isPremiumUnlocked,
+            isSilentSyncingFlow,
+            syncState,
+            mediaOperationInteractor.isSharingPreparing,
+            otgManager.isCheckingConnection,
+            gridColumnsCount,
+            otgManager.archiveSize,
+            otgDirectoryDisplayName,
+            thumbnailManager.isSyncingThumbnails,
+            missingThumbnailsCount,
+            isStorageLow,
+            _activeDialog,
+            pendingDelete
+        )
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        GalleryUiState(
+            groupedItems = args[0] as List<GalleryItem>,
+            archivedGroupedItems = args[1] as List<GalleryItem>,
+            archiveYearGroups = args[2] as List<YearGroup>,
+            mediaItems = args[3] as List<MediaItem>,
+            activeArchiveUuid = args[4] as String?,
+            deviceSortMode = args[5] as DeviceSortMode,
+            archiveSortMode = args[6] as ArchiveSortMode,
+            archivingItemIds = args[7] as Set<String>,
+            restoringItemIds = args[8] as Set<String>,
+            copiedItemIds = args[9] as Set<String>,
+            photosArchivedCount = args[10] as Int,
+            videosArchivedCount = args[11] as Int,
+            isPremiumUnlocked = args[12] as Boolean,
+            isSilentSyncing = args[13] as Boolean,
+            syncState = args[14] as String?,
+            isSharingPreparing = args[15] as Boolean,
+            isCheckingConnection = args[16] as Boolean,
+            gridColumnsCount = args[17] as Int,
+            physicalArchiveSize = args[18] as Long,
+            otgDirectoryDisplayName = args[19] as String?,
+            isSyncingThumbnails = args[20] as Boolean,
+            missingThumbnailsCount = args[21] as Int,
+            isStorageLow = args[22] as Boolean,
+            activeDialog = args[23] as AppDialog?,
+            pendingDelete = args[24] as List<MediaItem>?
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = GalleryUiState()
+    )
+
     init {
         viewModelScope.launch {
-            launch { displayManager.groupedMediaItems.collect { v -> _uiState.update { it.copy(groupedItems = v) } } }
-            launch { displayManager.archivedGroupedItems.collect { v -> _uiState.update { it.copy(archivedGroupedItems = v) } } }
-            launch { archiveYearGroups.collect { v -> _uiState.update { it.copy(archiveYearGroups = v) } } }
-            launch { mediaItems.collect { v -> _uiState.update { it.copy(mediaItems = v) } } }
-            launch { otgManager.activeArchiveUuid.collect { v -> _uiState.update { it.copy(activeArchiveUuid = v) } } }
-            launch { displayManager.deviceSortMode.collect { v -> _uiState.update { it.copy(deviceSortMode = v) } } }
-            launch { displayManager.archiveSortMode.collect { v -> _uiState.update { it.copy(archiveSortMode = v) } } }
-            launch { archivingItemIds.collect { v -> _uiState.update { it.copy(archivingItemIds = v) } } }
-            launch { _restoringItemIds.collect { v -> _uiState.update { it.copy(restoringItemIds = v) } } }
-            launch { copiedItemIds.collect { v -> _uiState.update { it.copy(copiedItemIds = v) } } }
-            launch { photosArchivedCount.collect { v -> _uiState.update { it.copy(photosArchivedCount = v) } } }
-            launch { videosArchivedCount.collect { v -> _uiState.update { it.copy(videosArchivedCount = v) } } }
-            launch { isPremiumUnlocked.collect { v -> _uiState.update { it.copy(isPremiumUnlocked = v) } } }
-            launch { isSilentSyncingFlow.collect { v -> _uiState.update { it.copy(isSilentSyncing = v) } } }
-            launch { syncState.collect { v -> _uiState.update { it.copy(syncState = v) } } }
-            launch { mediaOperationInteractor.isSharingPreparing.collect { v -> _uiState.update { it.copy(isSharingPreparing = v) } } }
-            launch { otgManager.isCheckingConnection.collect { v -> _uiState.update { it.copy(isCheckingConnection = v) } } }
-            launch { gridColumnsCount.collect { v -> _uiState.update { it.copy(gridColumnsCount = v) } } }
-            launch { otgManager.archiveSize.collect { v -> _uiState.update { it.copy(physicalArchiveSize = v) } } }
-            launch { otgDirectoryDisplayName.collect { v -> _uiState.update { it.copy(otgDirectoryDisplayName = v) } } }
-            launch { thumbnailManager.isSyncingThumbnails.collect { v -> _uiState.update { it.copy(isSyncingThumbnails = v) } } }
-            launch { missingThumbnailsCount.collect { v -> _uiState.update { it.copy(missingThumbnailsCount = v) } } }
-            launch { isStorageLow.collect { v -> _uiState.update { it.copy(isStorageLow = v) } } }
-            launch { _activeDialog.collect { v -> _uiState.update { it.copy(activeDialog = v) } } }
-            launch { pendingDelete.collect { v -> _uiState.update { it.copy(pendingDelete = v) } } }
+        // uiState logic is now driven by combine() above
         }
         viewModelScope.launch {
             syncHelper.operationCompleteEvent.collect {
