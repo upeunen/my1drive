@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui
 
+import android.os.Build
+import android.os.Environment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,25 +17,39 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import by.w6.my1drive.R
 
 @Composable
 fun LocalFolderDialog(
     folderPath: String,
     onSelectFolder: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRequestFullAccess: (() -> Unit)? = null
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val rawResourceId = androidx.compose.runtime.remember(context) {
+    val context = LocalContext.current
+    val rawResourceId = remember(context) {
         context.resources.getIdentifier("instr", "raw", context.packageName)
     }
-    val folderName = folderPath.substringAfterLast('/').ifEmpty { folderPath }
+
+    // Показываем кнопку полного доступа только если доступ ещё не выдан
+    val showFullAccessButton = remember {
+        onRequestFullAccess != null &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            !Environment.isExternalStorageManager()
+    }
+
     AlertDialog(
         onDismissRequest = { /* Не позволяем закрывать диалог кнопкой Назад или кликом снаружи */ },
         title = {
@@ -46,7 +62,7 @@ fun LocalFolderDialog(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Доступ к папке $folderName",
+                    text = stringResource(R.string.local_folder_dialog_title),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -69,10 +85,25 @@ fun LocalFolderDialog(
                 }
 
                 Text(
-                    text = "Разрешите доступ к папке $folderPath на устройстве, чтобы архивация и удаление файлов происходили автоматически без подтверждений.",
+                    text = stringResource(R.string.local_folder_dialog_desc),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = if (showFullAccessButton) 8.dp else 12.dp)
                 )
+
+                if (showFullAccessButton) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = { onRequestFullAccess?.invoke() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(R.string.local_folder_dialog_full_access),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -83,21 +114,19 @@ fun LocalFolderDialog(
                 )
             ) {
                 Text(
-                    text = "Предоставить доступ",
+                    text = stringResource(R.string.local_folder_dialog_confirm),
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis,
                     softWrap = false
                 )
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss
-            ) {
+            TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Я буду подтверждать каждый файл",
+                    text = stringResource(R.string.local_folder_dialog_dismiss),
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis,
                     softWrap = false
                 )
             }

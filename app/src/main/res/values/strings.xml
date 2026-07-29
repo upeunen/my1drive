@@ -357,4 +357,10 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="settings_manage_storage_desc">Позволяет удалять фото и видео без системных диалогов-подтверждений.</string>
     <string name="settings_manage_storage_btn">Разрешить</string>
 
+    <string name="local_folder_dialog_title">Разрешить My1drive работу с файлами</string>
+    <string name="local_folder_dialog_desc">Приложению нужен доступ к вашим фото и видео, чтобы перемещать их в архив без дополнительных запросов. Нажмите «Разрешить» на следующем экране.</string>
+    <string name="local_folder_dialog_confirm">Разрешить</string>
+    <string name="local_folder_dialog_dismiss">Пропустить</string>
+    <string name="local_folder_dialog_full_access">⚡ Дать доступ ко всем папкам сразу</string>
+
 </resources>

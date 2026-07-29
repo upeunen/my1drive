@@ -90,7 +90,13 @@ fun AppDialogCoordinator(
                     viewModel.dismissDialog()
                     onSelectDeviceDirectory()
                 },
-                onDismiss = { viewModel.dismissDialog() }
+                onDismiss = { viewModel.dismissDialog() },
+                onRequestFullAccess = if (!viewModel.hasAllFilesAccess()) {
+                    {
+                        viewModel.dismissDialog()
+                        viewModel.proceedWithManageStorageRequest(null)
+                    }
+                } else null
             )
         }
         is AppDialog.Naming -> {
