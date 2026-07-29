@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import android.os.Environment
+import android.provider.Settings
 
 class MediaOperationInteractor(
     private val application: Application,
@@ -35,6 +37,8 @@ class MediaOperationInteractor(
     private val onArchiveTaskReady: (List<MediaItem>, Uri) -> Unit = { _, _ -> }
 ) {
     // ─── Delete State ───
+    private val prefs = application.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+
     private val _deviceDeleteSender = MutableStateFlow<IntentSender?>(null)
     val deviceDeleteSender = _deviceDeleteSender.asStateFlow()
 
@@ -42,6 +46,9 @@ class MediaOperationInteractor(
     
     private val _folderPermissionRequest = MutableStateFlow<Intent?>(null)
     val folderPermissionRequest = _folderPermissionRequest.asStateFlow()
+
+    private val _manageStoragePermissionRequest = MutableStateFlow<Intent?>(null)
+    val manageStoragePermissionRequest = _manageStoragePermissionRequest.asStateFlow()
 
     private val _pendingDelete = MutableStateFlow<List<MediaItem>?>(null)
     val pendingDelete: StateFlow<List<MediaItem>?> = _pendingDelete.asStateFlow()
@@ -269,6 +276,23 @@ class MediaOperationInteractor(
             pendingDeleteTask = items
             missingFoldersQueue.clear()
             missingFoldersQueue.addAll(missingFolders)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                val hasAsked = prefs.getBoolean("has_asked_manage_storage", false)
+                if (!hasAsked) {
+                    prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                            data = Uri.parse("package:${application.packageName}")
+                        }
+                        _manageStoragePermissionRequest.value = intent
+                    } catch (e: Exception) {
+                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        _manageStoragePermissionRequest.value = intent
+                    }
+                    return
+                }
+            }
             requestNextFolderPermission()
         } else {
             deleteDeviceItems(deviceItems)
@@ -326,6 +350,10 @@ class MediaOperationInteractor(
     }
 
     private fun fallbackDeleteDeviceItems(items: List<MediaItem>) {
+        if (hasAllFilesAccess(application)) {
+            directDeleteDeviceItems(items)
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 val pendingIntent = MediaStore.createDeleteRequest(application.contentResolver, items.map { it.uri })
@@ -368,7 +396,16 @@ class MediaOperationInteractor(
         return ""
     }
 
+    fun hasAllFilesAccess(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            true
+        }
+    }
+
     fun hasPermissionForFolder(context: Context, folderName: String): Boolean {
+        if (hasAllFilesAccess(context)) return true
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return true
         if (folderName.isEmpty()) return true
         val uriPermissions = context.contentResolver.persistedUriPermissions
@@ -436,6 +473,23 @@ class MediaOperationInteractor(
             missingFoldersQueue.removeAt(0)
         }
         requestNextFolderPermission()
+    }
+
+    fun onManageStorageResult() {
+        _manageStoragePermissionRequest.value = null
+        if (hasAllFilesAccess(application)) {
+            missingFoldersQueue.clear()
+            val task = pendingDeleteTask
+            pendingDeleteTask = null
+            if (task != null) {
+                val deviceItems = task.filter { it.status == MediaStatus.ON_DEVICE }
+                val archivedItems = task.filter { it.status == MediaStatus.ARCHIVED_OTG }
+                deleteDeviceItems(deviceItems)
+                archiveInteractor.deleteArchivedItems(archivedItems)
+            }
+        } else {
+            requestNextFolderPermission()
+        }
     }
 
     fun clearFolderPermissionRequest() {

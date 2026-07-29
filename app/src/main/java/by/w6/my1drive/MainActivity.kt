@@ -204,6 +204,12 @@ class MainActivity : ComponentActivity() {
         viewModel.mediaOperationInteractor.clearFolderPermissionRequest()
     }
 
+    private val manageStorageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        viewModel.mediaOperationInteractor.onManageStorageResult()
+    }
+
     private val deviceFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -559,6 +565,13 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(folderPermissionRequest) {
                     folderPermissionRequest?.let { intent ->
                         folderPermissionLauncher.launch(intent)
+                    }
+                }
+
+                val manageStoragePermissionRequest by viewModel.mediaOperationInteractor.manageStoragePermissionRequest.collectAsState()
+                LaunchedEffect(manageStoragePermissionRequest) {
+                    manageStoragePermissionRequest?.let { intent ->
+                        manageStorageLauncher.launch(intent)
                     }
                 }
 
