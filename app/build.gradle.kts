@@ -10,7 +10,7 @@ android {
     buildToolsVersion = "36.1.0"
 
     defaultConfig {
-        applicationId = "by.w6.my1drive"
+        applicationId = "by.w6.my1drive2"
         minSdk = 28
         targetSdk = 36
         versionCode = 15
@@ -21,16 +21,16 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("my1drive-release.jks")
-            storePassword = "qw487534qq163547"
+            storeFile = file("my1drive-release-2.jks")
+            storePassword = "qq163547qw487534"
             keyAlias = "my1drive"
-            keyPassword = "qw487534qq163547"
+            keyPassword = "qq163547qw487534"
         }
-        // NEW keystore (backup: my1drive-release-2.jks) — для будущих приложений
-        // storeFile = file("my1drive-release-2.jks")
-        // storePassword = "qq163547qw487534"
+        // OLD keystore — для обновлений by.w6.my1drive в RuStore
+        // storeFile = file("my1drive-release.jks")
+        // storePassword = "qw487534qq163547"
         // keyAlias = "my1drive"
-        // keyPassword = "qq163547qw487534"
+        // keyPassword = "qw487534qq163547"
     }
 
     buildTypes {
