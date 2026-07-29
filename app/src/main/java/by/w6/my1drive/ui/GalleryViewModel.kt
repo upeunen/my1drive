@@ -139,6 +139,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun triggerWriteProtectedRootDialog() { _activeDialog.value = AppDialog.WriteProtectedRoot }
     fun showNamingDialog(uri: Uri) { _activeDialog.value = AppDialog.Naming(uri) }
 
+    fun hasAllFilesAccess(): Boolean {
+        return mediaOperationInteractor.hasAllFilesAccess(getApplication())
+    }
+
+    fun proceedWithManageStorageRequest(items: List<MediaItem>?) {
+        _activeDialog.value = null
+        mediaOperationInteractor.dispatchManageStorageIntent(items)
+    }
+
     private val archiveInteractor: ArchiveInteractor by lazy {
         ArchiveInteractor(
             application = application,
@@ -223,6 +232,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isOtgConnected = isOtgConnected,
             onArchiveTaskReady = { items, targetUri ->
                 syncHelper.startArchiving(items, targetUri)
+            },
+            onShowManageStorageDialog = { items ->
+                _activeDialog.value = AppDialog.ManageStoragePermission(items)
             }
         )
     }

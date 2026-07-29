@@ -45,7 +45,9 @@ fun SettingsTab(
     missingThumbnailsCount: Int = 0,
     onSyncThumbnails: () -> Unit = {},
     onCancelSyncThumbnails: () -> Unit = {},
-    isStorageLow: Boolean = false
+    isStorageLow: Boolean = false,
+    hasAllFilesAccess: Boolean = true,
+    onRequestManageStorage: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -60,6 +62,13 @@ fun SettingsTab(
         )
 
         Spacer(Modifier.height(20.dp))
+
+        if (!hasAllFilesAccess) {
+            by.w6.my1drive.ui.settings.ManageStorageCard(
+                onRequestManageStorage = onRequestManageStorage
+            )
+            Spacer(Modifier.height(16.dp))
+        }
 
         // 1. OTG/USB Storage Card & Multi-Archive settings
         OtgSettingsSection(

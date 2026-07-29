@@ -350,4 +350,11 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="paywall_error">Ошибка покупки: %1$s</string>
     <string name="paywall_close">Закрыть</string>
 
+    <string name="dialog_manage_storage_title">Разрешить удаление без вопросов</string>
+    <string name="dialog_manage_storage_desc">Для того чтобы удалять файлы с телефона незаметно и без постоянных всплывающих окон, приложению требуется специальный доступ ко всем файлам. Пожалуйста, включите его на следующем экране.</string>
+    <string name="dialog_manage_storage_btn">Перейти в Настройки</string>
+    <string name="settings_manage_storage_title">Полный доступ к файлам</string>
+    <string name="settings_manage_storage_desc">Позволяет удалять фото и видео без системных диалогов-подтверждений.</string>
+    <string name="settings_manage_storage_btn">Разрешить</string>
+
 </resources>

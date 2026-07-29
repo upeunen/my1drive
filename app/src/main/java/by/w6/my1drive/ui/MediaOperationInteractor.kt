@@ -34,7 +34,8 @@ class MediaOperationInteractor(
     private val otgManager: OtgConnectionManager,
     private val archiveInteractor: ArchiveInteractor,
     private val isOtgConnected: StateFlow<Boolean>,
-    private val onArchiveTaskReady: (List<MediaItem>, Uri) -> Unit = { _, _ -> }
+    private val onArchiveTaskReady: (List<MediaItem>, Uri) -> Unit = { _, _ -> },
+    private val onShowManageStorageDialog: (List<MediaItem>?) -> Unit = {}
 ) {
     // ─── Delete State ───
     private val prefs = application.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
@@ -280,16 +281,7 @@ class MediaOperationInteractor(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
                 val hasAsked = prefs.getBoolean("has_asked_manage_storage", false)
                 if (!hasAsked) {
-                    prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
-                    try {
-                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                            data = Uri.parse("package:${application.packageName}")
-                        }
-                        _manageStoragePermissionRequest.value = intent
-                    } catch (e: Exception) {
-                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        _manageStoragePermissionRequest.value = intent
-                    }
+                    onShowManageStorageDialog(items)
                     return
                 }
             }
@@ -429,6 +421,20 @@ class MediaOperationInteractor(
             }
         }
         return false
+    }
+
+    fun dispatchManageStorageIntent(items: List<MediaItem>?) {
+        prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
+        pendingDeleteTask = items
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                data = Uri.parse("package:${application.packageName}")
+            }
+            _manageStoragePermissionRequest.value = intent
+        } catch (e: Exception) {
+            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+            _manageStoragePermissionRequest.value = intent
+        }
     }
 
     fun requestNextFolderPermission() {

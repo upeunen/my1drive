@@ -1,4 +1,4 @@
-﻿package by.w6.my1drive.ui
+package by.w6.my1drive.ui
 
 import android.net.Uri
 import android.widget.Toast
@@ -583,7 +583,9 @@ fun GalleryScreenContent(
                                 missingThumbnailsCount = missingThumbnailsCount,
                                 onSyncThumbnails = { viewModel.startThumbnailSync() },
                                 onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() },
-                                isStorageLow = isStorageLow
+                                isStorageLow = isStorageLow,
+                                hasAllFilesAccess = viewModel.hasAllFilesAccess(),
+                                onRequestManageStorage = { viewModel.proceedWithManageStorageRequest(null) }
                             )
                     }
                 }

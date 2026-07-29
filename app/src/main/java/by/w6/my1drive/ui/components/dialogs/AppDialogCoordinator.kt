@@ -1,7 +1,10 @@
 package by.w6.my1drive.ui.components.dialogs
 
 import android.net.Uri
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -130,6 +133,30 @@ fun AppDialogCoordinator(
                     }
                 )
             }
+        }
+
+        is AppDialog.ManageStoragePermission -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissDialog() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Rounded.FolderOpen,
+                        contentDescription = null
+                    )
+                },
+                title = { Text(stringResource(id = R.string.dialog_manage_storage_title)) },
+                text = { Text(stringResource(id = R.string.dialog_manage_storage_desc)) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.proceedWithManageStorageRequest(activeDialog.itemsToWait) }) {
+                        Text(stringResource(id = R.string.dialog_manage_storage_btn))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissDialog() }) {
+                        Text(stringResource(id = R.string.action_cancel))
+                    }
+                }
+            )
         }
 
         is AppDialog.CreateFolder -> {}

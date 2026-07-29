@@ -14,6 +14,7 @@ sealed class AppDialog {
     object LocalFolder : AppDialog()
     data class Naming(val uri: Uri) : AppDialog()
     data class CreateArchiveGuide(val uri: Uri) : AppDialog()
+    data class ManageStoragePermission(val itemsToWait: List<MediaItem>?) : AppDialog()
 
     object CreateFolder : AppDialog()
     data class ArchiveFolderAccess(val folderPath: String?) : AppDialog()
