@@ -21,11 +21,16 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("my1drive-release.jks")
-            storePassword = "qw487534qq163547"
+            storeFile = file("my1drive-release-2.jks")
+            storePassword = "qq163547qw487534"
             keyAlias = "my1drive"
-            keyPassword = "qw487534qq163547"
+            keyPassword = "qq163547qw487534"
         }
+        // OLD keystore (backup: my1drive-release-OLD.jks)
+        // storeFile = file("my1drive-release.jks")
+        // storePassword = "qw487534qq163547"
+        // keyAlias = "my1drive"
+        // keyPassword = "qw487534qq163547"
     }
 
     buildTypes {
