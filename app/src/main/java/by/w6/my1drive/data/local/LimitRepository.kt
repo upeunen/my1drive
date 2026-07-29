@@ -14,13 +14,31 @@ class LimitRepository(context: Context) {
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
-    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "limits_prefs_secured",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs: SharedPreferences = try {
+        createEncryptedPrefs(context, masterKey)
+    } catch (e: Exception) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                context.deleteSharedPreferences("limits_prefs_secured")
+            } else {
+                context.getSharedPreferences("limits_prefs_secured", Context.MODE_PRIVATE).edit().clear().apply()
+                val dir = java.io.File(context.applicationInfo.dataDir, "shared_prefs")
+                val file = java.io.File(dir, "limits_prefs_secured.xml")
+                if (file.exists()) file.delete()
+            }
+        } catch (ignored: Exception) {}
+        createEncryptedPrefs(context, masterKey)
+    }
+
+    private fun createEncryptedPrefs(context: Context, masterKey: MasterKey): SharedPreferences {
+        return EncryptedSharedPreferences.create(
+            context,
+            "limits_prefs_secured",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     private val _photosArchivedCount = MutableStateFlow(prefs.getInt(KEY_PHOTOS_COUNT, 0))
     val photosArchivedCountFlow: StateFlow<Int> = _photosArchivedCount.asStateFlow()
