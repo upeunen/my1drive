@@ -622,6 +622,10 @@ class MainActivity : ComponentActivity() {
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "onResume called")
         updatePermissionStates()
 
+        viewModel.billingManager.checkPurchases { hasPremium ->
+            viewModel.limitRepository.isPremiumUnlocked = hasPremium
+        }
+
         viewModel.updateOtgStatus(isStartup = true)
 
         if (hasPermissions || hasPartialAccess) {

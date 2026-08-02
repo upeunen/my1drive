@@ -354,6 +354,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         
+        viewModelScope.launch {
+            limitRepository.isPremiumUnlockedFlow.collect { isPremium ->
+                if (isPremium && _activeDialog.value is AppDialog.Paywall) {
+                    dismissDialog()
+                }
+            }
+        }
+        
         // Restore saved OTG URI
         val savedUri = prefs.getString(PREF_OTG_URI, null)?.let {
             try { Uri.parse(it) } catch (e: Exception) {

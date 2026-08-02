@@ -43,6 +43,7 @@ fun GooglePhotosTopBar(
     otgUriSet: Boolean,
     isGroupExpanded: Boolean = false,
     deleteEnabled: Boolean = true,
+    isPremium: Boolean = false,
     onClearSelection: () -> Unit,
     onEjectClick: () -> Unit,
     onGroupClick: () -> Unit = {},
@@ -54,7 +55,7 @@ fun GooglePhotosTopBar(
 ) {
     val title = when {
         selectedCount > 0 -> "$selectedCount"
-        isOtgConnected -> "My1Drive"
+        isPremium -> "My1Drive PRO"
         else -> "My1Drive"
     }
 

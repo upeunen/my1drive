@@ -319,6 +319,7 @@ fun GalleryScreenContent(
     val firstSelectedItem = remember(selectedIds, mediaItems) {
         mediaItems.firstOrNull { it.id in selectedIds }
     }
+    val isPremiumUnlocked by viewModel.isPremiumUnlocked.collectAsState(initial = false)
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -328,6 +329,7 @@ fun GalleryScreenContent(
                 otgUriSet = otgDirectoryUri != null,
                 isGroupExpanded = isGroupExpanded,
                 deleteEnabled = deleteEnabled,
+                isPremium = isPremiumUnlocked,
                 onClearSelection = onClearSelection,
                 onEjectClick = { showEjectConfirmDialog = true },
                 onGroupClick = { isGroupExpanded = !isGroupExpanded },

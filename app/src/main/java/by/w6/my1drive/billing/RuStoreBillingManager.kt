@@ -54,26 +54,19 @@ class RuStoreBillingManager(private val application: Application) {
         RuStorePayClient.instance.getPurchaseInteractor()
             .purchase(params)
             .addOnSuccessListener { result ->
-                when (result) {
-                    is ApplicationPurchaseResult.Success -> {
-                        AppMetrica.reportEvent("purchase_success")
-                        _purchaseState.value = PurchaseState.Success
-                    }
-                    is ApplicationPurchaseResult.Cancelled -> {
-                        AppMetrica.reportEvent("purchase_cancelled")
-                        _purchaseState.value = PurchaseState.Idle
-                        Log.d("RuStoreBilling", "Purchase cancelled")
-                    }
-                    is ApplicationPurchaseResult.Failure -> {
-                        AppMetrica.reportEvent("purchase_error")
-                        _purchaseState.value = PurchaseState.Error("Purchase failed")
-                    }
-                }
+                AppMetrica.reportEvent("purchase_success")
+                _purchaseState.value = PurchaseState.Success
             }
             .addOnFailureListener { error ->
-                AppMetrica.reportEvent("purchase_error")
-                Log.e("RuStoreBilling", "Purchase exception", error)
-                _purchaseState.value = PurchaseState.Error(error.message ?: "Purchase exception")
+                if (error is ru.rustore.sdk.pay.model.RuStorePaymentException.ProductPurchaseCancelled) {
+                    AppMetrica.reportEvent("purchase_cancelled")
+                    _purchaseState.value = PurchaseState.Idle
+                    Log.d("RuStoreBilling", "Purchase cancelled")
+                } else {
+                    AppMetrica.reportEvent("purchase_error")
+                    Log.e("RuStoreBilling", "Purchase exception", error)
+                    _purchaseState.value = PurchaseState.Error(error.message ?: "Purchase exception")
+                }
             }
     }
 
