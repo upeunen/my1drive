@@ -288,6 +288,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         get() = remoteConfigManager.limitsEnabled.value &&
                 limitRepository.shouldApplyLimits(remoteConfigManager.freeTrialDays.value)
 
+    /** true если в Remote Config есть промокоды — показываем карточку ввода */
+    val hasPromoCodes: Boolean
+        get() = remoteConfigManager.promoCodesJson.value.isNotBlank()
+
     private val _physicalArchiveSize = MutableStateFlow(0L)
     val physicalArchiveSize = _physicalArchiveSize.asStateFlow()
 

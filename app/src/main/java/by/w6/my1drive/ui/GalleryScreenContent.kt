@@ -589,7 +589,7 @@ fun GalleryScreenContent(
                                 hasAllFilesAccess = viewModel.hasAllFilesAccess(),
                                 onRequestManageStorage = { viewModel.proceedWithManageStorageRequest(null) },
                                 onPromoCode = { viewModel.showPromoCodeDialog() },
-                                hasPromoCodes = viewModel.remoteConfigManager.promoCodesJson.value.isNotBlank()
+                                hasPromoCodes = viewModel.hasPromoCodes
                             )
                     }
                 }
