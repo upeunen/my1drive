@@ -40,6 +40,8 @@ class LimitRepository(context: Context) {
         )
     }
 
+    // --- Счётчики архивации ---
+
     private val _photosArchivedCount = MutableStateFlow(prefs.getInt(KEY_PHOTOS_COUNT, 0))
     val photosArchivedCountFlow: StateFlow<Int> = _photosArchivedCount.asStateFlow()
 
@@ -74,13 +76,74 @@ class LimitRepository(context: Context) {
         get() = prefs.getInt(KEY_TRUST_LEVEL, 0)
         set(value) = prefs.edit().putInt(KEY_TRUST_LEVEL, value).apply()
 
+    // --- Промокод ---
+
+    /** Код последнего активированного промокода (или null) */
+    var appliedPromoCode: String?
+        get() = prefs.getString(KEY_PROMO_CODE, null)
+        set(value) = prefs.edit().putString(KEY_PROMO_CODE, value).apply()
+
+    /** Timestamp (мс) до которого промокод активен. 0 = неактивен */
+    var promoUntilTimestamp: Long
+        get() = prefs.getLong(KEY_PROMO_UNTIL, 0L)
+        set(value) {
+            prefs.edit().putLong(KEY_PROMO_UNTIL, value).apply()
+            _isPromoActive.value = value > System.currentTimeMillis()
+        }
+
+    private val _isPromoActive = MutableStateFlow(
+        prefs.getLong(KEY_PROMO_UNTIL, 0L) > System.currentTimeMillis()
+    )
+    /** true пока промокод действует */
+    val isPromoActiveFlow: StateFlow<Boolean> = _isPromoActive.asStateFlow()
+
+    /** Проверка: промокод ещё не истёк */
+    fun isPromoActive(): Boolean = promoUntilTimestamp > System.currentTimeMillis()
+
+    // --- Триал ---
+
+    /**
+     * Проверка: бесплатный триал ещё активен.
+     * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
+     * @param context нужен для получения firstInstallTime
+     */
+    fun isTrialActive(trialDays: Int, context: Context): Boolean {
+        if (trialDays <= 0) return false
+        return try {
+            val firstInstall = context.packageManager
+                .getPackageInfo(context.packageName, 0).firstInstallTime
+            val trialEndTime = firstInstall + trialDays.toLong() * 24 * 60 * 60 * 1000
+            System.currentTimeMillis() < trialEndTime
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Главный метод: нужно ли применять лимиты к пользователю?
+     * Возвращает false (лимиты НЕ применяются) если:
+     *   - куплен Premium
+     *   - активен бесплатный триал
+     *   - введён действующий промокод
+     */
+    fun shouldApplyLimits(trialDays: Int, context: Context): Boolean {
+        if (isPremiumUnlocked) return false
+        if (isTrialActive(trialDays, context)) return false
+        if (isPromoActive()) return false
+        return true
+    }
+
     companion object {
+        /** Fallback-лимиты (используются если Remote Config недоступен) */
         const val MAX_PHOTOS = 100
         const val MAX_VIDEOS = 5
-        
+
         private const val KEY_PHOTOS_COUNT = "photos_archived_count"
         private const val KEY_VIDEOS_COUNT = "videos_archived_count"
         private const val KEY_PREMIUM = "is_premium_unlocked"
         private const val KEY_TRUST_LEVEL = "trust_level"
+        private const val KEY_PROMO_CODE = "applied_promo_code"
+        private const val KEY_PROMO_UNTIL = "promo_until_timestamp"
     }
 }
+
