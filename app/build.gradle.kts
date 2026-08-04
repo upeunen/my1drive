@@ -21,15 +21,15 @@ android {
 
     signingConfigs {
         create("release") {
-            val localProps = java.util.Properties().apply {
-                val f = rootProject.file("local.properties")
-                if (f.exists()) load(f.inputStream())
-            }
-            storeFile = file(localProps.getProperty("storeFile", "my1drive-release-2.jks"))
-            storePassword = localProps.getProperty("storePassword")
+            val props = java.util.Properties()
+            val localPropsFile = rootProject.file("local.properties")
+            if (localPropsFile.exists()) props.load(localPropsFile.inputStream())
+
+            storeFile = file(props.getProperty("storeFile") ?: "my1drive-release-2.jks")
+            storePassword = props.getProperty("storePassword")
                 ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = localProps.getProperty("keyAlias", "my1drive")
-            keyPassword = localProps.getProperty("keyPassword")
+            keyAlias = props.getProperty("keyAlias") ?: "my1drive"
+            keyPassword = props.getProperty("keyPassword")
                 ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
