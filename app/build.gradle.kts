@@ -4,10 +4,14 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-// Читаем local.properties один раз на уровне файла
-val localProps = java.util.Properties().also { props ->
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use(props::load)
+// Читаем local.properties через стандартный Gradle API (java.util не доступен напрямую в KTS DSL)
+fun localProp(key: String): String? {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return null
+    return file.readLines()
+        .firstOrNull { it.startsWith("$key=") }
+        ?.removePrefix("$key=")
+        ?.trim()
 }
 
 android {
@@ -27,12 +31,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(localProps.getProperty("storeFile") ?: "my1drive-release-2.jks")
-            storePassword = localProps.getProperty("storePassword")
-                ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = localProps.getProperty("keyAlias") ?: "my1drive"
-            keyPassword = localProps.getProperty("keyPassword")
-                ?: System.getenv("KEY_PASSWORD") ?: ""
+            storeFile = file(localProp("storeFile") ?: "my1drive-release-2.jks")
+            storePassword = localProp("storePassword") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = localProp("keyAlias") ?: "my1drive"
+            keyPassword = localProp("keyPassword") ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
