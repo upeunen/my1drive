@@ -96,6 +96,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val photosArchivedCount = limitRepository.photosArchivedCountFlow
     val videosArchivedCount = limitRepository.videosArchivedCountFlow
     val isPremiumUnlocked = limitRepository.isPremiumUnlockedFlow
+    private val remoteConfigManager = by.w6.my1drive.billing.RuStoreRemoteConfigManager.getInstance()
 
     fun showCreateArchiveGuideDialog(uri: Uri) { _activeDialog.value = AppDialog.CreateArchiveGuide(uri) }
     
@@ -606,24 +607,27 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        if (!limitRepository.isPremiumUnlocked) {
+        val trialDays = remoteConfigManager.freeTrialDays.value
+        if (limitRepository.shouldApplyLimits(trialDays, getApplication())) {
             val photos = selected.filter { !it.mimeType.startsWith("video/") }
             val videos = selected.filter { it.mimeType.startsWith("video/") }
-            
-            val allowedPhotosCount = (by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS - limitRepository.photosArchivedCount).coerceAtLeast(0)
-            val allowedVideosCount = (by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS - limitRepository.videosArchivedCount).coerceAtLeast(0)
-            
+
+            val maxPhotos = remoteConfigManager.maxPhotos.value
+            val maxVideos = remoteConfigManager.maxVideos.value
+            val allowedPhotosCount = (maxPhotos - limitRepository.photosArchivedCount).coerceAtLeast(0)
+            val allowedVideosCount = (maxVideos - limitRepository.videosArchivedCount).coerceAtLeast(0)
+
             val allowedPhotos = photos.take(allowedPhotosCount)
             val allowedVideos = videos.take(allowedVideosCount)
-            
+
             val pendingPhotos = photos.size - allowedPhotos.size
             val pendingVideos = videos.size - allowedVideos.size
-            
+
             if (pendingPhotos > 0 || pendingVideos > 0) {
                 AppMetrica.reportEvent("soft_cap_triggered")
                 pendingForPaywallPhotos = pendingPhotos
                 pendingForPaywallVideos = pendingVideos
-                
+
                 val allowedItems = allowedPhotos + allowedVideos
                 if (allowedItems.isEmpty()) {
                     showPaywall(pendingPhotos, pendingVideos)
@@ -632,7 +636,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit reached, no items allowed, showing paywall.")
                     return
                 } else {
-                    // Update 'selected' to only contain allowed items
                     selected = allowedItems
                     DebugLogBuffer.log("GalleryViewModel", "startArchiving: limit exceeded, archiving partial ${selected.size} items.")
                 }
@@ -674,13 +677,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 return
             }
         }
-        if (!limitRepository.isPremiumUnlocked) {
+        val trialDaysSingle = remoteConfigManager.freeTrialDays.value
+        if (limitRepository.shouldApplyLimits(trialDaysSingle, getApplication())) {
             val isVideo = item.mimeType.startsWith("video/")
             val totalProjectedPhotos = limitRepository.photosArchivedCount + if (!isVideo) 1 else 0
             val totalProjectedVideos = limitRepository.videosArchivedCount + if (isVideo) 1 else 0
+            val maxPhotos = remoteConfigManager.maxPhotos.value
+            val maxVideos = remoteConfigManager.maxVideos.value
 
-            if (totalProjectedPhotos > by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS ||
-                totalProjectedVideos > by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS) {
+            if (totalProjectedPhotos > maxPhotos || totalProjectedVideos > maxVideos) {
                 val missingPhotos = if (!isVideo) 1 else 0
                 val missingVideos = if (isVideo) 1 else 0
                 showPaywall(missingPhotos, missingVideos)
