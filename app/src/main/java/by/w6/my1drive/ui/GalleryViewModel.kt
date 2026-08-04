@@ -60,7 +60,6 @@ private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
 private const val PREF_LOCAL_FOLDER_SKIP_COUNT = "local_folder_skip_count"
 private const val PREF_LAST_REQUESTED_FOLDER = "last_requested_folder_path"
-private const val IS_LIMIT_ACTIVE = false // Внутренний переключатель лимита 128 МБ (true - включен, false - отключен)
 private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
 
 enum class ArchiveSortMode {
@@ -279,7 +278,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val showEjectSuccessDialog: StateFlow<Boolean> = otgManager.showEjectSuccessDialog
     val isEjecting: StateFlow<Boolean> = otgManager.isEjecting
 
-    val isLimitActive = IS_LIMIT_ACTIVE
+    /**
+     * Показывать ли ограничения пользователю.
+     * Управляется из RuStore Console через параметр limits_enabled (Boolean).
+     * false пока Remote Config не загрузился = лимитов нет (безопасный fallback).
+     * Также учитывает Premium / промокод / триал из LimitRepository.
+     */
+    val isLimitActive: Boolean
+        get() = remoteConfigManager.limitsEnabled.value &&
+                limitRepository.shouldApplyLimits(remoteConfigManager.freeTrialDays.value)
 
     private val _physicalArchiveSize = MutableStateFlow(0L)
     val physicalArchiveSize = _physicalArchiveSize.asStateFlow()

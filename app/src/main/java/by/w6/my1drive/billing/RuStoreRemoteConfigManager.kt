@@ -37,6 +37,10 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
     private val _promoCodesJson = MutableStateFlow("")
     val promoCodesJson: StateFlow<String> = _promoCodesJson.asStateFlow()
 
+    /** true = лимиты включены (управляется из RuStore Console) */
+    private val _limitsEnabled = MutableStateFlow(false) // false пока конфиг не загрузился
+    val limitsEnabled: StateFlow<Boolean> = _limitsEnabled.asStateFlow()
+
     private val _isLoaded = MutableStateFlow(false)
     val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
 
@@ -80,6 +84,7 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
                             .takeIf { it > 0 } ?: LimitRepository.MAX_VIDEOS
                         _freeTrialDays.value = config.getInt(KEY_TRIAL_DAYS)
                         _promoCodesJson.value = config.getString(KEY_PROMO_CODES)
+                        _limitsEnabled.value = config.getBoolean(KEY_LIMITS_ENABLED)
                         _isLoaded.value = true
 
                         // Сохраняем время успешной загрузки
@@ -110,6 +115,7 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
         const val KEY_MAX_VIDEOS  = "free_max_videos"
         const val KEY_TRIAL_DAYS  = "free_trial_days"
         const val KEY_PROMO_CODES = "promo_codes_json"
+        const val KEY_LIMITS_ENABLED = "limits_enabled"
 
         private const val KEY_LAST_FETCH_TIME = "last_fetch_time"
 
