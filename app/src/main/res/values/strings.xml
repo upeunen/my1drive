@@ -363,4 +363,14 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="local_folder_dialog_dismiss">Пропустить</string>
     <string name="local_folder_dialog_full_access">⚡ Дать доступ ко всем папкам сразу</string>
 
+    <!-- Промокоды -->
+    <string name="promo_code_dialog_title">Введите промокод</string>
+    <string name="promo_code_hint">Промокод</string>
+    <string name="promo_code_apply">Применить</string>
+    <string name="promo_code_invalid">Неверный промокод. Проверьте и попробуйте снова.</string>
+    <string name="promo_code_success">Промокод активирован на %1$d дней!</string>
+    <string name="have_promo_code">Ввести промокод</string>
+    <string name="promo_code_card_title">Есть промокод?</string>
+    <string name="promo_code_card_desc">Введите промокод, чтобы получить временный доступ без ограничений.</string>
+
 </resources>

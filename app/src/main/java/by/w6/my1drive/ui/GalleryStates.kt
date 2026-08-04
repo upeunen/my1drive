@@ -20,6 +20,7 @@ sealed class AppDialog {
     data class ArchiveFolderAccess(val folderPath: String?) : AppDialog()
     data class Success(val data: SuccessDialogData) : AppDialog()
     object UsbTooltip : AppDialog()
+    object PromoCode : AppDialog()
 }
 
 data class SyncState(

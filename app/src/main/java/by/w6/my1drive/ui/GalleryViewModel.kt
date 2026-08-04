@@ -101,6 +101,34 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun showCreateArchiveGuideDialog(uri: Uri) { _activeDialog.value = AppDialog.CreateArchiveGuide(uri) }
     
     fun showPaywall(missingPhotos: Int = 0, missingVideos: Int = 0) { _activeDialog.value = AppDialog.Paywall(missingPhotos, missingVideos) }
+
+    fun showPromoCodeDialog() { _activeDialog.value = AppDialog.PromoCode }
+
+    /**
+     * Проверяет промокод и активирует его при совпадении.
+     * @return кол-во дней если код верный, null если неверный
+     */
+    fun applyPromoCode(code: String): Int? {
+        val json = remoteConfigManager.promoCodesJson.value
+        val days = by.w6.my1drive.billing.PromoCodeValidator.validate(code, json)
+        return if (days != null) {
+            val until = System.currentTimeMillis() + days.toLong() * 24 * 60 * 60 * 1000
+            limitRepository.appliedPromoCode = code.trim().uppercase()
+            limitRepository.promoUntilTimestamp = until
+            dismissDialog()
+            io.appmetrica.analytics.AppMetrica.reportEvent(
+                "promo_code_applied",
+                "{\"code\":\"${code.trim().uppercase()}\",\"days\":$days}"
+            )
+            days
+        } else {
+            io.appmetrica.analytics.AppMetrica.reportEvent(
+                "promo_code_invalid",
+                "{\"code\":\"${code.trim().uppercase()}\"}"
+            )
+            null
+        }
+    }
     
     val billingManager = by.w6.my1drive.billing.RuStoreBillingManager(application)
 

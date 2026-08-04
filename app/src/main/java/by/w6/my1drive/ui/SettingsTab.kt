@@ -21,6 +21,7 @@ import by.w6.my1drive.ui.settings.ArchiveProgressSection
 import by.w6.my1drive.ui.settings.MaintenanceAndDebugSection
 import by.w6.my1drive.ui.settings.OtgSettingsSection
 import by.w6.my1drive.ui.settings.VpsSettingsSection
+import by.w6.my1drive.ui.settings.PromoCodeCard
 
 @Composable
 fun SettingsTab(
@@ -47,7 +48,8 @@ fun SettingsTab(
     onCancelSyncThumbnails: () -> Unit = {},
     isStorageLow: Boolean = false,
     hasAllFilesAccess: Boolean = true,
-    onRequestManageStorage: () -> Unit = {}
+    onRequestManageStorage: () -> Unit = {},
+    onPromoCode: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -94,6 +96,12 @@ fun SettingsTab(
             currentArchiveSize = currentArchiveSize,
             isLimitActive = isLimitActive
         )
+
+        // Промокод (только в бесплатной версии)
+        if (isLimitActive) {
+            Spacer(Modifier.height(16.dp))
+            PromoCodeCard(onPromoCode = onPromoCode)
+        }
 
         Spacer(Modifier.height(16.dp))
 

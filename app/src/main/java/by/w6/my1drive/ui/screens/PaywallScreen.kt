@@ -19,7 +19,8 @@ fun PaywallScreen(
     missingPhotos: Int,
     missingVideos: Int,
     onSuccess: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onPromoCode: (() -> Unit)? = null
 ) {
     val purchaseState by billingManager.purchaseState.collectAsState()
     val product by billingManager.premiumProduct.collectAsState()
@@ -99,11 +100,18 @@ fun PaywallScreen(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = purchaseState !is PurchaseState.Purchasing
-            ) {
-                Text(stringResource(R.string.paywall_close))
+            androidx.compose.foundation.layout.Row {
+                onPromoCode?.let { onPromo ->
+                    TextButton(onClick = onPromo) {
+                        Text(stringResource(R.string.have_promo_code))
+                    }
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = purchaseState !is PurchaseState.Purchasing
+                ) {
+                    Text(stringResource(R.string.paywall_close))
+                }
             }
         }
     )

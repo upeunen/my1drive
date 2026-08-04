@@ -587,7 +587,8 @@ fun GalleryScreenContent(
                                 onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() },
                                 isStorageLow = isStorageLow,
                                 hasAllFilesAccess = viewModel.hasAllFilesAccess(),
-                                onRequestManageStorage = { viewModel.proceedWithManageStorageRequest(null) }
+                                onRequestManageStorage = { viewModel.proceedWithManageStorageRequest(null) },
+                                onPromoCode = { viewModel.showPromoCodeDialog() }
                             )
                     }
                 }

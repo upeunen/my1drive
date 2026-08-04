@@ -20,6 +20,7 @@ import by.w6.my1drive.ui.components.UnknownDriveDialog
 import by.w6.my1drive.ui.FirstLaunchDialog
 import by.w6.my1drive.ui.LocalFolderDialog
 import by.w6.my1drive.ui.screens.SuccessDialog
+import by.w6.my1drive.ui.screens.PaywallScreen
 // import by.w6.my1drive.ui.UnreadableOtgDialog
 import by.w6.my1drive.ui.WriteProtectedRootDialog
 
@@ -48,19 +49,20 @@ fun AppDialogCoordinator(
         }
         is AppDialog.Paywall -> {
             val context = androidx.compose.ui.platform.LocalContext.current
-            by.w6.my1drive.ui.screens.PaywallScreen(
+            PaywallScreen(
                 billingManager = viewModel.billingManager,
                 missingPhotos = activeDialog.missingPhotos,
                 missingVideos = activeDialog.missingVideos,
                 onSuccess = {
                     viewModel.dismissDialog()
                     android.widget.Toast.makeText(
-                        context, 
-                        "Безлимит активирован! Можете продолжать.", 
+                        context,
+                        "Безлимит активирован! Можете продолжать.",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                 },
-                onDismiss = { viewModel.dismissDialog() }
+                onDismiss = { viewModel.dismissDialog() },
+                onPromoCode = { viewModel.showPromoCodeDialog() }
             )
         }
         is AppDialog.UnknownDrive -> {
@@ -167,5 +169,12 @@ fun AppDialogCoordinator(
 
         is AppDialog.CreateFolder -> {}
         is AppDialog.ArchiveFolderAccess -> {}
+
+        is AppDialog.PromoCode -> {
+            PromoCodeDialog(
+                onApply = { code -> viewModel.applyPromoCode(code) },
+                onDismiss = { viewModel.dismissDialog() }
+            )
+        }
     }
 }
