@@ -49,7 +49,8 @@ fun SettingsTab(
     isStorageLow: Boolean = false,
     hasAllFilesAccess: Boolean = true,
     onRequestManageStorage: () -> Unit = {},
-    onPromoCode: () -> Unit = {}
+    onPromoCode: () -> Unit = {},
+    hasPromoCodes: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -97,8 +98,8 @@ fun SettingsTab(
             isLimitActive = isLimitActive
         )
 
-        // Промокод (только в бесплатной версии)
-        if (isLimitActive) {
+        // Промокод — показываем если в Remote Config есть коды
+        if (hasPromoCodes) {
             Spacer(Modifier.height(16.dp))
             PromoCodeCard(onPromoCode = onPromoCode)
         }
