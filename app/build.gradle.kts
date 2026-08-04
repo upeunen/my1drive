@@ -4,6 +4,12 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// Читаем local.properties один раз на уровне файла
+val localProps = java.util.Properties().also { props ->
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use(props::load)
+}
+
 android {
     namespace = "by.w6.my1drive"
     compileSdk = 36
@@ -21,15 +27,11 @@ android {
 
     signingConfigs {
         create("release") {
-            val props = java.util.Properties()
-            val localPropsFile = rootProject.file("local.properties")
-            if (localPropsFile.exists()) props.load(localPropsFile.inputStream())
-
-            storeFile = file(props.getProperty("storeFile") ?: "my1drive-release-2.jks")
-            storePassword = props.getProperty("storePassword")
+            storeFile = file(localProps.getProperty("storeFile") ?: "my1drive-release-2.jks")
+            storePassword = localProps.getProperty("storePassword")
                 ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = props.getProperty("keyAlias") ?: "my1drive"
-            keyPassword = props.getProperty("keyPassword")
+            keyAlias = localProps.getProperty("keyAlias") ?: "my1drive"
+            keyPassword = localProps.getProperty("keyPassword")
                 ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
