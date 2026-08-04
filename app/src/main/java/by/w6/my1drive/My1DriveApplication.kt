@@ -6,6 +6,7 @@ import io.appmetrica.analytics.AppMetricaConfig
 import ru.rustore.sdk.remoteconfig.AppId
 import ru.rustore.sdk.remoteconfig.RemoteConfigClient
 import ru.rustore.sdk.remoteconfig.RemoteConfigClientBuilder
+import by.w6.my1drive.billing.RuStoreRemoteConfigManager
 
 class My1DriveApplication : Application() {
 
@@ -21,6 +22,8 @@ class My1DriveApplication : Application() {
             appId = AppId(getString(R.string.CONSOLE_APPLICATION_ID)),
             context = this
         ).build()
+        // Запускаем загрузку конфига в фоне сразу при старте
+        RuStoreRemoteConfigManager.getInstance().fetchConfig()
     }
 
     companion object {
