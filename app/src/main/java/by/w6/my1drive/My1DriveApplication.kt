@@ -23,7 +23,7 @@ class My1DriveApplication : Application() {
             context = this
         ).build()
         // Запускаем загрузку конфига в фоне сразу при старте
-        RuStoreRemoteConfigManager.getInstance().fetchConfig()
+        RuStoreRemoteConfigManager.getInstance(this).fetchConfig()
     }
 
     companion object {

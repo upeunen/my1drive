@@ -1,11 +1,9 @@
 package by.w6.my1drive.billing
 
+import android.content.Context
 import android.util.Log
 import by.w6.my1drive.My1DriveApplication
 import by.w6.my1drive.data.local.LimitRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,45 +11,55 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Синглтон для работы с RuStore Remote Config.
  * Хранит загруженные значения как StateFlow с fallback-дефолтами.
- * Использует RemoteConfigClient из My1DriveApplication.
+ *
+ * Стратегия обновления: fetchConfigIfStale() проверяет TTL = 1 час.
+ * fetchConfig() — принудительное обновление (при старте приложения).
  *
  * API клиента:
- *   client.init()            → Task<Unit>   — инициализация (однократно)
- *   client.getRemoteConfig() → Task<RemoteConfig> — загрузка конфига
- *   remoteConfig.getInt("key")    / .getString("key") / .getBoolean("key")
+ *   client.init()            → Task<Unit>
+ *   client.getRemoteConfig() → Task<RemoteConfig>
  */
-class RuStoreRemoteConfigManager private constructor() {
+class RuStoreRemoteConfigManager private constructor(context: Context) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val prefs = context.getSharedPreferences("remote_config_meta", Context.MODE_PRIVATE)
 
     // --- Публичные StateFlow с fallback-значениями ---
 
     private val _maxPhotos = MutableStateFlow(LimitRepository.MAX_PHOTOS)
-    /** Максимальное кол-во фото для бесплатной версии */
     val maxPhotos: StateFlow<Int> = _maxPhotos.asStateFlow()
 
     private val _maxVideos = MutableStateFlow(LimitRepository.MAX_VIDEOS)
-    /** Максимальное кол-во видео для бесплатной версии */
     val maxVideos: StateFlow<Int> = _maxVideos.asStateFlow()
 
     private val _freeTrialDays = MutableStateFlow(0)
-    /** Кол-во дней бесплатного триала (0 = выключен) */
     val freeTrialDays: StateFlow<Int> = _freeTrialDays.asStateFlow()
 
     private val _promoCodesJson = MutableStateFlow("")
-    /** JSON со списком промокодов. Формат: {"codes":[{"code":"X","days":30}]} */
     val promoCodesJson: StateFlow<String> = _promoCodesJson.asStateFlow()
 
     private val _isLoaded = MutableStateFlow(false)
-    /** true после первой успешной загрузки конфига */
     val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
 
     // --- Загрузка конфига ---
 
     /**
-     * Инициализирует SDK и загружает Remote Config.
-     * Безопасно вызывать повторно — повторная инициализация игнорируется SDK.
-     * Вызывать из My1DriveApplication.onCreate() или GalleryViewModel.init().
+     * Обновляет конфиг только если прошёл REFRESH_INTERVAL с последней загрузки.
+     * Вызывать при каждом foreground-старте Activity.
+     */
+    fun fetchConfigIfStale() {
+        val lastFetch = prefs.getLong(KEY_LAST_FETCH_TIME, 0L)
+        val isStale = System.currentTimeMillis() - lastFetch > REFRESH_INTERVAL_MS
+        if (isStale || !_isLoaded.value) {
+            Log.d(TAG, "Config is stale (${(System.currentTimeMillis() - lastFetch) / 1000}s ago), refreshing...")
+            fetchConfig()
+        } else {
+            Log.d(TAG, "Config is fresh, skipping fetch")
+        }
+    }
+
+    /**
+     * Принудительно загружает Remote Config.
+     * Вызывать из Application.onCreate().
      */
     fun fetchConfig() {
         val client = try {
@@ -74,6 +82,9 @@ class RuStoreRemoteConfigManager private constructor() {
                         _promoCodesJson.value = config.getString(KEY_PROMO_CODES)
                         _isLoaded.value = true
 
+                        // Сохраняем время успешной загрузки
+                        prefs.edit().putLong(KEY_LAST_FETCH_TIME, System.currentTimeMillis()).apply()
+
                         Log.d(TAG, "Config loaded: " +
                             "maxPhotos=${_maxPhotos.value}, " +
                             "maxVideos=${_maxVideos.value}, " +
@@ -92,6 +103,7 @@ class RuStoreRemoteConfigManager private constructor() {
 
     companion object {
         private const val TAG = "RemoteConfigManager"
+        private const val REFRESH_INTERVAL_MS = 60 * 60 * 1000L // 1 час
 
         // Ключи параметров в RuStore Console → Remote Config
         const val KEY_MAX_PHOTOS  = "free_max_photos"
@@ -99,11 +111,19 @@ class RuStoreRemoteConfigManager private constructor() {
         const val KEY_TRIAL_DAYS  = "free_trial_days"
         const val KEY_PROMO_CODES = "promo_codes_json"
 
+        private const val KEY_LAST_FETCH_TIME = "last_fetch_time"
+
         @Volatile private var instance: RuStoreRemoteConfigManager? = null
 
-        fun getInstance(): RuStoreRemoteConfigManager =
+        fun getInstance(context: Context): RuStoreRemoteConfigManager =
             instance ?: synchronized(this) {
-                instance ?: RuStoreRemoteConfigManager().also { instance = it }
+                instance ?: RuStoreRemoteConfigManager(context.applicationContext).also { instance = it }
             }
+
+        /** Для обратной совместимости — вызов из ViewModel без context */
+        fun getInstance(): RuStoreRemoteConfigManager =
+            instance ?: throw IllegalStateException(
+                "RuStoreRemoteConfigManager not initialized. Call getInstance(context) first."
+            )
     }
 }

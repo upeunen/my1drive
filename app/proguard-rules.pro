@@ -1,21 +1,64 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =====================================================
+# My1drive ProGuard / R8 Rules
+# =====================================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Сохраняем номера строк для Crashlytics/AppMetrica
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ---- Kotlin ----
+-keep class kotlin.Metadata { *; }
+-dontwarn kotlin.**
+-keepclassmembers class **$WhenMappings { <fields>; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ---- Kotlinx Coroutines ----
+-keepclassmembernames class kotlinx.** {
+    volatile <fields>;
+}
+-dontwarn kotlinx.coroutines.**
+
+# ---- RuStore SDK (Pay + RemoteConfig) ----
+-keep class ru.rustore.sdk.** { *; }
+-dontwarn ru.rustore.sdk.**
+
+# ---- AppMetrica ----
+-keep class io.appmetrica.analytics.** { *; }
+-dontwarn io.appmetrica.analytics.**
+
+# ---- Room ----
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
+-dontwarn androidx.room.**
+
+# ---- Coil ----
+-dontwarn coil.**
+
+# ---- JSch (SSH/SFTP) ----
+-keep class com.jcraft.jsch.** { *; }
+-dontwarn com.jcraft.jsch.**
+
+# ---- Media3 / ExoPlayer ----
+-dontwarn androidx.media3.**
+
+# ---- EncryptedSharedPreferences ----
+-keep class androidx.security.crypto.** { *; }
+-dontwarn androidx.security.crypto.**
+
+# ---- Jetpack Compose ----
+-dontwarn androidx.compose.**
+
+# ---- DocumentFile ----
+-keep class androidx.documentfile.provider.** { *; }
+
+# ---- JSON (org.json встроен в Android — не трогаем) ----
+-keep class org.json.** { *; }
+
+# ---- Наши data/model классы (Room, JSON) ----
+-keep class by.w6.my1drive.domain.model.** { *; }
+-keep class by.w6.my1drive.data.local.**Entity { *; }
+-keep class by.w6.my1drive.billing.PromoCodeEntry { *; }
+
+# ---- Убираем лишние предупреждения ----
+-dontwarn java.lang.invoke.**
+-dontwarn javax.annotation.**

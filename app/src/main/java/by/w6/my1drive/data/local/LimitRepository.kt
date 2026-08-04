@@ -40,6 +40,11 @@ class LimitRepository(context: Context) {
         )
     }
 
+    /** Время первой установки — кешируем один раз, дорогой вызов */
+    private val firstInstallTime: Long = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+    }.getOrDefault(0L)
+
     // --- Счётчики архивации ---
 
     private val _photosArchivedCount = MutableStateFlow(prefs.getInt(KEY_PHOTOS_COUNT, 0))
@@ -105,18 +110,12 @@ class LimitRepository(context: Context) {
     /**
      * Проверка: бесплатный триал ещё активен.
      * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
-     * @param context нужен для получения firstInstallTime
      */
-    fun isTrialActive(trialDays: Int, context: Context): Boolean {
+    fun isTrialActive(trialDays: Int): Boolean {
         if (trialDays <= 0) return false
-        return try {
-            val firstInstall = context.packageManager
-                .getPackageInfo(context.packageName, 0).firstInstallTime
-            val trialEndTime = firstInstall + trialDays.toLong() * 24 * 60 * 60 * 1000
-            System.currentTimeMillis() < trialEndTime
-        } catch (e: Exception) {
-            false
-        }
+        if (firstInstallTime == 0L) return false
+        val trialEndTime = firstInstallTime + trialDays.toLong() * 24 * 60 * 60 * 1000
+        return System.currentTimeMillis() < trialEndTime
     }
 
     /**
@@ -126,9 +125,9 @@ class LimitRepository(context: Context) {
      *   - активен бесплатный триал
      *   - введён действующий промокод
      */
-    fun shouldApplyLimits(trialDays: Int, context: Context): Boolean {
+    fun shouldApplyLimits(trialDays: Int): Boolean {
         if (isPremiumUnlocked) return false
-        if (isTrialActive(trialDays, context)) return false
+        if (isTrialActive(trialDays)) return false
         if (isPromoActive()) return false
         return true
     }

@@ -636,7 +636,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val trialDays = remoteConfigManager.freeTrialDays.value
-        if (limitRepository.shouldApplyLimits(trialDays, getApplication())) {
+        if (limitRepository.shouldApplyLimits(trialDays)) {
             val photos = selected.filter { !it.mimeType.startsWith("video/") }
             val videos = selected.filter { it.mimeType.startsWith("video/") }
 
@@ -706,7 +706,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         val trialDaysSingle = remoteConfigManager.freeTrialDays.value
-        if (limitRepository.shouldApplyLimits(trialDaysSingle, getApplication())) {
+        if (limitRepository.shouldApplyLimits(trialDaysSingle)) {
             val isVideo = item.mimeType.startsWith("video/")
             val totalProjectedPhotos = limitRepository.photosArchivedCount + if (!isVideo) 1 else 0
             val totalProjectedVideos = limitRepository.videosArchivedCount + if (isVideo) 1 else 0

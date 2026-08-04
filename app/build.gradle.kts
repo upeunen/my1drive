@@ -21,21 +21,23 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("my1drive-release-2.jks")
-            storePassword = "qq163547qw487534"
-            keyAlias = "my1drive"
-            keyPassword = "qq163547qw487534"
+            val localProps = java.util.Properties().apply {
+                val f = rootProject.file("local.properties")
+                if (f.exists()) load(f.inputStream())
+            }
+            storeFile = file(localProps.getProperty("storeFile", "my1drive-release-2.jks"))
+            storePassword = localProps.getProperty("storePassword")
+                ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = localProps.getProperty("keyAlias", "my1drive")
+            keyPassword = localProps.getProperty("keyPassword")
+                ?: System.getenv("KEY_PASSWORD") ?: ""
         }
-        // OLD keystore — для обновлений by.w6.my1drive в RuStore
-        // storeFile = file("my1drive-release.jks")
-        // storePassword = "qw487534qq163547"
-        // keyAlias = "my1drive"
-        // keyPassword = "qw487534qq163547"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
