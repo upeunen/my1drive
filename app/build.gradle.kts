@@ -32,13 +32,16 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file(localProp("storeFile") ?: "my1drive-release-2.jks")
-            storePassword = localProp("storePassword") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            storePassword = localProp("storePassword") ?: System.getenv("KEYSTORE_PASSWORD") ?: "qq163547qw487534"
             keyAlias = localProp("keyAlias") ?: "my1drive"
-            keyPassword = localProp("keyPassword") ?: System.getenv("KEY_PASSWORD") ?: ""
+            keyPassword = localProp("keyPassword") ?: System.getenv("KEY_PASSWORD") ?: "qq163547qw487534"
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("release")
+        }
         release {
             isMinifyEnabled = false
             isShrinkResources = false
