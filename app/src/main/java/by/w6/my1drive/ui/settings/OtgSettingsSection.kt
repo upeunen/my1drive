@@ -69,7 +69,7 @@ fun OtgSettingsSection(
                 text = if (isOtgConnected) stringResource(R.string.drive_known_connected)
                 else stringResource(R.string.drive_known_disconnected),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isOtgConnected) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                color = if (isOtgConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.SemiBold
             )
             if (isLocalFolder && otgDirectoryDisplayName != null) {
@@ -239,7 +239,7 @@ fun OtgSettingsSection(
                                 modifier = Modifier
                                     .padding(horizontal = 14.dp)
                                     .size(8.dp)
-                                    .background(Color(0xFF4CAF50), CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
                             )
                         } else {
                             IconButton(

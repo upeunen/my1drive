@@ -207,14 +207,7 @@ fun ArchiveRoute(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (isCurrentConnected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF4CAF50), CircleShape)
-                                    .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
-                            )
-                        } else {
+                        if (!isCurrentConnected) {
                             Icon(
                                 imageVector = Icons.Default.UsbOff,
                                 contentDescription = "Offline",

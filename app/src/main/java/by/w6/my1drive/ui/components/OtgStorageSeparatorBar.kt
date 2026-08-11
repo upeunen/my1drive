@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.StatFs
 import android.os.storage.StorageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
+import by.w6.my1drive.utils.OtgFolderResolver
 import java.io.File
 
 @Composable
@@ -38,21 +40,25 @@ fun OtgStorageSeparatorBar(
 
         if (isOtgConnected) {
             try {
-                // Method 1: StorageManager removable volumes
+                val targetUuid = otgDirectoryUri?.let { OtgFolderResolver.extractVolumeId(it) }
+
+                // Strategy 1: StorageManager removable volumes
                 val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
                 if (sm != null) {
-                    val vol = sm.storageVolumes.firstOrNull { 
-                        (it.isRemovable || (it.uuid != null && it.uuid != "primary")) && it.state == Environment.MEDIA_MOUNTED 
+                    val volumes = sm.storageVolumes
+                    val matchedVol = volumes.firstOrNull { vol ->
+                        (targetUuid != null && vol.uuid.equals(targetUuid, ignoreCase = true)) ||
+                        (vol.isRemovable && vol.state == Environment.MEDIA_MOUNTED)
                     }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && vol != null) {
-                        val dir = vol.directory
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && matchedVol != null) {
+                        val dir = matchedVol.directory
                         if (dir != null && dir.totalSpace > 0) {
                             freeGbVal = dir.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
                             totalGbVal = dir.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
                         }
                     }
-                    if (totalGbVal <= 0 && vol != null && vol.uuid != null) {
-                        val f = File("/storage/${vol.uuid}")
+                    if (totalGbVal <= 0 && matchedVol?.uuid != null) {
+                        val f = File("/storage/${matchedVol.uuid}")
                         if (f.exists() && f.totalSpace > 0) {
                             freeGbVal = f.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
                             totalGbVal = f.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
@@ -60,28 +66,49 @@ fun OtgStorageSeparatorBar(
                     }
                 }
 
-                // Method 2: Extract UUID from otgDirectoryUri
+                // Strategy 2: Direct File path resolution via Extracted UUID
+                if (totalGbVal <= 0 && targetUuid != null) {
+                    val candidatePaths = listOf(
+                        File("/storage/$targetUuid"),
+                        File("/mnt/media_rw/$targetUuid")
+                    )
+                    for (f in candidatePaths) {
+                        if (f.exists() && f.totalSpace > 0) {
+                            freeGbVal = f.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            totalGbVal = f.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            break
+                        }
+                    }
+                }
+
+                // Strategy 3: Open PFD Descriptor on SAF tree URI
                 if (totalGbVal <= 0 && otgDirectoryUri != null) {
-                    val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgDirectoryUri)
-                    if (uuid != null) {
-                        val f = File("/storage/$uuid")
-                        if (f.exists() && f.totalSpace > 0) {
-                            freeGbVal = f.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                            totalGbVal = f.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                    try {
+                        context.contentResolver.openFileDescriptor(otgDirectoryUri, "r")?.use { pfd ->
+                            val stat = StatFs(pfd.fileDescriptor.toString())
+                            if (stat.totalBytes > 0) {
+                                freeGbVal = stat.availableBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                totalGbVal = stat.totalBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            }
                         }
+                    } catch (e: Exception) {
+                        // Ignore PFD exceptions
                     }
                 }
 
-                // Method 3: Direct scan of /storage
+                // Strategy 4: Directory scan of /storage and /mnt/media_rw
                 if (totalGbVal <= 0) {
-                    val storageDir = File("/storage")
-                    if (storageDir.exists() && storageDir.isDirectory) {
-                        val otgMount = storageDir.listFiles()?.firstOrNull { f ->
-                            f.isDirectory && f.name != "emulated" && f.name != "self" && f.totalSpace > 0
-                        }
-                        if (otgMount != null) {
-                            freeGbVal = otgMount.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                            totalGbVal = otgMount.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                    val dirsToScan = listOf(File("/storage"), File("/mnt/media_rw"))
+                    for (parent in dirsToScan) {
+                        if (parent.exists() && parent.isDirectory) {
+                            val otgMount = parent.listFiles()?.firstOrNull { f ->
+                                f.isDirectory && f.name != "emulated" && f.name != "self" && f.totalSpace > 0
+                            }
+                            if (otgMount != null) {
+                                freeGbVal = otgMount.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                totalGbVal = otgMount.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                break
+                            }
                         }
                     }
                 }
