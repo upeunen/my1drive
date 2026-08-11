@@ -76,20 +76,6 @@ fun PhotosRoute(
                     fontWeight = FontWeight.Medium
                 )
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(by.w6.my1drive.R.string.pro_unlimited),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = primaryColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
         }
 
         Row(
