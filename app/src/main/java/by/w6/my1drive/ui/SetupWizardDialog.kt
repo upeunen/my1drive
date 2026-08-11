@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SetupWizardDialog(
     initialStep: Int = 0,
+    uiState: GalleryUiState,
     onDismiss: () -> Unit,
     onStartOtgRegistration: () -> Unit,
     onRequestFullAccess: () -> Unit,
@@ -95,7 +96,7 @@ fun SetupWizardDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) { page ->
                     when (page) {
-                        0 -> WizardStep1Welcome()
+                        0 -> WizardStep1Welcome(uiState)
                         1 -> WizardStep2Otg()
                         2 -> WizardStep3Storage()
                     }
@@ -182,7 +183,7 @@ fun SetupWizardDialog(
 }
 
 @Composable
-private fun WizardStep1Welcome() {
+private fun WizardStep1Welcome(uiState: GalleryUiState) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
             Icon(
@@ -204,6 +205,28 @@ private fun WizardStep1Welcome() {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        // Show Trial/Limits info
+        if (!uiState.isPremiumUnlocked) {
+            val trialText = if (uiState.isTrialActive) {
+                stringResource(R.string.trial_active_days, uiState.remainingTrialDays)
+            } else {
+                stringResource(R.string.free_version_limits, uiState.photosArchivedCount, uiState.maxPhotos, uiState.videosArchivedCount, uiState.maxVideos)
+            }
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = trialText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
     }
 }
 

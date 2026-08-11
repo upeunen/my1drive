@@ -36,8 +36,10 @@ fun AppDialogCoordinator(
 
     when (activeDialog) {
         is AppDialog.SetupWizard -> {
+            val uiState by viewModel.uiState.collectAsState()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = activeDialog.initialStep,
+                uiState = uiState,
                 onDismiss = { viewModel.dismissDialog() },
                 onStartOtgRegistration = {
                     onSelectOtgDirectory()
@@ -88,8 +90,10 @@ fun AppDialogCoordinator(
             )
         }
         is AppDialog.LocalFolder -> {
+            val uiState by viewModel.uiState.collectAsState()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = 2,
+                uiState = uiState,
                 onDismiss = { viewModel.dismissDialog() },
                 onStartOtgRegistration = {
                     onSelectOtgDirectory()

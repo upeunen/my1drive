@@ -623,6 +623,7 @@ fun GalleryScreenContent(
         if (showOtgGuideDialog) {
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = 1,
+                uiState = uiState,
                 onDismiss = { onSetShowOtgGuide(false) },
                 onStartOtgRegistration = {
                     onSetShowOtgGuide(false)

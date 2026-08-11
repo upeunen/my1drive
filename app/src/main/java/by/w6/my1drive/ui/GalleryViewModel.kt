@@ -109,7 +109,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                         val message = root.optString("message", "")
                         if (enabled && id.isNotBlank() && title.isNotBlank() && limitRepository.lastSeenAnnouncementId != id) {
                             limitRepository.lastSeenAnnouncementId = id
-                            _activeDialog.value = AppDialog.Announcement(id, title, message)
+                            // Announcement is integrated into the setup wizard or disabled.
+                            // _activeDialog.value = AppDialog.Announcement(id, title, message)
                         }
                     } catch (ignored: Exception) {}
                 }
