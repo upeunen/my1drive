@@ -621,7 +621,19 @@ fun GalleryScreenContent(
         }
 
         if (showOtgGuideDialog) {
-            OtgGuideDialog(onConfirm = { onSetShowOtgGuide(false); onSelectOtgDirectory() }, onDismiss = { onSetShowOtgGuide(false) })
+            by.w6.my1drive.ui.SetupWizardDialog(
+                initialStep = 1,
+                onDismiss = { onSetShowOtgGuide(false) },
+                onStartOtgRegistration = {
+                    onSetShowOtgGuide(false)
+                    onSelectOtgDirectory()
+                },
+                onRequestFullAccess = {
+                    onSetShowOtgGuide(false)
+                    viewModel.proceedWithManageStorageRequest(null)
+                },
+                onFinish = { onSetShowOtgGuide(false) }
+            )
         }
 
         missingFilesNotification?.let { missingNames ->

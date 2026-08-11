@@ -1,7 +1,9 @@
 package by.w6.my1drive.ui
 
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import androidx.annotation.OptIn
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -40,8 +43,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import by.w6.my1drive.R
 import kotlinx.coroutines.launch
 
@@ -173,11 +183,6 @@ fun SetupWizardDialog(
 
 @Composable
 private fun WizardStep1Welcome() {
-    val context = LocalContext.current
-    val rawResourceId = remember(context) {
-        context.resources.getIdentifier("otg_guide", "raw", context.packageName)
-    }
-    
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
             Icon(
@@ -199,20 +204,6 @@ private fun WizardStep1Welcome() {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        
-        if (rawResourceId != 0) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                VideoGuidePlayer(rawResourceId = rawResourceId)
-            }
-        }
     }
 }
 
@@ -285,4 +276,44 @@ private fun WizardStep3Storage() {
             modifier = Modifier.padding(bottom = 16.dp)
         )
     }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+fun VideoGuidePlayer(
+    rawResourceId: Int,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    
+    // Create ExoPlayer and loop it
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ALL
+            playWhenReady = true
+            volume = 0f // Mute audio
+        }
+    }
+
+    DisposableEffect(rawResourceId) {
+        val rawUri = Uri.parse("android.resource://${context.packageName}/$rawResourceId")
+        val mediaItem = MediaItem.fromUri(rawUri)
+        exoPlayer.setMediaItem(mediaItem)
+        exoPlayer.prepare()
+        
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false // Hide progress bar, play/pause buttons
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+            }
+        },
+        modifier = modifier.fillMaxWidth()
+    )
 }

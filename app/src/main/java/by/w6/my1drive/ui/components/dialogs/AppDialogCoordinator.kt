@@ -17,8 +17,7 @@ import by.w6.my1drive.ui.GalleryViewModel
 import by.w6.my1drive.ui.ArchiveNamingDialog
 import by.w6.my1drive.ui.CreateArchiveGuideDialog
 import by.w6.my1drive.ui.components.UnknownDriveDialog
-import by.w6.my1drive.ui.FirstLaunchDialog
-import by.w6.my1drive.ui.LocalFolderDialog
+
 import by.w6.my1drive.ui.screens.SuccessDialog
 import by.w6.my1drive.ui.screens.PaywallScreen
 // import by.w6.my1drive.ui.UnreadableOtgDialog
@@ -89,20 +88,17 @@ fun AppDialogCoordinator(
             )
         }
         is AppDialog.LocalFolder -> {
-            val pendingFolder by viewModel.pendingDeviceFolderToRequest.collectAsState()
-            LocalFolderDialog(
-                folderPath = pendingFolder ?: "DCIM",
-                onSelectFolder = {
-                    viewModel.dismissDialog()
-                    onSelectDeviceDirectory()
-                },
+            by.w6.my1drive.ui.SetupWizardDialog(
+                initialStep = 2,
                 onDismiss = { viewModel.dismissDialog() },
-                onRequestFullAccess = if (!viewModel.hasAllFilesAccess()) {
-                    {
-                        viewModel.dismissDialog()
-                        viewModel.proceedWithManageStorageRequest(null)
-                    }
-                } else null
+                onStartOtgRegistration = {
+                    onSelectOtgDirectory()
+                },
+                onRequestFullAccess = {
+                    viewModel.dismissDialog()
+                    viewModel.proceedWithManageStorageRequest(null)
+                },
+                onFinish = { viewModel.dismissDialog() }
             )
         }
         is AppDialog.Naming -> {
