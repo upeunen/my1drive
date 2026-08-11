@@ -212,6 +212,9 @@ fun GalleryScreenContent(
     val archivedGroupedItems = uiState.archivedGroupedItems
     val mediaItems = uiState.mediaItems
     val gridColumnsCount = uiState.gridColumnsCount
+    val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
+    val physicalArchiveSize = uiState.physicalArchiveSize
+    val isLimitActive = viewModel.isLimitActive
 
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
 
@@ -284,19 +287,19 @@ fun GalleryScreenContent(
     if (showChangeFolderConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showChangeFolderConfirmDialog = false },
-            title = { Text("РЎРјРµРЅРёС‚СЊ РїР°РїРєСѓ Р°СЂС…РёРІР°?", fontWeight = FontWeight.Bold) },
-            text = { Text("РЎРјРµРЅР° РїР°РїРєРё Р°СЂС…РёРІР° РјРѕР¶РµС‚ РЅР°СЂСѓС€РёС‚СЊ С‚РµРєСѓС‰СѓСЋ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёСЋ. Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ РїСЂРѕРґРѕР»Р¶РёС‚СЊ?") },
+            title = { Text(stringResource(R.string.dialog_change_folder_title), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.dialog_change_folder_desc)) },
             confirmButton = {
                 Button(onClick = {
                     showChangeFolderConfirmDialog = false
                     onSelectOtgDirectory()
                 }) {
-                    Text("РЎРјРµРЅРёС‚СЊ", maxLines = 1, softWrap = false)
+                    Text(stringResource(R.string.action_change), maxLines = 1, softWrap = false)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showChangeFolderConfirmDialog = false }) {
-                    Text("РћС‚РјРµРЅР°", maxLines = 1, softWrap = false)
+                    Text(stringResource(R.string.action_cancel), maxLines = 1, softWrap = false)
                 }
             }
         )
@@ -356,115 +359,39 @@ fun GalleryScreenContent(
 
             ConnectingUsbBanner(visible = isCheckingConnection || isSilentSyncing)
 
-            // Expandable group chips row
+            // Stationary Separator Indicator Bar directly below TopBar
+            if (currentScreenRoute == "photos") {
+                by.w6.my1drive.ui.components.PhoneStorageSeparatorBar(
+                    mediaItemsCount = mediaItems.size,
+                    physicalArchiveSize = physicalArchiveSize,
+                    isArchiving = archiveState.isArchiving
+                )
+            } else if (currentScreenRoute == "archive") {
+                by.w6.my1drive.ui.components.OtgStorageSeparatorBar(
+                    isOtgConnected = isOtgConnected,
+                    otgDirectoryDisplayName = otgDirectoryDisplayName,
+                    currentArchiveSize = physicalArchiveSize,
+                    isLimitActive = isLimitActive
+                )
+            }
+
+            // Animated Banners Section (expands smoothly below the separator bar without shifting it)
+            val driveStatus by viewModel.otgManager.status.collectAsStateWithLifecycle()
             AnimatedVisibility(
-                visible = isGroupExpanded && selectedIds.isNotEmpty(),
-                enter = slideInVertically(spring(stiffness = Spring.StiffnessMediumLow)) { -it } + fadeIn(),
-                exit = slideOutVertically(spring(stiffness = Spring.StiffnessMediumLow)) { -it } + fadeOut()
+                visible = driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED ||
+                        (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) ||
+                        hasPartialAccess ||
+                        otgDirectoryUri == null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Р’СЃРµ
-                    androidx.compose.material3.AssistChip(
-                        onClick = {
-                            viewModel.selectItems(visibleItemsForChips.map { it.id })
-                            isGroupExpanded = false
-                        },
-                        label = { Text("Р’СЃРµ") }
-                    )
-                    // РЎ РґР°С‚РѕР№
-                    androidx.compose.material3.AssistChip(
-                        onClick = {
-                            if (firstSelectedItem != null) {
-                                val targetDate = firstSelectedItem.dateModified
-                                val cal1 = java.util.Calendar.getInstance().apply { timeInMillis = targetDate * 1000 }
-                                val matching = visibleItemsForChips.filter { item ->
-                                    val cal2 = java.util.Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
-                                    cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR) &&
-                                        cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
-                                }.map { it.id }
-                                viewModel.selectItems(matching)
-                            }
-                            isGroupExpanded = false
-                        },
-                        enabled = firstSelectedItem != null,
-                        label = { Text("РЎ РґР°С‚РѕР№") }
-                    )
-                    // Р’ РїР°РїРєРµ
-                    androidx.compose.material3.AssistChip(
-                        onClick = {
-                            if (firstSelectedItem != null) {
-                                val path = firstSelectedItem.originalRelativePath
-                                val matching = visibleItemsForChips
-                                    .filter { it.originalRelativePath == path }
-                                    .map { it.id }
-                                viewModel.selectItems(matching)
-                            }
-                            isGroupExpanded = false
-                        },
-                        enabled = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty(),
-                        label = { Text("Р’ РїР°РїРєРµ") }
-                    )
-                    // Р”РёР°РїР°Р·РѕРЅ
-                    androidx.compose.material3.AssistChip(
-                        onClick = {
-                            onSelectDateRangeClick()
-                            isGroupExpanded = false
-                        },
-                        label = { Text("Р”РёР°РїР°Р·РѕРЅ") }
-                    )
+                Column {
+                    if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
+                    else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
+                    if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
+                    if (otgDirectoryUri == null) OtgRequiredBanner()
                 }
             }
-
-            // РџСЂРѕРіСЂРµСЃСЃ-РїР°РЅРµР»СЊ Р°СЂС…РёРІР°С†РёРё/РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ/СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
-            if (archiveState.isArchiving) {
-                val queue = if (archiveState.pendingQueueSize > 0) stringResource(R.string.status_in_queue, archiveState.pendingQueueSize) else ""
-                ProgressPanel(
-                    title = stringResource(R.string.title_archiving),
-                    fileName = archiveState.currentFileName,
-                    currentIndex = archiveState.currentFileIndex,
-                    totalFiles = archiveState.totalFiles,
-                    progressFraction = archiveState.progressFraction,
-                    extraInfo = queue,
-                    icon = Icons.Default.CloudUpload,
-                    statusText = mapStepToText(archiveState.currentStep),
-                    onCancel = { viewModel.cancelArchiving() }
-                )
-            } else if (restoreState.isRestoring) {
-                ProgressPanel(
-                    title = stringResource(R.string.title_restoring),
-                    fileName = restoreState.currentFileName,
-                    currentIndex = restoreState.currentFileIndex,
-                    totalFiles = restoreState.totalFiles,
-                    progressFraction = restoreState.progressFraction,
-                    icon = Icons.Default.CloudDownload,
-                    statusText = mapStepToText(restoreState.currentStep),
-                    onCancel = { viewModel.cancelRestoring() }
-                )
-            } else if (syncProgressState.isSyncing) {
-                ProgressPanel(
-                    title = stringResource(R.string.title_syncing),
-                    fileName = syncProgressState.currentFileName,
-                    currentIndex = syncProgressState.currentFileIndex,
-                    totalFiles = syncProgressState.totalFiles,
-                    progressFraction = syncProgressState.progressFraction,
-                    icon = Icons.Default.Sync,
-                    statusText = if (syncProgressState.totalFiles > 0) stringResource(R.string.status_computing_hashes) else stringResource(R.string.status_searching_files)
-                )
-            }
-
-            val driveStatus by viewModel.otgManager.status.collectAsStateWithLifecycle()
-            if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
-            else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
-            if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
-            if (otgDirectoryUri == null) OtgRequiredBanner()
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 androidx.navigation.compose.NavHost(
@@ -545,7 +472,7 @@ fun GalleryScreenContent(
                                 if (isItemActive || item.hasCachedPreview) {
                                     viewModel.toggleSelection(item.id)
                                 } else {
-                                    Toast.makeText(context, "РџРѕРґРєР»СЋС‡РёС‚Рµ РЅСѓР¶РЅС‹Р№ OTG РЅР°РєРѕРїРёС‚РµР»СЊ", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.toast_connect_otg), Toast.LENGTH_SHORT).show()
                                 }
                             },
                             onScrollStateChanged = { viewModel.setScrolling(it) }

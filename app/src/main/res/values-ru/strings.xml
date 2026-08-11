@@ -274,4 +274,8 @@
     <string name="dialog_eject_message">Вы уверены, что хотите безопасно извлечь съемный носитель?</string>
     <string name="action_eject">Извлечь</string>
     <string name="action_cancel">Отмена</string>
+
+    <!-- Phone Storage Widget -->
+    <string name="phone_storage_title">Память телефона</string>
+    <string name="phone_storage_free_fmt">Свободно %1$.1f ГБ из %2$.0f ГБ</string>
 </resources>

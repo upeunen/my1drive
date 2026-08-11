@@ -247,6 +247,10 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="exif_unit_s">s</string>
     <string name="exif_unit_mm">mm</string>
     <!-- Settings Tab -->
+    <!-- Phone Storage Widget -->
+    <string name="phone_storage_title">Phone Storage</string>
+    <string name="phone_storage_free_fmt">Free %1$.1f GB of %2$.0f GB</string>
+
     <string name="warning_internal_storage">⚠️ Warning: Internal storage folder selected. It is recommended to choose a folder on a USB flash drive for backups.</string>
     <string name="setting_multi_archive_title">Work with multiple archives (drives)</string>
     <string name="setting_show_offline_files">Show files from disconnected drives in gallery</string>

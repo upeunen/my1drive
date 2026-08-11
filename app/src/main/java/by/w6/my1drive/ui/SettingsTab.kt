@@ -20,8 +20,8 @@ import by.w6.my1drive.utils.VpsConnectionManager
 import by.w6.my1drive.ui.settings.ArchiveProgressSection
 import by.w6.my1drive.ui.settings.MaintenanceAndDebugSection
 import by.w6.my1drive.ui.settings.OtgSettingsSection
-import by.w6.my1drive.ui.settings.VpsSettingsSection
 import by.w6.my1drive.ui.settings.PromoCodeCard
+import by.w6.my1drive.ui.settings.VpsSettingsSection
 
 @Composable
 fun SettingsTab(
