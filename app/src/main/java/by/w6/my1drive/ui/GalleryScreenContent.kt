@@ -370,8 +370,7 @@ fun GalleryScreenContent(
                 by.w6.my1drive.ui.components.OtgStorageSeparatorBar(
                     isOtgConnected = isOtgConnected,
                     otgDirectoryDisplayName = otgDirectoryDisplayName,
-                    currentArchiveSize = physicalArchiveSize,
-                    isLimitActive = isLimitActive
+                    otgDirectoryUri = otgDirectoryUri
                 )
             }
 

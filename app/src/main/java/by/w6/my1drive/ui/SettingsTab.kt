@@ -90,14 +90,6 @@ fun SettingsTab(
         // VPS Settings Card
         VpsSettingsSection(vpsManager = vpsManager)
 
-        Spacer(Modifier.height(16.dp))
-
-        // 2. Storage Limit / Capacity Card
-        ArchiveProgressSection(
-            currentArchiveSize = currentArchiveSize,
-            isLimitActive = isLimitActive
-        )
-
         // Промокод — показываем если в Remote Config есть коды
         if (hasPromoCodes) {
             Spacer(Modifier.height(16.dp))
