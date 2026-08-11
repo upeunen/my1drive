@@ -183,6 +183,9 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="wizard_title_otg">Подключение накопителя</string>
     <string name="wizard_msg_otg">Для полноценной работы приложения вам понадобится OTG адаптер и накопитель (флешка или переносной диск). Давайте его зарегистрируем.</string>
     <string name="wizard_btn_register_otg">Выбрать папку накопителя</string>
+    
+    <string name="wizard_trial_active">Поздравляем! Вам доступна пробная версия на %1$d дн.</string>
+    <string name="wizard_free_limits">Поздравляем! Вам доступна бесплатная версия на %1$d фото и %2$d видео.</string>
 
     <!-- Preloader -->
     <string name="preloader_detecting_drive">Поиск накопителя</string>

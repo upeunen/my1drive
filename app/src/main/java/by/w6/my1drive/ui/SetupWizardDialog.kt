@@ -112,16 +112,19 @@ fun SetupWizardDialog(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     repeat(pageCount) { iteration ->
-                        val color = if (pagerState.currentPage == iteration) 
+                        val isSelected = pagerState.currentPage == iteration
+                        val color = if (isSelected) 
                             MaterialTheme.colorScheme.primary 
                         else 
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                        val width = if (isSelected) 24.dp else 8.dp
                         Box(
                             modifier = Modifier
-                                .padding(4.dp)
+                                .padding(horizontal = 3.dp)
                                 .clip(CircleShape)
                                 .background(color)
-                                .size(8.dp)
+                                .height(8.dp)
+                                .width(width)
                         )
                     }
                 }
@@ -135,19 +138,32 @@ fun SetupWizardDialog(
                                     pagerState.animateScrollToPage(1)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(text = stringResource(R.string.welcome_btn_start))
+                            Text(
+                                text = stringResource(R.string.welcome_btn_start),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
                         }
                     }
                     1 -> {
                         Column {
                             Button(
                                 onClick = onStartOtgRegistration,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text(text = stringResource(R.string.wizard_btn_register_otg))
+                                Text(
+                                    text = stringResource(R.string.wizard_btn_register_otg),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
                             TextButton(
                                 onClick = {
                                     if (needsStoragePermission) {
@@ -160,19 +176,26 @@ fun SetupWizardDialog(
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(text = stringResource(R.string.local_folder_dialog_dismiss)) // "Пропустить"
+                                Text(
+                                    text = stringResource(R.string.local_folder_dialog_dismiss),
+                                    style = MaterialTheme.typography.bodyMedium
+                                ) // "Пропустить"
                             }
                         }
                     }
                     2 -> {
                         Button(
                             onClick = onRequestFullAccess,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
                                 text = stringResource(R.string.local_folder_dialog_full_access),
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
                     }
@@ -209,21 +232,32 @@ private fun WizardStep1Welcome(uiState: GalleryUiState) {
         // Show Trial/Limits info
         if (!uiState.isPremiumUnlocked) {
             val trialText = if (uiState.isTrialActive) {
-                stringResource(R.string.trial_active_days, uiState.remainingTrialDays)
+                stringResource(R.string.wizard_trial_active, uiState.remainingTrialDays)
             } else {
-                stringResource(R.string.free_version_limits, uiState.photosArchivedCount, uiState.maxPhotos, uiState.videosArchivedCount, uiState.maxVideos)
+                stringResource(R.string.wizard_free_limits, uiState.maxPhotos, uiState.maxVideos)
             }
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             ) {
                 Text(
                     text = trialText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(12.dp)
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
                 )
             }
         }
