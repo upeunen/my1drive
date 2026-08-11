@@ -7,6 +7,7 @@ data class SuccessDialogData(val freedSpaceBytes: Long, val currentFreeSpaceByte
 
 sealed class AppDialog {
     object FirstLaunch : AppDialog()
+    data class SetupWizard(val initialStep: Int = 0) : AppDialog()
     data class Paywall(val missingPhotos: Int, val missingVideos: Int) : AppDialog()
     object UnknownDrive : AppDialog()
     object UnreadableOtg : AppDialog()
@@ -21,6 +22,8 @@ sealed class AppDialog {
     data class Success(val data: SuccessDialogData) : AppDialog()
     object UsbTooltip : AppDialog()
     object PromoCode : AppDialog()
+    data class PromoSuccess(val days: Int, val customMessage: String?) : AppDialog()
+    data class Announcement(val id: String, val title: String, val message: String) : AppDialog()
 }
 
 data class SyncState(

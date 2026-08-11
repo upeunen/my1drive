@@ -36,17 +36,21 @@ fun AppDialogCoordinator(
     if (activeDialog == null) return
 
     when (activeDialog) {
-        is AppDialog.FirstLaunch -> {
-            val isOtgConnected by viewModel.isOtgConnected.collectAsState()
-            FirstLaunchDialog(
-                isOtgConnected = isOtgConnected,
-                onStart = {
-                    viewModel.dismissDialog()
+        is AppDialog.SetupWizard -> {
+            by.w6.my1drive.ui.SetupWizardDialog(
+                initialStep = activeDialog.initialStep,
+                onDismiss = { viewModel.dismissDialog() },
+                onStartOtgRegistration = {
                     onSelectOtgDirectory()
                 },
-                onDismiss = { viewModel.dismissDialog() }
+                onRequestFullAccess = {
+                    viewModel.dismissDialog()
+                    viewModel.proceedWithManageStorageRequest(null)
+                },
+                onFinish = { viewModel.dismissDialog() }
             )
         }
+        is AppDialog.FirstLaunch -> {}
         is AppDialog.Paywall -> {
             val context = androidx.compose.ui.platform.LocalContext.current
             PaywallScreen(
@@ -174,6 +178,36 @@ fun AppDialogCoordinator(
             PromoCodeDialog(
                 onApply = { code -> viewModel.applyPromoCode(code) },
                 onDismiss = { viewModel.dismissDialog() }
+            )
+        }
+
+        is AppDialog.PromoSuccess -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissDialog() },
+                title = { Text(stringResource(R.string.promo_success_title)) },
+                text = {
+                    Text(
+                        activeDialog.customMessage ?: stringResource(R.string.promo_success_message, activeDialog.days)
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissDialog() }) {
+                        Text(stringResource(R.string.action_close))
+                    }
+                }
+            )
+        }
+
+        is AppDialog.Announcement -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissDialog() },
+                title = { Text(activeDialog.title) },
+                text = { Text(activeDialog.message) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissDialog() }) {
+                        Text(stringResource(R.string.action_close))
+                    }
+                }
             )
         }
     }

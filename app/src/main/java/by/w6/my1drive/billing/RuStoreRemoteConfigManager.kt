@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import by.w6.my1drive.My1DriveApplication
 import by.w6.my1drive.data.local.LimitRepository
+import by.w6.my1drive.utils.DebugLogBuffer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,13 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Синглтон для работы с RuStore Remote Config.
  * Хранит загруженные значения как StateFlow с fallback-дефолтами.
- *
- * Стратегия обновления: fetchConfigIfStale() проверяет TTL = 1 час.
- * fetchConfig() — принудительное обновление (при старте приложения).
- *
- * API клиента:
- *   client.init()            → Task<Unit>
- *   client.getRemoteConfig() → Task<RemoteConfig>
+ * Каждый параметр считывается изолированно через runCatching, чтобы сбой одного ключа не ломал остальные.
  */
 class RuStoreRemoteConfigManager private constructor(context: Context) {
 
@@ -37,8 +32,11 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
     private val _promoCodesJson = MutableStateFlow("")
     val promoCodesJson: StateFlow<String> = _promoCodesJson.asStateFlow()
 
+    private val _announcementJson = MutableStateFlow("")
+    val announcementJson: StateFlow<String> = _announcementJson.asStateFlow()
+
     /** true = лимиты включены (управляется из RuStore Console) */
-    private val _limitsEnabled = MutableStateFlow(false) // false пока конфиг не загрузился
+    private val _limitsEnabled = MutableStateFlow(false)
     val limitsEnabled: StateFlow<Boolean> = _limitsEnabled.asStateFlow()
 
     private val _isLoaded = MutableStateFlow(false)
@@ -46,68 +44,86 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
 
     // --- Загрузка конфига ---
 
-    /**
-     * Обновляет конфиг только если прошёл REFRESH_INTERVAL с последней загрузки.
-     * Вызывать при каждом foreground-старте Activity.
-     */
     fun fetchConfigIfStale() {
         val lastFetch = prefs.getLong(KEY_LAST_FETCH_TIME, 0L)
         val isStale = System.currentTimeMillis() - lastFetch > REFRESH_INTERVAL_MS
         if (isStale || !_isLoaded.value) {
-            Log.d(TAG, "Config is stale (${(System.currentTimeMillis() - lastFetch) / 1000}s ago), refreshing...")
+            DebugLogBuffer.log(TAG, "Config is stale (${(System.currentTimeMillis() - lastFetch) / 1000}s ago), refreshing...")
             fetchConfig()
         } else {
-            Log.d(TAG, "Config is fresh, skipping fetch")
+            DebugLogBuffer.log(TAG, "Config is fresh, skipping fetch")
         }
     }
 
-    /**
-     * Принудительно загружает Remote Config.
-     * Вызывать из Application.onCreate().
-     */
     fun fetchConfig() {
         val client = try {
             My1DriveApplication.remoteConfigClient
         } catch (e: UninitializedPropertyAccessException) {
             Log.e(TAG, "RemoteConfigClient not initialized yet", e)
+            DebugLogBuffer.log(TAG, "ERROR: RemoteConfigClient not initialized yet")
             return
         }
 
+        DebugLogBuffer.log(TAG, "Initiating RemoteConfig SDK fetch...")
         client.init()
             .addOnSuccessListener {
-                Log.d(TAG, "SDK init success, fetching config...")
+                DebugLogBuffer.log(TAG, "SDK init success, requesting RemoteConfig...")
                 client.getRemoteConfig()
                     .addOnSuccessListener { config ->
-                        _maxPhotos.value = config.getInt(KEY_MAX_PHOTOS)
-                            .takeIf { it > 0 } ?: LimitRepository.MAX_PHOTOS
-                        _maxVideos.value = config.getInt(KEY_MAX_VIDEOS)
-                            .takeIf { it > 0 } ?: LimitRepository.MAX_VIDEOS
-                        _freeTrialDays.value = config.getInt(KEY_TRIAL_DAYS)
-                        _promoCodesJson.value = config.getString(KEY_PROMO_CODES)
-                        _limitsEnabled.value = config.getBoolean(KEY_LIMITS_ENABLED)
+                        // Изолированное безопасное чтение каждого параметра
+                        _maxPhotos.value = runCatching { config.getInt(KEY_MAX_PHOTOS) }
+                            .getOrNull()?.takeIf { it > 0 } ?: LimitRepository.MAX_PHOTOS
+
+                        _maxVideos.value = runCatching { config.getInt(KEY_MAX_VIDEOS) }
+                            .getOrNull()?.takeIf { it > 0 } ?: LimitRepository.MAX_VIDEOS
+
+                        _freeTrialDays.value = runCatching { config.getInt(KEY_TRIAL_DAYS) }
+                            .getOrDefault(0)
+
+                        _promoCodesJson.value = runCatching { config.getString(KEY_PROMO_CODES) }
+                            .getOrDefault("")
+
+                        _announcementJson.value = runCatching { config.getString(KEY_ANNOUNCEMENT_JSON) }
+                            .getOrDefault("")
+
+                        _limitsEnabled.value = runCatching { config.getBoolean(KEY_LIMITS_ENABLED) }
+                            .getOrDefault(false)
+
                         _isLoaded.value = true
 
                         // Сохраняем время успешной загрузки
                         prefs.edit().putLong(KEY_LAST_FETCH_TIME, System.currentTimeMillis()).apply()
 
-                        Log.d(TAG, "Config loaded: " +
-                            "maxPhotos=${_maxPhotos.value}, " +
-                            "maxVideos=${_maxVideos.value}, " +
-                            "trialDays=${_freeTrialDays.value}, " +
-                            "promoCodes=${_promoCodesJson.value.take(80)}"
-                        )
+                        val logMsg = "Config loaded: " +
+                                "limitsEnabled=${_limitsEnabled.value}, " +
+                                "maxPhotos=${_maxPhotos.value}, " +
+                                "maxVideos=${_maxVideos.value}, " +
+                                "trialDays=${_freeTrialDays.value}, " +
+                                "hasPromo=${_promoCodesJson.value.isNotBlank()}, " +
+                                "hasAnnouncement=${_announcementJson.value.isNotBlank()}"
+
+                        Log.d(TAG, logMsg)
+                        DebugLogBuffer.log(TAG, logMsg)
                     }
                     .addOnFailureListener { e ->
-                        Log.w(TAG, "getRemoteConfig failed, using defaults", e)
+                        val err = "getRemoteConfig failed: ${e.localizedMessage}. Using fallbacks."
+                        Log.w(TAG, err, e)
+                        DebugLogBuffer.log(TAG, err)
+                        _limitsEnabled.value = true
+                        _isLoaded.value = true
                     }
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "SDK init failed, using defaults", e)
+                val err = "SDK init failed: ${e.localizedMessage}. Using fallbacks."
+                Log.w(TAG, err, e)
+                DebugLogBuffer.log(TAG, err)
+                _limitsEnabled.value = true
+                _isLoaded.value = true
             }
     }
 
     companion object {
-        private const val TAG = "RemoteConfigManager"
+        private const val TAG = "RemoteConfig"
         private const val REFRESH_INTERVAL_MS = 60 * 60 * 1000L // 1 час
 
         // Ключи параметров в RuStore Console → Remote Config
@@ -116,6 +132,7 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
         const val KEY_TRIAL_DAYS  = "free_trial_days"
         const val KEY_PROMO_CODES = "promo_codes_json"
         const val KEY_LIMITS_ENABLED = "limits_enabled"
+        const val KEY_ANNOUNCEMENT_JSON = "announcement_json"
 
         private const val KEY_LAST_FETCH_TIME = "last_fetch_time"
 
@@ -126,7 +143,6 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
                 instance ?: RuStoreRemoteConfigManager(context.applicationContext).also { instance = it }
             }
 
-        /** Для обратной совместимости — вызов из ViewModel без context */
         fun getInstance(): RuStoreRemoteConfigManager =
             instance ?: throw IllegalStateException(
                 "RuStoreRemoteConfigManager not initialized. Call getInstance(context) first."

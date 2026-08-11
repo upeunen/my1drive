@@ -28,5 +28,9 @@ data class GalleryUiState(
     val missingThumbnailsCount: Int = 0,
     val isStorageLow: Boolean = false,
     val activeDialog: AppDialog? = null,
-    val pendingDelete: List<MediaItem>? = null
+    val pendingDelete: List<MediaItem>? = null,
+    val maxPhotos: Int = by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS,
+    val maxVideos: Int = by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS,
+    val isTrialActive: Boolean = false,
+    val remainingTrialDays: Int = 0
 )

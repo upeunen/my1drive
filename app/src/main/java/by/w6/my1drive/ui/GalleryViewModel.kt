@@ -97,6 +97,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val isPremiumUnlocked = limitRepository.isPremiumUnlockedFlow
     private val remoteConfigManager = by.w6.my1drive.billing.RuStoreRemoteConfigManager.getInstance()
 
+    init {
+        viewModelScope.launch {
+            remoteConfigManager.announcementJson.collect { json ->
+                if (json.isNotBlank()) {
+                    try {
+                        val root = org.json.JSONObject(json)
+                        val enabled = root.optBoolean("enabled", false)
+                        val id = root.optString("id", "")
+                        val title = root.optString("title", "")
+                        val message = root.optString("message", "")
+                        if (enabled && id.isNotBlank() && title.isNotBlank() && limitRepository.lastSeenAnnouncementId != id) {
+                            limitRepository.lastSeenAnnouncementId = id
+                            _activeDialog.value = AppDialog.Announcement(id, title, message)
+                        }
+                    } catch (ignored: Exception) {}
+                }
+            }
+        }
+    }
+
     fun showCreateArchiveGuideDialog(uri: Uri) { _activeDialog.value = AppDialog.CreateArchiveGuide(uri) }
     
     fun showPaywall(missingPhotos: Int = 0, missingVideos: Int = 0) { _activeDialog.value = AppDialog.Paywall(missingPhotos, missingVideos) }
@@ -109,17 +129,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
      */
     fun applyPromoCode(code: String): Int? {
         val json = remoteConfigManager.promoCodesJson.value
-        val days = by.w6.my1drive.billing.PromoCodeValidator.validate(code, json)
-        return if (days != null) {
-            val until = System.currentTimeMillis() + days.toLong() * 24 * 60 * 60 * 1000
+        val entry = by.w6.my1drive.billing.PromoCodeValidator.validateWithDetails(code, json)
+        return if (entry != null) {
+            val until = System.currentTimeMillis() + entry.days.toLong() * 24 * 60 * 60 * 1000
             limitRepository.appliedPromoCode = code.trim().uppercase()
             limitRepository.promoUntilTimestamp = until
-            dismissDialog()
+            _activeDialog.value = AppDialog.PromoSuccess(entry.days, entry.message)
             io.appmetrica.analytics.AppMetrica.reportEvent(
                 "promo_code_applied",
-                "{\"code\":\"${code.trim().uppercase()}\",\"days\":$days}"
+                "{\"code\":\"${code.trim().uppercase()}\",\"days\":${entry.days}}"
             )
-            days
+            entry.days
         } else {
             io.appmetrica.analytics.AppMetrica.reportEvent(
                 "promo_code_invalid",
@@ -142,7 +162,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
-            onShowFirstLaunchDialog = { v -> if (v) _activeDialog.value = AppDialog.FirstLaunch else if (_activeDialog.value is AppDialog.FirstLaunch) _activeDialog.value = null },
+            onShowFirstLaunchDialog = { v -> if (v) _activeDialog.value = AppDialog.SetupWizard(0) else if (_activeDialog.value is AppDialog.SetupWizard) _activeDialog.value = null },
             onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else if (_activeDialog.value is AppDialog.UnknownDrive) _activeDialog.value = null },
             onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else if (_activeDialog.value is AppDialog.UnreadableOtg) _activeDialog.value = null },
             onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
@@ -593,7 +613,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val context = getApplication<Application>()
         if (!mediaOperationInteractor.hasPermissionForFolder(context, "DCIM")) {
             _pendingDeviceFolderToRequest.value = "DCIM"
-            otgManager.showLocalFolderPrompt()
+            if (_activeDialog.value is AppDialog.SetupWizard) {
+                _activeDialog.value = AppDialog.SetupWizard(2)
+            } else {
+                otgManager.showLocalFolderPrompt()
+            }
+        } else {
+            if (_activeDialog.value is AppDialog.SetupWizard) {
+                _activeDialog.value = null
+            }
         }
     }
 
@@ -954,10 +982,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             missingThumbnailsCount,
             isStorageLow,
             _activeDialog,
-            pendingDelete
+            pendingDelete,
+            remoteConfigManager.maxPhotos,
+            remoteConfigManager.maxVideos,
+            remoteConfigManager.freeTrialDays
         )
     ) { args ->
         @Suppress("UNCHECKED_CAST")
+        val trialDays = args[27] as Int
+        val isTrial = limitRepository.isTrialActive(trialDays)
+        val remainingTrial = limitRepository.getRemainingTrialDays(trialDays)
         GalleryUiState(
             groupedItems = args[0] as List<GalleryItem>,
             archivedGroupedItems = args[1] as List<GalleryItem>,
@@ -983,7 +1017,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             missingThumbnailsCount = args[21] as Int,
             isStorageLow = args[22] as Boolean,
             activeDialog = args[23] as AppDialog?,
-            pendingDelete = args[24] as List<MediaItem>?
+            pendingDelete = args[24] as List<MediaItem>?,
+            maxPhotos = args[25] as Int,
+            maxVideos = args[26] as Int,
+            isTrialActive = isTrial,
+            remainingTrialDays = remainingTrial
         )
     }.stateIn(
         scope = viewModelScope,

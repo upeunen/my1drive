@@ -176,11 +176,13 @@ The records remain in the database. Connect the correct drive to restore access.
 
     <!-- First launch dialog -->
     <string name="welcome_title">Добро пожаловать в My1Drive!</string>
-    <string name="welcome_msg">Это приложение позволяет сохранять файлы на USB OTG накопитель и освобождать память устройства. Вы можете восстановить их в любое время.</string>
-    <string name="welcome_msg_drive_detected">USB OTG накопитель обнаружен!</string>
-    <string name="welcome_msg_drive_not_detected">USB OTG накопитель не обнаружен. Подключите его через OTG-адаптер.</string>
+    <string name="welcome_msg">Это приложение позволяет вам копировать свои фото, видео и другие файлы на USB-накопитель, освобождая память вашего телефона.</string>
     <string name="welcome_btn_start">Начать</string>
     <string name="welcome_btn_close">Закрыть</string>
+    
+    <string name="wizard_title_otg">Подключение накопителя</string>
+    <string name="wizard_msg_otg">Для полноценной работы приложения вам понадобится OTG адаптер и накопитель (флешка или переносной диск). Давайте его зарегистрируем.</string>
+    <string name="wizard_btn_register_otg">Выбрать папку накопителя</string>
 
     <!-- Preloader -->
     <string name="preloader_detecting_drive">Поиск накопителя</string>
@@ -293,6 +295,7 @@ The records remain in the database. Connect the correct drive to restore access.
 
     <!-- RuStore Pay -->
     <string name="CONSOLE_APPLICATION_ID">2063735639</string>
+    <string name="RUSTORE_REMOTE_CONFIG_APP_ID">5189926e-01b0-4267-9204-8e5804fc7d45</string>
 
     <!-- Dialogs and Tooltips -->
     <string name="success_dialog_title">Архивация завершена!</string>
@@ -309,6 +312,9 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="action_eject">Eject</string>
     <string name="action_cancel">Cancel</string>
     <string name="free_version_limits">Бесплатная версия. Доступно: %1$d/%2$d фото, %3$d/%4$d видео</string>
+    <string name="trial_active_days">Бесплатный триал: осталось %1$d дн.</string>
+    <string name="promo_success_title">Промокод активирован!</string>
+    <string name="promo_success_message">Вам успешно начислено %1$d дн. бесплатного доступа.</string>
     <string name="pro_unlimited">PRO: Безлимит</string>
     <string name="sort_by">Сортировка: </string>
     <string name="sort_photo_date">Дата фото</string>
@@ -361,7 +367,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="local_folder_dialog_desc">Приложению нужен доступ к вашим фото и видео, чтобы перемещать их в архив без дополнительных запросов. Нажмите «Разрешить» на следующем экране.</string>
     <string name="local_folder_dialog_confirm">Разрешить</string>
     <string name="local_folder_dialog_dismiss">Пропустить</string>
-    <string name="local_folder_dialog_full_access">⚡ Дать доступ ко всем папкам сразу</string>
+    <string name="local_folder_dialog_full_access">Предоставить приложению доступ к вашим фото и видео</string>
 
     <!-- Промокоды -->
     <string name="promo_code_dialog_title">Введите промокод</string>

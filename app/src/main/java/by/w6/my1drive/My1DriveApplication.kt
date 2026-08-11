@@ -19,7 +19,7 @@ class My1DriveApplication : Application() {
 
         // RuStore Remote Config — инициализация клиента
         remoteConfigClient = RemoteConfigClientBuilder(
-            appId = AppId(getString(R.string.CONSOLE_APPLICATION_ID)),
+            appId = AppId(getString(R.string.RUSTORE_REMOTE_CONFIG_APP_ID)),
             context = this
         ).build()
         // Запускаем загрузку конфига в фоне сразу при старте

@@ -111,12 +111,32 @@ class LimitRepository(context: Context) {
      * Проверка: бесплатный триал ещё активен.
      * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
      */
+    /**
+     * Проверка: бесплатный триал ещё активен.
+     * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
+     */
     fun isTrialActive(trialDays: Int): Boolean {
         if (trialDays <= 0) return false
         if (firstInstallTime == 0L) return false
         val trialEndTime = firstInstallTime + trialDays.toLong() * 24 * 60 * 60 * 1000
         return System.currentTimeMillis() < trialEndTime
     }
+
+    /**
+     * Возвращает оставшееся количество дней триала.
+     */
+    fun getRemainingTrialDays(trialDays: Int): Int {
+        if (trialDays <= 0 || firstInstallTime == 0L) return 0
+        val trialEndTime = firstInstallTime + trialDays.toLong() * 24 * 60 * 60 * 1000
+        val diffMs = trialEndTime - System.currentTimeMillis()
+        if (diffMs <= 0) return 0
+        return ((diffMs + 86399999L) / 86400000L).toInt()
+    }
+
+    /** ID последнего показанного дистанционного объявления */
+    var lastSeenAnnouncementId: String?
+        get() = prefs.getString(KEY_LAST_SEEN_ANNOUNCEMENT, null)
+        set(value) = prefs.edit().putString(KEY_LAST_SEEN_ANNOUNCEMENT, value).apply()
 
     /**
      * Главный метод: нужно ли применять лимиты к пользователю?
@@ -143,6 +163,7 @@ class LimitRepository(context: Context) {
         private const val KEY_TRUST_LEVEL = "trust_level"
         private const val KEY_PROMO_CODE = "applied_promo_code"
         private const val KEY_PROMO_UNTIL = "promo_until_timestamp"
+        private const val KEY_LAST_SEEN_ANNOUNCEMENT = "last_seen_announcement_id"
     }
 }
 

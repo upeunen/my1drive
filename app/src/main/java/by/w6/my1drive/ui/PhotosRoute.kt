@@ -56,10 +56,21 @@ fun PhotosRoute(
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                val maxPhotos = by.w6.my1drive.data.local.LimitRepository.MAX_PHOTOS
-                val maxVideos = by.w6.my1drive.data.local.LimitRepository.MAX_VIDEOS
+                val bannerText = if (uiState.isTrialActive) {
+                    stringResource(by.w6.my1drive.R.string.trial_active_days, uiState.remainingTrialDays)
+                } else {
+                    val maxPhotos = uiState.maxPhotos
+                    val maxVideos = uiState.maxVideos
+                    stringResource(
+                        by.w6.my1drive.R.string.free_version_limits,
+                        (maxPhotos - photosArchivedCount).coerceAtLeast(0),
+                        maxPhotos,
+                        (maxVideos - videosArchivedCount).coerceAtLeast(0),
+                        maxVideos
+                    )
+                }
                 Text(
-                    text = stringResource(by.w6.my1drive.R.string.free_version_limits, (maxPhotos - photosArchivedCount).coerceAtLeast(0), maxPhotos, (maxVideos - videosArchivedCount).coerceAtLeast(0), maxVideos),
+                    text = bannerText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = onSurfaceVariantColor,
                     fontWeight = FontWeight.Medium
