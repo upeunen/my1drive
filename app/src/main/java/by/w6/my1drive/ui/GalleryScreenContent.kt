@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
@@ -178,10 +179,10 @@ fun GalleryScreenContent(
     onSelectDateRangeClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {}
 ) {
-      val uiState by viewModel.uiState.collectAsState()
+      val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingDelete = uiState.pendingDelete
     val activeArchiveUuid = uiState.activeArchiveUuid
-    val knownArchives by viewModel.knownArchives.collectAsState()
+    val knownArchives by viewModel.knownArchives.collectAsStateWithLifecycle()
     val isSharingPreparing = uiState.isSharingPreparing
     val isCheckingConnection = uiState.isCheckingConnection
     val isSilentSyncing = uiState.isSilentSyncing
@@ -459,7 +460,7 @@ fun GalleryScreenContent(
                 )
             }
 
-            val driveStatus by viewModel.otgManager.status.collectAsState()
+            val driveStatus by viewModel.otgManager.status.collectAsStateWithLifecycle()
             if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
             else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
             if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
@@ -555,7 +556,7 @@ fun GalleryScreenContent(
                             val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
                             val activeArchiveUuid = uiState.activeArchiveUuid
                             val isSyncingThumbnails = uiState.isSyncingThumbnails
-                            val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsState()
+                            val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsStateWithLifecycle()
                             val missingThumbnailsCount = uiState.missingThumbnailsCount
                             val isStorageLow = uiState.isStorageLow
 
@@ -731,7 +732,7 @@ fun GalleryScreenContent(
             )
         }
 
-        val syncState by viewModel.syncState.collectAsState()
+        val syncState by viewModel.syncState.collectAsStateWithLifecycle()
         syncState?.let { stateMessage ->
             AlertDialog(
                 onDismissRequest = { viewModel.dismissSync() },

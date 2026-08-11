@@ -23,6 +23,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.runtime.Composable
@@ -66,17 +67,17 @@ fun GalleryScreen(
     onRequestFullAccess: () -> Unit = {},
     onOpenSettings: () -> Unit = {}
 ) {
-    val selectedIds by viewModel.selectedIds.collectAsState()
-    val otgDirectoryUri by viewModel.otgDirectoryUri.collectAsState()
-    val isOtgConnected by viewModel.isOtgConnected.collectAsState()
-    val missingFilesNotification by viewModel.missingFilesNotification.collectAsState()
-    val autoSyncAddedCount by viewModel.autoSyncAddedCount.collectAsState()
-    val restoreRequest by viewModel.restoreRequest.collectAsState()
-    val archiveState by viewModel.archiveState.collectAsState()
-    val restoreState by viewModel.restoreState.collectAsState()
-    val syncProgressState by viewModel.syncProgressState.collectAsState()
+    val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
+    val otgDirectoryUri by viewModel.otgDirectoryUri.collectAsStateWithLifecycle()
+    val isOtgConnected by viewModel.isOtgConnected.collectAsStateWithLifecycle()
+    val missingFilesNotification by viewModel.missingFilesNotification.collectAsStateWithLifecycle()
+    val autoSyncAddedCount by viewModel.autoSyncAddedCount.collectAsStateWithLifecycle()
+    val restoreRequest by viewModel.restoreRequest.collectAsStateWithLifecycle()
+    val archiveState by viewModel.archiveState.collectAsStateWithLifecycle()
+    val restoreState by viewModel.restoreState.collectAsStateWithLifecycle()
+    val syncProgressState by viewModel.syncProgressState.collectAsStateWithLifecycle()
     val showRestorePicker = restoreRequest != null
-    val mediaItems by viewModel.mediaItems.collectAsState()
+    val mediaItems by viewModel.mediaItems.collectAsStateWithLifecycle()
     var actionBarHeightPx by remember { mutableStateOf(0f) }
 
     val configuration = LocalConfiguration.current

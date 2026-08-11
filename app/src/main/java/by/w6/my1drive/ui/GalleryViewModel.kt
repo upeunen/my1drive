@@ -957,72 +957,167 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
 
-    val uiState: StateFlow<GalleryUiState> = combine(
-        listOf(
-            displayManager.groupedMediaItems,
-            displayManager.archivedGroupedItems,
-            archiveYearGroups,
-            mediaItems,
-            otgManager.activeArchiveUuid,
-            displayManager.deviceSortMode,
-            displayManager.archiveSortMode,
-            archivingItemIds,
-            _restoringItemIds,
-            copiedItemIds,
-            photosArchivedCount,
-            videosArchivedCount,
-            isPremiumUnlocked,
-            isSilentSyncingFlow,
-            syncState,
-            mediaOperationInteractor.isSharingPreparing,
-            otgManager.isCheckingConnection,
-            gridColumnsCount,
-            otgManager.archiveSize,
-            otgDirectoryDisplayName,
-            thumbnailManager.isSyncingThumbnails,
-            missingThumbnailsCount,
-            isStorageLow,
-            _activeDialog,
-            pendingDelete,
-            remoteConfigManager.maxPhotos,
-            remoteConfigManager.maxVideos,
-            remoteConfigManager.freeTrialDays
+    private data class MediaSubState(
+        val grouped: List<GalleryItem>,
+        val archivedGrouped: List<GalleryItem>,
+        val yearGroups: List<by.w6.my1drive.ui.model.YearGroup>,
+        val items: List<MediaItem>,
+        val devSort: DeviceSortMode,
+        val archSort: ArchiveSortMode
+    )
+
+    private data class OtgSubState(
+        val activeArchiveUuid: String?,
+        val isChecking: Boolean,
+        val displayName: String?,
+        val archiveSize: Long,
+        val storageLow: Boolean
+    )
+
+    private data class SyncPart1(
+        val archiving: Set<String>,
+        val restoring: Set<String>,
+        val copied: Set<String>,
+        val silent: Boolean,
+        val sync: String?
+    )
+
+    private data class SyncPart2(
+        val sharing: Boolean,
+        val syncingThumbnails: Boolean,
+        val missingThumbnails: Int,
+        val gridColumns: Int
+    )
+
+    private data class SyncOpSubState(
+        val archivingItemIds: Set<String>,
+        val restoringItemIds: Set<String>,
+        val copiedItemIds: Set<String>,
+        val isSilentSyncing: Boolean,
+        val syncState: String?,
+        val isSharingPreparing: Boolean,
+        val isSyncingThumbnails: Boolean,
+        val missingThumbnailsCount: Int,
+        val gridColumnsCount: Int,
+        val activeDialog: AppDialog?,
+        val pendingDelete: List<MediaItem>?
+    )
+
+    private data class BillingSubState(
+        val photosArchivedCount: Int,
+        val videosArchivedCount: Int,
+        val isPremiumUnlocked: Boolean,
+        val maxPhotos: Int,
+        val maxVideos: Int,
+        val isTrialActive: Boolean,
+        val remainingTrialDays: Int
+    )
+
+    private val mediaSubFlow = combine(
+        combine(displayManager.groupedMediaItems, displayManager.archivedGroupedItems, archiveYearGroups, mediaItems) { g, ag, yg, items ->
+            Triple(g, ag, Pair(yg, items))
+        },
+        combine(displayManager.deviceSortMode, displayManager.archiveSortMode) { ds, asort ->
+            Pair(ds, asort)
+        }
+    ) { p1, p2 ->
+        MediaSubState(p1.first, p1.second, p1.third.first, p1.third.second, p2.first, p2.second)
+    }
+
+    private val otgSubFlow = combine(
+        otgManager.activeArchiveUuid,
+        otgManager.isCheckingConnection,
+        otgDirectoryDisplayName,
+        otgManager.archiveSize,
+        isStorageLow
+    ) { activeArchiveUuid, isChecking, displayName, archiveSize, storageLow ->
+        OtgSubState(activeArchiveUuid, isChecking, displayName, archiveSize, storageLow)
+    }
+
+    private val syncOpSubFlow = combine(
+        combine(archivingItemIds, _restoringItemIds, copiedItemIds, isSilentSyncingFlow, syncState) { arch, rest, cop, sil, sync ->
+            SyncPart1(arch, rest, cop, sil, sync)
+        },
+        combine(mediaOperationInteractor.isSharingPreparing, thumbnailManager.isSyncingThumbnails, missingThumbnailsCount, gridColumnsCount) { share, thumb, miss, grid ->
+            SyncPart2(share, thumb, miss, grid)
+        },
+        combine(_activeDialog, pendingDelete) { dialog, pending ->
+            Pair(dialog, pending)
+        }
+    ) { p1, p2, p3 ->
+        SyncOpSubState(
+            archivingItemIds = p1.archiving,
+            restoringItemIds = p1.restoring,
+            copiedItemIds = p1.copied,
+            isSilentSyncing = p1.silent,
+            syncState = p1.sync,
+            isSharingPreparing = p2.sharing,
+            isSyncingThumbnails = p2.syncingThumbnails,
+            missingThumbnailsCount = p2.missingThumbnails,
+            gridColumnsCount = p2.gridColumns,
+            activeDialog = p3.first,
+            pendingDelete = p3.second
         )
-    ) { args ->
-        @Suppress("UNCHECKED_CAST")
-        val trialDays = args[27] as Int
+    }
+
+    private val billingSubFlow = combine(
+        combine(photosArchivedCount, videosArchivedCount, isPremiumUnlocked) { p, v, prem ->
+            Triple(p, v, prem)
+        },
+        combine(remoteConfigManager.maxPhotos, remoteConfigManager.maxVideos, remoteConfigManager.freeTrialDays) { mp, mv, td ->
+            Triple(mp, mv, td)
+        }
+    ) { p1, p2 ->
+        val photosCount = p1.first
+        val videosCount = p1.second
+        val isPremium = p1.third
+        val maxP = p2.first
+        val maxV = p2.second
+        val trialDays = p2.third
         val isTrial = limitRepository.isTrialActive(trialDays)
         val remainingTrial = limitRepository.getRemainingTrialDays(trialDays)
+        BillingSubState(photosCount, videosCount, isPremium, maxP, maxV, isTrial, remainingTrial)
+    }
+
+    val uiState: StateFlow<GalleryUiState> = combine(
+        mediaSubFlow,
+        otgSubFlow,
+        syncOpSubFlow,
+        billingSubFlow
+    ) { media, otg, op, billing ->
         GalleryUiState(
-            groupedItems = args[0] as List<GalleryItem>,
-            archivedGroupedItems = args[1] as List<GalleryItem>,
-            archiveYearGroups = args[2] as List<YearGroup>,
-            mediaItems = args[3] as List<MediaItem>,
-            activeArchiveUuid = args[4] as String?,
-            deviceSortMode = args[5] as DeviceSortMode,
-            archiveSortMode = args[6] as ArchiveSortMode,
-            archivingItemIds = args[7] as Set<String>,
-            restoringItemIds = args[8] as Set<String>,
-            copiedItemIds = args[9] as Set<String>,
-            photosArchivedCount = args[10] as Int,
-            videosArchivedCount = args[11] as Int,
-            isPremiumUnlocked = args[12] as Boolean,
-            isSilentSyncing = args[13] as Boolean,
-            syncState = args[14] as String?,
-            isSharingPreparing = args[15] as Boolean,
-            isCheckingConnection = args[16] as Boolean,
-            gridColumnsCount = args[17] as Int,
-            physicalArchiveSize = args[18] as Long,
-            otgDirectoryDisplayName = args[19] as String?,
-            isSyncingThumbnails = args[20] as Boolean,
-            missingThumbnailsCount = args[21] as Int,
-            isStorageLow = args[22] as Boolean,
-            activeDialog = args[23] as AppDialog?,
-            pendingDelete = args[24] as List<MediaItem>?,
-            maxPhotos = args[25] as Int,
-            maxVideos = args[26] as Int,
-            isTrialActive = isTrial,
-            remainingTrialDays = remainingTrial
+            groupedItems = media.grouped,
+            archivedGroupedItems = media.archivedGrouped,
+            archiveYearGroups = media.yearGroups,
+            mediaItems = media.items,
+            deviceSortMode = media.devSort,
+            archiveSortMode = media.archSort,
+
+            activeArchiveUuid = otg.activeArchiveUuid,
+            isCheckingConnection = otg.isChecking,
+            otgDirectoryDisplayName = otg.displayName,
+            physicalArchiveSize = otg.archiveSize,
+            isStorageLow = otg.storageLow,
+
+            archivingItemIds = op.archivingItemIds,
+            restoringItemIds = op.restoringItemIds,
+            copiedItemIds = op.copiedItemIds,
+            isSilentSyncing = op.isSilentSyncing,
+            syncState = op.syncState,
+            isSharingPreparing = op.isSharingPreparing,
+            isSyncingThumbnails = op.isSyncingThumbnails,
+            missingThumbnailsCount = op.missingThumbnailsCount,
+            gridColumnsCount = op.gridColumnsCount,
+            activeDialog = op.activeDialog,
+            pendingDelete = op.pendingDelete,
+
+            photosArchivedCount = billing.photosArchivedCount,
+            videosArchivedCount = billing.videosArchivedCount,
+            isPremiumUnlocked = billing.isPremiumUnlocked,
+            maxPhotos = billing.maxPhotos,
+            maxVideos = billing.maxVideos,
+            isTrialActive = billing.isTrialActive,
+            remainingTrialDays = billing.remainingTrialDays
         )
     }.stateIn(
         scope = viewModelScope,

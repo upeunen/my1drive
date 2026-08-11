@@ -9,7 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import by.w6.my1drive.R
 import by.w6.my1drive.ui.AppDialog
@@ -36,7 +36,7 @@ fun AppDialogCoordinator(
 
     when (activeDialog) {
         is AppDialog.SetupWizard -> {
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = activeDialog.initialStep,
                 uiState = uiState,
@@ -90,7 +90,7 @@ fun AppDialogCoordinator(
             )
         }
         is AppDialog.LocalFolder -> {
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = 2,
                 uiState = uiState,
