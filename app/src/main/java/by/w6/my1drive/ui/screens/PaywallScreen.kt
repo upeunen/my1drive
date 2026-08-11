@@ -27,6 +27,7 @@ fun PaywallScreen(
 
     LaunchedEffect(Unit) {
         AppMetrica.reportEvent("paywall_shown")
+        billingManager.resetState()
         billingManager.loadProducts()
     }
 
@@ -79,20 +80,49 @@ fun PaywallScreen(
                         Text(
                             text = stringResource(R.string.paywall_error, state.message),
                             color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    billingManager.resetState()
+                                    billingManager.loadProducts()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Повторить")
+                            }
+                            Button(
+                                onClick = { billingManager.purchasePremium() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Купить PRO")
+                            }
+                        }
                     }
                     is PurchaseState.Purchasing -> {
                         CircularProgressIndicator()
                     }
                     else -> {
-                        product?.let { prod ->
+                        val prod = product
+                        if (prod != null) {
                             val priceText = prod.amountLabel?.value ?: "..."
+                            Button(
+                                onClick = { billingManager.purchasePremium(prod.productId.value) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            ) {
+                                Text(stringResource(R.string.paywall_buy_button, priceText))
+                            }
+                        } else {
                             Button(
                                 onClick = { billingManager.purchasePremium() },
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                             ) {
-                                Text(stringResource(R.string.paywall_buy_button, priceText))
+                                Text("Купить PRO")
                             }
                         }
                     }
@@ -100,7 +130,7 @@ fun PaywallScreen(
             }
         },
         confirmButton = {
-            androidx.compose.foundation.layout.Row {
+            Row {
                 onPromoCode?.let { onPromo ->
                     TextButton(onClick = onPromo) {
                         Text(stringResource(R.string.have_promo_code))

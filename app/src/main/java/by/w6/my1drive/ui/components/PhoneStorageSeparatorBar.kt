@@ -24,8 +24,26 @@ fun PhoneStorageSeparatorBar(
     isArchiving: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    // Dynamic recalculation using reliable File.usableSpace / totalSpace
-    val (freeGb, totalGb, progress) = remember(mediaItemsCount, physicalArchiveSize, isArchiving) {
+    var previousArchiving by remember { mutableStateOf(isArchiving) }
+    var triggerGlow by remember { mutableStateOf(false) }
+    var refreshCounter by remember { mutableIntStateOf(0) }
+
+    // Re-query disk space on items change, archiving change, or post-deletion refresh ticks
+    LaunchedEffect(isArchiving) {
+        if (previousArchiving && !isArchiving) {
+            triggerGlow = true
+            // Refresh disk space after OS finishes file deletions
+            kotlinx.coroutines.delay(600)
+            refreshCounter++
+            kotlinx.coroutines.delay(1500)
+            refreshCounter++
+            kotlinx.coroutines.delay(1500)
+            triggerGlow = false
+        }
+        previousArchiving = isArchiving
+    }
+
+    val (freeGb, totalGb, progress) = remember(mediaItemsCount, physicalArchiveSize, isArchiving, refreshCounter) {
         try {
             val storageDir = Environment.getExternalStorageDirectory()
             val totalBytes = storageDir.totalSpace
@@ -40,19 +58,6 @@ fun PhoneStorageSeparatorBar(
         } catch (e: Exception) {
             Triple(0.0, 0.0, 0f)
         }
-    }
-
-    // Glow animation strictly on progress line after archiving completes
-    var previousArchiving by remember { mutableStateOf(isArchiving) }
-    var triggerGlow by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isArchiving) {
-        if (previousArchiving && !isArchiving) {
-            triggerGlow = true
-            kotlinx.coroutines.delay(3500)
-            triggerGlow = false
-        }
-        previousArchiving = isArchiving
     }
 
     val glowAlpha by animateFloatAsState(
