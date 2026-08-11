@@ -1,5 +1,9 @@
 package by.w6.my1drive.ui.components
 
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.os.storage.StorageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.LinearProgressIndicator
@@ -9,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,6 +30,7 @@ fun OtgStorageSeparatorBar(
     isLimitActive: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val limitBytes = 128 * 1024 * 1024L
 
     val (realFreeGb, realTotalGb, archiveMb, progress) = remember(isOtgConnected, otgDirectoryDisplayName, currentArchiveSize, isLimitActive) {
@@ -32,14 +38,27 @@ fun OtgStorageSeparatorBar(
         var totalGbVal = -1.0
         if (isOtgConnected) {
             try {
-                val storageDir = File("/storage")
-                if (storageDir.exists() && storageDir.isDirectory) {
-                    val otgMount = storageDir.listFiles()?.firstOrNull { f ->
-                        f.isDirectory && f.name != "emulated" && f.name != "self" && f.canRead() && f.totalSpace > 0
+                val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+                if (sm != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        val vol = sm.storageVolumes.firstOrNull { it.isRemovable && it.state == Environment.MEDIA_MOUNTED }
+                        val dir = vol?.directory
+                        if (dir != null && dir.totalSpace > 0) {
+                            freeGbVal = dir.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            totalGbVal = dir.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                        }
                     }
-                    if (otgMount != null) {
-                        freeGbVal = otgMount.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                        totalGbVal = otgMount.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                }
+                if (totalGbVal <= 0) {
+                    val storageDir = File("/storage")
+                    if (storageDir.exists() && storageDir.isDirectory) {
+                        val otgMount = storageDir.listFiles()?.firstOrNull { f ->
+                            f.isDirectory && f.name != "emulated" && f.name != "self" && f.canRead() && f.totalSpace > 0
+                        }
+                        if (otgMount != null) {
+                            freeGbVal = otgMount.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            totalGbVal = otgMount.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -60,7 +79,7 @@ fun OtgStorageSeparatorBar(
     val driveTitle = otgDirectoryDisplayName ?: stringResource(R.string.otg_archive_folder)
     val statusText = when {
         !isOtgConnected -> stringResource(R.string.drive_known_disconnected)
-        realTotalGb > 0 -> "Свободно %.1f ГБ из %.0f ГБ".format(realFreeGb, realTotalGb)
+        realTotalGb > 0 -> stringResource(R.string.phone_storage_free_fmt, realFreeGb, realTotalGb)
         isLimitActive -> stringResource(R.string.archive_used_free, archiveMb, progress * 100)
         else -> {
             val sizeStr = if (archiveMb >= 1024.0) "%.2f ГБ".format(archiveMb / 1024.0) else "%.1f МБ".format(archiveMb)

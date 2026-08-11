@@ -1167,7 +1167,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     pendingForPaywallPhotos = 0
                     pendingForPaywallVideos = 0
                 } else {
-                    _activeDialog.value = AppDialog.Success(SuccessDialogData(freedSpaceBytes, currentFreeSpaceBytes, totalSpaceBytes))
                     mediaOperationInteractor.startDeletingWithPermissionCheck(items)
                 }
             }

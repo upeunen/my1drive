@@ -375,6 +375,43 @@ fun GalleryScreenContent(
                 )
             }
 
+            // Progress panel for archiving, restoring, and thumbnail syncing
+            if (archiveState.isArchiving) {
+                val queue = if (archiveState.pendingQueueSize > 0) stringResource(R.string.status_in_queue, archiveState.pendingQueueSize) else ""
+                ProgressPanel(
+                    title = stringResource(R.string.title_archiving),
+                    fileName = archiveState.currentFileName,
+                    currentIndex = archiveState.currentFileIndex,
+                    totalFiles = archiveState.totalFiles,
+                    progressFraction = archiveState.progressFraction,
+                    extraInfo = queue,
+                    icon = Icons.Default.CloudUpload,
+                    statusText = mapStepToText(archiveState.currentStep),
+                    onCancel = { viewModel.cancelArchiving() }
+                )
+            } else if (restoreState.isRestoring) {
+                ProgressPanel(
+                    title = stringResource(R.string.title_restoring),
+                    fileName = restoreState.currentFileName,
+                    currentIndex = restoreState.currentFileIndex,
+                    totalFiles = restoreState.totalFiles,
+                    progressFraction = restoreState.progressFraction,
+                    icon = Icons.Default.CloudDownload,
+                    statusText = mapStepToText(restoreState.currentStep),
+                    onCancel = { viewModel.cancelRestoring() }
+                )
+            } else if (syncProgressState.isSyncing) {
+                ProgressPanel(
+                    title = stringResource(R.string.title_syncing),
+                    fileName = syncProgressState.currentFileName,
+                    currentIndex = syncProgressState.currentFileIndex,
+                    totalFiles = syncProgressState.totalFiles,
+                    progressFraction = syncProgressState.progressFraction,
+                    icon = Icons.Default.Sync,
+                    statusText = if (syncProgressState.totalFiles > 0) stringResource(R.string.status_computing_hashes) else stringResource(R.string.status_searching_files)
+                )
+            }
+
             // Animated Banners Section (expands smoothly below the separator bar without shifting it)
             val driveStatus by viewModel.otgManager.status.collectAsStateWithLifecycle()
             AnimatedVisibility(

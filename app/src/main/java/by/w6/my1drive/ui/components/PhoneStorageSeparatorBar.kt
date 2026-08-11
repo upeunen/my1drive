@@ -4,7 +4,6 @@ import android.os.Environment
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -12,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,24 +42,14 @@ fun PhoneStorageSeparatorBar(
         }
     }
 
-    // Glow & Bounce ("скакать") animation after archiving completes
+    // Glow animation strictly on progress line after archiving completes
     var previousArchiving by remember { mutableStateOf(isArchiving) }
     var triggerGlow by remember { mutableStateOf(false) }
-
-    val bounceY = remember { Animatable(0f) }
-    val bounceScale = remember { Animatable(1f) }
 
     LaunchedEffect(isArchiving) {
         if (previousArchiving && !isArchiving) {
             triggerGlow = true
-            // Play bouncy jump animation ("скакать"): 3 bounces
-            repeat(3) {
-                bounceY.animateTo(-8f, tween(150, easing = FastOutSlowInEasing))
-                bounceScale.animateTo(1.12f, tween(150))
-                bounceY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                bounceScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-            }
-            kotlinx.coroutines.delay(2000)
+            kotlinx.coroutines.delay(3500)
             triggerGlow = false
         }
         previousArchiving = isArchiving
@@ -69,7 +57,7 @@ fun PhoneStorageSeparatorBar(
 
     val glowAlpha by animateFloatAsState(
         targetValue = if (triggerGlow) 1f else 0f,
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = tween(durationMillis = 800),
         label = "glowAlpha"
     )
 
@@ -84,71 +72,62 @@ fun PhoneStorageSeparatorBar(
         label = "shimmerPhase"
     )
 
-    val normalBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-    val glowColor1 = Color(0xFF00E5FF) // Cyan
-    val glowColor2 = Color(0xFF8A2BE2) // Purple
-
-    val barModifier = if (glowAlpha > 0f) {
-        val colors = listOf(
-            glowColor1.copy(alpha = 0.25f * glowAlpha),
-            glowColor2.copy(alpha = 0.45f * glowAlpha),
-            glowColor1.copy(alpha = 0.25f * glowAlpha)
-        )
-        modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = colors,
-                    startX = shimmerPhase * 1000f - 500f,
-                    endX = shimmerPhase * 1000f + 500f
-                )
-            )
-    } else {
-        modifier
-            .fillMaxWidth()
-            .background(normalBg)
-    }
-
     Column(
-        modifier = barModifier.padding(top = 4.dp, bottom = 4.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .padding(top = 4.dp, bottom = 4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp)
-                .graphicsLayer {
-                    translationY = bounceY.value.dp.toPx()
-                    scaleX = bounceScale.value
-                    scaleY = bounceScale.value
-                },
+                .padding(horizontal = 16.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(R.string.phone_storage_title),
                 style = MaterialTheme.typography.labelMedium,
-                color = if (glowAlpha > 0f) glowColor1 else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (glowAlpha > 0f) FontWeight.Bold else FontWeight.Medium
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
             )
             Text(
                 text = stringResource(R.string.phone_storage_free_fmt, freeGb, totalGb),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (glowAlpha > 0f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (glowAlpha > 0f) FontWeight.Bold else FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
             )
         }
         Spacer(Modifier.height(2.dp))
-        LinearProgressIndicator(
-            progress = { progress },
+
+        // 2dp Progress Line (Only this line shimmers after archiving)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
-                .graphicsLayer {
-                    scaleY = if (glowAlpha > 0f) 1.8f else 1.0f
-                },
-            color = if (glowAlpha > 0f) glowColor1 else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-        )
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+        ) {
+            val fillModifier = if (glowAlpha > 0f) {
+                val shimmerBrush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFF00E5FF),
+                        Color(0xFF8A2BE2),
+                        Color(0xFF00E5FF)
+                    ),
+                    startX = shimmerPhase * 1000f - 500f,
+                    endX = shimmerPhase * 1000f + 500f
+                )
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(shimmerBrush)
+            } else {
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+            }
+            Box(modifier = fillModifier)
+        }
     }
 }
