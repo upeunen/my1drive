@@ -229,12 +229,12 @@ fun InfoDialog(
             val archiveName = archive?.name ?: item.archiveName
             archiveName?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                InfoPropertyRow(label = "Накопитель", value = it)
+                InfoPropertyRow(label = stringResource(R.string.info_drive), value = it)
             }
 
             item.archiveUuid?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                InfoPropertyRow(label = "ID накопителя (UUID)", value = it)
+                InfoPropertyRow(label = stringResource(R.string.info_drive_uuid), value = it)
             }
 
             if (item.status == MediaStatus.ON_DEVICE) {
@@ -268,7 +268,7 @@ fun InfoDialog(
                 Column(modifier = Modifier.padding(12.dp)) {
                     if (showExifSection && exifData != null) {
                         Text(
-                            text = "Данные EXIF",
+                            text = stringResource(R.string.info_exif_data),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 8.dp)
@@ -276,7 +276,7 @@ fun InfoDialog(
                         val dataMap = exifData!!
                         if (dataMap.isEmpty()) {
                             Text(
-                                text = "EXIF теги отсутствуют или файл не содержит метаданных",
+                                text = stringResource(R.string.info_exif_missing),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray
                             )
@@ -334,9 +334,9 @@ fun InfoDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = if (isOtgOffline) "EXIF недоступен (OTG отключен)"
-                                       else if (showExifSection) "Скрыть EXIF"
-                                       else "Показать EXIF",
+                                text = if (isOtgOffline) stringResource(R.string.info_exif_unavailable_offline)
+                                       else if (showExifSection) stringResource(R.string.info_hide_exif)
+                                       else stringResource(R.string.info_show_exif),
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 softWrap = false
@@ -359,7 +359,7 @@ fun InfoDialog(
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Поделиться", maxLines = 1, fontSize = 11.sp)
+                    Text(stringResource(R.string.info_btn_share), maxLines = 1, fontSize = 11.sp)
                 }
 
                 OutlinedButton(
@@ -368,7 +368,7 @@ fun InfoDialog(
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Копировать", maxLines = 1, fontSize = 11.sp)
+                    Text(stringResource(R.string.info_btn_copy), maxLines = 1, fontSize = 11.sp)
                 }
 
                 Button(

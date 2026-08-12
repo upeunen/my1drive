@@ -222,10 +222,10 @@ fun GalleryScreenContent(
         var dontWarnAgain by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { showOfflineShareConfirm = false },
-            title = { Text("РџРѕРґРµР»РёС‚СЊСЃСЏ СЌСЃРєРёР·Р°РјРё?") },
+            title = { Text(stringResource(R.string.gallery_share_thumbnail_title)) },
             text = {
                 Column {
-                    Text("РќРµРєРѕС‚РѕСЂС‹Рµ РёР· РІС‹Р±СЂР°РЅРЅС‹С… С„Р°Р№Р»РѕРІ РЅР°С…РѕРґСЏС‚СЃСЏ РЅР° РѕС‚РєР»СЋС‡РµРЅРЅС‹С… РЅР°РєРѕРїРёС‚РµР»СЏС…. Р‘СѓРґСѓС‚ РѕС‚РїСЂР°РІР»РµРЅС‹ РёС… СЌСЃРєРёР·С‹ РЅРёР·РєРѕРіРѕ СЂР°Р·СЂРµС€РµРЅРёСЏ.")
+                    Text(stringResource(R.string.gallery_share_thumbnail_desc))
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -238,7 +238,7 @@ fun GalleryScreenContent(
                             onCheckedChange = null
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("СЏ РїРѕРЅРёРјР°СЋ, Р±РѕР»СЊС€Рµ РЅРµ РЅСѓР¶РЅРѕ РїСЂРµРґСѓРїСЂРµР¶РґР°С‚СЊ", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.gallery_do_not_warn_again), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             },
@@ -252,12 +252,12 @@ fun GalleryScreenContent(
                         android.widget.Toast.makeText(context, errMsg, android.widget.Toast.LENGTH_LONG).show()
                     }
                 }) {
-                    Text("РџРѕРґРµР»РёС‚СЊСЃСЏ", maxLines = 1, softWrap = false)
+                    Text(stringResource(R.string.gallery_btn_share), maxLines = 1, softWrap = false)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showOfflineShareConfirm = false }) {
-                    Text("РћС‚РјРµРЅР°", maxLines = 1, softWrap = false)
+                    Text(stringResource(R.string.gallery_btn_cancel), maxLines = 1, softWrap = false)
                 }
             }
         )
@@ -641,15 +641,16 @@ fun GalleryScreenContent(
             )
         }
 
-        archiveState.error?.let { err ->
+        archiveState.error?.let { errObj ->
+        val err = errObj.asString()
             AlertDialog(
                 onDismissRequest = { viewModel.dismissArchiveError() },
-                title = { Text("РћС€РёР±РєР° Р°СЂС…РёРІРёСЂРѕРІР°РЅРёСЏ") },
+                title = { Text(stringResource(R.string.gallery_error_archiving_title)) },
                 text = { Text(err) },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissArchiveError() }) {
                         Text(
-                            text = "РћРљ",
+                            text = stringResource(R.string.gallery_btn_ok),
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
@@ -662,22 +663,23 @@ fun GalleryScreenContent(
                         val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", err))
                     }) {
-                        Text("РЎРєРѕРїРёСЂРѕРІР°С‚СЊ Р»РѕРі")
+                        Text(stringResource(R.string.gallery_btn_copy_log))
                     }
                 }
             )
         }
 
-        restoreState.error?.let { err ->
+        restoreState.error?.let { errObj ->
+        val err = errObj.asString()
             val context = LocalContext.current
             AlertDialog(
                 onDismissRequest = { viewModel.dismissRestoreError() },
-                title = { Text("РћС€РёР±РєР° РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ") },
+                title = { Text(stringResource(R.string.gallery_error_restoring_title)) },
                 text = { Text(err) },
                 confirmButton = {
                     Button(onClick = { viewModel.dismissRestoreError() }) {
                         Text(
-                            text = "РћРљ",
+                            text = stringResource(R.string.gallery_btn_ok),
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
@@ -689,14 +691,15 @@ fun GalleryScreenContent(
                         val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", err))
                     }) {
-                        Text("РЎРєРѕРїРёСЂРѕРІР°С‚СЊ Р»РѕРі")
+                        Text(stringResource(R.string.gallery_btn_copy_log))
                     }
                 }
             )
         }
 
         val syncState by viewModel.syncState.collectAsStateWithLifecycle()
-        syncState?.let { stateMessage ->
+        syncState?.let { stateMessageObj ->
+            val stateMessage = stateMessageObj.asString()
             AlertDialog(
                 onDismissRequest = { viewModel.dismissSync() },
                 title = { Text(stringResource(R.string.sync_archive_title)) },
@@ -704,7 +707,7 @@ fun GalleryScreenContent(
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSync() }) {
                         Text(
-                            text = "РћРљ",
+                            text = stringResource(R.string.gallery_btn_ok),
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false
@@ -712,13 +715,13 @@ fun GalleryScreenContent(
                     }
                 },
                 dismissButton = {
-                    if (stateMessage.contains("РћС€РёР±РєР°", ignoreCase = true)) {
+                    if (stateMessage.contains("ошибка", ignoreCase = true) || stateMessage.contains("error", ignoreCase = true)) {
                         val context = LocalContext.current
                         androidx.compose.material3.TextButton(onClick = {
                             val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("Log", stateMessage))
                         }) {
-                            Text("РЎРєРѕРїРёСЂРѕРІР°С‚СЊ Р»РѕРі")
+                            Text(stringResource(R.string.gallery_btn_copy_log))
                         }
                     }
                 }
@@ -869,7 +872,7 @@ fun SelectionHelperPanel(
                 ) {
                     // Chip 1: Р’СЃРµ
                     SelectionHelperChip(
-                        text = "Р’СЃРµ",
+                        text = stringResource(R.string.gallery_filter_all),
                         icon = Icons.Outlined.CheckCircleOutline,
                         onClick = {
                             val allIds = visibleItems.map { it.id }
@@ -880,7 +883,7 @@ fun SelectionHelperPanel(
                     )
                     // Chip 2: РЎ СЌС‚РѕР№ РґР°С‚РѕР№
                     SelectionHelperChip(
-                        text = "РЎ РґР°С‚РѕР№",
+                        text = stringResource(R.string.gallery_filter_with_date),
                         icon = Icons.Outlined.CalendarToday,
                         enabled = hasSelected,
                         onClick = {
@@ -906,7 +909,7 @@ fun SelectionHelperPanel(
                 ) {
                     // Chip 3: Р’ СЌС‚РѕР№ РїР°РїРєРµ
                     SelectionHelperChip(
-                        text = "Р’ РїР°РїРєРµ",
+                        text = stringResource(R.string.gallery_filter_in_folder),
                         icon = Icons.Outlined.Folder,
                         enabled = hasFolder,
                         onClick = {
@@ -921,7 +924,7 @@ fun SelectionHelperPanel(
                     )
                     // Chip 4: Р’С‹Р±СЂР°С‚СЊ РґРёР°РїР°Р·РѕРЅ
                     SelectionHelperChip(
-                        text = "Р”РёР°РїР°Р·РѕРЅ",
+                        text = stringResource(R.string.gallery_filter_range),
                         icon = Icons.Outlined.DateRange,
                         onClick = onSelectDateRangeClick,
                         shape = ConcaveCutoutShape(CutoutCorner.TOP_LEFT),
@@ -942,7 +945,7 @@ fun SelectionHelperPanel(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "РЎРЅСЏС‚СЊ РІС‹РґРµР»РµРЅРёРµ",
+                    contentDescription = stringResource(R.string.gallery_content_desc_deselect),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp)
                 )

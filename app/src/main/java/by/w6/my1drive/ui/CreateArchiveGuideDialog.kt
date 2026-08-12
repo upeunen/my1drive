@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,7 +53,7 @@ fun CreateArchiveGuideDialog(
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Архив не найден", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.guide_dialog_archive_not_found), fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -71,7 +73,7 @@ fun CreateArchiveGuideDialog(
                     }
                 }
                 Text(
-                    text = "На выбранном носителе не найдено существующего архива. Хотите создать новый архив прямо сейчас?\n\nДля этого просто придумайте имя для нового архива.",
+                    text = stringResource(R.string.guide_dialog_desc),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -82,7 +84,7 @@ fun CreateArchiveGuideDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(
-                    text = "Создать архив",
+                    text = stringResource(R.string.guide_dialog_btn_create),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -92,7 +94,7 @@ fun CreateArchiveGuideDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Отмена",
+                    text = stringResource(R.string.guide_dialog_btn_cancel),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false

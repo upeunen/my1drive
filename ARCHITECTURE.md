@@ -34,6 +34,17 @@
     *   `GalleryDisplayManager`: Отвечает за логику сортировки (`deviceSortMode`, `archiveSortMode`), группировку элементов по датам (заголовки дат) и настройки сетки.
     *   `ThumbnailSyncManager`: Управляет корутинами и состояниями ручной и тихой (фоновой) синхронизации локальных миниатюр.
     *   `MediaOperationInteractor`: Управляет файловыми операциями (шаринг, удаление с устройства, создание папок). Обеспечивает асинхронную подготовку файлов (параллельное копирование в кэш через `async`/`awaitAll`) без блокировки UI и инкапсулирует проверки SAF-разрешений для файловых операций.
+37: 
+
+### 4. `billing` & `init` (Изоляция сборок / Product Flavors)
+*   **Product Flavors**: Проект разделен на два варианта сборки: `rustore` (для публикации в RuStore) и `googleplay` (для публикации в Google Play).
+*   **Изолирующие интерфейсы (`src/main/`)**:
+    *   `IBillingManager`: Общий интерфейс управления покупками (`purchaseState`, `productPriceText`, `loadProducts()`, `purchasePremium()`, `checkPurchases()`).
+    *   `RemoteConfigManager`: Общий интерфейс дистанционной конфигурации (`maxPhotos`, `maxVideos`, `freeTrialDays`, `limitsEnabled` и др.).
+    *   `StoreInitializer`: Интерфейс инициализации приложения и обработчика `Intent` для конкретного магазина.
+*   **Реализации (`src/rustore/` и `src/googleplay/`)**:
+    *   В `rustore`: используется RuStore Pay SDK (`RuStoreBillingManager`) и RuStore RemoteConfig SDK (`RuStoreRemoteConfigManager`).
+    *   В `googleplay`: используется Google Play Billing (`GooglePlayBillingManager`) и автономные/Google Play стабы (`GooglePlayRemoteConfigManager`). Зависимости RuStore полностью отсутствуют в сборке `googleplay`.
 
 ### 4. `utils` (Утилиты)
 *   `OtgArchiveUtil`: Работа с файловой системой внешнего накопителя через `DocumentFile` и `ContentResolver` (для обхода ограничений Android SAF).

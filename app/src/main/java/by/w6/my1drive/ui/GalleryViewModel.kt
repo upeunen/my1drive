@@ -293,7 +293,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val restoreState = MutableStateFlow(RestoreState())
     private var restoringJob: kotlinx.coroutines.Job? = null
     private var isRestoreCancellationRequested = false
-    val syncState: StateFlow<String?> = syncHelper.syncState
+    val syncState: StateFlow<by.w6.my1drive.utils.UiText?> = syncHelper.syncState
     val syncProgressState: StateFlow<SyncProgressState> = syncHelper.syncProgressState
 
     val showEjectSuccessDialog: StateFlow<Boolean> = otgManager.showEjectSuccessDialog
@@ -979,7 +979,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val restoring: Set<String>,
         val copied: Set<String>,
         val silent: Boolean,
-        val sync: String?
+        val sync: by.w6.my1drive.utils.UiText?
     )
 
     private data class SyncPart2(
@@ -994,7 +994,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val restoringItemIds: Set<String>,
         val copiedItemIds: Set<String>,
         val isSilentSyncing: Boolean,
-        val syncState: String?,
+        val syncState: by.w6.my1drive.utils.UiText?,
         val isSharingPreparing: Boolean,
         val isSyncingThumbnails: Boolean,
         val missingThumbnailsCount: Int,

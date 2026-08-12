@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui.components
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,12 +36,12 @@ fun RestoreConflictDialog(
             // Interpret dismiss as skipping the file.
             onDecision(RestoreConflictDecision(uri = null, applyToAll = false))
         },
-        title = { Text("Путь восстановления недоступен") },
+        title = { Text(stringResource(R.string.restore_conflict_title)) },
         text = {
             Column {
-                Text("Не удалось получить доступ к целевой папке для восстановления файла «${conflict.itemDisplayName}».")
+                Text(stringResource(R.string.restore_conflict_desc, conflict.itemDisplayName))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Пожалуйста, укажите, куда восстановить файл:")
+                Text(stringResource(R.string.restore_conflict_instruction))
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -49,7 +51,7 @@ fun RestoreConflictDialog(
                         checked = applyToAll,
                         onCheckedChange = { applyToAll = it }
                     )
-                    Text("Применить ко всем последующим")
+                    Text(stringResource(R.string.restore_conflict_apply_to_all))
                 }
             }
         },
@@ -60,7 +62,7 @@ fun RestoreConflictDialog(
                     onDecision(RestoreConflictDecision(uri = null, applyToAll = applyToAll))
                 }
             ) {
-                Text("Восстановить в $fallbackFolderName")
+                Text(stringResource(R.string.restore_conflict_btn_restore_in, fallbackFolderName))
             }
         },
         dismissButton = {
@@ -69,7 +71,7 @@ fun RestoreConflictDialog(
                     folderPickerLauncher.launch(null)
                 }
             ) {
-                Text("Выбрать куда")
+                Text(stringResource(R.string.restore_conflict_btn_choose_where))
             }
         }
     )

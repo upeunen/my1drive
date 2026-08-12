@@ -31,7 +31,7 @@ class ArchiveService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = buildNotification("Подготовка к синхронизации...")
+        val notification = buildNotification(getString(by.w6.my1drive.R.string.service_sync_preparing))
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // Android 10+ requires foreground service type
@@ -65,7 +65,7 @@ class ArchiveService : Service() {
                     if (!state.isArchiving && !syncHelper.isSilentSyncing) {
                         stopSelf() // Stop service when work is done
                     } else if (state.error != null) {
-                        updateNotification("Ошибка: ${state.error}")
+                        updateNotification(getString(by.w6.my1drive.R.string.service_error, state.error ?: ""))
                     }
                 }
             }
@@ -74,7 +74,7 @@ class ArchiveService : Service() {
             launch {
                 syncHelper.syncProgressState.collect { progress ->
                     if (progress.totalFiles > 0) {
-                        val text = "Копирование: ${progress.currentFileIndex} / ${progress.totalFiles}"
+                        val text = getString(by.w6.my1drive.R.string.service_copying_progress, progress.currentFileIndex.toString(), progress.totalFiles.toString())
                         updateNotification(text)
                     }
                 }
@@ -89,7 +89,7 @@ class ArchiveService : Service() {
 
     private fun buildNotification(text: String): android.app.Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Архивация файлов")
+            .setContentTitle(getString(by.w6.my1drive.R.string.service_archiving_title))
             .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher) // Update to a proper icon if available
             .setOngoing(true)
@@ -100,7 +100,7 @@ class ArchiveService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
-                "Синхронизация архива",
+                getString(by.w6.my1drive.R.string.service_sync_archive_title),
                 NotificationManager.IMPORTANCE_LOW // Low priority prevents sound/vibration
             )
             val manager = getSystemService(NotificationManager::class.java)

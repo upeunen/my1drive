@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">My1Drive</string>
     <string name="tab_photos">Фото</string>
@@ -37,7 +38,7 @@
     <string name="otg_select_guide">Выберите папку или просто нажмите кнопку внизу экрана.</string>
     <string name="otg_guide_step1">Подключите USB-накопитель через OTG-переходник.</string>
     <string name="otg_guide_step2">В открывшемся системном меню выберите накопитель.</string>
-    <string name="otg_guide_step3">Нажмите синюю кнопку \'Использовать эту папку\' или \'Разрешить доступ\' внизу экрана.</string>
+    <string name="otg_guide_step3">Нажмите "Использовать эту папку" или "Разрешить доступ" внизу экрана.</string>
     <string name="otg_guide_step4">Подтвердите запрос прав системы во всплывающем окне.</string>
     <string name="btn_go_to_select">Перейти к выбору</string>
     
@@ -48,7 +49,7 @@
     <string name="info_status">Статус: %1$s</string>
     <string name="status_on_device">На устройстве</string>
     <string name="status_archived">В архиве на OTG</string>
-        <string name="info_sha256">Хэш SHA-256:</string>
+    <string name="info_sha256">Хэш SHA-256:</string>
     <string name="info_otg_path">Путь SAF на OTG:</string>
     
     <string name="permission_required_toast">Необходимы разрешения для доступа к медиафайлам</string>
@@ -57,7 +58,7 @@
     <string name="otg_folder_error_toast">Ошибка доступа к папке: %1$s</string>
     <string name="eject_success_toast">OTG накопитель безопасно извлечен в приложении. Теперь вы можете физически отключить устройство.</string>
     
-    <!-- Progress messages -->
+    
     <string name="progress_preparing">Подготовка…</string>
     <string name="progress_sha256">Вычисление контрольной суммы (SHA-256)…</string>
     <string name="progress_copying">Копирование на OTG накопитель…</string>
@@ -66,7 +67,7 @@
     <string name="progress_thumbnail">Создание локального кэша миниатюры…</string>
     <string name="progress_deleting">Удаление исходного файла…</string>
     
-    <!-- Error messages -->
+    
     <string name="error_sha256_failed">Не удалось вычислить SHA-256 исходного файла</string>
     <string name="error_otg_access_failed">Не удалось получить доступ к папке OTG</string>
     <string name="error_otg_create_failed">Не удалось создать файл на OTG</string>
@@ -77,7 +78,7 @@
     <string name="error_delete_completion_failed">Не удалось завершить удаление: %1$s</string>
     <string name="error_archive_item_failed">Ошибка архивации %1$s: %2$s</string>
     
-    <!-- Restore (Разархивирование) -->
+    
     <string name="restore_from_otg">Восстановить с OTG</string>
     <string name="restoring_title">Восстановление с OTG…</string>
     <string name="restoring_title_count">Восстановление с OTG (%1$d из %2$d)…</string>
@@ -93,15 +94,15 @@
     <string name="restore_ask_original">В исходную папку: %1$s</string>
     <string name="restore_ask_choose">Выбрать другую папку…</string>
     <string name="restore_need_folder_msg">Исходный путь неизвестен. Пожалуйста, выберите папку для восстановления.</string>
-    <!-- Настройки: переключатель -->
+    
     <string name="setting_ask_restore_path">Спрашивать куда разархивировать</string>
     <string name="setting_ask_restore_path_desc">Вкл: всегда спрашивать — в исходную папку или выбрать другую. Выкл: автоматически восстанавливать в исходный путь (если неизвестен — спросить).</string>
 
-    <!-- Статус накопителя -->
+    
     <string name="drive_unknown_connected">🔴 Архив не найден на этом носителе</string>
-    <string name="drive_known_disconnected">Архив не подключен</string>
+    <string name="drive_known_disconnected">🔴 OTG диск отключен</string>
     <string name="drive_known_connected">🟢 Накопитель архива подключён</string>
-    <!-- Автосинхронизация -->
+    
     <string name="auto_sync_missing_title">Файлы исчезли из архива!</string>
     <string name="auto_sync_missing_msg">Следующие файлы больше не найдены на OTG накопителе:
 
@@ -110,11 +111,11 @@
 Записи остаются в базе данных. Подключите нужный накопитель для восстановления доступа.</string>
     <string name="auto_sync_added_toast">Автосинх: добавлено файлов: %1$d</string>
 
-    <!-- Date groups -->
+    
     <string name="date_today">Сегодня</string>
     <string name="date_yesterday">Вчера</string>
 
-    <!-- Photo Access and Security -->
+    
     <string name="title_photo_access">Доступ к фото</string>
     <string name="photo_access_partial_desc">У приложения есть доступ только к выбранным фотографиям и видео. Вы можете изменить список доступных файлов.</string>
     <string name="photo_access_warning_desc">Предоставлен частичный доступ. Система Android может блокировать копирование для невыбранных или облачных фото. Рекомендуется разрешить полный доступ в настройках.</string>
@@ -125,16 +126,16 @@
     <string name="btn_grant_full_access">Предоставить полный доступ</string>
     <string name="btn_open_settings">Открыть настройки</string>
 
-    <!-- Обнаружение нового архива -->
+    
     <string name="new_archive_found_title">Найден новый архив</string>
     <string name="new_archive_found_msg">На подключённом носителе обнаружен другой архив. Переключиться на этот архив?</string>
     <string name="btn_connect_to_archive">Подключить архив</string>
 
-    <!-- Заглушки превью -->
+    
     <string name="preview_on_disk">Превью на диске</string>
     <string name="preview_cached">Превью (кэш)</string>
 
-    <!-- Расширенный диалог информации -->
+    
     <string name="info_original_folder">Исходная папка:</string>
     <string name="info_preview_path">Кэш превью:</string>
     <string name="info_archive_id">ID архива:</string>
@@ -143,20 +144,20 @@
     <string name="info_location_otg">💾 В архиве (OTG диск)</string>
     <string name="info_location_otg_disconnected">💾 В архиве (диск отключён)</string>
 
-    <!-- Удаление -->
+    
     <string name="btn_delete_file">Удалить с устройства</string>
     <string name="btn_delete_otg">Удалить из архива</string>
     <string name="delete_confirm_title">Удалить файл?</string>
-    <string name="delete_confirm_msg">Вы уверены, что хотите удалить \"%1$s\"? Это действие нельзя отменить.</string>
+    <string name="delete_confirm_msg">Вы уверены, что хотите удалить "%1$s"? Это действие нельзя отменить.</string>
     <string name="delete_archived_warning">Оригинал на OTG-носителе останется. Будет удалена только запись из базы данных.</string>
-        <string name="preview_not_deletable">Превью нельзя удалить отдельно</string>
+    <string name="preview_not_deletable">Превью нельзя удалить отдельно</string>
     <string name="delete_otg_needs_connection">Подключите OTG-накопитель для удаления файлов из архива</string>
 
-    <!-- Синхронизация -->
+    
     <string name="sync_archive_title">Синхронизация архива</string>
     <string name="sync_archive_progress">Синхронизация…</string>
 
-    <!-- Действия на полном экране -->
+    
     <string name="preview_delete">Удалить</string>
     <string name="preview_will_be_deleted">Будет удалено при закрытии ✓</string>
     <string name="preview_archive">Архивировать</string>
@@ -167,32 +168,59 @@
     <string name="deleted_on_close_toast">Удалено файлов: %1$d</string>
     <string name="preview_source_device">Устройство</string>
 
-    <!-- Панель действий / режим выбора -->
+    
     <string name="action_delete">Удалить</string>
     <string name="action_delete_all">Удалить все</string>
     <string name="action_delete_files_question">Удалить %1$d файлов?</string>
     <string name="action_delete_from_archive">Удалить из архива</string>
     <string name="action_properties">Свойства</string>
 
-        <!-- First launch dialog -->
-        <string name="welcome_title">Добро пожаловать в My1Drive!</string>
-        <string name="welcome_msg">Это приложение позволяет сохранять файлы на USB OTG накопитель и освобождать память устройства. Вы можете восстановить их в любое время.</string>
-        <string name="welcome_msg_drive_detected">USB OTG накопитель обнаружен!</string>
-        <string name="welcome_msg_drive_not_detected">USB OTG накопитель не обнаружен. Подключите его через OTG-адаптер.</string>
-        <string name="welcome_btn_start">Начать</string>
-        <string name="welcome_btn_close">Закрыть</string>
+    
+    <string name="welcome_title">Добро пожаловать в My1Drive!</string>
+    <string name="welcome_msg">Это приложение позволяет вам копировать свои фото, видео и другие файлы на USB-накопитель, освобождая память вашего телефона.</string>
+    <string name="welcome_msg_drive_detected">USB OTG накопитель обнаружен!</string>
+    <string name="welcome_msg_drive_not_detected">USB OTG накопитель не обнаружен. Подключите его через OTG-адаптер.</string>
+    <string name="welcome_btn_start">Начать</string>
+    <string name="welcome_btn_close">Закрыть</string>
+    
+    <string name="wizard_title_otg">Подключение накопителя</string>
+    <string name="wizard_msg_otg">Для полноценной работы приложения вам понадобится OTG адаптер и накопитель (флешка или переносной диск). Давайте его зарегистрируем.</string>
+    <string name="wizard_btn_register_otg">Выбрать папку накопителя</string>
+    
+    <string name="wizard_trial_active">Поздравляем! Вам доступна пробная версия на %1$d дн.</string>
+    <string name="wizard_free_limits">Поздравляем! Вам доступна бесплатная версия на %1$d фото и %2$d видео.</string>
 
-        <!-- Preloader -->
-        <string name="preloader_detecting_drive">Определение накопителя…</string>
-        <string name="preloader_please_wait">Подождите, пожалуйста.\nПроцесс может занять от нескольких секунд до пары минут.</string>
+    
+    <string name="preloader_detecting_drive">Поиск накопителя...</string>
+    <string name="preloader_please_wait">Пожалуйста, подождите.\nПересоздание базы данных может занять до 2-х минут.</string>
 
-    <!-- Unreadable OTG warning -->
+    
+    <string name="otg_required_msg">Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер</string>
+    <string name="connecting_usb_msg">Подключение USB-накопителя...</string>
+    <string name="step_preparing">Подготовка...</string>
+    <string name="step_verifying">Проверка целостности...</string>
+    <string name="step_copying">Копирование в архив...</string>
+    <string name="step_restore_reading">Чтение из архива...</string>
+    <string name="step_restore_writing">Запись на устройство...</string>
+    <string name="step_restore_writing_pct">Запись на устройство... (%1$s%%)</string>
+    <string name="step_processing">Обработка...</string>
+    <string name="progress_title_format">%1$s (%2$d из %3$d)</string>
+    <string name="tab_in_folder">В папке</string>
+    <string name="tab_date_range">Диапазон</string>
+    <string name="status_computing_hashes">Вычисление хэшей...</string>
+    <string name="status_searching_files">Поиск файлов...</string>
+    <string name="status_in_queue"> (+%1$d в очереди)</string>
+    <string name="title_archiving">Архивация</string>
+    <string name="title_restoring">Восстановление</string>
+    <string name="title_syncing">Синхронизация архива</string>
+
+    
     <string name="unreadable_otg_title">Обнаружено USB-устройство</string>
     <string name="unreadable_otg_msg">Устройство подключено физически, но операционной системе Android не удалось смонтировать его как накопитель.\n\nПопробуйте переподключить флешку или проверить надежность соединения.</string>
     <string name="unreadable_otg_why_link">Почему носитель не читается?</string>
     <string name="unreadable_otg_explanation">Возможные причины:\n• Неподдерживаемая файловая система (например, NTFS). Android лучше всего работает с FAT32 или exFAT.\n• Недостаточно питания для накопителя или некачественный OTG-переходник.\n\nКак это исправить:\nВы можете попробовать отформатировать флешку в поддерживаемый формат (FAT32/exFAT) средствами вашего смартфона в системных настройках памяти.\n\nПредупреждение: форматирование сотрет все данные с накопителя.</string>
 
-    <!-- Disconnected Info Dialog & Sharing -->
+    
     <string name="disconnected_info_title">Детали архивного файла</string>
     <string name="info_file_name_title">Имя файла</string>
     <string name="info_original_path_title">Исходный путь</string>
@@ -204,7 +232,7 @@
     <string name="btn_copy">Копировать</string>
     <string name="toast_copied_to_clipboard">Скопировано в буфер обмена</string>
     <string name="unknown_value">Неизвестно</string>
-    <string name="unknown_drive_name">Неизвестный</string>
+    <string name="unknown_drive_name">Неизвестный накопитель</string>
     <string name="share_file_chooser">Поделиться файлом</string>
     <string name="share_text_name">Имя: %1$s</string>
     <string name="share_text_archive_path">Путь в архиве: %1$s</string>
@@ -213,7 +241,7 @@
     <string name="share_text_uuid">ID накопителя (UUID): %1$s</string>
     <string name="write_protected_root_title">Корень защищен от записи</string>
     <string name="write_protected_root_msg1">В вашей версии Android корень USB-накопителя защищен от записи системой.</string>
-    <string name="write_protected_root_msg2">Пожалуйста, нажмите «Выбрать снова». Затем в открывшемся системном окне создайте новую папку (кнопка сверху справа) или выберите уже существующую папку внутри накопителя.</string>
+    <string name="write_protected_root_msg2">Пожалуйста, нажмите "Выбрать снова". Затем в открывшемся системном окне создайте новую папку (кнопка сверху справа) или выберите уже существующую папку внутри накопителя.</string>
     <string name="btn_select_again">Выбрать снова</string>
     <string name="exif_aperture">Диафрагма</string>
     <string name="exif_shutter_speed">Выдержка</string>
@@ -221,13 +249,17 @@
     <string name="exif_resolution">Разрешение</string>
     <string name="exif_unit_s">с</string>
     <string name="exif_unit_mm">мм</string>
-    <!-- Settings Tab -->
+    
+    
+    <string name="phone_storage_title">Память телефона</string>
+    <string name="phone_storage_free_fmt">Свободно %1$.1f ГБ из %2$.0f ГБ</string>
+
     <string name="warning_internal_storage">⚠️ Внимание: Выбрана папка во внутренней памяти телефона. Для резервного копирования рекомендуется выбрать папку на USB флешке.</string>
     <string name="setting_multi_archive_title">Работа с несколькими архивами (дисками)</string>
     <string name="setting_show_offline_files">Отображать файлы с отключенных накопителей в галерее</string>
     <string name="setting_connected_offline_drives">Подключенные и оффлайн-носители</string>
     <string name="dialog_delete_archive_title">Удалить архив?</string>
-    <string name="dialog_delete_archive_msg">Вы действительно хотите удалить архив «%1$s»?\n\nЛокальный кэш и список файлов для этого носителя будут удалены с телефона. Файлы на самой флешке останутся нетронутыми.</string>
+    <string name="dialog_delete_archive_msg">Вы действительно хотите удалить архив "%1$s"?\n\nЛокальный кэш и список файлов для этого носителя будут удалены с телефона. Файлы на самой флешке останутся нетронутыми.</string>
     <string name="btn_delete">Удалить</string>
     <string name="content_desc_delete_archive">Удалить архив</string>
     <string name="subtitle_folder">Папка: %1$s</string>
@@ -269,13 +301,106 @@
     <string name="error_thumbnail_not_found_local">Файл эскиза не найден на устройстве</string>
     <string name="share_thumbnail">Поделиться эскизом</string>
     <string name="error_share_files_failed">Ошибка при подготовке файлов для отправки</string>
-    <string name="error_read_offline_file">Не удалось прочитать файл «%1$s» (накопитель отключен и нет локального эскиза)</string>
+    <string name="error_read_offline_file">Не удалось прочитать файл "%1$s" (накопитель отключен и нет локального эскиза)</string>
+
+    
+    <string name="CONSOLE_APPLICATION_ID">2063735639</string>
+    <string name="RUSTORE_REMOTE_CONFIG_APP_ID">5189926e-01b0-4267-9204-8e5804fc7d45</string>
+
+    
+    <string name="success_dialog_title">Архивация завершена!</string>
+    <string name="success_dialog_freed_space">Освобождено: %1$s ГБ</string>
+    <string name="success_dialog_free_space_now">Свободно сейчас: %1$s ГБ</string>
+    <string name="success_dialog_storage_usage">%1$s ГБ занято из %2$s ГБ</string>
+    <string name="success_dialog_view_in_archive_info">Ваши файлы можно посмотреть на вкладке архив.</string>
+    <string name="dialog_close">Закрыть</string>
+    <string name="dialog_got_it">Понятно</string>
+    <string name="tooltip_title_hint">Подсказка</string>
+    <string name="tooltip_media_moved">Ваши тяжелые оригиналы теперь находятся на съемном носителе, а в памяти телефона освободилось место.</string>
     <string name="dialog_eject_title">Извлечь накопитель?</string>
     <string name="dialog_eject_message">Вы уверены, что хотите безопасно извлечь съемный носитель?</string>
     <string name="action_eject">Извлечь</string>
     <string name="action_cancel">Отмена</string>
+    <string name="free_version_limits">Бесплатная версия. Доступно: %1$d/%2$d фото, %3$d/%4$d видео</string>
+    <string name="trial_active_days">Бесплатный триал: осталось %1$d дн.</string>
+    <string name="promo_success_title">Промокод активирован!</string>
+    <string name="promo_success_message">Вам успешно начислено %1$d дн. бесплатного доступа.</string>
+    <string name="pro_unlimited">PRO: Безлимит</string>
+    <string name="sort_by">Сортировка: </string>
+    <string name="sort_photo_date">Дата фото</string>
+    <string name="sort_restore_date">Дата разархивации</string>
+    <string name="sort_archive_date">Дата архивации</string>
+    <string name="filter_all">Все</string>
+    <string name="items_count">%1$d элементов</string>
+    <string name="select_all_month">Выбрать все за месяц</string>
+    <string name="collapse">Свернуть</string>
+    <string name="expand">Развернуть</string>
+    <string name="title_unknown_drive">Неизвестный носитель</string>
+    <string name="desc_unknown_drive">Подключен неизвестный носитель. Создать новый архив, или если вернётся старый — сможете его синхронизировать</string>
+    <string name="action_close">Закрыть</string>
+    <string name="dialog_share_thumbnails_title">Поделиться эскизами?</string>
+    <string name="dialog_do_not_warn">я понимаю, больше не нужно предупреждать</string>
+    <string name="dialog_error_title">Ошибка</string>
+    <string name="dialog_select_date_range">Выберите диапазон дат</string>
+    <string name="dialog_share_thumbnails_desc">Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.</string>
+    <string name="action_share">Поделиться</string>
+    <string name="action_select">Выбрать</string>
+    <string name="action_change">Сменить</string>
+    <string name="toast_connect_otg">Подключите нужный OTG накопитель</string>
+    <string name="tab_all">Все</string>
+    <string name="dialog_change_folder_title">Сменить папку архива?</string>
+    <string name="tab_with_date">С датой</string>
+    <string name="action_ok">ОК</string>
+    <string name="dialog_archive_error_title">Ошибка архивирования</string>
+    <string name="action_copy_log">Скопировать лог</string>
+    <string name="dialog_restore_error_title">Ошибка восстановления</string>
+    <string name="dialog_change_folder_desc">Смена папки архива может нарушить текущую синхронизацию. Вы уверены, что хотите продолжить?</string>
+    <string name="action_select_all">ВЫДЕЛИТЬ</string>
+    <string name="action_deselect">Снять выделение</string>    <string name="paywall_title">Безлимитный Архив</string>
+    <string name="paywall_description">Вы достигли лимита бесплатной версии. Купите безлимит, чтобы архивировать неограниченное количество фото и видео!</string>
+    <string name="paywall_description_partial">Мы перенесли часть файлов, но %1$d фото и %2$d видео остались на устройстве из-за достижения лимита. Купите безлимит, чтобы продолжить архивацию без ограничений!</string>
+    <string name="paywall_disclaimer">Разовая покупка, дающая статус PRO навсегда</string>
+    <string name="paywall_buy_button">Купить за %1$s</string>
+    <string name="paywall_loading">Загрузка...</string>
+    <string name="paywall_success">Покупка успешно завершена!</string>
+    <string name="paywall_error">Ошибка покупки: %1$s</string>
+    <string name="paywall_close">Закрыть</string>
 
-    <!-- Phone Storage Widget -->
-    <string name="phone_storage_title">Память телефона</string>
-    <string name="phone_storage_free_fmt">Свободно %1$.1f ГБ из %2$.0f ГБ</string>
+    <string name="dialog_manage_storage_title">Разрешить удаление без вопросов</string>
+    <string name="dialog_manage_storage_desc">Для того чтобы удалять файлы с телефона незаметно и без постоянных всплывающих окон, приложению требуется специальный доступ ко всем файлам. Пожалуйста, включите его на следующем экране.</string>
+    <string name="dialog_manage_storage_btn">Перейти в Настройки</string>
+    <string name="settings_manage_storage_title">Полный доступ к файлам</string>
+    <string name="settings_manage_storage_desc">Позволяет удалять фото и видео без системных диалогов-подтверждений.</string>
+    <string name="settings_manage_storage_btn">Разрешить</string>
+
+    <string name="local_folder_dialog_title">Разрешить My1drive работу с файлами</string>
+    <string name="local_folder_dialog_desc">Приложению нужен доступ к вашим фото и видео, чтобы перемещать их в архив без дополнительных запросов. Нажмите «Разрешить» на следующем экране.</string>
+    <string name="local_folder_dialog_confirm">Разрешить</string>
+    <string name="local_folder_dialog_dismiss">Пропустить</string>
+    <string name="local_folder_dialog_full_access">Предоставить приложению доступ к вашим фото и видео</string>
+
+    
+    <string name="promo_code_dialog_title">Введите промокод</string>
+    <string name="promo_code_hint">Промокод</string>
+    <string name="promo_code_apply">Применить</string>
+    <string name="promo_code_invalid">Неверный промокод. Проверьте и попробуйте снова.</string>
+    <string name="promo_code_success">Промокод активирован на %1$d дней!</string>
+    <string name="have_promo_code">Ввести промокод</string>
+    <string name="promo_code_card_title">Есть промокод?</string>
+    <string name="promo_code_card_desc">Введите промокод, чтобы получить временный доступ без ограничений.</string>
+
+<string name="preview_action_delete">Удалить</string><string name="preview_action_archive">В архив</string><string name="preview_action_restore">Вернуть</string><string name="preview_status_preparing">Подготовка файла...</string><string name="preview_share_thumbnail_title">Поделиться эскизом?</string><string name="preview_share_thumbnail_desc">Исходный накопитель отключен. Вы можете отправить эскиз (миниатюру) в низком разрешении (%1$s).</string><string name="preview_do_not_warn_again">я понимаю, больше не нужно предупреждать</string><string name="preview_btn_share">Поделиться</string><string name="preview_btn_cancel">Отмена</string><string name="gallery_share_thumbnail_title">Поделиться эскизами?</string><string name="gallery_share_thumbnail_desc">Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.</string><string name="gallery_do_not_warn_again">я понимаю, больше не нужно предупреждать</string><string name="gallery_btn_share">Поделиться</string><string name="gallery_btn_cancel">Отмена</string><string name="gallery_error_archiving_title">Ошибка архивирования</string><string name="gallery_error_restoring_title">Ошибка восстановления</string><string name="gallery_btn_ok">ОК</string><string name="gallery_btn_copy_log">Скопировать лог</string><string name="gallery_action_select">ВЫДЕЛИТЬ</string><string name="gallery_filter_all">Все</string><string name="gallery_filter_with_date">С датой</string><string name="gallery_filter_in_folder">В папке</string><string name="gallery_filter_range">Диапазон</string><string name="gallery_content_desc_deselect">Снять выделение</string><string name="topbar_content_desc_deselect">Снять выделение</string><string name="topbar_group">Группа</string><string name="topbar_content_desc_share">Поделиться</string><string name="topbar_send">Отправить</string><string name="topbar_content_desc_delete">Удалить</string><string name="topbar_delete">Удалить</string><string name="topbar_content_desc_reset_selection">Сбросить выделение</string><string name="info_drive">Накопитель</string><string name="info_drive_uuid">ID накопителя (UUID)</string><string name="info_exif_data">Данные EXIF</string><string name="info_exif_missing">EXIF теги отсутствуют или файл не содержит метаданных</string><string name="info_exif_unavailable_offline">EXIF недоступен (OTG отключен)</string><string name="info_hide_exif">Скрыть EXIF</string><string name="info_show_exif">Показать EXIF</string><string name="info_btn_share">Поделиться</string><string name="info_btn_copy">Копировать</string><string name="usb_tab_tutorial">Обучение</string><string name="usb_tab_tutorial_desc">Ваши тяжелые оригиналы теперь здесь, а в галерее телефона остались легкие превью</string><string name="usb_tab_got_it">Понятно</string><string name="paywall_btn_retry">Повторить</string><string name="paywall_btn_buy_pro">Купить PRO</string><string name="naming_dialog_title">Назовите этот архив</string><string name="naming_dialog_desc">Введите понятное название для этого накопителя (например: Флешка USB-C, Архив 2026), чтобы не перепутать его с другими дисками.</string><string name="naming_dialog_label">Название архива</string><string name="naming_dialog_max_chars">Максимум 30 символов</string><string name="naming_dialog_btn_create">Создать</string><string name="naming_dialog_btn_cancel">Отмена</string><string name="guide_dialog_archive_not_found">Архив не найден</string><string name="guide_dialog_desc">На выбранном носителе не найдено существующего архива. Хотите создать новый архив прямо сейчас?
+
+Для этого просто придумайте имя для нового архива.</string><string name="guide_dialog_btn_create">Создать архив</string><string name="guide_dialog_btn_cancel">Отмена</string><string name="logs_dialog_title">Логи отладки</string><string name="logs_dialog_empty">Логи пусты</string><string name="logs_dialog_btn_copy">Копировать</string><string name="logs_dialog_btn_clear">Очистить</string><string name="logs_dialog_btn_close">Закрыть</string><string name="logs_toast_copied">Логи скопированы в буфер обмена</string><string name="logs_toast_nothing_to_copy">Нечего копировать</string><string name="logs_toast_cleared">Логи очищены</string><string name="access_dialog_title">Доступ к папке %1$s</string><string name="access_dialog_desc">Для архивации файлов из этой папки предоставьте доступ к ней.</string><string name="access_dialog_path">Путь: %1$s</string><string name="access_dialog_btn_grant">Предоставить доступ</string><string name="restore_conflict_title">Путь восстановления недоступен</string><string name="restore_conflict_desc">Не удалось получить доступ к целевой папке для восстановления файла «%1$s».</string><string name="restore_conflict_instruction">Пожалуйста, укажите, куда восстановить файл:</string><string name="restore_conflict_apply_to_all">Применить ко всем последующим</string><string name="restore_conflict_btn_restore_in">Восстановить в %1$s</string><string name="restore_conflict_btn_choose_where">Выбрать куда</string><string name="main_toast_choose_otg">Пожалуйста, выберите папку на съемном носителе (OTG), а не во внутренней памяти.</string><string name="main_toast_auto_created_folder">Вы не выбрали папку, я создал для вас папку %1$s, чтобы не создавать беспорядок на носителе</string><string name="main_toast_device_folder_selected">Папка устройства успешно выбрана!</string><string name="main_toast_folder_access_error">Ошибка доступа к папке: %1$s</string><string name="main_toast_waiting_mount">Ожидание монтирования накопителя...</string><string name="service_sync_preparing">Подготовка к синхронизации...</string><string name="service_error">Ошибка: %1$s</string><string name="service_copying_progress">Копирование: %1$s / %2$s</string><string name="service_archiving_title">Архивация файлов</string><string name="service_sync_archive_title">Синхронизация архива</string><string name="usecase_first_archive_limited">Первая архивация ограничена 20 файлами</string><string name="sync_helper_searching">Поиск файлов на OTG...</string><string name="sync_helper_access_failed">Не удалось получить доступ к OTG накопителю</string><string name="sync_helper_finished_no_files">Синхронизация завершена: файлов нет.</string><string name="sync_helper_finished_stats">Синхронизация завершена.
+
+Импортировано новых файлов: %1$s
+Пропущено/проверено: %2$s</string><string name="sync_helper_error">Ошибка синхронизации: %1$s</string><string name="sync_helper_archiving_failed">Не удалось заархивировать %1$s файл(ов):
+</string><string name="sync_helper_archiving_error">Ошибка архивирования</string><string name="interactor_restore_success_with_errors">Восстановлено: %1$s из %2$s.
+
+Ошибки:
+%3$s</string><string name="interactor_restore_success_partial">Восстановлено: %1$s из %2$s.</string><string name="repository_unknown_drive">Неизвестный диск</string><string name="unknown_media_drive_title">Неизвестный носитель</string><string name="unknown_media_drive_desc">Подключен неизвестный носитель. Создать новый архив, или если вернётся старый — сможете его синхронизировать</string><string name="btn_create_new">Создать новый</string><string name="btn_choose">Выбрать</string><string name="btn_select_date_range">Выберите диапазон дат</string>
+    <string name="bottom_nav_device_default">Устройство</string>
+    <string name="toast_premium_activated">Безлимит активирован! Можете продолжать.</string>
+    <string name="archive_metadata_default_name">USB-накопитель</string>
+    <string name="unknown_resolution">Неизвестно</string>
 </resources>

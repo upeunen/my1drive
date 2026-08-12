@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,7 +64,7 @@ fun ArchiveFolderAccessDialog(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Доступ к папке $folderName",
+                    text = stringResource(R.string.access_dialog_title, folderName),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -85,13 +87,13 @@ fun ArchiveFolderAccessDialog(
                 }
 
                 Text(
-                    text = "Для архивации файлов из этой папки предоставьте доступ к ней.",
+                    text = stringResource(R.string.access_dialog_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
                 Text(
-                    text = "Путь: $folderPath",
+                    text = stringResource(R.string.access_dialog_path, folderPath),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -105,7 +107,7 @@ fun ArchiveFolderAccessDialog(
                 )
             ) {
                 Text(
-                    text = "Предоставить доступ",
+                    text = stringResource(R.string.access_dialog_btn_grant),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false

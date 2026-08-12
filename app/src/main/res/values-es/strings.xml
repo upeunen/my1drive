@@ -1,0 +1,406 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">My1Drive</string>
+    <string name="tab_photos">Fotos</string>
+    <string name="tab_archive">Archivo</string>
+    <string name="tab_settings">Ajustes</string>
+    
+    <string name="title_settings">Ajustes</string>
+    <string name="storage_stats">Estadísticas de Almacenamiento</string>
+    <string name="on_phone">En Teléfono:</string>
+    <string name="in_archive">En Archivo OTG:</string>
+    <string name="thumbnail_cache">Caché de Miniaturas:</string>
+    <string name="room_db_wal">Base de datos Room WAL:</string>
+    <string name="status_active">ACTIVO</string>
+    <string name="files_count">%1$d archivos</string>
+    
+    <string name="otg_archive_folder">Carpeta de Archivo OTG</string>
+    <string name="drive_not_selected">Unidad no seleccionada</string>
+    <string name="change_otg_folder">Cambiar Carpeta OTG</string>
+    <string name="select_otg_folder">Seleccionar Carpeta OTG</string>
+    <string name="safe_eject">Expulsión Segura</string>
+    <string name="quick_actions">Acciones Rápidas</string>
+    <string name="clear_thumb_cache">Borrar Caché de Miniaturas</string>
+    
+    <string name="empty_category">No hay archivos multimedia en esta categoría</string>
+    <string name="selected_count">Seleccionado: %1$d</string>
+    <string name="archive_on_otg">Archivar en OTG</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">Cancelar</string>
+    <string name="btn_close">Cerrar</string>
+    <string name="error_title">Error</string>
+    
+    <string name="archiving_title">Haciendo copia en OTG…</string>
+    <string name="archiving_title_count">Haciendo copia en OTG (%1$d de %2$d)…</string>
+    <string name="archiving_file">Archivo: %1$s</string>
+    
+    <string name="otg_select_title">Selección de Unidad USB OTG</string>
+    <string name="otg_select_guide">Seleccione la carpeta o pulse el botón en la parte inferior de la pantalla.</string>
+    <string name="otg_guide_step1">Conecte la unidad USB utilizando un adaptador OTG.</string>
+    <string name="otg_guide_step2">En el selector de archivos del sistema, seleccione su unidad USB.</string>
+    <string name="otg_guide_step3">Haga clic en "Usar esta carpeta" o "Permitir acceso" en la parte inferior.</string>
+    <string name="otg_guide_step4">Confirme la solicitud de permiso en la ventana emergente.</string>
+    <string name="btn_go_to_select">Ir a la selección</string>
+    
+    <string name="file_info_title">Información del Archivo</string>
+    <string name="info_name">Nombre: %1$s</string>
+    <string name="info_type">Tipo: %1$s</string>
+    <string name="info_size">Tamaño: %1$s</string>
+    <string name="info_status">Estado: %1$s</string>
+    <string name="status_on_device">En el Dispositivo</string>
+    <string name="status_archived">En el Archivo OTG</string>
+    <string name="info_sha256">Hash SHA-256:</string>
+    <string name="info_otg_path">Ruta SAF en OTG:</string>
+    
+    <string name="permission_required_toast">Se requieren permisos para acceder a los archivos multimedia</string>
+    <string name="grant_permission_btn">Conceder Permisos</string>
+    <string name="otg_folder_selected_toast">¡Carpeta OTG seleccionada con éxito!</string>
+    <string name="otg_folder_error_toast">Error al acceder a la carpeta: %1$s</string>
+    <string name="eject_success_toast">Unidad OTG expulsada con éxito. Ahora puede desconectar físicamente el dispositivo.</string>
+    
+    
+    <string name="progress_preparing">Preparando…</string>
+    <string name="progress_sha256">Calculando suma de comprobación SHA-256…</string>
+    <string name="progress_copying">Copiando a la unidad OTG…</string>
+    <string name="progress_copying_percent">Copiando… (%1$d%%)</string>
+    <string name="progress_verifying">Verificando integridad (SHA-256)…</string>
+    <string name="progress_thumbnail">Creando caché de miniaturas local…</string>
+    <string name="progress_deleting">Eliminando archivo original…</string>
+    
+    
+    <string name="error_sha256_failed">Fallo al calcular SHA-256 del archivo origen</string>
+    <string name="error_otg_access_failed">Fallo al acceder a la carpeta OTG</string>
+    <string name="error_otg_create_failed">Fallo al crear archivo en la unidad OTG</string>
+    <string name="error_otg_write_failed">Fallo al abrir el flujo de escritura en la unidad OTG</string>
+    <string name="error_verification_failed">¡Error de verificación! Las sumas de comprobación no coinciden.</string>
+    <string name="error_delete_failed">Fallo al eliminar archivo local después de copiar</string>
+    <string name="error_no_delete_permission">Sin permiso para eliminar el archivo: %1$s</string>
+    <string name="error_delete_completion_failed">Fallo al completar la eliminación: %1$s</string>
+    <string name="error_archive_item_failed">Error al archivar %1$s: %2$s</string>
+    
+    
+    <string name="restore_from_otg">Restaurar desde OTG</string>
+    <string name="restoring_title">Restaurando desde OTG…</string>
+    <string name="restoring_title_count">Restaurando desde OTG (%1$d de %2$d)…</string>
+    <string name="restoring_file">Archivo: %1$s</string>
+    <string name="restore_progress_preparing">Preparando restauración…</string>
+    <string name="restore_progress_reading">Leyendo desde OTG…</string>
+    <string name="restore_progress_writing">Escribiendo en el dispositivo…</string>
+    <string name="restore_progress_verifying">Verificando (SHA-256)…</string>
+    <string name="restore_success_title">Restauración completa</string>
+    <string name="restore_success_msg">Todos los archivos seleccionados han sido restaurados en el dispositivo.</string>
+    <string name="restore_error_title">Error de restauración</string>
+    <string name="restore_ask_title">Destino de restauración</string>
+    <string name="restore_ask_original">Restaurar a la carpeta original: %1$s</string>
+    <string name="restore_ask_choose">Elegir otra carpeta…</string>
+    <string name="restore_need_folder_msg">La ruta de guardado original es desconocida. Por favor, seleccione la carpeta a restaurar.</string>
+    
+    <string name="setting_ask_restore_path">Preguntar dónde restaurar</string>
+    <string name="setting_ask_restore_path_desc">Activado: siempre preguntar si restaurar en la carpeta original o elegir otra. Desactivado: restaurar automáticamente en la ruta original.</string>
+
+    
+    <string name="drive_unknown_connected">🔴 Archivo no encontrado en esta unidad</string>
+    <string name="drive_known_disconnected">🔴 Unidad OTG desconectada</string>
+    <string name="drive_known_connected">🟢 Unidad de archivo conectada</string>
+    
+    <string name="auto_sync_missing_title">¡Faltan archivos en el archivo!</string>
+    <string name="auto_sync_missing_msg">Los siguientes archivos ya no se encuentran en la unidad OTG:
+
+%1$s
+
+Los registros permanecen en la base de datos. Conecte la unidad correcta para recuperar el acceso.</string>
+    <string name="auto_sync_added_toast">Sincronización automática: %1$d nuevo(s) archivo(s) añadido(s)</string>
+
+    
+    <string name="date_today">Hoy</string>
+    <string name="date_yesterday">Ayer</string>
+
+    
+    <string name="title_photo_access">Acceso a Fotos</string>
+    <string name="photo_access_partial_desc">La aplicación solo tiene acceso a fotos y vídeos seleccionados. Puede actualizar qué archivos son accesibles.</string>
+    <string name="photo_access_warning_desc">Ha concedido acceso parcial. Android puede bloquear operaciones de copia para archivos no seleccionados o en la nube.</string>
+    <string name="btn_manage_photos">Seleccionar Más Fotos</string>
+    <string name="error_media_access_denied">Acceso denegado. Si el archivo está en una copia en la nube (como Google Photos), descárguelo primero.</string>
+    <string name="partial_access_banner_title">⚠️ Acceso Limitado</string>
+    <string name="partial_access_banner_desc">La aplicación solo tiene acceso a las fotos seleccionadas. Algunos archivos pueden no estar disponibles.</string>
+    <string name="btn_grant_full_access">Conceder Acceso Completo</string>
+    <string name="btn_open_settings">Abrir Ajustes</string>
+
+    
+    <string name="new_archive_found_title">Nuevo Archivo Encontrado</string>
+    <string name="new_archive_found_msg">Se detectó un archivo diferente en la unidad conectada. ¿Le gustaría cambiar a este archivo?</string>
+    <string name="btn_connect_to_archive">Conectar al Archivo</string>
+
+    
+    <string name="preview_on_disk">Vista previa en disco</string>
+    <string name="preview_cached">Vista previa (caché)</string>
+
+    
+    <string name="info_original_folder">Carpeta original:</string>
+    <string name="info_preview_path">Caché de vista previa:</string>
+    <string name="info_archive_id">ID de Archivo:</string>
+    <string name="info_location">Ubicación:</string>
+    <string name="info_location_device">📱 En el dispositivo</string>
+    <string name="info_location_otg">💾 En archivo (unidad OTG)</string>
+    <string name="info_location_otg_disconnected">💾 En archivo (unidad desconectada)</string>
+
+    
+    <string name="btn_delete_file">Eliminar del dispositivo</string>
+    <string name="btn_delete_otg">Eliminar del archivo</string>
+    <string name="delete_confirm_title">¿Eliminar archivo?</string>
+    <string name="delete_confirm_msg">¿Está seguro de que desea eliminar "%1$s"? Esta acción no se puede deshacer.</string>
+    <string name="delete_archived_warning">El original en la unidad OTG permanecerá. Solo se eliminará el registro de la base de datos.</string>
+    <string name="preview_not_deletable">Las vistas previas no se pueden eliminar por separado</string>
+    <string name="delete_otg_needs_connection">Conecte la unidad OTG para eliminar archivos del archivo</string>
+
+    
+    <string name="sync_archive_title">Sincronizar Archivo</string>
+    <string name="sync_archive_progress">Sincronizando…</string>
+
+    
+    <string name="preview_delete">Eliminar</string>
+    <string name="preview_will_be_deleted">Se eliminará al cerrar ✓</string>
+    <string name="preview_archive">Archivar</string>
+    <string name="preview_restore">Restaurar</string>
+    <string name="preview_share">Compartir</string>
+    <string name="preview_hint_swipe">Deslizar hacia abajo para cerrar</string>
+    <string name="preview_hint_zoom">Pellizcar para hacer zoom</string>
+    <string name="deleted_on_close_toast">Eliminado(s) %1$d archivo(s)</string>
+    <string name="preview_source_device">Dispositivo</string>
+
+    
+    <string name="action_delete">Eliminar</string>
+    <string name="action_delete_all">Eliminar todo</string>
+    <string name="action_delete_files_question">¿Eliminar %1$d archivos?</string>
+    <string name="action_delete_from_archive">Eliminar del archivo</string>
+    <string name="action_properties">Propiedades</string>
+
+    
+    <string name="welcome_title">¡Bienvenido a My1Drive!</string>
+    <string name="welcome_msg">Esta aplicación le permite copiar sus fotos, vídeos y otros archivos a una unidad USB, liberando memoria en su teléfono.</string>
+    <string name="welcome_msg_drive_detected">¡Unidad USB OTG detectada!</string>
+    <string name="welcome_msg_drive_not_detected">Unidad USB OTG no detectada. Por favor conéctela mediante un adaptador OTG.</string>
+    <string name="welcome_btn_start">Empezar</string>
+    <string name="welcome_btn_close">Cerrar</string>
+    
+    <string name="wizard_title_otg">Conexión de la Unidad</string>
+    <string name="wizard_msg_otg">Para utilizar completamente la aplicación, necesitará un adaptador OTG y una unidad (memoria flash o disco portátil). Vamos a registrarlo.</string>
+    <string name="wizard_btn_register_otg">Seleccionar carpeta de la unidad</string>
+    
+    <string name="wizard_trial_active">¡Felicidades! Tiene una versión de prueba disponible durante %1$d días.</string>
+    <string name="wizard_free_limits">¡Felicidades! Tiene una versión gratuita disponible para %1$d fotos y %2$d vídeos.</string>
+
+    
+    <string name="preloader_detecting_drive">Buscando unidad...</string>
+    <string name="preloader_please_wait">Por favor espere.\nReconstruir la base de datos puede tardar hasta 2 minutos.</string>
+
+    
+    <string name="otg_required_msg">Se requiere una unidad externa para funcionar. Por favor conéctela al puerto de carga mediante un adaptador OTG.</string>
+    <string name="connecting_usb_msg">Conectando unidad USB...</string>
+    <string name="step_preparing">Preparando...</string>
+    <string name="step_verifying">Verificando integridad...</string>
+    <string name="step_copying">Copiando al archivo...</string>
+    <string name="step_restore_reading">Leyendo desde el archivo...</string>
+    <string name="step_restore_writing">Escribiendo en el dispositivo...</string>
+    <string name="step_restore_writing_pct">Escribiendo en el dispositivo... (%1$s%%)</string>
+    <string name="step_processing">Procesando...</string>
+    <string name="progress_title_format">%1$s (%2$d de %3$d)</string>
+    <string name="tab_in_folder">En la carpeta</string>
+    <string name="tab_date_range">Rango de fechas</string>
+    <string name="status_computing_hashes">Calculando hashes...</string>
+    <string name="status_searching_files">Buscando archivos...</string>
+    <string name="status_in_queue"> (+%1$d en cola)</string>
+    <string name="title_archiving">Archivando</string>
+    <string name="title_restoring">Restaurando</string>
+    <string name="title_syncing">Sincronizando archivo</string>
+
+    
+    <string name="unreadable_otg_title">Dispositivo USB Detectado</string>
+    <string name="unreadable_otg_msg">El dispositivo está físicamente conectado, pero Android no pudo montarlo como almacenamiento.\n\nIntente volver a conectar la unidad o comprobar la fiabilidad de la conexión.</string>
+    <string name="unreadable_otg_why_link">¿Por qué el almacenamiento es ilegible?</string>
+    <string name="unreadable_otg_explanation">Razones posibles:\n• Sistema de archivos no compatible (ej. NTFS). Android funciona mejor con FAT32 o exFAT.\n• Fuente de alimentación insuficiente o adaptador OTG de baja calidad.\n\nCómo solucionarlo:\nPuede intentar formatear la unidad USB a un formato compatible (FAT32/exFAT) usando la configuración de almacenamiento de su teléfono.\n\nAdvertencia: formatear borrará todos los datos de la unidad.</string>
+
+    
+    <string name="disconnected_info_title">Detalles del Archivo</string>
+    <string name="info_file_name_title">Nombre del Archivo</string>
+    <string name="info_original_path_title">Ruta Original</string>
+    <string name="info_current_archive_path_title">Ruta Original en OTG</string>
+    <string name="info_file_size_title">Tamaño del Archivo</string>
+    <string name="info_storage_drive_title">Unidad de Almacenamiento</string>
+    <string name="info_storage_uuid_title">ID de la Unidad (UUID)</string>
+    <string name="btn_share">Compartir</string>
+    <string name="btn_copy">Copiar</string>
+    <string name="toast_copied_to_clipboard">Copiado al portapapeles</string>
+    <string name="unknown_value">Desconocido</string>
+    <string name="unknown_drive_name">Unidad desconocida</string>
+    <string name="share_file_chooser">Compartir archivo</string>
+    <string name="share_text_name">Nombre: %1$s</string>
+    <string name="share_text_archive_path">Ruta en archivo: %1$s</string>
+    <string name="share_text_size">Tamaño: %1$s</string>
+    <string name="share_text_drive">Unidad: %1$s</string>
+    <string name="share_text_uuid">ID de Unidad (UUID): %1$s</string>
+    <string name="write_protected_root_title">Carpeta raíz protegida contra escritura</string>
+    <string name="write_protected_root_msg1">En su versión de Android, la raíz de la unidad USB está protegida contra escritura.</string>
+    <string name="write_protected_root_msg2">Por favor pulse "Seleccionar de Nuevo". Luego, cree una nueva carpeta o seleccione una existente dentro de la unidad.</string>
+    <string name="btn_select_again">Seleccionar de Nuevo</string>
+    <string name="exif_aperture">Apertura</string>
+    <string name="exif_shutter_speed">Velocidad de Obturación</string>
+    <string name="exif_focal_length">Distancia Focal</string>
+    <string name="exif_resolution">Resolución</string>
+    <string name="exif_unit_s">s</string>
+    <string name="exif_unit_mm">mm</string>
+    
+    
+    <string name="phone_storage_title">Almacenamiento del Teléfono</string>
+    <string name="phone_storage_free_fmt">Libre %1$.1f GB de %2$.0f GB</string>
+
+    <string name="warning_internal_storage">⚠️ Advertencia: Carpeta de almacenamiento interno seleccionada. Se recomienda elegir una carpeta en una memoria USB.</string>
+    <string name="setting_multi_archive_title">Trabajar con múltiples archivos (unidades)</string>
+    <string name="setting_show_offline_files">Mostrar archivos de unidades desconectadas en galería</string>
+    <string name="setting_connected_offline_drives">Unidades conectadas y desconectadas</string>
+    <string name="dialog_delete_archive_title">¿Eliminar archivo?</string>
+    <string name="dialog_delete_archive_msg">¿Está seguro de que desea eliminar el archivo "%1$s"?\n\nEl caché local y la lista de archivos para esta unidad se eliminarán del teléfono. Los archivos en la memoria no se verán afectados.</string>
+    <string name="btn_delete">Eliminar</string>
+    <string name="content_desc_delete_archive">Eliminar archivo</string>
+    <string name="subtitle_folder">Carpeta: %1$s</string>
+    <string name="subtitle_uuid">UUID: %1$s</string>
+    <string name="archive_name_fallback">Archivo %1$s</string>
+
+    <string name="vps_server_title">Servidor VPS</string>
+    <string name="vps_server_desc">(Para usuarios avanzados, copia de seguridad en servidor virtual)</string>
+    <string name="toast_vps_enabled">Copia VPS activada</string>
+    <string name="toast_vps_disabled">Copia VPS desactivada</string>
+    <string name="vps_host">Host (dirección IP / dominio)</string>
+    <string name="vps_port">Puerto</string>
+    <string name="vps_username">Nombre de usuario</string>
+    <string name="vps_password">Contraseña</string>
+    <string name="vps_path">Ruta de archivo en VPS</string>
+    <string name="vps_limit">Límite de archivo en VPS (en GB)</string>
+    <string name="toast_vps_success">¡Conexión establecida y guardada con éxito!</string>
+    <string name="toast_vps_error">Error de conexión: %1$s</string>
+    <string name="btn_vps_test">Probar y guardar ajustes</string>
+    <string name="btn_vps_testing">Probando…</string>
+
+    <string name="archive_volume_free">Volumen del Archivo (Versión gratuita)</string>
+    <string name="archive_volume_pro">Volumen del Archivo</string>
+    <string name="archive_used_free">Usado: %1$.1f MB de 128.0 MB (%2$.1f%%)</string>
+    <string name="archive_used_pro">Usado: %1$.1f MB</string>
+    <string name="archive_limit_reached">Límite de la versión gratuita alcanzado. Compre la versión PRO o elimine algunos archivos.</string>
+
+    <string name="maintenance_and_debug">Mantenimiento y Depuración</string>
+    <string name="low_storage_warning">Poco espacio de almacenamiento. Caché en segundo plano suspendido.</string>
+    <string name="view_debug_logs">Ver registros de depuración</string>
+    <string name="app_version">Versión de la app:</string>
+
+    <string name="vps_limit_exceeded">Límite VPS excedido (%1$s GB). Archivado cancelado.</string>
+    <string name="error_share_failed">Error al compartir archivos</string>
+    <string name="error_open_file_failed">Fallo al abrir archivo en la unidad</string>
+    <string name="error_share_archived_failed">Error preparando el archivo archivado</string>
+    <string name="error_share_thumbnail_failed">Error preparando la miniatura</string>
+    <string name="error_otg_offline_no_thumbnail">Unidad desconectada y miniatura local ausente</string>
+    <string name="error_thumbnail_not_found_local">Archivo de miniatura no encontrado en el dispositivo</string>
+    <string name="share_thumbnail">Compartir miniatura</string>
+    <string name="error_share_files_failed">Error preparando archivos para compartir</string>
+    <string name="error_read_offline_file">Fallo al leer archivo "%1$s" (unidad desconectada y sin miniatura local)</string>
+
+    
+    <string name="CONSOLE_APPLICATION_ID">2063735639</string>
+    <string name="RUSTORE_REMOTE_CONFIG_APP_ID">5189926e-01b0-4267-9204-8e5804fc7d45</string>
+
+    
+    <string name="success_dialog_title">¡Archivado Completo!</string>
+    <string name="success_dialog_freed_space">Liberado: %1$s GB</string>
+    <string name="success_dialog_free_space_now">Libre ahora: %1$s GB</string>
+    <string name="success_dialog_storage_usage">%1$s GB usado de %2$s GB</string>
+    <string name="success_dialog_view_in_archive_info">Puede ver sus archivos en la pestaña de archivo.</string>
+    <string name="dialog_close">Cerrar</string>
+    <string name="dialog_got_it">Entendido</string>
+    <string name="tooltip_title_hint">Pista</string>
+    <string name="tooltip_media_moved">Sus archivos originales grandes están ahora en la unidad extraíble, liberando espacio.</string>
+    <string name="dialog_eject_title">¿Expulsar unidad?</string>
+    <string name="dialog_eject_message">¿Está seguro de que desea expulsar la unidad de forma segura?</string>
+    <string name="action_eject">Expulsar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="free_version_limits">Versión gratuita. Disponible: %1$d/%2$d fotos, %3$d/%4$d vídeos</string>
+    <string name="trial_active_days">Prueba gratuita: %1$d días restantes</string>
+    <string name="promo_success_title">¡Código Promocional Activado!</string>
+    <string name="promo_success_message">Ha recibido con éxito %1$d días de acceso gratuito.</string>
+    <string name="pro_unlimited">PRO: Ilimitado</string>
+    <string name="sort_by">Ordenar por: </string>
+    <string name="sort_photo_date">Fecha de Foto</string>
+    <string name="sort_restore_date">Fecha de Restauración</string>
+    <string name="sort_archive_date">Fecha de Archivo</string>
+    <string name="filter_all">Todo</string>
+    <string name="items_count">%1$d elementos</string>
+    <string name="select_all_month">Seleccionar todo el mes</string>
+    <string name="collapse">Contraer</string>
+    <string name="expand">Expandir</string>
+    <string name="title_unknown_drive">Unidad desconocida</string>
+    <string name="desc_unknown_drive">Se ha conectado una unidad desconocida. Puede crear un nuevo archivo o sincronizar el antiguo.</string>
+    <string name="action_close">Cerrar</string>
+    <string name="dialog_share_thumbnails_title">¿Compartir Miniaturas?</string>
+    <string name="dialog_do_not_warn">Entiendo, no advertir de nuevo</string>
+    <string name="dialog_error_title">Error</string>
+    <string name="dialog_select_date_range">Seleccionar Rango de Fechas</string>
+    <string name="dialog_share_thumbnails_desc">Algunos de los archivos seleccionados están en unidades desconectadas. Se compartirán sus miniaturas de baja resolución.</string>
+    <string name="action_share">Compartir</string>
+    <string name="action_select">Seleccionar</string>
+    <string name="action_change">Cambiar</string>
+    <string name="toast_connect_otg">Conecte la unidad OTG requerida</string>
+    <string name="tab_all">Todo</string>
+    <string name="dialog_change_folder_title">¿Cambiar carpeta del archivo?</string>
+    <string name="tab_with_date">Con Fecha</string>
+    <string name="action_ok">OK</string>
+    <string name="dialog_archive_error_title">Error de Archivado</string>
+    <string name="action_copy_log">Copiar Registro</string>
+    <string name="dialog_restore_error_title">Error de Restauración</string>
+    <string name="dialog_change_folder_desc">Cambiar la carpeta del archivo puede interrumpir la sincronización actual. ¿Está seguro?</string>
+    <string name="action_select_all">SELECCIONAR TODO</string>
+    <string name="action_deselect">Deseleccionar</string>    <string name="paywall_title">Archivo Ilimitado</string>
+    <string name="paywall_description">Ha alcanzado el límite de la versión gratuita. ¡Compre Ilimitado para archivar sin límites!</string>
+    <string name="paywall_description_partial">Se transfirieron algunos archivos, pero %1$d fotos y %2$d vídeos permanecen en su dispositivo debido al límite. ¡Compre Ilimitado para continuar!</string>
+    <string name="paywall_disclaimer">Pago único para estado PRO permanente</string>
+    <string name="paywall_buy_button">Comprar por %1$s</string>
+    <string name="paywall_loading">Cargando...</string>
+    <string name="paywall_success">¡Compra completada con éxito!</string>
+    <string name="paywall_error">Error de compra: %1$s</string>
+    <string name="paywall_close">Cerrar</string>
+
+    <string name="dialog_manage_storage_title">Permitir Eliminación Sin Confirmación</string>
+    <string name="dialog_manage_storage_desc">Para eliminar archivos silenciosamente sin ventanas emergentes constantes, la aplicación necesita acceso especial a todos los archivos.</string>
+    <string name="dialog_manage_storage_btn">Ir a Ajustes</string>
+    <string name="settings_manage_storage_title">Acceso a Todos los Archivos</string>
+    <string name="settings_manage_storage_desc">Permite eliminar fotos y vídeos sin cuadros de diálogo de confirmación del sistema.</string>
+    <string name="settings_manage_storage_btn">Permitir</string>
+
+    <string name="local_folder_dialog_title">Permitir que My1Drive acceda a los archivos</string>
+    <string name="local_folder_dialog_desc">La aplicación necesita acceso a sus fotos y vídeos para moverlos al archivo sin preguntas adicionales. Toque "Permitir" en la siguiente pantalla.</string>
+    <string name="local_folder_dialog_confirm">Permitir</string>
+    <string name="local_folder_dialog_dismiss">Omitir</string>
+    <string name="local_folder_dialog_full_access">Conceder a la aplicación acceso a sus fotos y vídeos</string>
+
+    
+    <string name="promo_code_dialog_title">Introducir Código Promocional</string>
+    <string name="promo_code_hint">Código Promocional</string>
+    <string name="promo_code_apply">Aplicar</string>
+    <string name="promo_code_invalid">Código promocional no válido. Compruébelo e inténtelo de nuevo.</string>
+    <string name="promo_code_success">¡Código promocional activado durante %1$d días!</string>
+    <string name="have_promo_code">Introducir código</string>
+    <string name="promo_code_card_title">¿Tiene un código promocional?</string>
+    <string name="promo_code_card_desc">Introduzca un código promocional para obtener acceso temporal sin límites.</string>
+
+<string name="preview_action_delete">Eliminar</string><string name="preview_action_archive">Al Archivo</string><string name="preview_action_restore">Restaurar</string><string name="preview_status_preparing">Preparando archivo...</string><string name="preview_share_thumbnail_title">¿Compartir miniatura?</string><string name="preview_share_thumbnail_desc">La unidad de origen está desconectada. Puede enviar una miniatura de baja resolución (%1$s).</string><string name="preview_do_not_warn_again">Entiendo, no advertir de nuevo</string><string name="preview_btn_share">Compartir</string><string name="preview_btn_cancel">Cancelar</string><string name="gallery_share_thumbnail_title">¿Compartir miniaturas?</string><string name="gallery_share_thumbnail_desc">Algunos archivos seleccionados están en unidades desconectadas. Se enviarán sus miniaturas de baja resolución.</string><string name="gallery_do_not_warn_again">Entiendo, no advertir de nuevo</string><string name="gallery_btn_share">Compartir</string><string name="gallery_btn_cancel">Cancelar</string><string name="gallery_error_archiving_title">Error de Archivado</string><string name="gallery_error_restoring_title">Error de Restauración</string><string name="gallery_btn_ok">OK</string><string name="gallery_btn_copy_log">Copiar registro</string><string name="gallery_action_select">SELECCIONAR</string><string name="gallery_filter_all">Todo</string><string name="gallery_filter_with_date">Con fecha</string><string name="gallery_filter_in_folder">En la carpeta</string><string name="gallery_filter_range">Rango</string><string name="gallery_content_desc_deselect">Deseleccionar</string><string name="topbar_content_desc_deselect">Deseleccionar</string><string name="topbar_group">Grupo</string><string name="topbar_content_desc_share">Compartir</string><string name="topbar_send">Enviar</string><string name="topbar_content_desc_delete">Eliminar</string><string name="topbar_delete">Eliminar</string><string name="topbar_content_desc_reset_selection">Restablecer selección</string><string name="info_drive">Unidad</string><string name="info_drive_uuid">ID de Unidad (UUID)</string><string name="info_exif_data">Datos EXIF</string><string name="info_exif_missing">Faltan etiquetas EXIF o el archivo no tiene metadatos</string><string name="info_exif_unavailable_offline">EXIF no disponible (OTG desconectado)</string><string name="info_hide_exif">Ocultar EXIF</string><string name="info_show_exif">Mostrar EXIF</string><string name="info_btn_share">Compartir</string><string name="info_btn_copy">Copiar</string><string name="usb_tab_tutorial">Tutorial</string><string name="usb_tab_tutorial_desc">Sus originales pesados están aquí, mientras que las vistas previas ligeras permanecen en la galería del teléfono</string><string name="usb_tab_got_it">Entendido</string><string name="paywall_btn_retry">Reintentar</string><string name="paywall_btn_buy_pro">Comprar PRO</string><string name="naming_dialog_title">Nombre este archivo</string><string name="naming_dialog_desc">Introduzca un nombre claro para esta unidad (ej. Unidad USB-C, Archivo 2026) para evitar confusiones.</string><string name="naming_dialog_label">Nombre del archivo</string><string name="naming_dialog_max_chars">Máximo 30 caracteres</string><string name="naming_dialog_btn_create">Crear</string><string name="naming_dialog_btn_cancel">Cancelar</string><string name="guide_dialog_archive_not_found">Archivo no encontrado</string><string name="guide_dialog_desc">No se encontró ningún archivo existente en la unidad seleccionada. ¿Desea crear un nuevo archivo ahora?
+
+Simplemente invente un nombre para el nuevo archivo.</string><string name="guide_dialog_btn_create">Crear archivo</string><string name="guide_dialog_btn_cancel">Cancelar</string><string name="logs_dialog_title">Registros de depuración</string><string name="logs_dialog_empty">Los registros están vacíos</string><string name="logs_dialog_btn_copy">Copiar</string><string name="logs_dialog_btn_clear">Limpiar</string><string name="logs_dialog_btn_close">Cerrar</string><string name="logs_toast_copied">Registros copiados al portapapeles</string><string name="logs_toast_nothing_to_copy">Nada que copiar</string><string name="logs_toast_cleared">Registros limpiados</string><string name="access_dialog_title">Acceso a la carpeta %1$s</string><string name="access_dialog_desc">Para archivar archivos de esta carpeta, concédele acceso.</string><string name="access_dialog_path">Ruta: %1$s</string><string name="access_dialog_btn_grant">Conceder acceso</string><string name="restore_conflict_title">Ruta de restauración no disponible</string><string name="restore_conflict_desc">No se pudo acceder a la carpeta de restauración de destino para el archivo "%1$s".</string><string name="restore_conflict_instruction">Especifique dónde restaurar el archivo:</string><string name="restore_conflict_apply_to_all">Aplicar a todos los archivos siguientes</string><string name="restore_conflict_btn_restore_in">Restaurar en %1$s</string><string name="restore_conflict_btn_choose_where">Elegir dónde</string><string name="main_toast_choose_otg">Por favor, seleccione una carpeta en una unidad extraíble (OTG), no en el almacenamiento interno.</string><string name="main_toast_auto_created_folder">No seleccionó una carpeta, así que creé la carpeta %1$s para mantener la unidad organizada</string><string name="main_toast_device_folder_selected">¡Carpeta del dispositivo seleccionada con éxito!</string><string name="main_toast_folder_access_error">Error de acceso a la carpeta: %1$s</string><string name="main_toast_waiting_mount">Esperando a que se monte la unidad...</string><string name="service_sync_preparing">Preparando la sincronización...</string><string name="service_error">Error: %1$s</string><string name="service_copying_progress">Copiando: %1$s / %2$s</string><string name="service_archiving_title">Archivando archivos</string><string name="service_sync_archive_title">Sincronizando archivo</string><string name="usecase_first_archive_limited">El primer archivado está limitado a 20 archivos</string><string name="sync_helper_searching">Buscando archivos en OTG...</string><string name="sync_helper_access_failed">Error al acceder a la unidad OTG</string><string name="sync_helper_finished_no_files">Sincronización completa: sin archivos.</string><string name="sync_helper_finished_stats">Sincronización completa.
+
+Nuevos archivos importados: %1$s
+Omitidos/comprobados: %2$s</string><string name="sync_helper_error">Error de sincronización: %1$s</string><string name="sync_helper_archiving_failed">Error al archivar %1$s archivo(s):
+</string><string name="sync_helper_archiving_error">Error de archivado</string><string name="interactor_restore_success_with_errors">Restaurados: %1$s de %2$s.
+
+Errores:
+%3$s</string><string name="interactor_restore_success_partial">Restaurados: %1$s de %2$s.</string><string name="repository_unknown_drive">Unidad desconocida</string><string name="unknown_media_drive_title">Unidad desconocida</string><string name="unknown_media_drive_desc">Unidad desconocida conectada. Cree un nuevo archivo o sincronice el antiguo si vuelve</string><string name="btn_create_new">Crear nuevo</string><string name="btn_choose">Elegir</string><string name="btn_select_date_range">Seleccionar rango de fechas</string>
+    <string name="bottom_nav_device_default">Dispositivo</string>
+    <string name="toast_premium_activated">¡Premium activado! Puedes continuar.</string>
+    <string name="archive_metadata_default_name">Unidad USB</string>
+    <string name="unknown_resolution">Desconocido</string>
+</resources>

@@ -148,8 +148,8 @@ class ArchiveInteractor(
                 } // end for
                 repository.refresh()
                 val finalError = when {
-                    errors.isNotEmpty() -> "Восстановлено: $successCount из ${items.size}.\n\nОшибки:\n" + errors.joinToString("\n")
-                    successCount < items.size -> "Восстановлено: $successCount из ${items.size}."
+                    errors.isNotEmpty() -> by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.interactor_restore_success_with_errors, successCount.toString(), items.size.toString(), errors.joinToString("\n"))
+                    successCount < items.size -> by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.interactor_restore_success_partial, successCount.toString(), items.size.toString())
                     else -> null
                 }
                 DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")

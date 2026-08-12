@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">My1Drive</string>
     <string name="tab_photos">Photos</string>
@@ -37,7 +38,7 @@
     <string name="otg_select_guide">Select the folder or just press the button at the bottom of the screen.</string>
     <string name="otg_guide_step1">Connect the USB drive using an OTG adapter.</string>
     <string name="otg_guide_step2">In the system file picker, select your USB drive.</string>
-    <string name="otg_guide_step3">Click \"Use this folder\" or \"Allow access\" at the bottom of the screen.</string>
+    <string name="otg_guide_step3">Click "Use this folder" or "Allow access" at the bottom of the screen.</string>
     <string name="otg_guide_step4">Confirm the permission request in the pop-up window.</string>
     <string name="btn_go_to_select">Go to selection</string>
     
@@ -57,7 +58,7 @@
     <string name="otg_folder_error_toast">Error accessing folder: %1$s</string>
     <string name="eject_success_toast">OTG drive successfully ejected in the app. You can now physically disconnect the device.</string>
     
-    <!-- Progress messages -->
+    
     <string name="progress_preparing">Preparing…</string>
     <string name="progress_sha256">Calculating SHA-256 checksum…</string>
     <string name="progress_copying">Copying to OTG drive…</string>
@@ -66,7 +67,7 @@
     <string name="progress_thumbnail">Creating local thumbnail cache…</string>
     <string name="progress_deleting">Deleting original file…</string>
     
-    <!-- Error messages -->
+    
     <string name="error_sha256_failed">Failed to calculate SHA-256 of the source file</string>
     <string name="error_otg_access_failed">Failed to access the OTG folder</string>
     <string name="error_otg_create_failed">Failed to create file on the OTG drive</string>
@@ -77,7 +78,7 @@
     <string name="error_delete_completion_failed">Failed to complete deletion: %1$s</string>
     <string name="error_archive_item_failed">Archiving error for %1$s: %2$s</string>
     
-    <!-- Restore (Unarchive) -->
+    
     <string name="restore_from_otg">Restore from OTG</string>
     <string name="restoring_title">Restoring from OTG…</string>
     <string name="restoring_title_count">Restoring from OTG (%1$d of %2$d)…</string>
@@ -93,15 +94,15 @@
     <string name="restore_ask_original">Restore to original folder: %1$s</string>
     <string name="restore_ask_choose">Choose another folder…</string>
     <string name="restore_need_folder_msg">The original save path is unknown. Please select the folder to restore to.</string>
-    <!-- Settings: ask restore path toggle -->
+    
     <string name="setting_ask_restore_path">Ask where to restore</string>
     <string name="setting_ask_restore_path_desc">When ON: always ask whether to restore to the original folder or choose another. When OFF: automatically restore to original path (or ask if unknown).</string>
 
-    <!-- Drive status -->
+    
     <string name="drive_unknown_connected">🔴 Archive not found on this drive</string>
     <string name="drive_known_disconnected">🔴 OTG drive disconnected</string>
     <string name="drive_known_connected">🟢 Archive drive connected</string>
-    <!-- Auto-sync -->
+    
     <string name="auto_sync_missing_title">Files missing from archive!</string>
     <string name="auto_sync_missing_msg">The following files are no longer found on the OTG drive:
 
@@ -110,11 +111,11 @@
 The records remain in the database. Connect the correct drive to restore access.</string>
     <string name="auto_sync_added_toast">Auto-sync: %1$d new file(s) added</string>
 
-    <!-- Date groups -->
+    
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
 
-    <!-- Photo Access and Security -->
+    
     <string name="title_photo_access">Photo Access</string>
     <string name="photo_access_partial_desc">The app only has access to selected photos and videos. You can update which files are accessible.</string>
     <string name="photo_access_warning_desc">You have granted partial access. Android may block copy operations for unselected or cloud files. Grant \'Allow all\' access in system settings for best performance.</string>
@@ -125,16 +126,16 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="btn_grant_full_access">Grant Full Access</string>
     <string name="btn_open_settings">Open Settings</string>
 
-    <!-- New archive detection -->
+    
     <string name="new_archive_found_title">New Archive Found</string>
     <string name="new_archive_found_msg">A different archive was detected on the connected drive. Would you like to switch to this archive?</string>
     <string name="btn_connect_to_archive">Connect to Archive</string>
 
-    <!-- Preview placeholders -->
+    
     <string name="preview_on_disk">Preview on disk</string>
     <string name="preview_cached">Preview (cached)</string>
 
-    <!-- Enhanced Info Dialog -->
+    
     <string name="info_original_folder">Original folder:</string>
     <string name="info_preview_path">Preview cache:</string>
     <string name="info_archive_id">Archive ID:</string>
@@ -143,20 +144,20 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="info_location_otg">💾 In archive (OTG drive)</string>
     <string name="info_location_otg_disconnected">💾 In archive (drive disconnected)</string>
 
-    <!-- Delete -->
+    
     <string name="btn_delete_file">Delete from device</string>
     <string name="btn_delete_otg">Delete from archive</string>
     <string name="delete_confirm_title">Delete file?</string>
-    <string name="delete_confirm_msg">Are you sure you want to delete \"%1$s\"? This action cannot be undone.</string>
+    <string name="delete_confirm_msg">Are you sure you want to delete "%1$s"? This action cannot be undone.</string>
     <string name="delete_archived_warning">The original on the OTG drive will remain. Only the database record will be removed.</string>
     <string name="preview_not_deletable">Previews cannot be deleted separately</string>
     <string name="delete_otg_needs_connection">Connect the OTG drive to delete files from the archive</string>
 
-    <!-- Sync -->
+    
     <string name="sync_archive_title">Synchronize Archive</string>
     <string name="sync_archive_progress">Synchronizing…</string>
 
-    <!-- Fullscreen Preview Actions -->
+    
     <string name="preview_delete">Delete</string>
     <string name="preview_will_be_deleted">Will be deleted on close ✓</string>
     <string name="preview_archive">Archive</string>
@@ -167,57 +168,59 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="deleted_on_close_toast">Deleted %1$d file(s)</string>
     <string name="preview_source_device">Device</string>
 
-    <!-- Action bar / selection mode -->
+    
     <string name="action_delete">Delete</string>
     <string name="action_delete_all">Delete all</string>
     <string name="action_delete_files_question">Delete %1$d files?</string>
     <string name="action_delete_from_archive">Delete from archive</string>
     <string name="action_properties">Properties</string>
 
-    <!-- First launch dialog -->
-    <string name="welcome_title">Добро пожаловать в My1Drive!</string>
-    <string name="welcome_msg">Это приложение позволяет вам копировать свои фото, видео и другие файлы на USB-накопитель, освобождая память вашего телефона.</string>
-    <string name="welcome_btn_start">Начать</string>
-    <string name="welcome_btn_close">Закрыть</string>
     
-    <string name="wizard_title_otg">Подключение накопителя</string>
-    <string name="wizard_msg_otg">Для полноценной работы приложения вам понадобится OTG адаптер и накопитель (флешка или переносной диск). Давайте его зарегистрируем.</string>
-    <string name="wizard_btn_register_otg">Выбрать папку накопителя</string>
+    <string name="welcome_title">Welcome to My1Drive!</string>
+    <string name="welcome_msg">This app allows you to copy your photos, videos, and other files to a USB drive, freeing up memory on your phone.</string>
+    <string name="welcome_msg_drive_detected">USB OTG drive detected!</string>
+    <string name="welcome_msg_drive_not_detected">USB OTG drive not detected. Please connect it via an OTG adapter.</string>
+    <string name="welcome_btn_start">Start</string>
+    <string name="welcome_btn_close">Close</string>
     
-    <string name="wizard_trial_active">Поздравляем! Вам доступна пробная версия на %1$d дн.</string>
-    <string name="wizard_free_limits">Поздравляем! Вам доступна бесплатная версия на %1$d фото и %2$d видео.</string>
+    <string name="wizard_title_otg">Drive Connection</string>
+    <string name="wizard_msg_otg">To fully use the app, you will need an OTG adapter and a drive (flash drive or portable disk). Let\'s register it.</string>
+    <string name="wizard_btn_register_otg">Select drive folder</string>
+    
+    <string name="wizard_trial_active">Congratulations! You have a trial version available for %1$d days.</string>
+    <string name="wizard_free_limits">Congratulations! You have a free version available for %1$d photos and %2$d videos.</string>
 
-    <!-- Preloader -->
-    <string name="preloader_detecting_drive">Поиск накопителя</string>
-    <string name="preloader_please_wait">Пожалуйста, подождите.\nПересоздание базы данных может занять до 2-х минут.</string>
+    
+    <string name="preloader_detecting_drive">Searching for drive...</string>
+    <string name="preloader_please_wait">Please wait.\nRebuilding the database may take up to 2 minutes.</string>
 
-    <!-- Banners -->
-    <string name="otg_required_msg">Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер</string>
-    <string name="connecting_usb_msg">Подключение USB-накопителя...</string>
-    <string name="step_preparing">Подготовка...</string>
-    <string name="step_verifying">Проверка целостности...</string>
-    <string name="step_copying">Копирование в архив...</string>
-    <string name="step_restore_reading">Чтение из архива...</string>
-    <string name="step_restore_writing">Запись на устройство...</string>
-    <string name="step_restore_writing_pct">Запись на устройство... (%1$s%%)</string>
-    <string name="step_processing">Обработка...</string>
-    <string name="progress_title_format">%1$s (%2$d из %3$d)</string>
-    <string name="tab_in_folder">В папке</string>
-    <string name="tab_date_range">Диапазон</string>
-    <string name="status_computing_hashes">Вычисление хэшей...</string>
-    <string name="status_searching_files">Поиск файлов...</string>
-    <string name="status_in_queue"> (+%1$d в очереди)</string>
-    <string name="title_archiving">Архивация</string>
-    <string name="title_restoring">Восстановление</string>
-    <string name="title_syncing">Синхронизация архива</string>
+    
+    <string name="otg_required_msg">An external drive is required to work. Please connect it to the charging port via an OTG adapter.</string>
+    <string name="connecting_usb_msg">Connecting USB drive...</string>
+    <string name="step_preparing">Preparing...</string>
+    <string name="step_verifying">Verifying integrity...</string>
+    <string name="step_copying">Copying to archive...</string>
+    <string name="step_restore_reading">Reading from archive...</string>
+    <string name="step_restore_writing">Writing to device...</string>
+    <string name="step_restore_writing_pct">Writing to device... (%1$s%%)</string>
+    <string name="step_processing">Processing...</string>
+    <string name="progress_title_format">%1$s (%2$d of %3$d)</string>
+    <string name="tab_in_folder">In folder</string>
+    <string name="tab_date_range">Date range</string>
+    <string name="status_computing_hashes">Computing hashes...</string>
+    <string name="status_searching_files">Searching for files...</string>
+    <string name="status_in_queue"> (+%1$d in queue)</string>
+    <string name="title_archiving">Archiving</string>
+    <string name="title_restoring">Restoring</string>
+    <string name="title_syncing">Synchronizing archive</string>
 
-    <!-- Unreadable OTG warning -->
+    
     <string name="unreadable_otg_title">USB Device Detected</string>
     <string name="unreadable_otg_msg">The device is physically connected, but the Android operating system failed to mount it as storage.\n\nTry reconnecting the drive or checking the connection reliability.</string>
     <string name="unreadable_otg_why_link">Why is the storage unreadable?</string>
     <string name="unreadable_otg_explanation">Possible reasons:\n• Unsupported file system (e.g. NTFS). Android works best with FAT32 or exFAT.\n• Insufficient power supply or a low-quality OTG adapter.\n\nHow to fix it:\nYou can try formatting the USB drive to a supported format (FAT32/exFAT) using your smartphone\'s system storage settings.\n\nWarning: formatting will erase all data on the drive.</string>
 
-    <!-- Disconnected Info Dialog & Sharing -->
+    
     <string name="disconnected_info_title">Archive File Details</string>
     <string name="info_file_name_title">File Name</string>
     <string name="info_original_path_title">Original Path</string>
@@ -238,7 +241,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="share_text_uuid">Drive ID (UUID): %1$s</string>
     <string name="write_protected_root_title">Root folder is write-protected</string>
     <string name="write_protected_root_msg1">In your Android version, the root of the USB drive is write-protected by the system.</string>
-    <string name="write_protected_root_msg2">Please tap \"Select Again\". Then, in the system window that opens, create a new folder (top right button) or select an existing folder inside the drive.</string>
+    <string name="write_protected_root_msg2">Please tap "Select Again". Then, in the system window that opens, create a new folder (top right button) or select an existing folder inside the drive.</string>
     <string name="btn_select_again">Select Again</string>
     <string name="exif_aperture">Aperture</string>
     <string name="exif_shutter_speed">Shutter Speed</string>
@@ -246,8 +249,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="exif_resolution">Resolution</string>
     <string name="exif_unit_s">s</string>
     <string name="exif_unit_mm">mm</string>
-    <!-- Settings Tab -->
-    <!-- Phone Storage Widget -->
+    
+    
     <string name="phone_storage_title">Phone Storage</string>
     <string name="phone_storage_free_fmt">Free %1$.1f GB of %2$.0f GB</string>
 
@@ -256,7 +259,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="setting_show_offline_files">Show files from disconnected drives in gallery</string>
     <string name="setting_connected_offline_drives">Connected and offline drives</string>
     <string name="dialog_delete_archive_title">Delete archive?</string>
-    <string name="dialog_delete_archive_msg">Are you sure you want to delete the archive «%1$s»?\n\nThe local cache and file list for this drive will be removed from the phone. Files on the flash drive itself will remain untouched.</string>
+    <string name="dialog_delete_archive_msg">Are you sure you want to delete the archive "%1$s"?\n\nThe local cache and file list for this drive will be removed from the phone. Files on the flash drive itself will remain untouched.</string>
     <string name="btn_delete">Delete</string>
     <string name="content_desc_delete_archive">Delete archive</string>
     <string name="subtitle_folder">Folder: %1$s</string>
@@ -298,92 +301,106 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="error_thumbnail_not_found_local">Thumbnail file not found on device</string>
     <string name="share_thumbnail">Share thumbnail</string>
     <string name="error_share_files_failed">Error preparing files for sharing</string>
-    <string name="error_read_offline_file">Failed to read file \"%1$s\" (drive disconnected and no local thumbnail)</string>
+    <string name="error_read_offline_file">Failed to read file "%1$s" (drive disconnected and no local thumbnail)</string>
 
-    <!-- RuStore Pay -->
+    
     <string name="CONSOLE_APPLICATION_ID">2063735639</string>
     <string name="RUSTORE_REMOTE_CONFIG_APP_ID">5189926e-01b0-4267-9204-8e5804fc7d45</string>
 
-    <!-- Dialogs and Tooltips -->
-    <string name="success_dialog_title">Архивация завершена!</string>
-    <string name="success_dialog_freed_space">Освобождено: %1$s ГБ</string>
-    <string name="success_dialog_free_space_now">Свободно сейчас: %1$s ГБ</string>
-    <string name="success_dialog_storage_usage">%1$s ГБ занято из %2$s ГБ</string>
-    <string name="success_dialog_view_in_archive_info">Ваши файлы можно посмотреть на вкладке архив.</string>
-    <string name="dialog_close">Закрыть</string>
-    <string name="dialog_got_it">Понятно</string>
-    <string name="tooltip_title_hint">Подсказка</string>
-    <string name="tooltip_media_moved">Ваши тяжелые оригиналы теперь находятся на съемном носителе, а в памяти телефона освободилось место.</string>
+    
+    <string name="success_dialog_title">Archiving Complete!</string>
+    <string name="success_dialog_freed_space">Freed: %1$s GB</string>
+    <string name="success_dialog_free_space_now">Free now: %1$s GB</string>
+    <string name="success_dialog_storage_usage">%1$s GB used of %2$s GB</string>
+    <string name="success_dialog_view_in_archive_info">You can view your files in the archive tab.</string>
+    <string name="dialog_close">Close</string>
+    <string name="dialog_got_it">Got it</string>
+    <string name="tooltip_title_hint">Hint</string>
+    <string name="tooltip_media_moved">Your large original files are now on the removable drive, freeing up space on your phone.</string>
     <string name="dialog_eject_title">Eject drive?</string>
     <string name="dialog_eject_message">Are you sure you want to safely eject the drive?</string>
     <string name="action_eject">Eject</string>
     <string name="action_cancel">Cancel</string>
-    <string name="free_version_limits">Бесплатная версия. Доступно: %1$d/%2$d фото, %3$d/%4$d видео</string>
-    <string name="trial_active_days">Бесплатный триал: осталось %1$d дн.</string>
-    <string name="promo_success_title">Промокод активирован!</string>
-    <string name="promo_success_message">Вам успешно начислено %1$d дн. бесплатного доступа.</string>
-    <string name="pro_unlimited">PRO: Безлимит</string>
-    <string name="sort_by">Сортировка: </string>
-    <string name="sort_photo_date">Дата фото</string>
-    <string name="sort_restore_date">Дата разархивации</string>
-    <string name="sort_archive_date">Дата архивации</string>
-    <string name="filter_all">Все</string>
-    <string name="items_count">%1$d элементов</string>
-    <string name="select_all_month">Выбрать все за месяц</string>
-    <string name="collapse">Свернуть</string>
-    <string name="expand">Развернуть</string>
-    <string name="title_unknown_drive">Неизвестный носитель</string>
-    <string name="desc_unknown_drive">Подключен неизвестный носитель. Создать новый архив, или если вернётся старый — сможете его синхронизировать</string>
-    <string name="action_close">Закрыть</string>
-    <string name="dialog_share_thumbnails_title">Поделиться эскизами?</string>
-    <string name="dialog_do_not_warn">я понимаю, больше не нужно предупреждать</string>
-    <string name="dialog_error_title">Ошибка</string>
-    <string name="dialog_select_date_range">Выберите диапазон дат</string>
-    <string name="dialog_share_thumbnails_desc">Некоторые из выбранных файлов находятся на отключенных накопителях. Будут отправлены их эскизы низкого разрешения.</string>
-    <string name="action_share">Поделиться</string>
-    <string name="action_select">Выбрать</string>
-    <string name="action_change">Сменить</string>
-    <string name="toast_connect_otg">Подключите нужный OTG накопитель</string>
-    <string name="tab_all">Все</string>
-    <string name="dialog_change_folder_title">Сменить папку архива?</string>
-    <string name="tab_with_date">С датой</string>
-    <string name="action_ok">ОК</string>
-    <string name="dialog_archive_error_title">Ошибка архивирования</string>
-    <string name="action_copy_log">Скопировать лог</string>
-    <string name="dialog_restore_error_title">Ошибка восстановления</string>
-    <string name="dialog_change_folder_desc">Смена папки архива может нарушить текущую синхронизацию. Вы уверены, что хотите продолжить?</string>
-    <string name="action_select_all">ВЫДЕЛИТЬ</string>
-    <string name="action_deselect">Снять выделение</string>    <string name="paywall_title">Безлимитный Архив</string>
-    <string name="paywall_description">Вы достигли лимита бесплатной версии. Купите безлимит, чтобы архивировать неограниченное количество фото и видео!</string>
-    <string name="paywall_description_partial">Мы перенесли часть файлов, но %1$d фото и %2$d видео остались на устройстве из-за достижения лимита. Купите безлимит, чтобы продолжить архивацию без ограничений!</string>
-    <string name="paywall_disclaimer">Разовая покупка, дающая статус PRO навсегда</string>
-    <string name="paywall_buy_button">Купить за %1$s</string>
-    <string name="paywall_loading">Загрузка...</string>
-    <string name="paywall_success">Покупка успешно завершена!</string>
-    <string name="paywall_error">Ошибка покупки: %1$s</string>
-    <string name="paywall_close">Закрыть</string>
+    <string name="free_version_limits">Free version. Available: %1$d/%2$d photos, %3$d/%4$d videos</string>
+    <string name="trial_active_days">Free trial: %1$d days left</string>
+    <string name="promo_success_title">Promo Code Activated!</string>
+    <string name="promo_success_message">You have successfully received %1$d days of free access.</string>
+    <string name="pro_unlimited">PRO: Unlimited</string>
+    <string name="sort_by">Sort by: </string>
+    <string name="sort_photo_date">Photo Date</string>
+    <string name="sort_restore_date">Restore Date</string>
+    <string name="sort_archive_date">Archive Date</string>
+    <string name="filter_all">All</string>
+    <string name="items_count">%1$d items</string>
+    <string name="select_all_month">Select all for month</string>
+    <string name="collapse">Collapse</string>
+    <string name="expand">Expand</string>
+    <string name="title_unknown_drive">Unknown drive</string>
+    <string name="desc_unknown_drive">An unknown drive is connected. You can create a new archive, or synchronize the old one if reconnected.</string>
+    <string name="action_close">Close</string>
+    <string name="dialog_share_thumbnails_title">Share Thumbnails?</string>
+    <string name="dialog_do_not_warn">I understand, do not warn me again</string>
+    <string name="dialog_error_title">Error</string>
+    <string name="dialog_select_date_range">Select Date Range</string>
+    <string name="dialog_share_thumbnails_desc">Some of the selected files are on disconnected drives. Their low-resolution thumbnails will be shared.</string>
+    <string name="action_share">Share</string>
+    <string name="action_select">Select</string>
+    <string name="action_change">Change</string>
+    <string name="toast_connect_otg">Connect the required OTG drive</string>
+    <string name="tab_all">All</string>
+    <string name="dialog_change_folder_title">Change archive folder?</string>
+    <string name="tab_with_date">With Date</string>
+    <string name="action_ok">OK</string>
+    <string name="dialog_archive_error_title">Archiving Error</string>
+    <string name="action_copy_log">Copy Log</string>
+    <string name="dialog_restore_error_title">Restore Error</string>
+    <string name="dialog_change_folder_desc">Changing the archive folder may disrupt current synchronization. Are you sure you want to continue?</string>
+    <string name="action_select_all">SELECT ALL</string>
+    <string name="action_deselect">Deselect</string>    <string name="paywall_title">Unlimited Archive</string>
+    <string name="paywall_description">You have reached the free version limit. Buy Unlimited to archive an unlimited number of photos and videos!</string>
+    <string name="paywall_description_partial">We have transferred some files, but %1$d photos and %2$d videos remain on your device due to limit reached. Buy Unlimited to continue archiving!</string>
+    <string name="paywall_disclaimer">One-time purchase for permanent PRO status</string>
+    <string name="paywall_buy_button">Buy for %1$s</string>
+    <string name="paywall_loading">Loading...</string>
+    <string name="paywall_success">Purchase successfully completed!</string>
+    <string name="paywall_error">Purchase error: %1$s</string>
+    <string name="paywall_close">Close</string>
 
-    <string name="dialog_manage_storage_title">Разрешить удаление без вопросов</string>
-    <string name="dialog_manage_storage_desc">Для того чтобы удалять файлы с телефона незаметно и без постоянных всплывающих окон, приложению требуется специальный доступ ко всем файлам. Пожалуйста, включите его на следующем экране.</string>
-    <string name="dialog_manage_storage_btn">Перейти в Настройки</string>
-    <string name="settings_manage_storage_title">Полный доступ к файлам</string>
-    <string name="settings_manage_storage_desc">Позволяет удалять фото и видео без системных диалогов-подтверждений.</string>
-    <string name="settings_manage_storage_btn">Разрешить</string>
+    <string name="dialog_manage_storage_title">Allow Deletion Without Confirmation</string>
+    <string name="dialog_manage_storage_desc">To delete files silently without constant pop-ups, the app needs special access to all files. Please enable it on the next screen.</string>
+    <string name="dialog_manage_storage_btn">Go to Settings</string>
+    <string name="settings_manage_storage_title">All Files Access</string>
+    <string name="settings_manage_storage_desc">Allows deleting photos and videos without system confirmation dialogs.</string>
+    <string name="settings_manage_storage_btn">Allow</string>
 
-    <string name="local_folder_dialog_title">Разрешить My1drive работу с файлами</string>
-    <string name="local_folder_dialog_desc">Приложению нужен доступ к вашим фото и видео, чтобы перемещать их в архив без дополнительных запросов. Нажмите «Разрешить» на следующем экране.</string>
-    <string name="local_folder_dialog_confirm">Разрешить</string>
-    <string name="local_folder_dialog_dismiss">Пропустить</string>
-    <string name="local_folder_dialog_full_access">Предоставить приложению доступ к вашим фото и видео</string>
+    <string name="local_folder_dialog_title">Allow My1Drive access to files</string>
+    <string name="local_folder_dialog_desc">The app needs access to your photos and videos to move them to the archive without extra prompts. Tap "Allow" on the next screen.</string>
+    <string name="local_folder_dialog_confirm">Allow</string>
+    <string name="local_folder_dialog_dismiss">Skip</string>
+    <string name="local_folder_dialog_full_access">Grant app access to your photos and videos</string>
 
-    <!-- Промокоды -->
-    <string name="promo_code_dialog_title">Введите промокод</string>
-    <string name="promo_code_hint">Промокод</string>
-    <string name="promo_code_apply">Применить</string>
-    <string name="promo_code_invalid">Неверный промокод. Проверьте и попробуйте снова.</string>
-    <string name="promo_code_success">Промокод активирован на %1$d дней!</string>
-    <string name="have_promo_code">Ввести промокод</string>
-    <string name="promo_code_card_title">Есть промокод?</string>
-    <string name="promo_code_card_desc">Введите промокод, чтобы получить временный доступ без ограничений.</string>
+    
+    <string name="promo_code_dialog_title">Enter Promo Code</string>
+    <string name="promo_code_hint">Promo Code</string>
+    <string name="promo_code_apply">Apply</string>
+    <string name="promo_code_invalid">Invalid promo code. Check and try again.</string>
+    <string name="promo_code_success">Promo code activated for %1$d days!</string>
+    <string name="have_promo_code">Enter promo code</string>
+    <string name="promo_code_card_title">Have a promo code?</string>
+    <string name="promo_code_card_desc">Enter a promo code to get temporary access without limits.</string>
 
+<string name="preview_action_delete">Delete</string><string name="preview_action_archive">To Archive</string><string name="preview_action_restore">Restore</string><string name="preview_status_preparing">Preparing file...</string><string name="preview_share_thumbnail_title">Share thumbnail?</string><string name="preview_share_thumbnail_desc">Source drive is disconnected. You can send a low-resolution thumbnail (%1$s).</string><string name="preview_do_not_warn_again">I understand, do not warn again</string><string name="preview_btn_share">Share</string><string name="preview_btn_cancel">Cancel</string><string name="gallery_share_thumbnail_title">Share thumbnails?</string><string name="gallery_share_thumbnail_desc">Some selected files are on disconnected drives. Their low-resolution thumbnails will be sent.</string><string name="gallery_do_not_warn_again">I understand, do not warn again</string><string name="gallery_btn_share">Share</string><string name="gallery_btn_cancel">Cancel</string><string name="gallery_error_archiving_title">Archiving Error</string><string name="gallery_error_restoring_title">Restore Error</string><string name="gallery_btn_ok">OK</string><string name="gallery_btn_copy_log">Copy log</string><string name="gallery_action_select">SELECT</string><string name="gallery_filter_all">All</string><string name="gallery_filter_with_date">With date</string><string name="gallery_filter_in_folder">In folder</string><string name="gallery_filter_range">Range</string><string name="gallery_content_desc_deselect">Deselect</string><string name="topbar_content_desc_deselect">Deselect</string><string name="topbar_group">Group</string><string name="topbar_content_desc_share">Share</string><string name="topbar_send">Send</string><string name="topbar_content_desc_delete">Delete</string><string name="topbar_delete">Delete</string><string name="topbar_content_desc_reset_selection">Reset selection</string><string name="info_drive">Drive</string><string name="info_drive_uuid">Drive ID (UUID)</string><string name="info_exif_data">EXIF Data</string><string name="info_exif_missing">EXIF tags missing or file has no metadata</string><string name="info_exif_unavailable_offline">EXIF unavailable (OTG disconnected)</string><string name="info_hide_exif">Hide EXIF</string><string name="info_show_exif">Show EXIF</string><string name="info_btn_share">Share</string><string name="info_btn_copy">Copy</string><string name="usb_tab_tutorial">Tutorial</string><string name="usb_tab_tutorial_desc">Your heavy originals are here, while lightweight previews remain in the phone gallery</string><string name="usb_tab_got_it">Got it</string><string name="paywall_btn_retry">Retry</string><string name="paywall_btn_buy_pro">Buy PRO</string><string name="naming_dialog_title">Name this archive</string><string name="naming_dialog_desc">Enter a clear name for this drive (e.g., USB-C Drive, Archive 2026) to avoid confusion with other drives.</string><string name="naming_dialog_label">Archive name</string><string name="naming_dialog_max_chars">Maximum 30 characters</string><string name="naming_dialog_btn_create">Create</string><string name="naming_dialog_btn_cancel">Cancel</string><string name="guide_dialog_archive_not_found">Archive not found</string><string name="guide_dialog_desc">No existing archive found on the selected drive. Would you like to create a new archive right now?
+
+To do this, simply come up with a name for the new archive.</string><string name="guide_dialog_btn_create">Create archive</string><string name="guide_dialog_btn_cancel">Cancel</string><string name="logs_dialog_title">Debug Logs</string><string name="logs_dialog_empty">Logs are empty</string><string name="logs_dialog_btn_copy">Copy</string><string name="logs_dialog_btn_clear">Clear</string><string name="logs_dialog_btn_close">Close</string><string name="logs_toast_copied">Logs copied to clipboard</string><string name="logs_toast_nothing_to_copy">Nothing to copy</string><string name="logs_toast_cleared">Logs cleared</string><string name="access_dialog_title">Access to folder %1$s</string><string name="access_dialog_desc">To archive files from this folder, please grant access to it.</string><string name="access_dialog_path">Path: %1$s</string><string name="access_dialog_btn_grant">Grant access</string><string name="restore_conflict_title">Restore path unavailable</string><string name="restore_conflict_desc">Could not access the target restore folder for file "%1$s".</string><string name="restore_conflict_instruction">Please specify where to restore the file:</string><string name="restore_conflict_apply_to_all">Apply to all subsequent files</string><string name="restore_conflict_btn_restore_in">Restore in %1$s</string><string name="restore_conflict_btn_choose_where">Choose where</string><string name="main_toast_choose_otg">Please select a folder on a removable drive (OTG), not in internal storage.</string><string name="main_toast_auto_created_folder">You didn\'t select a folder, so I created the folder %1$s for you to keep the drive organized</string><string name="main_toast_device_folder_selected">Device folder successfully selected!</string><string name="main_toast_folder_access_error">Folder access error: %1$s</string><string name="main_toast_waiting_mount">Waiting for drive to mount...</string><string name="service_sync_preparing">Preparing for synchronization...</string><string name="service_error">Error: %1$s</string><string name="service_copying_progress">Copying: %1$s / %2$s</string><string name="service_archiving_title">Archiving files</string><string name="service_sync_archive_title">Synchronizing archive</string><string name="usecase_first_archive_limited">The first archiving is limited to 20 files</string><string name="sync_helper_searching">Searching for files on OTG...</string><string name="sync_helper_access_failed">Failed to access OTG drive</string><string name="sync_helper_finished_no_files">Synchronization complete: no files.</string><string name="sync_helper_finished_stats">Synchronization complete.
+
+New files imported: %1$s
+Skipped/checked: %2$s</string><string name="sync_helper_error">Synchronization error: %1$s</string><string name="sync_helper_archiving_failed">Failed to archive %1$s file(s):
+</string><string name="sync_helper_archiving_error">Archiving error</string><string name="interactor_restore_success_with_errors">Restored: %1$s of %2$s.
+
+Errors:
+%3$s</string><string name="interactor_restore_success_partial">Restored: %1$s of %2$s.</string><string name="repository_unknown_drive">Unknown drive</string><string name="unknown_media_drive_title">Unknown drive</string><string name="unknown_media_drive_desc">Unknown drive connected. Create a new archive, or if the old one returns — you can synchronize it</string><string name="btn_create_new">Create new</string><string name="btn_choose">Choose</string><string name="btn_select_date_range">Select date range</string>
+    <string name="bottom_nav_device_default">Device</string>
+    <string name="toast_premium_activated">Premium activated! You can continue.</string>
+    <string name="archive_metadata_default_name">USB drive</string>
+    <string name="unknown_resolution">Unknown</string>
 </resources>

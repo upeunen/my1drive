@@ -30,7 +30,7 @@ data class ArchiveState(
     val totalFiles: Int = 0,
     val currentFileIndex: Int = 0,
     val pendingQueueSize: Int = 0,
-    val error: String? = null,
+    val error: by.w6.my1drive.utils.UiText? = null,
     val skippedFiles: List<Pair<String, String>> = emptyList() // (displayName, reason)
 )
 
@@ -42,7 +42,7 @@ data class RestoreState(
     val totalFiles: Int = 0,
     val currentFileIndex: Int = 0,
     val successCount: Int = 0,
-    val error: String? = null,
+    val error: by.w6.my1drive.utils.UiText? = null,
     val conflict: RestoreConflict? = null
 )
 

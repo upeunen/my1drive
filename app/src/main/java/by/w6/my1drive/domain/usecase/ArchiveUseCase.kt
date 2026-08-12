@@ -27,7 +27,7 @@ class ArchiveUseCase(
         // Soft Cap первой сессии
         if (limitRepository.trustLevel == 0 && items.size > 20) {
             AppAnalytics.logSoftCapTriggered(items.size)
-            Toast.makeText(context, "Первая архивация ограничена 20 файлами", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(by.w6.my1drive.R.string.usecase_first_archive_limited), Toast.LENGTH_LONG).show()
             allowedItems = items.take(20)
         }
 

@@ -18,7 +18,7 @@ data class GalleryUiState(
     val videosArchivedCount: Int = 0,
     val isPremiumUnlocked: Boolean = false,
     val isSilentSyncing: Boolean = false,
-    val syncState: String? = null,
+    val syncState: by.w6.my1drive.utils.UiText? = null,
     val isSharingPreparing: Boolean = false,
     val isCheckingConnection: Boolean = false,
     val gridColumnsCount: Int = 3,

@@ -129,8 +129,8 @@ class ArchiveSyncHelper private constructor(
     private val metadataStore = ArchiveMetadataStore(application)
     private val vpsManager = VpsConnectionManager(application)
 
-    private val _syncState = MutableStateFlow<String?>(null)
-    val syncState: StateFlow<String?> = _syncState.asStateFlow()
+    private val _syncState = MutableStateFlow<by.w6.my1drive.utils.UiText?>(null)
+    val syncState: StateFlow<by.w6.my1drive.utils.UiText?> = _syncState.asStateFlow()
 
     private val _archiveState = MutableStateFlow(ArchiveState())
         val archiveState: StateFlow<ArchiveState> = _archiveState.asStateFlow()
@@ -420,7 +420,7 @@ class ArchiveSyncHelper private constructor(
         activeSyncJob = scope.launch {
             _syncProgressState.value = SyncProgressState(
                 isSyncing = true,
-                currentFileName = "Поиск файлов на OTG...",
+                currentFileName = by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_searching).asString(application),
                 progressFraction = 0f,
                 totalFiles = 0,
                 currentFileIndex = 0
@@ -429,7 +429,7 @@ class ArchiveSyncHelper private constructor(
             operationMutex.withLock {
                 try {
                     val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
-                    if (dir == null || !dir.exists()) throw Exception("Не удалось получить доступ к OTG накопителю")
+                    if (dir == null || !dir.exists()) throw Exception(application.getString(by.w6.my1drive.R.string.sync_helper_access_failed))
 
                     var activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
                     if (activeUuid.isEmpty()) {
@@ -438,7 +438,7 @@ class ArchiveSyncHelper private constructor(
 
                     val files = fastListFiles(application, dir.uri) { isCancellationRequested }
                     if (files.isEmpty()) {
-                        _syncState.value = "Синхронизация завершена: файлов нет."
+                        _syncState.value = by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_finished_no_files)
                         return@withLock
                     }
 
@@ -616,10 +616,10 @@ class ArchiveSyncHelper private constructor(
                     // Очистка мертвых превью
                     previewCache.cleanupOrphanedPreviews(null)
 
-                    _syncState.value = "Синхронизация завершена.\n\nИмпортировано новых файлов: $synced\nПропущено/проверено: ${files.size - synced}"
+                    _syncState.value = by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_finished_stats, synced.toString(), (files.size - synced).toString())
                     DebugLogBuffer.log("ManualSync", "Sync complete: imported $synced, total ${files.size}")
                 } catch (e: Exception) {
-                    val errorMsg = "Ошибка синхронизации: ${e.localizedMessage}"
+                    val errorMsg = by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_error, e.localizedMessage ?: "")
                     _syncState.value = errorMsg
                     DebugLogBuffer.log("ManualSync", "Exception in manual sync: ${e.localizedMessage}")
                     val sw = java.io.StringWriter()
@@ -747,7 +747,7 @@ class ArchiveSyncHelper private constructor(
 
             val skippedFiles = skipped.map { (item, reason) -> item.displayName to reason }
             val errorSummary = if (errors.isNotEmpty()) {
-                "Не удалось заархивировать ${errors.size} файл(ов):\n" + 
+                by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_archiving_failed, errors.size.toString()).asString(application) + 
                 errors.joinToString("\n") { "- ${it.first.displayName}: ${it.second.substringBefore("\n")}" }
             } else null
 
@@ -758,7 +758,7 @@ class ArchiveSyncHelper private constructor(
                 // Уведомить ViewModel об успешно заархивированных файлах
                 archiveSuccessEvent.tryEmit(copied.map { it.item })
             } else {
-                val combinedError = errorSummary ?: "Ошибка архивирования"
+                val combinedError = if (errorSummary != null) by.w6.my1drive.utils.UiText.DynamicString(errorSummary) else by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_archiving_error)
                 _archiveState.value = ArchiveState(
                     isArchiving = false, error = combinedError,
                     skippedFiles = skippedFiles,
@@ -808,7 +808,7 @@ class ArchiveSyncHelper private constructor(
 
             _archiveState.value = ArchiveState(
                 isArchiving = false, 
-                error = errorMsg,
+                error = errorMsg?.let { by.w6.my1drive.utils.UiText.DynamicString(it) },
                 pendingQueueSize = archiveQueue.size
             )
         } catch (e: Exception) {
@@ -818,7 +818,7 @@ class ArchiveSyncHelper private constructor(
             DebugLogBuffer.log(logTag, "Stacktrace: $sw")
             
             _archiveState.value = _archiveState.value.copy(
-                isArchiving = false, error = e.localizedMessage,
+                isArchiving = false, error = e.localizedMessage?.let { by.w6.my1drive.utils.UiText.DynamicString(it) },
                 pendingQueueSize = archiveQueue.size
             )
         } finally {

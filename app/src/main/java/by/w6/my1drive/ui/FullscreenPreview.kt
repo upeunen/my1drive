@@ -471,7 +471,7 @@ fun FullscreenPreview(
                             ) {
                                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Удалить", fontSize = 13.sp, maxLines = 1, softWrap = false)
+                                Text(stringResource(R.string.preview_action_delete), fontSize = 13.sp, maxLines = 1, softWrap = false)
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -493,7 +493,7 @@ fun FullscreenPreview(
                                 ) {
                                     Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(6.dp))
-                                    Text("В архив", fontSize = 13.sp, maxLines = 1, softWrap = false)
+                                    Text(stringResource(R.string.preview_action_archive), fontSize = 13.sp, maxLines = 1, softWrap = false)
                                 }
                             } else {
                                 Button(
@@ -508,7 +508,7 @@ fun FullscreenPreview(
                                 ) {
                                     Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(6.dp))
-                                    Text("Вернуть", fontSize = 13.sp, maxLines = 1, softWrap = false)
+                                    Text(stringResource(R.string.preview_action_restore), fontSize = 13.sp, maxLines = 1, softWrap = false)
                                 }
                             }
                         }
@@ -651,7 +651,7 @@ fun FullscreenPreview(
                     if (isSharingPreparing) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Подготовка файла...",
+                            text = stringResource(R.string.preview_status_preparing),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
@@ -663,7 +663,8 @@ fun FullscreenPreview(
 
         if (showShareThumbnailConfirm != null) {
             val item = showShareThumbnailConfirm!!
-            val resolution = remember(item.thumbnailPath) {
+            val unknownResolution = stringResource(by.w6.my1drive.R.string.unknown_resolution)
+            val resolution = remember(item.thumbnailPath, unknownResolution) {
                 try {
                     val path = item.thumbnailPath
                     if (!path.isNullOrEmpty()) {
@@ -671,19 +672,19 @@ fun FullscreenPreview(
                         android.graphics.BitmapFactory.decodeFile(path, options)
                         "${options.outWidth}x${options.outHeight}"
                     } else {
-                        "неизвестно"
+                        unknownResolution
                     }
                 } catch (_: Exception) {
-                    "неизвестно"
+                    unknownResolution
                 }
             }
             var dontWarnAgain by remember { mutableStateOf(false) }
             AlertDialog(
                 onDismissRequest = { showShareThumbnailConfirm = null },
-                title = { Text("Поделиться эскизом?") },
+                title = { Text(stringResource(R.string.preview_share_thumbnail_title)) },
                 text = {
                     Column {
-                        Text("Исходный накопитель отключен. Вы можете отправить эскиз (миниатюру) в низком разрешении ($resolution).")
+                        Text(stringResource(R.string.preview_share_thumbnail_desc, resolution))
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -696,7 +697,7 @@ fun FullscreenPreview(
                                 onCheckedChange = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("я понимаю, больше не нужно предупреждать", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.preview_do_not_warn_again), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 },
@@ -710,12 +711,12 @@ fun FullscreenPreview(
                             showShareThumbnailConfirm = null
                         }
                     ) {
-                        Text("Поделиться")
+                        Text(stringResource(R.string.preview_btn_share))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showShareThumbnailConfirm = null }) {
-                        Text("Отмена")
+                        Text(stringResource(R.string.preview_btn_cancel))
                     }
                 }
             )

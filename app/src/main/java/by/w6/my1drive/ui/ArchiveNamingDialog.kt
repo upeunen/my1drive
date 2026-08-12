@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +21,7 @@ fun ArchiveNamingDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Назовите этот архив",
+                text = stringResource(R.string.naming_dialog_title),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
             )
@@ -27,19 +29,19 @@ fun ArchiveNamingDialog(
         text = {
             Column {
                 Text(
-                    text = "Введите понятное название для этого накопителя (например: Флешка USB-C, Архив 2026), чтобы не перепутать его с другими дисками.",
+                    text = stringResource(R.string.naming_dialog_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 OutlinedTextField(
                     value = text,
                     onValueChange = { if (it.length <= 35) text = it },
-                    label = { Text("Название архива") },
+                    label = { Text(stringResource(R.string.naming_dialog_label)) },
                     singleLine = true,
                     isError = isError,
                     supportingText = {
                         if (text.length > 30) {
-                            Text("Максимум 30 символов")
+                            Text(stringResource(R.string.naming_dialog_max_chars))
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -51,12 +53,12 @@ fun ArchiveNamingDialog(
                 onClick = { if (!isError) onConfirm(text.trim()) },
                 enabled = !isError
             ) {
-                Text("Создать")
+                Text(stringResource(R.string.naming_dialog_btn_create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.naming_dialog_btn_cancel))
             }
         }
     )

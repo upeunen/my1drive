@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -20,11 +22,11 @@ fun UsbTabFragment(
         if (isFirstStart) {
             AlertDialog(
                 onDismissRequest = onTooltipDismissed,
-                title = { Text("Обучение") },
-                text = { Text("Ваши тяжелые оригиналы теперь здесь, а в галерее телефона остались легкие превью") },
+                title = { Text(stringResource(R.string.usb_tab_tutorial)) },
+                text = { Text(stringResource(R.string.usb_tab_tutorial_desc)) },
                 confirmButton = {
                     TextButton(onClick = onTooltipDismissed) {
-                        Text("Понятно")
+                        Text(stringResource(R.string.usb_tab_got_it))
                     }
                 }
             )

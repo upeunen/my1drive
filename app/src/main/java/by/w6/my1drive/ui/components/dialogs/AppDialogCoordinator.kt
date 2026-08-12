@@ -62,7 +62,7 @@ fun AppDialogCoordinator(
                     viewModel.dismissDialog()
                     android.widget.Toast.makeText(
                         context,
-                        "Безлимит активирован! Можете продолжать.",
+                        context.getString(by.w6.my1drive.R.string.toast_premium_activated),
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                 },

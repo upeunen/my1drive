@@ -35,7 +35,8 @@ fun BottomNavigationBar(
         Screen.Settings
     )
 
-    val deviceTabName = remember {
+    val defaultDeviceName = stringResource(by.w6.my1drive.R.string.bottom_nav_device_default)
+    val deviceTabName = remember(defaultDeviceName) {
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
         val cleanModel = model.replace(Regex("[^a-zA-Z\\s]"), "").replace(Regex("\\s+"), " ").trim()
@@ -49,7 +50,7 @@ fun BottomNavigationBar(
         if (name.isNotEmpty()) {
             name.lowercase().replaceFirstChar { it.uppercase() }
         } else {
-            "Устройство"
+            defaultDeviceName
         }
     }
 
@@ -83,7 +84,8 @@ fun SideNavigationBar(
         Screen.Settings
     )
 
-    val deviceTabName = remember {
+    val defaultDeviceName = stringResource(by.w6.my1drive.R.string.bottom_nav_device_default)
+    val deviceTabName = remember(defaultDeviceName) {
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
         val cleanModel = model.replace(Regex("[^a-zA-Z\\s]"), "").replace(Regex("\\s+"), " ").trim()
@@ -97,7 +99,7 @@ fun SideNavigationBar(
         if (name.isNotEmpty()) {
             name.lowercase().replaceFirstChar { it.uppercase() }
         } else {
-            "Устройство"
+            defaultDeviceName
         }
     }
 

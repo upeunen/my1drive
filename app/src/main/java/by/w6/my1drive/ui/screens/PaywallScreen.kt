@@ -94,13 +94,13 @@ fun PaywallScreen(
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Повторить")
+                                Text(stringResource(R.string.paywall_btn_retry))
                             }
                             Button(
                                 onClick = { billingManager.purchasePremium() },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Купить PRO")
+                                Text(stringResource(R.string.paywall_btn_buy_pro))
                             }
                         }
                     }
@@ -122,7 +122,7 @@ fun PaywallScreen(
                                 onClick = { billingManager.purchasePremium() },
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                             ) {
-                                Text("Купить PRO")
+                                Text(stringResource(R.string.paywall_btn_buy_pro))
                             }
                         }
                     }

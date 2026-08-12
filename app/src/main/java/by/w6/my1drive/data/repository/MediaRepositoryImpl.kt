@@ -97,7 +97,7 @@ class MediaRepositoryImpl(
                     dateArchived = entity.dateArchived,
                     dateAdded = null,
                     archiveUuid = entity.archiveUuid,
-                    archiveName = archiveNamesMap[entity.archiveUuid] ?: "Неизвестный диск"
+                    archiveName = archiveNamesMap[entity.archiveUuid] ?: context.getString(by.w6.my1drive.R.string.repository_unknown_drive)
                 )
             }
 

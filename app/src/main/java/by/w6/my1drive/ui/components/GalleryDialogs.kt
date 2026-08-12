@@ -37,16 +37,16 @@ fun UnknownDriveDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Usb, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("РќРµРёР·РІРµСЃС‚РЅС‹Р№ РЅРѕСЃРёС‚РµР»СЊ", fontWeight = FontWeight.Bold)
+                Text(stringResource(by.w6.my1drive.R.string.unknown_media_drive_title), fontWeight = FontWeight.Bold)
             }
         },
         text = {
-            Text("РџРѕРґРєР»СЋС‡РµРЅ РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РЅРѕСЃРёС‚РµР»СЊ. РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ Р°СЂС…РёРІ, РёР»Рё РµСЃР»Рё РІРµСЂРЅС‘С‚СЃСЏ СЃС‚Р°СЂС‹Р№ вЂ” СЃРјРѕР¶РµС‚Рµ РµРіРѕ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ")
+            Text(stringResource(by.w6.my1drive.R.string.unknown_media_drive_desc))
         },
         confirmButton = {
             Button(onClick = onCreateNew) {
                 Text(
-                    text = "РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№",
+                    text = stringResource(by.w6.my1drive.R.string.btn_create_new),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -56,7 +56,7 @@ fun UnknownDriveDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Р—Р°РєСЂС‹С‚СЊ",
+                    text = stringResource(by.w6.my1drive.R.string.btn_close),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -148,7 +148,7 @@ fun DateRangePickerDialog(
                 }
             ) {
                 Text(
-                    text = "Р’С‹Р±СЂР°С‚СЊ",
+                    text = stringResource(by.w6.my1drive.R.string.btn_choose),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -158,7 +158,7 @@ fun DateRangePickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "РћС‚РјРµРЅР°",
+                    text = stringResource(by.w6.my1drive.R.string.btn_cancel),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     softWrap = false
@@ -170,7 +170,7 @@ fun DateRangePickerDialog(
             state = state,
             title = {
                 Text(
-                    text = "Р’С‹Р±РµСЂРёС‚Рµ РґРёР°РїР°Р·РѕРЅ РґР°С‚",
+                    text = stringResource(by.w6.my1drive.R.string.btn_select_date_range),
                     modifier = Modifier.padding(start = 24.dp, top = 24.dp)
                 )
             },

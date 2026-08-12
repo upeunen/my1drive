@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -91,7 +93,7 @@ fun DebugLogsDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Логи отладки",
+                        text = stringResource(R.string.logs_dialog_title),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -117,7 +119,7 @@ fun DebugLogsDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Логи пусты",
+                                text = stringResource(R.string.logs_dialog_empty),
                                 color = Color.Gray,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 14.sp
@@ -157,9 +159,9 @@ fun DebugLogsDialog(
                             onClick = {
                                 if (logsText.isNotEmpty()) {
                                     clipboardManager.setText(AnnotatedString(logsText))
-                                    Toast.makeText(context, "Логи скопированы в буфер обмена", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.logs_toast_copied), Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context, "Нечего копировать", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.logs_toast_nothing_to_copy), Toast.LENGTH_SHORT).show()
                                 }
                             },
                             contentPadding = ButtonDefaults.ContentPadding
@@ -167,7 +169,7 @@ fun DebugLogsDialog(
                             Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "Копировать",
+                                text = stringResource(R.string.logs_dialog_btn_copy),
                                 fontSize = 13.sp,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -180,14 +182,14 @@ fun DebugLogsDialog(
                             onClick = {
                                 DebugLogBuffer.clear()
                                 logsText = ""
-                                Toast.makeText(context, "Логи очищены", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.logs_toast_cleared), Toast.LENGTH_SHORT).show()
                             },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "Очистить",
+                                text = stringResource(R.string.logs_dialog_btn_clear),
                                 fontSize = 13.sp,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -201,7 +203,7 @@ fun DebugLogsDialog(
                         onClick = onDismiss
                     ) {
                         Text(
-                            text = "Закрыть",
+                            text = stringResource(R.string.logs_dialog_btn_close),
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             softWrap = false

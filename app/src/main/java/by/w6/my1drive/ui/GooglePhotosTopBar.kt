@@ -1,5 +1,7 @@
 package by.w6.my1drive.ui
 
+import androidx.compose.ui.res.stringResource
+import by.w6.my1drive.R
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +73,7 @@ fun GooglePhotosTopBar(
             IconButton(onClick = onClearSelection) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Снять выделение"
+                    contentDescription = stringResource(R.string.topbar_content_desc_deselect)
                 )
             }
 
@@ -96,7 +98,7 @@ fun GooglePhotosTopBar(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "Группа",
+                        text = stringResource(R.string.topbar_group),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -122,12 +124,12 @@ fun GooglePhotosTopBar(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Default.Share,
-                        contentDescription = "Поделиться",
+                        contentDescription = stringResource(R.string.topbar_content_desc_share),
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Отправить",
+                        text = stringResource(R.string.topbar_send),
                         fontSize = 9.sp,
                         color = MaterialTheme.colorScheme.primary,
                         lineHeight = 11.sp
@@ -146,13 +148,13 @@ fun GooglePhotosTopBar(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Удалить",
+                        contentDescription = stringResource(R.string.topbar_content_desc_delete),
                         modifier = Modifier.size(20.dp),
                         tint = if (deleteEnabled) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                     Text(
-                        text = "Удалить",
+                        text = stringResource(R.string.topbar_delete),
                         fontSize = 9.sp,
                         color = if (deleteEnabled) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
@@ -165,7 +167,7 @@ fun GooglePhotosTopBar(
             IconButton(onClick = onClearSelection) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Сбросить выделение",
+                    contentDescription = stringResource(R.string.topbar_content_desc_reset_selection),
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }

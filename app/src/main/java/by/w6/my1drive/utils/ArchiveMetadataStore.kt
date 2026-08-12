@@ -167,7 +167,7 @@ class ArchiveMetadataStore(private val context: Context) {
             val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
             val db = by.w6.my1drive.data.local.AppDatabase.getDatabase(context)
             val archive = db.archiveDao().getById(uuid)
-            val archiveName = archive?.name ?: "USB-накопитель"
+            val archiveName = archive?.name ?: context.getString(by.w6.my1drive.R.string.archive_metadata_default_name)
 
             context.contentResolver.openOutputStream(file.uri, "w")?.use { output ->
                 android.util.JsonWriter(output.bufferedWriter()).use { writer ->

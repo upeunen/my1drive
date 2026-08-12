@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
             try {
                 val treeDocId = DocumentsContract.getTreeDocumentId(uri)
                 if (treeDocId.startsWith("primary:", ignoreCase = true)) {
-                    Toast.makeText(this, "Пожалуйста, выберите папку на съемном носителе (OTG), а не во внутренней памяти.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.main_toast_choose_otg), Toast.LENGTH_LONG).show()
                     return
                 }
                 
@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
             viewModel.setOtgDirectory(uri)
         
             if (autoCreatedFolderName != null) {
-                Toast.makeText(this, "Вы не выбрали папку, я создал для вас папку $autoCreatedFolderName, чтобы не создавать беспорядок на носителе", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.main_toast_auto_created_folder, autoCreatedFolderName), Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(this, getString(R.string.otg_folder_selected_toast), Toast.LENGTH_SHORT).show()
             }
@@ -219,9 +219,9 @@ class MainActivity : ComponentActivity() {
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 contentResolver.takePersistableUriPermission(uri, takeFlags)
                 viewModel.setDeviceDirectory(uri)
-                Toast.makeText(this, "Папка устройства успешно выбрана!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.main_toast_device_folder_selected), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "Ошибка доступа к папке: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.main_toast_folder_access_error, e.localizedMessage), Toast.LENGTH_LONG).show()
                 viewModel.onFolderPermissionCancelled()
             }
         } else {
@@ -297,7 +297,7 @@ class MainActivity : ComponentActivity() {
         if (otgRoot == null && isPhysConnected) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root null but phys connected, waiting for mount...")
             lifecycleScope.launch {
-                val progressToast = Toast.makeText(this@MainActivity, "Ожидание монтирования накопителя...", Toast.LENGTH_SHORT)
+                val progressToast = Toast.makeText(this@MainActivity, getString(R.string.main_toast_waiting_mount), Toast.LENGTH_SHORT)
                 progressToast.show()
                 var resolvedRoot: Uri? = null
                 val startTime = System.currentTimeMillis()
