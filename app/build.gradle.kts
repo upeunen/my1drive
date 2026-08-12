@@ -23,8 +23,8 @@ android {
         applicationId = "by.w6.my1drive2"
         minSdk = 28
         targetSdk = 36
-        versionCode = 19
-        versionName = "2.1.7"
+        versionCode = 20
+        versionName = "2.1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -38,6 +38,17 @@ android {
         }
     }
 
+
+    flavorDimensions += "store"
+    productFlavors {
+        create("googleplay") {
+            dimension = "store"
+        }
+        create("rustore") {
+            dimension = "store"
+        }
+    }
+    
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("release")
@@ -63,9 +74,12 @@ android {
 }
 
 dependencies {
-    implementation(platform("ru.rustore.sdk:bom:2026.06.01"))
-    implementation("ru.rustore.sdk:pay")
-    implementation("ru.rustore.sdk:remoteconfig")
+
+    "googleplayImplementation"("com.android.billingclient:billing:7.0.0")
+    
+    "rustoreImplementation"(platform("ru.rustore.sdk:bom:2026.06.01"))
+    "rustoreImplementation"("ru.rustore.sdk:pay")
+    "rustoreImplementation"("ru.rustore.sdk:remoteconfig")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -100,8 +114,7 @@ dependencies {
     // SSH/SFTP Support
     implementation(libs.jsch)
     
-    // AppMetrica Analytics
-    implementation("io.appmetrica.analytics:analytics:7.3.0")
+    // AppMetrica Analytics (removed)
 
     // EncryptedSharedPreferences
     implementation("androidx.security:security-crypto:1.1.0-alpha06")

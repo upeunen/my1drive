@@ -99,9 +99,9 @@
     <string name="setting_ask_restore_path_desc">Activado: siempre preguntar si restaurar en la carpeta original o elegir otra. Desactivado: restaurar automáticamente en la ruta original.</string>
 
     
-    <string name="drive_unknown_connected">🔴 Archivo no encontrado en esta unidad</string>
-    <string name="drive_known_disconnected">🔴 Unidad OTG desconectada</string>
-    <string name="drive_known_connected">🟢 Unidad de archivo conectada</string>
+    <string name="drive_unknown_connected">Archivo no encontrado en esta unidad</string>
+    <string name="drive_known_disconnected">Unidad OTG desconectada</string>
+    <string name="drive_known_connected">Unidad de archivo conectada</string>
     
     <string name="auto_sync_missing_title">¡Faltan archivos en el archivo!</string>
     <string name="auto_sync_missing_msg">Los siguientes archivos ya no se encuentran en la unidad OTG:

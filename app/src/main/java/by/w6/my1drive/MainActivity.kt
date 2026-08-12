@@ -54,8 +54,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.text.font.FontFamily
 
-import ru.rustore.sdk.pay.*
-import ru.rustore.sdk.pay.model.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -63,9 +61,6 @@ class MainActivity : AppCompatActivity() {
     private var hasPermissions by mutableStateOf(false)
     private var hasPartialAccess by mutableStateOf(false)
 
-    private val intentInteractor by lazy {
-        ru.rustore.sdk.pay.RuStorePayClient.instance.getIntentInteractor()
-    }
 
     private val otgReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -393,12 +388,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        by.w6.my1drive.init.StoreAppInitializer.initApplication(application)
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "onCreate called")
 
         if (savedInstanceState == null) {
             try {
                 // Try with common SdkTheme package
-                intentInteractor.proceedIntent(intent, sdkTheme = SdkTheme.LIGHT)
+                val bm = by.w6.my1drive.billing.BillingManagerProvider.getBillingManager(application)
+bm.handleIntent(intent)
             } catch (e: Exception) {
                 // Ignore if it fails due to class not found at runtime, but we expect compile errors if package is wrong
             }
@@ -714,7 +711,8 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         try {
-            intentInteractor.proceedIntent(intent, sdkTheme = SdkTheme.LIGHT)
+            val bm = by.w6.my1drive.billing.BillingManagerProvider.getBillingManager(application)
+bm.handleIntent(intent)
         } catch (_: Exception) {}
     }
 }

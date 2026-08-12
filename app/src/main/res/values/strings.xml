@@ -99,9 +99,9 @@
     <string name="setting_ask_restore_path_desc">When ON: always ask whether to restore to the original folder or choose another. When OFF: automatically restore to original path (or ask if unknown).</string>
 
     
-    <string name="drive_unknown_connected">🔴 Archive not found on this drive</string>
-    <string name="drive_known_disconnected">🔴 OTG drive disconnected</string>
-    <string name="drive_known_connected">🟢 Archive drive connected</string>
+    <string name="drive_unknown_connected">Archive not found on this drive</string>
+    <string name="drive_known_disconnected">OTG drive disconnected</string>
+    <string name="drive_known_connected">Archive drive connected</string>
     
     <string name="auto_sync_missing_title">Files missing from archive!</string>
     <string name="auto_sync_missing_msg">The following files are no longer found on the OTG drive:

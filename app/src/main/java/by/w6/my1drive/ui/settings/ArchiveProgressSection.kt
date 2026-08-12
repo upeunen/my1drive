@@ -34,10 +34,7 @@ fun ArchiveProgressSection(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isFull)
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
-            else
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -46,14 +43,14 @@ fun ArchiveProgressSection(
                     imageVector = Icons.Default.SdStorage,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = if (isFull) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = if (isLimitActive) stringResource(R.string.archive_volume_free) else stringResource(R.string.archive_volume_pro),
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isFull) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -72,11 +69,7 @@ fun ArchiveProgressSection(
                             .fillMaxHeight()
                             .background(
                                 brush = Brush.horizontalGradient(
-                                    colors = if (progress >= 0.9f) {
-                                        listOf(Color(0xFFE0AAFF), Color(0xFFF44336))
-                                    } else {
-                                        listOf(Color(0xFF8A2BE2), Color(0xFFE0AAFF))
-                                    }
+                                    colors = listOf(Color(0xFF8A2BE2), Color(0xFFE0AAFF))
                                 )
                             )
                     )

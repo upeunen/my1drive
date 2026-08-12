@@ -99,9 +99,9 @@
     <string name="setting_ask_restore_path_desc">Вкл: всегда спрашивать — в исходную папку или выбрать другую. Выкл: автоматически восстанавливать в исходный путь (если неизвестен — спросить).</string>
 
     
-    <string name="drive_unknown_connected">🔴 Архив не найден на этом носителе</string>
-    <string name="drive_known_disconnected">🔴 OTG диск отключен</string>
-    <string name="drive_known_connected">🟢 Накопитель архива подключён</string>
+    <string name="drive_unknown_connected">Архив не найден на этом носителе</string>
+    <string name="drive_known_disconnected">OTG диск отключен</string>
+    <string name="drive_known_connected">Накопитель архива подключён</string>
     
     <string name="auto_sync_missing_title">Файлы исчезли из архива!</string>
     <string name="auto_sync_missing_msg">Следующие файлы больше не найдены на OTG накопителе:

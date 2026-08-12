@@ -7,22 +7,25 @@ import ru.rustore.sdk.pay.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import io.appmetrica.analytics.AppMetrica
+
 import by.w6.my1drive.utils.DebugLogBuffer
 
-class RuStoreBillingManager(private val application: Application) {
+class RuStoreBillingManager(private val application: Application) : IBillingManager {
+
+    private val _productPriceText = MutableStateFlow<String?>(null)
+    override val productPriceText: StateFlow<String?> = _productPriceText.asStateFlow()
 
     private val _premiumProduct = MutableStateFlow<Product?>(null)
-    val premiumProduct: StateFlow<Product?> = _premiumProduct.asStateFlow()
+    
 
     private val _purchaseState = MutableStateFlow<PurchaseState>(PurchaseState.Idle)
-    val purchaseState: StateFlow<PurchaseState> = _purchaseState.asStateFlow()
+    override val purchaseState: StateFlow<PurchaseState> = _purchaseState.asStateFlow()
 
     /**
      * Загружает информацию о продукте из RuStore.
      * Запрашивает как "premium_unlock", так и "my1drive_premium_unlock".
      */
-    fun loadProducts() {
+    override fun loadProducts() {
         _purchaseState.value = PurchaseState.Loading
         DebugLogBuffer.log(TAG, "Loading products: $PRODUCT_ID, $ALT_PRODUCT_ID")
         try {
@@ -31,6 +34,7 @@ class RuStoreBillingManager(private val application: Application) {
                 .addOnSuccessListener { products ->
                     val product = products.find { it.productId.value == PRODUCT_ID || it.productId.value == ALT_PRODUCT_ID }
                     _premiumProduct.value = product
+                    _productPriceText.value = product?.amountLabel?.value
                     _purchaseState.value = PurchaseState.Idle
                     val msg = "Product loaded: ${product?.title?.value} (id=${product?.productId?.value})"
                     Log.d(TAG, msg)
@@ -53,7 +57,7 @@ class RuStoreBillingManager(private val application: Application) {
     /**
      * Запускает процесс покупки.
      */
-    fun purchasePremium(targetProductId: String? = null) {
+    override fun purchasePremium(targetProductId: String?) {
         _purchaseState.value = PurchaseState.Purchasing
         val productIdToBuy = targetProductId ?: _premiumProduct.value?.productId?.value ?: PRODUCT_ID
         DebugLogBuffer.log(TAG, "Initiating purchase for productId: $productIdToBuy")
@@ -72,18 +76,15 @@ class RuStoreBillingManager(private val application: Application) {
                 .purchase(params)
                 .addOnSuccessListener { result ->
                     DebugLogBuffer.log(TAG, "Purchase succeeded: $result")
-                    AppMetrica.reportEvent("purchase_success")
                     _purchaseState.value = PurchaseState.Success
                 }
                 .addOnFailureListener { error ->
                     if (error is ru.rustore.sdk.pay.model.RuStorePaymentException.ProductPurchaseCancelled) {
-                        AppMetrica.reportEvent("purchase_cancelled")
                         _purchaseState.value = PurchaseState.Idle
                         Log.d(TAG, "Purchase cancelled")
                         DebugLogBuffer.log(TAG, "Purchase cancelled by user")
                     } else {
                         val errMsg = error.message ?: "Purchase exception"
-                        AppMetrica.reportEvent("purchase_error")
                         Log.e(TAG, "Purchase exception", error)
                         DebugLogBuffer.log(TAG, "ERROR purchase: $errMsg (${error.javaClass.simpleName})")
                         _purchaseState.value = PurchaseState.Error(errMsg)
@@ -101,7 +102,7 @@ class RuStoreBillingManager(private val application: Application) {
      * Проверяет купленные ранее товары для восстановления покупок (Restore Purchases).
      * Должен вызываться при запуске приложения.
      */
-    fun checkPurchases(onPremiumUnlocked: ((Boolean) -> Unit)) {
+    override fun checkPurchases(onPremiumUnlocked: ((Boolean) -> Unit)) {
         DebugLogBuffer.log(TAG, "Checking previous purchases...")
         try {
             RuStorePayClient.instance.getPurchaseInteractor().getPurchases()
@@ -125,7 +126,13 @@ class RuStoreBillingManager(private val application: Application) {
         }
     }
     
-    fun resetState() {
+    override fun handleIntent(intent: android.content.Intent) {
+        try {
+            ru.rustore.sdk.pay.RuStorePayClient.instance.getIntentInteractor().proceedIntent(intent, sdkTheme = ru.rustore.sdk.pay.model.SdkTheme.LIGHT)
+        } catch (_: Exception) {}
+    }
+
+    override fun resetState() {
         _purchaseState.value = PurchaseState.Idle
     }
 
@@ -136,10 +143,4 @@ class RuStoreBillingManager(private val application: Application) {
     }
 }
 
-sealed class PurchaseState {
-    object Idle : PurchaseState()
-    object Loading : PurchaseState()
-    object Purchasing : PurchaseState()
-    object Success : PurchaseState()
-    data class Error(val message: String) : PurchaseState()
-}
+

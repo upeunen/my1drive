@@ -25,9 +25,8 @@ import by.w6.my1drive.utils.OtgArchiveUtil
 import by.w6.my1drive.utils.PreviewCacheManager
 import by.w6.my1drive.utils.RestoreResult
 
-import io.appmetrica.analytics.AppMetrica
-import io.appmetrica.analytics.profile.Attribute
-import io.appmetrica.analytics.profile.UserProfile
+
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -95,7 +94,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val photosArchivedCount = limitRepository.photosArchivedCountFlow
     val videosArchivedCount = limitRepository.videosArchivedCountFlow
     val isPremiumUnlocked = limitRepository.isPremiumUnlockedFlow
-    private val remoteConfigManager = by.w6.my1drive.billing.RuStoreRemoteConfigManager.getInstance()
+    private val remoteConfigManager = by.w6.my1drive.billing.RemoteConfigManagerProvider.getInstance(application)
 
     init {
         viewModelScope.launch {
@@ -136,21 +135,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             limitRepository.appliedPromoCode = code.trim().uppercase()
             limitRepository.promoUntilTimestamp = until
             _activeDialog.value = AppDialog.PromoSuccess(entry.days, entry.message)
-            io.appmetrica.analytics.AppMetrica.reportEvent(
-                "promo_code_applied",
-                "{\"code\":\"${code.trim().uppercase()}\",\"days\":${entry.days}}"
-            )
+            
             entry.days
         } else {
-            io.appmetrica.analytics.AppMetrica.reportEvent(
-                "promo_code_invalid",
-                "{\"code\":\"${code.trim().uppercase()}\"}"
-            )
+            
             null
         }
     }
     
-    val billingManager = by.w6.my1drive.billing.RuStoreBillingManager(application)
+    val billingManager = by.w6.my1drive.billing.BillingManagerProvider.getBillingManager(application)
 
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
@@ -692,7 +685,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val pendingVideos = videos.size - allowedVideos.size
 
             if (pendingPhotos > 0 || pendingVideos > 0) {
-                AppMetrica.reportEvent("soft_cap_triggered")
+                
                 pendingForPaywallPhotos = pendingPhotos
                 pendingForPaywallVideos = pendingVideos
 
@@ -1154,10 +1147,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 
                 // Analytics
                 val freedMb = freedSpaceBytes / (1024 * 1024)
-                AppMetrica.reportEvent("archive_session_end", """{"freed_mb": $freedMb}""")
+                
                 if (limitRepository.trustLevel == 0) {
-                    val profile = UserProfile.newBuilder().apply(Attribute.customNumber("trust_level").withValue(1.0)).build()
-                    AppMetrica.reportUserProfile(profile)
                     limitRepository.trustLevel = 1
                 }
                 

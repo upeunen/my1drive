@@ -9,13 +9,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
-import by.w6.my1drive.billing.RuStoreBillingManager
+import by.w6.my1drive.billing.IBillingManager
 import by.w6.my1drive.billing.PurchaseState
-import io.appmetrica.analytics.AppMetrica
+
 
 @Composable
 fun PaywallScreen(
-    billingManager: RuStoreBillingManager,
+    billingManager: IBillingManager,
     missingPhotos: Int,
     missingVideos: Int,
     onSuccess: () -> Unit,
@@ -23,10 +23,9 @@ fun PaywallScreen(
     onPromoCode: (() -> Unit)? = null
 ) {
     val purchaseState by billingManager.purchaseState.collectAsState()
-    val product by billingManager.premiumProduct.collectAsState()
+    val product by billingManager.productPriceText.collectAsState()
 
     LaunchedEffect(Unit) {
-        AppMetrica.reportEvent("paywall_shown")
         billingManager.resetState()
         billingManager.loadProducts()
     }
@@ -110,9 +109,9 @@ fun PaywallScreen(
                     else -> {
                         val prod = product
                         if (prod != null) {
-                            val priceText = prod.amountLabel?.value ?: "..."
+                            val priceText = prod
                             Button(
-                                onClick = { billingManager.purchasePremium(prod.productId.value) },
+                                onClick = { billingManager.purchasePremium() },
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                             ) {
                                 Text(stringResource(R.string.paywall_buy_button, priceText))

@@ -79,6 +79,14 @@ class GalleryDisplayManager(
         _archiveFilterUuid.value = uuid
     }
 
+    private var activeLocaleTag: String = ""
+    val localeVersion = MutableStateFlow(0)
+
+    fun updateLocale(tag: String) {
+        activeLocaleTag = tag
+        localeVersion.value++
+    }
+
     private fun isYesterday(tc: Calendar, now: Calendar): Boolean {
         val yest = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
         return tc.get(Calendar.YEAR) == yest.get(Calendar.YEAR) && tc.get(Calendar.DAY_OF_YEAR) == yest.get(Calendar.DAY_OF_YEAR)
@@ -89,18 +97,29 @@ class GalleryDisplayManager(
         val now = Calendar.getInstance()
         val tc = Calendar.getInstance().apply { timeInMillis = dateMs }
 
+        val tag = activeLocaleTag
+        val locale = if (tag.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(tag)
+        val config = android.content.res.Configuration(context.resources.configuration)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            config.setLocales(android.os.LocaleList(locale))
+        } else {
+            config.setLocale(locale)
+        }
+        val localizedContext = context.createConfigurationContext(config)
+
         return when {
-            DateUtils.isToday(dateMs) -> context.getString(R.string.date_today)
-            isYesterday(tc, now) -> context.getString(R.string.date_yesterday)
-            tc.get(Calendar.YEAR) == now.get(Calendar.YEAR) -> SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date(dateMs))
-            else -> SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(dateMs))
+            DateUtils.isToday(dateMs) -> localizedContext.getString(R.string.date_today)
+            isYesterday(tc, now) -> localizedContext.getString(R.string.date_yesterday)
+            tc.get(Calendar.YEAR) == now.get(Calendar.YEAR) -> SimpleDateFormat("d MMMM", locale).format(Date(dateMs))
+            else -> SimpleDateFormat("d MMMM yyyy", locale).format(Date(dateMs))
         }
     }
 
     val groupedMediaItems: StateFlow<List<GalleryItem>> = combine(
         mediaItems,
-        deviceSortMode
-    ) { list, sortMode ->
+        deviceSortMode,
+        localeVersion
+    ) { list, sortMode, _ ->
         val localItems = list.filter { it.status == MediaStatus.ON_DEVICE }.run {
             if (sortMode == DeviceSortMode.BY_RESTORE_DATE) {
                 sortedByDescending { it.dateAdded ?: 0L }
@@ -126,8 +145,9 @@ class GalleryDisplayManager(
 
     val archivedGroupedItems: StateFlow<List<GalleryItem>> = combine(
         mediaItems,
-        archiveSortMode
-    ) { list, sortMode ->
+        archiveSortMode,
+        localeVersion
+    ) { list, sortMode, _ ->
         val archivedList = list.filter {
             it.status == MediaStatus.ARCHIVED_OTG &&
                     (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
@@ -159,12 +179,20 @@ class GalleryDisplayManager(
         mediaItems,
         archiveSortMode,
         archiveFilterUuid,
-        gridColumnsCount
-    ) { list, sortMode, filterUuid, columnsCount ->
+        gridColumnsCount,
+        localeVersion
+    ) { list, sortMode, filterUuid, columnsCount, _ ->
         val archivedItems = list.filter {
             it.status == MediaStatus.ARCHIVED_OTG &&
                     (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
         }.let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
+            .let { all ->
+                if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                    all.sortedByDescending { it.dateArchived ?: 0L }
+                } else {
+                    all.sortedByDescending { it.dateModified }
+                }
+            }
 
         archivedItems.groupBy { item ->
             val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
@@ -184,20 +212,38 @@ class GalleryDisplayManager(
                 val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
                 cal.get(Calendar.MONTH)
             }.map { (monthIdx, monthItems) ->
-                val sampleTimestamp = (monthItems.firstOrNull()?.run {
+                // Сортируем элементы внутри месяца по нужному полю
+                val sortedMonthItems = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                    monthItems.sortedByDescending { it.dateArchived ?: 0L }
+                } else {
+                    monthItems.sortedByDescending { it.dateModified }
+                }
+
+                val sampleTimestamp = (sortedMonthItems.firstOrNull()?.run {
                     if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) dateArchived ?: dateModified else dateModified
                 } ?: 0L) * 1000
-                
-                val monthName = SimpleDateFormat("LLLL", Locale.getDefault()).format(Date(sampleTimestamp))
-                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+                val tag = activeLocaleTag
+                val monthLocale = if (tag.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(tag)
+                val monthName = SimpleDateFormat("LLLL", monthLocale).format(Date(sampleTimestamp))
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(monthLocale) else it.toString() }
 
                 MonthGroup(
                     monthIndex = monthIdx,
                     monthName = monthName,
-                    items = monthItems,
-                    chunkedItems = monthItems.chunked(columnsCount)
+                    items = sortedMonthItems,
+                    chunkedItems = sortedMonthItems.chunked(columnsCount)
                 )
-            }.sortedByDescending { it.monthIndex }
+            }.sortedByDescending { monthGroup ->
+                // Сортируем месяцы по максимальному timestamp нужного поля
+                monthGroup.items.maxOfOrNull { item ->
+                    if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                        item.dateArchived ?: item.dateModified
+                    } else {
+                        item.dateModified
+                    }
+                } ?: 0L
+            }
 
             YearGroup(
                 year = year,

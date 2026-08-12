@@ -150,13 +150,13 @@ fun GooglePhotosTopBar(
                         imageVector = Icons.Default.Delete,
                         contentDescription = stringResource(R.string.topbar_content_desc_delete),
                         modifier = Modifier.size(20.dp),
-                        tint = if (deleteEnabled) MaterialTheme.colorScheme.error
+                        tint = if (deleteEnabled) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                     Text(
                         text = stringResource(R.string.topbar_delete),
                         fontSize = 9.sp,
-                        color = if (deleteEnabled) MaterialTheme.colorScheme.error
+                        color = if (deleteEnabled) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         lineHeight = 11.sp
                     )

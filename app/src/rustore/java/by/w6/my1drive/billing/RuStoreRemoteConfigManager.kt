@@ -14,37 +14,38 @@ import kotlinx.coroutines.flow.asStateFlow
  * Хранит загруженные значения как StateFlow с fallback-дефолтами.
  * Каждый параметр считывается изолированно через runCatching, чтобы сбой одного ключа не ломал остальные.
  */
-class RuStoreRemoteConfigManager private constructor(context: Context) {
+class RuStoreRemoteConfigManager private constructor(context: Context) : RemoteConfigManager {
+    var remoteConfigClient: ru.rustore.sdk.remoteconfig.RemoteConfigClient? = null
 
     private val prefs = context.getSharedPreferences("remote_config_meta", Context.MODE_PRIVATE)
 
     // --- Публичные StateFlow с fallback-значениями ---
 
     private val _maxPhotos = MutableStateFlow(LimitRepository.MAX_PHOTOS)
-    val maxPhotos: StateFlow<Int> = _maxPhotos.asStateFlow()
+    override val maxPhotos: StateFlow<Int> = _maxPhotos.asStateFlow()
 
     private val _maxVideos = MutableStateFlow(LimitRepository.MAX_VIDEOS)
-    val maxVideos: StateFlow<Int> = _maxVideos.asStateFlow()
+    override val maxVideos: StateFlow<Int> = _maxVideos.asStateFlow()
 
     private val _freeTrialDays = MutableStateFlow(0)
-    val freeTrialDays: StateFlow<Int> = _freeTrialDays.asStateFlow()
+    override val freeTrialDays: StateFlow<Int> = _freeTrialDays.asStateFlow()
 
     private val _promoCodesJson = MutableStateFlow("")
-    val promoCodesJson: StateFlow<String> = _promoCodesJson.asStateFlow()
+    override val promoCodesJson: StateFlow<String> = _promoCodesJson.asStateFlow()
 
     private val _announcementJson = MutableStateFlow("")
-    val announcementJson: StateFlow<String> = _announcementJson.asStateFlow()
+    override val announcementJson: StateFlow<String> = _announcementJson.asStateFlow()
 
     /** true = лимиты включены (управляется из RuStore Console) */
     private val _limitsEnabled = MutableStateFlow(false)
-    val limitsEnabled: StateFlow<Boolean> = _limitsEnabled.asStateFlow()
+    override val limitsEnabled: StateFlow<Boolean> = _limitsEnabled.asStateFlow()
 
     private val _isLoaded = MutableStateFlow(false)
-    val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
+    override val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
 
     // --- Загрузка конфига ---
 
-    fun fetchConfigIfStale() {
+    override fun fetchConfigIfStale() {
         val lastFetch = prefs.getLong(KEY_LAST_FETCH_TIME, 0L)
         val isStale = System.currentTimeMillis() - lastFetch > REFRESH_INTERVAL_MS
         if (isStale || !_isLoaded.value) {
@@ -55,12 +56,9 @@ class RuStoreRemoteConfigManager private constructor(context: Context) {
         }
     }
 
-    fun fetchConfig() {
-        val client = try {
-            My1DriveApplication.remoteConfigClient
-        } catch (e: UninitializedPropertyAccessException) {
-            Log.e(TAG, "RemoteConfigClient not initialized yet", e)
-            DebugLogBuffer.log(TAG, "ERROR: RemoteConfigClient not initialized yet")
+    override fun fetchConfig() {
+        val client = remoteConfigClient ?: run {
+            Log.e(TAG, "RemoteConfigClient not initialized yet")
             return
         }
 
