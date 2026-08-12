@@ -403,4 +403,10 @@
     <string name="toast_premium_activated">Безлимит активирован! Можете продолжать.</string>
     <string name="archive_metadata_default_name">USB-накопитель</string>
     <string name="unknown_resolution">Неизвестно</string>
+
+    <string name="settings_language">Язык</string>
+    <string name="settings_lang_system">Системный (по умолчанию)</string>
+    <string name="settings_lang_en">English</string>
+    <string name="settings_lang_ru">Русский</string>
+    <string name="settings_lang_es">Español</string>
 </resources>

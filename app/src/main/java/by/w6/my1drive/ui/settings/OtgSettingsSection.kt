@@ -69,7 +69,7 @@ fun OtgSettingsSection(
                 text = if (isOtgConnected) stringResource(R.string.drive_known_connected)
                 else stringResource(R.string.drive_known_disconnected),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isOtgConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                color = if (isOtgConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold
             )
             if (isLocalFolder && otgDirectoryDisplayName != null) {

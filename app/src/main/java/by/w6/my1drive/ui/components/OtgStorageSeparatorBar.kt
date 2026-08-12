@@ -157,7 +157,7 @@ fun OtgStorageSeparatorBar(
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isOtgConnected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                color = if (isOtgConnected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 fontSize = 11.sp
             )
         }
@@ -167,7 +167,7 @@ fun OtgStorageSeparatorBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp),
-            color = if (isOtgConnected) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
+            color = if (isOtgConnected) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
         )
     }

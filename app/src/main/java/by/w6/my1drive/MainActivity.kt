@@ -15,7 +15,7 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
@@ -57,7 +57,7 @@ import androidx.compose.ui.text.font.FontFamily
 import ru.rustore.sdk.pay.*
 import ru.rustore.sdk.pay.model.*
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val viewModel: GalleryViewModel by viewModels()
     private var hasPermissions by mutableStateOf(false)

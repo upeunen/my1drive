@@ -22,6 +22,7 @@ import by.w6.my1drive.ui.settings.MaintenanceAndDebugSection
 import by.w6.my1drive.ui.settings.OtgSettingsSection
 import by.w6.my1drive.ui.settings.PromoCodeCard
 import by.w6.my1drive.ui.settings.VpsSettingsSection
+import by.w6.my1drive.ui.settings.LanguageSettingsSection
 
 @Composable
 fun SettingsTab(
@@ -72,6 +73,10 @@ fun SettingsTab(
             )
             Spacer(Modifier.height(16.dp))
         }
+
+        LanguageSettingsSection()
+
+        Spacer(Modifier.height(16.dp))
 
         // 1. OTG/USB Storage Card & Multi-Archive settings
         OtgSettingsSection(

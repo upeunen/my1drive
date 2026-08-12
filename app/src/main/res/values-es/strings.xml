@@ -403,4 +403,10 @@ Errores:
     <string name="toast_premium_activated">¡Premium activado! Puedes continuar.</string>
     <string name="archive_metadata_default_name">Unidad USB</string>
     <string name="unknown_resolution">Desconocido</string>
+
+    <string name="settings_language">Idioma</string>
+    <string name="settings_lang_system">Predeterminado del sistema</string>
+    <string name="settings_lang_en">English</string>
+    <string name="settings_lang_ru">Русский</string>
+    <string name="settings_lang_es">Español</string>
 </resources>
