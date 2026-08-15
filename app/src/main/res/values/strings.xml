@@ -174,6 +174,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="action_delete_files_question">Delete %1$d files?</string>
     <string name="action_delete_from_archive">Delete from archive</string>
     <string name="action_properties">Properties</string>
+    <string name="cd_video">Video</string>
 
     
     <string name="welcome_title">Welcome to My1Drive!</string>
