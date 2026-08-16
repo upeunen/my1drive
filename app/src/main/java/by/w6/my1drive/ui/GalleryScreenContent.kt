@@ -334,6 +334,11 @@ fun GalleryScreenContent(
                 isGroupExpanded = isGroupExpanded,
                 deleteEnabled = deleteEnabled,
                 isPremium = isPremiumUnlocked,
+                isTrialActive = uiState.isTrialActive,
+                remainingTrialDays = uiState.remainingTrialDays,
+                photosRemaining = (uiState.maxPhotos - uiState.photosArchivedCount).coerceAtLeast(0),
+                maxPhotos = uiState.maxPhotos,
+                onProClick = { viewModel.showPaywall() },
                 onClearSelection = onClearSelection,
                 onEjectClick = { showEjectConfirmDialog = true },
                 onGroupClick = { isGroupExpanded = !isGroupExpanded },
@@ -415,17 +420,17 @@ fun GalleryScreenContent(
             val driveStatus by viewModel.otgManager.status.collectAsStateWithLifecycle()
             AnimatedVisibility(
                 visible = driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED ||
-                        (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) ||
+                        (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) ||
                         hasPartialAccess ||
-                        otgDirectoryUri == null,
+                        (currentScreenRoute == "archive" && otgDirectoryUri == null),
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column {
                     if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
-                    else if (driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
+                    else if (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
                     if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
-                    if (otgDirectoryUri == null) OtgRequiredBanner()
+                    if (currentScreenRoute == "archive" && otgDirectoryUri == null) OtgRequiredBanner()
                 }
             }
 

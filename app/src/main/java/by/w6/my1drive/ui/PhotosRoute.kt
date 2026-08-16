@@ -45,39 +45,6 @@ fun PhotosRoute(
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (!isPremiumUnlocked) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(surfaceVariantColor)
-                    .clickable { viewModel.showPaywall() }
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val bannerText = if (uiState.isTrialActive) {
-                    stringResource(by.w6.my1drive.R.string.trial_active_days, uiState.remainingTrialDays)
-                } else {
-                    val maxPhotos = uiState.maxPhotos
-                    val maxVideos = uiState.maxVideos
-                    stringResource(
-                        by.w6.my1drive.R.string.free_version_limits,
-                        (maxPhotos - photosArchivedCount).coerceAtLeast(0),
-                        maxPhotos,
-                        (maxVideos - videosArchivedCount).coerceAtLeast(0),
-                        maxVideos
-                    )
-                }
-                Text(
-                    text = bannerText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = onSurfaceVariantColor,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()

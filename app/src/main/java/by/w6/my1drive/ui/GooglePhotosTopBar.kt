@@ -1,8 +1,7 @@
 package by.w6.my1drive.ui
 
-import androidx.compose.ui.res.stringResource
-import by.w6.my1drive.R
-import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +23,6 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,9 +32,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import by.w6.my1drive.R
 
 @Composable
 fun GooglePhotosTopBar(
@@ -46,6 +46,11 @@ fun GooglePhotosTopBar(
     isGroupExpanded: Boolean = false,
     deleteEnabled: Boolean = true,
     isPremium: Boolean = false,
+    isTrialActive: Boolean = false,
+    remainingTrialDays: Int = 0,
+    photosRemaining: Int = 0,
+    maxPhotos: Int = 50,
+    onProClick: () -> Unit = {},
     onClearSelection: () -> Unit,
     onEjectClick: () -> Unit,
     onGroupClick: () -> Unit = {},
@@ -177,8 +182,42 @@ fun GooglePhotosTopBar(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                modifier = Modifier.padding(start = 8.dp)
             )
+
+            Spacer(Modifier.weight(1f))
+
+            // Laconic Smart Chip for Trial / Free Limit
+            if (!isPremium) {
+                val chipText = if (isTrialActive) {
+                    stringResource(R.string.topbar_chip_trial, remainingTrialDays)
+                } else {
+                    stringResource(R.string.topbar_chip_limits, photosRemaining, maxPhotos)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable(onClick = onProClick)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = chipText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+            }
+
             if (showGridToggle) {
                 IconButton(onClick = onToggleGridColumns) {
                     Icon(
