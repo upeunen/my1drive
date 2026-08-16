@@ -2,6 +2,7 @@ package by.w6.my1drive.data.repository
 
 import android.content.ContentUris
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -12,6 +13,7 @@ import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.repository.MediaRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
@@ -19,49 +21,45 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlinx.coroutines.channels.awaitClose
 
 class MediaRepositoryImpl(
     private val context: Context,
     private val mediaDao: MediaDao
 ) : MediaRepository {
 
-    private val refreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0L)
-
-    // Кешированный список локальных файлов.
     private val _localItemsCache = kotlinx.coroutines.flow.MutableStateFlow<List<MediaItem>>(emptyList())
     
-    // Триггер для принудительного обновления Flow (например, при смене настроек)
-    private val _refreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0L)
-
     init {
-        // Первичная загрузка локальных файлов при создании репозитория
         GlobalScope.launch(Dispatchers.IO) {
             _localItemsCache.value = queryLocalMediaStore()
         }
     }
 
-    private fun getPrefsFlow(): kotlinx.coroutines.flow.Flow<Pair<Boolean, String>> = kotlinx.coroutines.flow.callbackFlow {
+    private fun getPrefsFlow(): Flow<Pair<Boolean, String>> = flow {
         val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+        val channel = kotlinx.coroutines.channels.Channel<Pair<Boolean, String>>(kotlinx.coroutines.channels.Channel.CONFLATED)
+
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
             if (key == "show_offline_archives" || key == "active_archive_uuid") {
-                trySend(
-                    Pair(
-                        sharedPreferences.getBoolean("show_offline_archives", false),
-                        sharedPreferences.getString("active_archive_uuid", "") ?: ""
-                    )
-                )
+                val showOffline = sp.getBoolean("show_offline_archives", false)
+                val activeUuid = sp.getString("active_archive_uuid", "") ?: ""
+                channel.trySend(Pair(showOffline, activeUuid))
             }
         }
+
         prefs.registerOnSharedPreferenceChangeListener(listener)
-        // Emit initial value
-        trySend(
-            Pair(
-                prefs.getBoolean("show_offline_archives", false),
-                prefs.getString("active_archive_uuid", "") ?: ""
-            )
-        )
-        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+
+        val initialShowOffline = prefs.getBoolean("show_offline_archives", false)
+        val initialActiveUuid = prefs.getString("active_archive_uuid", "") ?: ""
+        emit(Pair(initialShowOffline, initialActiveUuid))
+
+        try {
+            for (value in channel) {
+                emit(value)
+            }
+        } finally {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
     }
 
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
@@ -81,6 +79,21 @@ class MediaRepositoryImpl(
             }
 
             val archivedItems = filteredEntities.map { entity ->
+                var effectiveRatio = if (entity.width > 0 && entity.height > 0) {
+                    entity.width.toFloat() / entity.height.toFloat()
+                } else 0f
+
+                if (effectiveRatio <= 0f && entity.thumbnailPath != null) {
+                    val previewFile = File(entity.thumbnailPath)
+                    if (previewFile.exists()) {
+                        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        BitmapFactory.decodeFile(entity.thumbnailPath, opts)
+                        if (opts.outWidth > 0 && opts.outHeight > 0) {
+                            effectiveRatio = opts.outWidth.toFloat() / opts.outHeight.toFloat()
+                        }
+                    }
+                }
+
                 MediaItem(
                     id = "archived_${entity.id}",
                     displayName = entity.displayName,
@@ -98,11 +111,10 @@ class MediaRepositoryImpl(
                     dateAdded = null,
                     archiveUuid = entity.archiveUuid,
                     archiveName = archiveNamesMap[entity.archiveUuid] ?: context.getString(by.w6.my1drive.R.string.repository_unknown_drive),
-                    aspectRatio = if (entity.width > 0 && entity.height > 0) entity.width.toFloat() / entity.height.toFloat() else 0f
+                    aspectRatio = effectiveRatio
                 )
             }
 
-            // Quick heuristic to filter out duplicates (local files already in database)
             val archivedKeys = filteredEntities.map { it.displayName to it.size }.toSet()
             val filteredLocalList = localList.filterNot { localItem ->
                 archivedKeys.contains(localItem.displayName to localItem.size)
@@ -113,9 +125,6 @@ class MediaRepositoryImpl(
     }
 
     override fun refresh() {
-        // Запускаем сканирование MediaStore в фоне, кешируем результат в _localItemsCache.
-        // combine() в getMediaItemsFlow() автоматически получит новый список.
-        _refreshTrigger.value = System.currentTimeMillis()
         GlobalScope.launch(Dispatchers.IO) {
             _localItemsCache.value = queryLocalMediaStore()
         }
@@ -128,7 +137,7 @@ class MediaRepositoryImpl(
         thumbnailPath: String?,
         originalRelativePath: String?,
         dateArchived: Long
-) = withContext(Dispatchers.IO) {
+    ) = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
         val activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
         val entity = MediaEntity(
@@ -142,7 +151,9 @@ class MediaRepositoryImpl(
             duration = item.duration,
             originalRelativePath = originalRelativePath ?: item.originalRelativePath,
             dateArchived = dateArchived,
-            archiveUuid = activeUuid
+            archiveUuid = activeUuid,
+            width = if (item.aspectRatio > 0f) (item.aspectRatio * 1000).toInt() else 0,
+            height = if (item.aspectRatio > 0f) 1000 else 0
         )
         mediaDao.insert(entity)
     }
@@ -162,10 +173,8 @@ class MediaRepositoryImpl(
     }
 
     override suspend fun clearAllArchivedItems() = withContext(Dispatchers.IO) {
-        // Clear old thumbnails dir
         val thumbDir = File(context.filesDir, "thumbnails")
         thumbDir.listFiles()?.forEach { it.delete() }
-        // Clear new preview cache dir
         val previewDir = File(context.filesDir, "my1drive_previews")
         previewDir.listFiles()?.forEach { it.delete() }
         mediaDao.deleteAll()
@@ -196,8 +205,13 @@ class MediaRepositoryImpl(
                     projection.add(MediaStore.Video.VideoColumns.DURATION)
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    projection.add(MediaStore.MediaColumns.ORIENTATION)
                     projection.add(MediaStore.MediaColumns.IS_PENDING)
                     projection.add(MediaStore.MediaColumns.RELATIVE_PATH)
+                } else {
+                    if (isImage) {
+                        projection.add(MediaStore.Images.ImageColumns.ORIENTATION)
+                    }
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     projection.add(MediaStore.MediaColumns.IS_TRASHED)
@@ -229,6 +243,11 @@ class MediaRepositoryImpl(
                     val relativePathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
                     } else -1
+                    val orientationColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.MediaColumns.ORIENTATION)
+                    } else {
+                        cursor.getColumnIndex("orientation")
+                    }
 
                     val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
                     val widthColumn = cursor.getColumnIndex(MediaStore.MediaColumns.WIDTH)
@@ -255,8 +274,14 @@ class MediaRepositoryImpl(
                             cursor.getString(relativePathColumn)
                         } else null
 
-                        val width = if (widthColumn != -1) cursor.getInt(widthColumn) else 0
-                        val height = if (heightColumn != -1) cursor.getInt(heightColumn) else 0
+                        val rawWidth = if (widthColumn != -1) cursor.getInt(widthColumn) else 0
+                        val rawHeight = if (heightColumn != -1) cursor.getInt(heightColumn) else 0
+                        val orientation = if (orientationColumn != -1) cursor.getInt(orientationColumn) else 0
+
+                        val isRotated = orientation == 90 || orientation == 270
+                        val width = if (isRotated) rawHeight else rawWidth
+                        val height = if (isRotated) rawWidth else rawHeight
+
                         val aspectRatio = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 0f
 
                         val contentUri = ContentUris.withAppendedId(collection, id)
@@ -280,7 +305,6 @@ class MediaRepositoryImpl(
                 }
             }
         } catch (e: SecurityException) {
-            // Permissions not granted yet
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -288,7 +312,3 @@ class MediaRepositoryImpl(
         return list.sortedByDescending { it.dateModified }
     }
 }
-
-
-
-
