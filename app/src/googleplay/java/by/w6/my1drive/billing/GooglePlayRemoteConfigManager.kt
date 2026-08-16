@@ -8,30 +8,23 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class GooglePlayRemoteConfigManager private constructor(context: Context) : RemoteConfigManager {
 
-    private val _maxPhotos = MutableStateFlow(LimitRepository.MAX_PHOTOS)
-    override val maxPhotos: StateFlow<Int> = _maxPhotos.asStateFlow()
+    private val serverManager = ServerRemoteConfigManager.getInstance(context)
 
-    private val _maxVideos = MutableStateFlow(LimitRepository.MAX_VIDEOS)
-    override val maxVideos: StateFlow<Int> = _maxVideos.asStateFlow()
+    override val maxPhotos: StateFlow<Int> = serverManager.maxPhotos
+    override val maxVideos: StateFlow<Int> = serverManager.maxVideos
+    override val freeTrialDays: StateFlow<Int> = serverManager.freeTrialDays
+    override val promoCodesJson: StateFlow<String> = serverManager.promoCodesJson
+    override val announcementJson: StateFlow<String> = serverManager.announcementJson
+    override val limitsEnabled: StateFlow<Boolean> = serverManager.limitsEnabled
+    override val isLoaded: StateFlow<Boolean> = serverManager.isLoaded
 
-    private val _freeTrialDays = MutableStateFlow(0)
-    override val freeTrialDays: StateFlow<Int> = _freeTrialDays.asStateFlow()
+    override fun fetchConfigIfStale() {
+        serverManager.fetchConfigIfStale()
+    }
 
-    private val _promoCodesJson = MutableStateFlow("")
-    override val promoCodesJson: StateFlow<String> = _promoCodesJson.asStateFlow()
-
-    private val _announcementJson = MutableStateFlow("")
-    override val announcementJson: StateFlow<String> = _announcementJson.asStateFlow()
-
-    private val _limitsEnabled = MutableStateFlow(false)
-    override val limitsEnabled: StateFlow<Boolean> = _limitsEnabled.asStateFlow()
-
-    private val _isLoaded = MutableStateFlow(true)
-    override val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
-
-    override fun fetchConfigIfStale() {}
-
-    override fun fetchConfig() {}
+    override fun fetchConfig() {
+        serverManager.fetchConfig()
+    }
 
     companion object {
         @Volatile private var instance: GooglePlayRemoteConfigManager? = null
@@ -43,7 +36,7 @@ class GooglePlayRemoteConfigManager private constructor(context: Context) : Remo
 
         fun getInstance(): GooglePlayRemoteConfigManager =
             instance ?: throw IllegalStateException(
-                "GooglePlayRemoteConfigManager not initialized."
+                "GooglePlayRemoteConfigManager not initialized. Call getInstance(context) first."
             )
     }
 }

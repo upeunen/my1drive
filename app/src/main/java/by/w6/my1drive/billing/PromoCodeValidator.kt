@@ -17,10 +17,20 @@ object PromoCodeValidator {
 
     /** Парсит список промокодов из JSON-строки Remote Config */
     fun parsePromoCodes(json: String): List<PromoCodeEntry> {
-        if (json.isBlank()) return emptyList()
+        val trimmed = json.trim()
+        if (trimmed.isBlank()) return emptyList()
         return try {
-            val root = JSONObject(json)
-            val array = root.getJSONArray("codes")
+            val array = when {
+                trimmed.startsWith("[") -> org.json.JSONArray(trimmed)
+                else -> {
+                    val root = JSONObject(trimmed)
+                    when {
+                        root.has("promo_codes") -> root.getJSONArray("promo_codes")
+                        root.has("codes") -> root.getJSONArray("codes")
+                        else -> org.json.JSONArray()
+                    }
+                }
+            }
             (0 until array.length()).map {
                 val obj = array.getJSONObject(it)
                 PromoCodeEntry(
