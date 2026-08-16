@@ -35,7 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
-import by.w6.my1drive.ui.layout.JustifiedLayoutHelper
+import by.w6.my1drive.ui.layout.BentoBlockView
+import by.w6.my1drive.ui.layout.BentoLayoutHelper
 import coil.ImageLoader
 import kotlinx.coroutines.launch
 
@@ -311,6 +312,9 @@ fun ArchiveRoute(
             val horizontalPadding = 16.dp
             val spacing = 3.dp
             val availableWidth = (maxWidth - (horizontalPadding * 2)).coerceAtLeast(0.dp)
+            val unitSize = remember(availableWidth, gridColumnsCount) {
+                BentoLayoutHelper.calculateUnitSize(availableWidth, gridColumnsCount, spacing)
+            }
 
             if (yearGroups.isEmpty()) {
                 Box(
@@ -421,55 +425,29 @@ fun ArchiveRoute(
                                 }
                             }
 
-                            // 3. Justified сетка фотографий (если раскрыто)
+                            // 3. Bento-мозаика фотографий (если раскрыто)
                             if (isExpanded) {
-                                val targetRowHeight = JustifiedLayoutHelper.targetRowHeightFor(gridColumnsCount)
-                                val rows = JustifiedLayoutHelper.computeRows(
+                                val blocks = BentoLayoutHelper.computeBlocks(
                                     items = monthGroup.items,
-                                    containerWidth = availableWidth,
-                                    targetRowHeight = targetRowHeight,
-                                    spacing = spacing
+                                    gridColumnsCount = gridColumnsCount
                                 )
-                                items(rows, key = { row -> "archive_row_${row.items.firstOrNull()?.item?.id ?: "empty"}_${row.items.size}" }) { row ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(row.heightDp),
-                                        horizontalArrangement = Arrangement.spacedBy(spacing)
-                                    ) {
-                                        for (justifiedItem in row.items) {
-                                            val mediaItem = justifiedItem.item
-                                            val isSelected = selectedIds.contains(mediaItem.id)
-                                            val isArchiving = archivingItemIds.contains(mediaItem.id)
-                                            val isRestoring = restoringItemIds.contains(mediaItem.id)
-                                            val isCopied = copiedItemIds.contains(mediaItem.id)
-
-                                            val itemModifier = if (row.isLastRow) {
-                                                Modifier
-                                                    .fillMaxHeight()
-                                                    .width(justifiedItem.widthDp)
-                                            } else {
-                                                Modifier
-                                                    .fillMaxHeight()
-                                                    .weight(justifiedItem.safeAspectRatio)
-                                            }
-
-                                            GooglePhotosGridItem(
-                                                item = mediaItem,
-                                                isSelected = isSelected,
-                                                isArchiving = isArchiving || isRestoring,
-                                                isCopied = isCopied,
-                                                imageLoader = imageLoader,
-                                                isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
-                                                archiveStripeOverrideColor = if (showOffline && knownArchives.size > 1) archiveColorMap[mediaItem.archiveUuid] else null,
-                                                modifier = itemModifier,
-                                                onClick = {
-                                                    onItemClick(mediaItem)
-                                                },
-                                                onLongClick = { onItemLongClick(mediaItem) }
-                                            )
-                                        }
-                                    }
+                                items(blocks, key = { block -> "archive_${block.key}" }) { block ->
+                                    BentoBlockView(
+                                        block = block,
+                                        unitSize = unitSize,
+                                        spacing = spacing,
+                                        selectedIds = selectedIds,
+                                        imageLoader = imageLoader,
+                                        isOtgConnected = isOtgConnected,
+                                        activeArchiveUuid = activeArchiveUuid,
+                                        archivingItemIds = archivingItemIds,
+                                        copiedItemIds = copiedItemIds,
+                                        archiveStripeColorProvider = if (showOffline && knownArchives.size > 1) {
+                                            { item -> archiveColorMap[item.archiveUuid] }
+                                        } else null,
+                                        onItemClick = onItemClick,
+                                        onItemLongClick = onItemLongClick
+                                    )
                                 }
                             }
                         }

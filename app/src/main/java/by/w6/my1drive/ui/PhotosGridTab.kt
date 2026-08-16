@@ -5,14 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,13 +29,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
-import by.w6.my1drive.ui.layout.JustifiedLayoutHelper
-import by.w6.my1drive.ui.layout.JustifiedRow
+import by.w6.my1drive.ui.layout.BentoBlock
+import by.w6.my1drive.ui.layout.BentoBlockView
+import by.w6.my1drive.ui.layout.BentoLayoutHelper
 import coil.ImageLoader
 
-private sealed interface JustifiedFeedItem {
-    data class HeaderItem(val title: String, val sectionItems: List<MediaItem>) : JustifiedFeedItem
-    data class RowItem(val row: JustifiedRow, val key: String) : JustifiedFeedItem
+private sealed interface BentoFeedItem {
+    data class HeaderItem(val title: String, val sectionItems: List<MediaItem>) : BentoFeedItem
+    data class BlockItem(val block: BentoBlock) : BentoFeedItem
 }
 
 @Composable
@@ -89,10 +86,12 @@ fun PhotosGridTab(
         val horizontalPadding = 2.dp
         val spacing = 3.dp
         val availableWidth = (maxWidth - (horizontalPadding * 2)).coerceAtLeast(0.dp)
-        val targetRowHeight = JustifiedLayoutHelper.targetRowHeightFor(gridColumnsCount)
+        val unitSize = remember(availableWidth, gridColumnsCount) {
+            BentoLayoutHelper.calculateUnitSize(availableWidth, gridColumnsCount, spacing)
+        }
 
-        val feedItems = remember(groupedItems, availableWidth, targetRowHeight) {
-            val result = mutableListOf<JustifiedFeedItem>()
+        val feedItems = remember(groupedItems, gridColumnsCount) {
+            val result = mutableListOf<BentoFeedItem>()
             var currentHeader: String? = null
             val currentSectionMedia = mutableListOf<MediaItem>()
 
@@ -100,18 +99,15 @@ fun PhotosGridTab(
                 if (currentHeader != null || currentSectionMedia.isNotEmpty()) {
                     val sectionList = currentSectionMedia.toList()
                     if (currentHeader != null) {
-                        result.add(JustifiedFeedItem.HeaderItem(currentHeader!!, sectionList))
+                        result.add(BentoFeedItem.HeaderItem(currentHeader!!, sectionList))
                     }
                     if (sectionList.isNotEmpty()) {
-                        val rows = JustifiedLayoutHelper.computeRows(
+                        val blocks = BentoLayoutHelper.computeBlocks(
                             items = sectionList,
-                            containerWidth = availableWidth,
-                            targetRowHeight = targetRowHeight,
-                            spacing = spacing
+                            gridColumnsCount = gridColumnsCount
                         )
-                        for (row in rows) {
-                            val firstId = row.items.firstOrNull()?.item?.id ?: "empty"
-                            result.add(JustifiedFeedItem.RowItem(row, "row_${firstId}_${row.items.size}"))
+                        for (block in blocks) {
+                            result.add(BentoFeedItem.BlockItem(block))
                         }
                     }
                     currentSectionMedia.clear()
@@ -143,13 +139,13 @@ fun PhotosGridTab(
                 items = feedItems,
                 key = { item ->
                     when (item) {
-                        is JustifiedFeedItem.HeaderItem -> "header_${item.title}"
-                        is JustifiedFeedItem.RowItem -> item.key
+                        is BentoFeedItem.HeaderItem -> "header_${item.title}"
+                        is BentoFeedItem.BlockItem -> item.block.key
                     }
                 }
             ) { feedItem ->
                 when (feedItem) {
-                    is JustifiedFeedItem.HeaderItem -> {
+                    is BentoFeedItem.HeaderItem -> {
                         val sectionItems = feedItem.sectionItems
                         val allSelected = remember(currentSelectedIds, sectionItems) {
                             sectionItems.isNotEmpty() && sectionItems.all { currentSelectedIds.contains(it.id) }
@@ -163,44 +159,20 @@ fun PhotosGridTab(
                             }
                         )
                     }
-                    is JustifiedFeedItem.RowItem -> {
-                        val row = feedItem.row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(row.heightDp),
-                            horizontalArrangement = Arrangement.spacedBy(spacing)
-                        ) {
-                            for (justifiedItem in row.items) {
-                                val mediaItem = justifiedItem.item
-                                val isSelected = currentSelectedIds.contains(mediaItem.id)
-                                val isArchiving = archivingItemIds.contains(mediaItem.id)
-                                val isCopied = copiedItemIds.contains(mediaItem.id)
-
-                                val itemModifier = if (row.isLastRow) {
-                                    Modifier
-                                        .fillMaxHeight()
-                                        .width(justifiedItem.widthDp)
-                                } else {
-                                    Modifier
-                                        .fillMaxHeight()
-                                        .weight(justifiedItem.safeAspectRatio)
-                                }
-
-                                GooglePhotosGridItem(
-                                    item = mediaItem,
-                                    isSelected = isSelected,
-                                    imageLoader = imageLoader,
-                                    isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG)
-                                        (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
-                                    isArchiving = isArchiving,
-                                    isCopied = isCopied,
-                                    modifier = itemModifier,
-                                    onClick = { onItemClick(mediaItem) },
-                                    onLongClick = { onItemLongClick(mediaItem) }
-                                )
-                            }
-                        }
+                    is BentoFeedItem.BlockItem -> {
+                        BentoBlockView(
+                            block = feedItem.block,
+                            unitSize = unitSize,
+                            spacing = spacing,
+                            selectedIds = currentSelectedIds,
+                            imageLoader = imageLoader,
+                            isOtgConnected = isOtgConnected,
+                            activeArchiveUuid = activeArchiveUuid,
+                            archivingItemIds = archivingItemIds,
+                            copiedItemIds = copiedItemIds,
+                            onItemClick = onItemClick,
+                            onItemLongClick = onItemLongClick
+                        )
                     }
                 }
             }
