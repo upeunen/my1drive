@@ -143,6 +143,8 @@ import by.w6.my1drive.ui.components.MissingFilesDialog
 import by.w6.my1drive.ui.components.UnknownDriveDialog
 import by.w6.my1drive.ui.components.DeleteConfirmDialog
 import by.w6.my1drive.ui.components.DateRangePickerDialog
+import by.w6.my1drive.ui.components.LimitDecreasedBanner
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun GalleryScreenContent(
@@ -325,6 +327,41 @@ fun GalleryScreenContent(
     }
     val isPremiumUnlocked by viewModel.isPremiumUnlocked.collectAsState(initial = false)
 
+    val photosRemaining = (uiState.maxPhotos - uiState.photosArchivedCount).coerceAtLeast(0)
+    val videosRemaining = (uiState.maxVideos - uiState.videosArchivedCount).coerceAtLeast(0)
+
+    var showLimitBanner by remember { mutableStateOf(false) }
+    var limitBannerMessage by remember { mutableStateOf("") }
+    var prevPhotosRemaining by remember { mutableStateOf(photosRemaining) }
+    var prevVideosRemaining by remember { mutableStateOf(videosRemaining) }
+    var prevTrialDays by remember { mutableStateOf(uiState.remainingTrialDays) }
+    
+    val freeLimitsStr = stringResource(R.string.free_version_limits, photosRemaining, uiState.maxPhotos, videosRemaining, uiState.maxVideos)
+    val trialDaysStr = stringResource(R.string.trial_active_days, uiState.remainingTrialDays)
+
+    LaunchedEffect(photosRemaining, videosRemaining, uiState.remainingTrialDays, uiState.isPremiumUnlocked) {
+        if (!uiState.isPremiumUnlocked) {
+            val photosDecreased = photosRemaining < prevPhotosRemaining
+            val videosDecreased = videosRemaining < prevVideosRemaining
+            val trialDecreased = uiState.remainingTrialDays < prevTrialDays
+            
+            if ((photosDecreased || videosDecreased || trialDecreased) && (prevPhotosRemaining > 0 || prevVideosRemaining > 0 || prevTrialDays > 0)) {
+                limitBannerMessage = if (uiState.isTrialActive) trialDaysStr else freeLimitsStr
+                showLimitBanner = true
+            }
+        }
+        prevPhotosRemaining = photosRemaining
+        prevVideosRemaining = videosRemaining
+        prevTrialDays = uiState.remainingTrialDays
+    }
+
+    LaunchedEffect(showLimitBanner) {
+        if (showLimitBanner) {
+            kotlinx.coroutines.delay(3000)
+            showLimitBanner = false
+        }
+    }
+
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             GooglePhotosTopBar(
@@ -433,6 +470,7 @@ fun GalleryScreenContent(
                     else if (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
                     if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
                     if (currentScreenRoute == "archive" && otgDirectoryUri == null) OtgRequiredBanner()
+                    LimitDecreasedBanner(visible = showLimitBanner, message = limitBannerMessage)
                 }
             }
 
