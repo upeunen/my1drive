@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
+import by.w6.my1drive.ui.layout.JustifiedLayoutHelper
 import coil.ImageLoader
 import kotlinx.coroutines.launch
 
@@ -306,7 +307,11 @@ fun ArchiveRoute(
             }
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            val horizontalPadding = 16.dp
+            val spacing = 3.dp
+            val availableWidth = (maxWidth - (horizontalPadding * 2)).coerceAtLeast(0.dp)
+
             if (yearGroups.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -330,10 +335,9 @@ fun ArchiveRoute(
             } else {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
+                    contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(spacing),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     yearGroups.forEach { yearGroup ->
                         // 1. Заголовок года
@@ -417,44 +421,52 @@ fun ArchiveRoute(
                                 }
                             }
 
-                            // 3. Сетка фотографий (если раскрыто)
+                            // 3. Justified сетка фотографий (если раскрыто)
                             if (isExpanded) {
-                                val chunkedItems = monthGroup.chunkedItems
-                                items(chunkedItems, key = { chunk -> "chunk_${chunk.first().id}" }) { rowItems ->
+                                val rows = JustifiedLayoutHelper.computeRows(
+                                    items = monthGroup.items,
+                                    containerWidth = availableWidth,
+                                    targetRowHeight = 160.dp,
+                                    spacing = spacing
+                                )
+                                items(rows, key = { row -> "archive_row_${row.items.firstOrNull()?.item?.id ?: "empty"}_${row.items.size}" }) { row ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            .height(row.heightDp),
+                                        horizontalArrangement = Arrangement.spacedBy(spacing)
                                     ) {
-                                        for (i in 0 until gridColumnsCount) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                            ) {
-                                                if (i < rowItems.size) {
-                                                    val mediaItem = rowItems[i]
-                                                    val isSelected = selectedIds.contains(mediaItem.id)
-                                                    val isArchiving = archivingItemIds.contains(mediaItem.id)
-                                                    val isRestoring = restoringItemIds.contains(mediaItem.id)
-                                                    val isCopied = copiedItemIds.contains(mediaItem.id)
-                                                    GooglePhotosGridItem(
-                                                        item = mediaItem,
-                                                        isSelected = isSelected,
-                                                        isArchiving = isArchiving || isRestoring,
-                                                        isCopied = isCopied,
-                                                        imageLoader = imageLoader,
-                                                        isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
-                                                        archiveStripeOverrideColor = if (showOffline && knownArchives.size > 1) archiveColorMap[mediaItem.archiveUuid] else null,
-                                                        modifier = Modifier,
-                                                        onClick = {
-                                                            onItemClick(mediaItem)
-                                                        },
-                                                        onLongClick = { onItemLongClick(mediaItem) }
-                                                    )
-                                                }
+                                        for (justifiedItem in row.items) {
+                                            val mediaItem = justifiedItem.item
+                                            val isSelected = selectedIds.contains(mediaItem.id)
+                                            val isArchiving = archivingItemIds.contains(mediaItem.id)
+                                            val isRestoring = restoringItemIds.contains(mediaItem.id)
+                                            val isCopied = copiedItemIds.contains(mediaItem.id)
+
+                                            val itemModifier = if (row.isLastRow) {
+                                                Modifier
+                                                    .fillMaxHeight()
+                                                    .width(justifiedItem.widthDp)
+                                            } else {
+                                                Modifier
+                                                    .fillMaxHeight()
+                                                    .weight(justifiedItem.safeAspectRatio)
                                             }
+
+                                            GooglePhotosGridItem(
+                                                item = mediaItem,
+                                                isSelected = isSelected,
+                                                isArchiving = isArchiving || isRestoring,
+                                                isCopied = isCopied,
+                                                imageLoader = imageLoader,
+                                                isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG) (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
+                                                archiveStripeOverrideColor = if (showOffline && knownArchives.size > 1) archiveColorMap[mediaItem.archiveUuid] else null,
+                                                modifier = itemModifier,
+                                                onClick = {
+                                                    onItemClick(mediaItem)
+                                                },
+                                                onLongClick = { onItemLongClick(mediaItem) }
+                                            )
                                         }
                                     }
                                 }

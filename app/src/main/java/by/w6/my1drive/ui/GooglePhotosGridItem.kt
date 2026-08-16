@@ -63,9 +63,9 @@ import coil.compose.AsyncImage
  */
 fun clampedAspectRatio(
     ratio: Float,
-    minRatio: Float = 0.75f,
-    maxRatio: Float = 2.0f,
-    maxCrop: Float = 0.25f
+    minRatio: Float = 0.33f,
+    maxRatio: Float = 3.50f,
+    maxCrop: Float = 0.05f
 ): Pair<Float, Float> {
     if (ratio <= 0f) return Pair(1f, 0f)
     // 25%-crop bounds relative to original

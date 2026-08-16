@@ -19,7 +19,8 @@ data class MediaItem(
     val dateArchived: Long? = null,          // Unix timestamp in seconds
     val dateAdded: Long? = null,             // Unix timestamp in seconds for when it was added/restored to device
     val archiveUuid: String? = null,
-    val archiveName: String? = null
+    val archiveName: String? = null,
+    val aspectRatio: Float = 0f           // width/height; 0 = unknown (display as square)
 ) {
     /** True if a local preview thumbnail is cached and the file exists */
     val hasCachedPreview: Boolean

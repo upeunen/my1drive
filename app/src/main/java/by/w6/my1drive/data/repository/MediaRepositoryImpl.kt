@@ -97,7 +97,8 @@ class MediaRepositoryImpl(
                     dateArchived = entity.dateArchived,
                     dateAdded = null,
                     archiveUuid = entity.archiveUuid,
-                    archiveName = archiveNamesMap[entity.archiveUuid] ?: context.getString(by.w6.my1drive.R.string.repository_unknown_drive)
+                    archiveName = archiveNamesMap[entity.archiveUuid] ?: context.getString(by.w6.my1drive.R.string.repository_unknown_drive),
+                    aspectRatio = if (entity.width > 0 && entity.height > 0) entity.width.toFloat() / entity.height.toFloat() else 0f
                 )
             }
 
@@ -187,7 +188,9 @@ class MediaRepositoryImpl(
                     MediaStore.MediaColumns.MIME_TYPE,
                     MediaStore.MediaColumns.SIZE,
                     MediaStore.MediaColumns.DATE_MODIFIED,
-                    MediaStore.MediaColumns.DATE_ADDED
+                    MediaStore.MediaColumns.DATE_ADDED,
+                    MediaStore.MediaColumns.WIDTH,
+                    MediaStore.MediaColumns.HEIGHT
                 )
                 if (!isImage) {
                     projection.add(MediaStore.Video.VideoColumns.DURATION)
@@ -228,6 +231,8 @@ class MediaRepositoryImpl(
                     } else -1
 
                     val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                    val widthColumn = cursor.getColumnIndex(MediaStore.MediaColumns.WIDTH)
+                    val heightColumn = cursor.getColumnIndex(MediaStore.MediaColumns.HEIGHT)
 
                     while (cursor.moveToNext()) {
                         if (isPendingColumn != -1 && cursor.getInt(isPendingColumn) != 0) {
@@ -250,6 +255,10 @@ class MediaRepositoryImpl(
                             cursor.getString(relativePathColumn)
                         } else null
 
+                        val width = if (widthColumn != -1) cursor.getInt(widthColumn) else 0
+                        val height = if (heightColumn != -1) cursor.getInt(heightColumn) else 0
+                        val aspectRatio = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 0f
+
                         val contentUri = ContentUris.withAppendedId(collection, id)
 
                         list.add(
@@ -263,7 +272,8 @@ class MediaRepositoryImpl(
                                 status = MediaStatus.ON_DEVICE,
                                 duration = duration,
                                 originalRelativePath = relativePath,
-                                dateAdded = dateAdded
+                                dateAdded = dateAdded,
+                                aspectRatio = aspectRatio
                             )
                         )
                     }

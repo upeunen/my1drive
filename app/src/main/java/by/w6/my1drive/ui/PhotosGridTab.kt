@@ -2,17 +2,20 @@ package by.w6.my1drive.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material3.Icon
@@ -30,7 +33,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
+import by.w6.my1drive.ui.layout.JustifiedLayoutHelper
+import by.w6.my1drive.ui.layout.JustifiedRow
 import coil.ImageLoader
+
+private sealed interface JustifiedFeedItem {
+    data class HeaderItem(val title: String, val sectionItems: List<MediaItem>) : JustifiedFeedItem
+    data class RowItem(val row: JustifiedRow, val key: String) : JustifiedFeedItem
+}
 
 @Composable
 fun PhotosGridTab(
@@ -68,84 +78,129 @@ fun PhotosGridTab(
         return
     }
 
-    // Предвычисляем map: заголовок → список MediaItem в разделе.
-    // Используется для кнопки «выбрать все» в DateCategoryHeader.
-    val sectionMediaMap = remember(groupedItems) {
-        val map = mutableMapOf<String, List<MediaItem>>()
-        var currentHeader: String? = null
-        val buffer = mutableListOf<MediaItem>()
-        for (gi in groupedItems) {
-            when (gi) {
-                is GalleryItem.Header -> {
-                    currentHeader?.let { map[it] = buffer.toList() }
-                    currentHeader = gi.title
-                    buffer.clear()
-                }
-                is GalleryItem.Media -> buffer.add(gi.item)
-            }
-        }
-        currentHeader?.let { map[it] = buffer.toList() }
-        map
-    }
-
     val currentSelectedIds by rememberUpdatedState(selectedIds)
-    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(gridState.isScrollInProgress) {
-        onScrollStateChanged(gridState.isScrollInProgress)
+    LaunchedEffect(listState.isScrollInProgress) {
+        onScrollStateChanged(listState.isScrollInProgress)
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(gridColumnsCount),
-        state = gridState,
-        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(
-            items = groupedItems,
-            key = { item ->
-                when (item) {
-                    is GalleryItem.Header -> "header_${item.title}"
-                    is GalleryItem.Media  -> "media_${item.item.id}"
-                }
-            },
-            span = { item ->
-                when (item) {
-                    is GalleryItem.Header -> GridItemSpan(maxLineSpan)
-                    is GalleryItem.Media  -> GridItemSpan(1)
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val horizontalPadding = 2.dp
+        val spacing = 3.dp
+        val availableWidth = (maxWidth - (horizontalPadding * 2)).coerceAtLeast(0.dp)
+
+        val feedItems = remember(groupedItems, availableWidth) {
+            val result = mutableListOf<JustifiedFeedItem>()
+            var currentHeader: String? = null
+            val currentSectionMedia = mutableListOf<MediaItem>()
+
+            fun flushSection() {
+                if (currentHeader != null || currentSectionMedia.isNotEmpty()) {
+                    val sectionList = currentSectionMedia.toList()
+                    if (currentHeader != null) {
+                        result.add(JustifiedFeedItem.HeaderItem(currentHeader!!, sectionList))
+                    }
+                    if (sectionList.isNotEmpty()) {
+                        val rows = JustifiedLayoutHelper.computeRows(
+                            items = sectionList,
+                            containerWidth = availableWidth,
+                            targetRowHeight = 160.dp,
+                            spacing = spacing
+                        )
+                        for (row in rows) {
+                            val firstId = row.items.firstOrNull()?.item?.id ?: "empty"
+                            result.add(JustifiedFeedItem.RowItem(row, "row_${firstId}_${row.items.size}"))
+                        }
+                    }
+                    currentSectionMedia.clear()
                 }
             }
-        ) { item ->
-            when (item) {
-                is GalleryItem.Header -> {
-                    val sectionItems = sectionMediaMap[item.title] ?: emptyList()
-                    val allSelected = remember(currentSelectedIds, sectionItems) {
-                        sectionItems.isNotEmpty() && sectionItems.all { currentSelectedIds.contains(it.id) }
+
+            for (gi in groupedItems) {
+                when (gi) {
+                    is GalleryItem.Header -> {
+                        flushSection()
+                        currentHeader = gi.title
                     }
-                    DateCategoryHeader(
-                        title = item.title,
-                        isSelectionMode = currentSelectedIds.isNotEmpty(),
-                        isSelected = allSelected,
-                        onToggleSelection = {
-                            onSelectItems(sectionItems.map { it.id }, !allSelected)
-                        }
-                    )
+                    is GalleryItem.Media -> {
+                        currentSectionMedia.add(gi.item)
+                    }
                 }
-                is GalleryItem.Media -> {
-                    val mediaItem = item.item
-                    GooglePhotosGridItem(
-                        item = mediaItem,
-                        isSelected = currentSelectedIds.contains(mediaItem.id),
-                        imageLoader = imageLoader,
-                        isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG)
-                            (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
-                        isArchiving = archivingItemIds.contains(mediaItem.id),
-                        isCopied = copiedItemIds.contains(mediaItem.id),
-                        onClick    = { onItemClick(mediaItem) },
-                        onLongClick = { onItemLongClick(mediaItem) }
-                    )
+            }
+            flushSection()
+            result
+        }
+
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(spacing),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(
+                items = feedItems,
+                key = { item ->
+                    when (item) {
+                        is JustifiedFeedItem.HeaderItem -> "header_${item.title}"
+                        is JustifiedFeedItem.RowItem -> item.key
+                    }
+                }
+            ) { feedItem ->
+                when (feedItem) {
+                    is JustifiedFeedItem.HeaderItem -> {
+                        val sectionItems = feedItem.sectionItems
+                        val allSelected = remember(currentSelectedIds, sectionItems) {
+                            sectionItems.isNotEmpty() && sectionItems.all { currentSelectedIds.contains(it.id) }
+                        }
+                        DateCategoryHeader(
+                            title = feedItem.title,
+                            isSelectionMode = currentSelectedIds.isNotEmpty(),
+                            isSelected = allSelected,
+                            onToggleSelection = {
+                                onSelectItems(sectionItems.map { it.id }, !allSelected)
+                            }
+                        )
+                    }
+                    is JustifiedFeedItem.RowItem -> {
+                        val row = feedItem.row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(row.heightDp),
+                            horizontalArrangement = Arrangement.spacedBy(spacing)
+                        ) {
+                            for (justifiedItem in row.items) {
+                                val mediaItem = justifiedItem.item
+                                val isSelected = currentSelectedIds.contains(mediaItem.id)
+                                val isArchiving = archivingItemIds.contains(mediaItem.id)
+                                val isCopied = copiedItemIds.contains(mediaItem.id)
+
+                                val itemModifier = if (row.isLastRow) {
+                                    Modifier
+                                        .fillMaxHeight()
+                                        .width(justifiedItem.widthDp)
+                                } else {
+                                    Modifier
+                                        .fillMaxHeight()
+                                        .weight(justifiedItem.safeAspectRatio)
+                                }
+
+                                GooglePhotosGridItem(
+                                    item = mediaItem,
+                                    isSelected = isSelected,
+                                    imageLoader = imageLoader,
+                                    isOtgConnected = if (mediaItem.status == by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG)
+                                        (isOtgConnected && mediaItem.archiveUuid == activeArchiveUuid) else isOtgConnected,
+                                    isArchiving = isArchiving,
+                                    isCopied = isCopied,
+                                    modifier = itemModifier,
+                                    onClick = { onItemClick(mediaItem) },
+                                    onLongClick = { onItemLongClick(mediaItem) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

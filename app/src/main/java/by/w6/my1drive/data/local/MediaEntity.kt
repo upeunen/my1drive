@@ -24,5 +24,9 @@ data class MediaEntity(
     @ColumnInfo(defaultValue = "0")
     val dateArchived: Long = 0L,              // Unix timestamp in seconds
     @ColumnInfo(defaultValue = "")
-    val archiveUuid: String = ""
+    val archiveUuid: String = "",
+    @ColumnInfo(defaultValue = "0")
+    val width: Int = 0,
+    @ColumnInfo(defaultValue = "0")
+    val height: Int = 0
 )
