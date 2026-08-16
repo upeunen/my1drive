@@ -49,7 +49,9 @@ fun GooglePhotosTopBar(
     isTrialActive: Boolean = false,
     remainingTrialDays: Int = 0,
     photosRemaining: Int = 0,
-    maxPhotos: Int = 50,
+    maxPhotos: Int = 100,
+    videosRemaining: Int = 0,
+    maxVideos: Int = 5,
     onProClick: () -> Unit = {},
     onClearSelection: () -> Unit,
     onEjectClick: () -> Unit,
@@ -192,7 +194,7 @@ fun GooglePhotosTopBar(
                 val chipText = if (isTrialActive) {
                     stringResource(R.string.topbar_chip_trial, remainingTrialDays)
                 } else {
-                    stringResource(R.string.topbar_chip_limits, photosRemaining, maxPhotos)
+                    stringResource(R.string.topbar_chip_limits, photosRemaining, maxPhotos, videosRemaining, maxVideos)
                 }
 
                 Box(

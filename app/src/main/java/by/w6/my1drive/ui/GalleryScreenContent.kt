@@ -338,6 +338,8 @@ fun GalleryScreenContent(
                 remainingTrialDays = uiState.remainingTrialDays,
                 photosRemaining = (uiState.maxPhotos - uiState.photosArchivedCount).coerceAtLeast(0),
                 maxPhotos = uiState.maxPhotos,
+                videosRemaining = (uiState.maxVideos - uiState.videosArchivedCount).coerceAtLeast(0),
+                maxVideos = uiState.maxVideos,
                 onProClick = { viewModel.showPaywall() },
                 onClearSelection = onClearSelection,
                 onEjectClick = { showEjectConfirmDialog = true },

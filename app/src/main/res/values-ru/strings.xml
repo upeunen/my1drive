@@ -325,7 +325,7 @@
     <string name="free_version_limits">Бесплатная версия. Доступно: %1$d/%2$d фото, %3$d/%4$d видео</string>
     <string name="trial_active_days">Бесплатный триал: осталось %1$d дн.</string>
     <string name="topbar_chip_trial">⏳ %1$d дн. • PRO</string>
-    <string name="topbar_chip_limits">%1$d/%2$d • PRO</string>
+    <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d • PRO</string>
     <string name="topbar_chip_pro">PRO</string>
     <string name="promo_success_title">Промокод активирован!</string>
     <string name="promo_success_message">Вам успешно начислено %1$d дн. бесплатного доступа.</string>

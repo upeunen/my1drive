@@ -9,20 +9,19 @@ import ru.rustore.sdk.remoteconfig.RemoteConfigClientBuilder
 
 object StoreAppInitializer : StoreInitializer {
     override fun initApplication(app: Application) {
-        val client = RemoteConfigClientBuilder(
-            appId = AppId(app.getString(R.string.RUSTORE_REMOTE_CONFIG_APP_ID)),
-            context = app
-        ).build()
-        
-        val manager = RuStoreRemoteConfigManager.getInstance(app)
-        manager.remoteConfigClient = client
-        manager.fetchConfig()
+        runCatching {
+            RuStoreRemoteConfigManager.getInstance(app).fetchConfig()
+        }.onFailure { e ->
+            android.util.Log.w("StoreAppInitializer", "Failed to init remote config: ${e.localizedMessage}")
+        }
     }
 
     override fun onMainActivityNewIntent(intent: Intent?) {
         intent?.let {
-            ru.rustore.sdk.pay.RuStorePayClient.instance.getIntentInteractor()
-                .proceedIntent(it, sdkTheme = ru.rustore.sdk.pay.model.SdkTheme.LIGHT)
+            runCatching {
+                ru.rustore.sdk.pay.RuStorePayClient.instance.getIntentInteractor()
+                    .proceedIntent(it, sdkTheme = ru.rustore.sdk.pay.model.SdkTheme.LIGHT)
+            }
         }
     }
 }
