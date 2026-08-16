@@ -89,8 +89,9 @@ fun PhotosGridTab(
         val horizontalPadding = 2.dp
         val spacing = 3.dp
         val availableWidth = (maxWidth - (horizontalPadding * 2)).coerceAtLeast(0.dp)
+        val targetRowHeight = JustifiedLayoutHelper.targetRowHeightFor(gridColumnsCount)
 
-        val feedItems = remember(groupedItems, availableWidth) {
+        val feedItems = remember(groupedItems, availableWidth, targetRowHeight) {
             val result = mutableListOf<JustifiedFeedItem>()
             var currentHeader: String? = null
             val currentSectionMedia = mutableListOf<MediaItem>()
@@ -105,7 +106,7 @@ fun PhotosGridTab(
                         val rows = JustifiedLayoutHelper.computeRows(
                             items = sectionList,
                             containerWidth = availableWidth,
-                            targetRowHeight = 160.dp,
+                            targetRowHeight = targetRowHeight,
                             spacing = spacing
                         )
                         for (row in rows) {

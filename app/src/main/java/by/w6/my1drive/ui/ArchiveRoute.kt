@@ -423,10 +423,11 @@ fun ArchiveRoute(
 
                             // 3. Justified сетка фотографий (если раскрыто)
                             if (isExpanded) {
+                                val targetRowHeight = JustifiedLayoutHelper.targetRowHeightFor(gridColumnsCount)
                                 val rows = JustifiedLayoutHelper.computeRows(
                                     items = monthGroup.items,
                                     containerWidth = availableWidth,
-                                    targetRowHeight = 160.dp,
+                                    targetRowHeight = targetRowHeight,
                                     spacing = spacing
                                 )
                                 items(rows, key = { row -> "archive_row_${row.items.firstOrNull()?.item?.id ?: "empty"}_${row.items.size}" }) { row ->

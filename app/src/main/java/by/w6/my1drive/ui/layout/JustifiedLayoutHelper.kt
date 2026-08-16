@@ -33,6 +33,22 @@ object JustifiedLayoutHelper {
     private const val DEFAULT_ASPECT_RATIO = 1.0f
 
     /**
+     * Returns the ideal target row height based on user's grid zoom level / column preference.
+     * 2 = large view (260dp)
+     * 3 = normal/standard view (190dp)
+     * 4 = compact view (130dp)
+     */
+    fun targetRowHeightFor(gridColumnsCount: Int): Dp {
+        return when (gridColumnsCount) {
+            2 -> 260.dp
+            3 -> 190.dp
+            4 -> 130.dp
+            5 -> 100.dp
+            else -> if (gridColumnsCount <= 2) 260.dp else (570 / gridColumnsCount).dp
+        }
+    }
+
+    /**
      * Clamps or defaults an aspect ratio to a safe range [0.33 .. 3.50].
      */
     fun safeAspectRatio(ratio: Float): Float {
