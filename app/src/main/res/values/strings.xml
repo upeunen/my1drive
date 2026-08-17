@@ -324,8 +324,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="action_cancel">Cancel</string>
     <string name="free_version_limits">Free version. Available: %1$d/%2$d photos, %3$d/%4$d videos</string>
     <string name="trial_active_days">Free trial: %1$d days left</string>
-    <string name="topbar_chip_trial">⏳ %1$d d. • PRO</string>
-    <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d • PRO</string>
+    <string name="topbar_chip_trial">⏳ %1$d d.</string>
+    <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d</string>
     <string name="topbar_chip_pro">PRO</string>
     <string name="promo_success_title">Promo Code Activated!</string>
     <string name="promo_success_message">You have successfully received %1$d days of free access.</string>

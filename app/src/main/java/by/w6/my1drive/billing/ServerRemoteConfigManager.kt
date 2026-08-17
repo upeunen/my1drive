@@ -55,7 +55,7 @@ class ServerRemoteConfigManager private constructor(context: Context) : RemoteCo
     override val announcementJson: StateFlow<String> = _announcementJson.asStateFlow()
 
     private val _limitsEnabled = MutableStateFlow(
-        prefs.getBoolean(KEY_LIMITS_ENABLED, false)
+        prefs.getBoolean(KEY_LIMITS_ENABLED, true)
     )
     override val limitsEnabled: StateFlow<Boolean> = _limitsEnabled.asStateFlow()
 

@@ -99,17 +99,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     init {
         viewModelScope.launch {
             remoteConfigManager.announcementJson.collect { json ->
-                if (json.isNotBlank()) {
+                if (json.isNotBlank() && json != "null" && json != "{}") {
                     try {
                         val root = org.json.JSONObject(json)
-                        val enabled = root.optBoolean("enabled", false)
+                        val enabled = if (root.has("enabled")) root.optBoolean("enabled", true) else true
                         val id = root.optString("id", "")
                         val title = root.optString("title", "")
                         val message = root.optString("message", "")
                         if (enabled && id.isNotBlank() && title.isNotBlank() && limitRepository.lastSeenAnnouncementId != id) {
                             limitRepository.lastSeenAnnouncementId = id
-                            // Announcement is integrated into the setup wizard or disabled.
-                            // _activeDialog.value = AppDialog.Announcement(id, title, message)
+                            _activeDialog.value = AppDialog.Announcement(id, title, message)
                         }
                     } catch (ignored: Exception) {}
                 }

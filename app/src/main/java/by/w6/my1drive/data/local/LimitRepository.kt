@@ -26,8 +26,10 @@ class LimitRepository(context: Context) {
                 val file = java.io.File(dir, "limits_prefs_secured.xml")
                 if (file.exists()) file.delete()
             }
-        } catch (ignored: Exception) {}
-        createEncryptedPrefs(context, masterKey)
+            createEncryptedPrefs(context, masterKey)
+        } catch (ignored: Exception) {
+            context.getSharedPreferences("limits_prefs_fallback", Context.MODE_PRIVATE)
+        }
     }
 
     private fun createEncryptedPrefs(context: Context, masterKey: MasterKey): SharedPreferences {
@@ -40,64 +42,75 @@ class LimitRepository(context: Context) {
         )
     }
 
-    /** Время первой установки — кешируем один раз, дорогой вызов */
-    private val firstInstallTime: Long = runCatching {
-        context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-    }.getOrDefault(0L)
+    /** Время первого запуска приложения */
+    val firstLaunchTime: Long = runCatching {
+        val saved = prefs.getLong(KEY_FIRST_LAUNCH_TIME, 0L)
+        if (saved == 0L) {
+            val now = System.currentTimeMillis()
+            prefs.edit().putLong(KEY_FIRST_LAUNCH_TIME, now).apply()
+            now
+        } else {
+            saved
+        }
+    }.getOrDefault(System.currentTimeMillis())
 
     // --- Счётчики архивации ---
 
-    private val _photosArchivedCount = MutableStateFlow(prefs.getInt(KEY_PHOTOS_COUNT, 0))
+    private val _photosArchivedCount = MutableStateFlow(runCatching { prefs.getInt(KEY_PHOTOS_COUNT, 0) }.getOrDefault(0))
     val photosArchivedCountFlow: StateFlow<Int> = _photosArchivedCount.asStateFlow()
 
-    private val _videosArchivedCount = MutableStateFlow(prefs.getInt(KEY_VIDEOS_COUNT, 0))
+    private val _videosArchivedCount = MutableStateFlow(runCatching { prefs.getInt(KEY_VIDEOS_COUNT, 0) }.getOrDefault(0))
     val videosArchivedCountFlow: StateFlow<Int> = _videosArchivedCount.asStateFlow()
 
-    private val _isPremiumUnlocked = MutableStateFlow(prefs.getBoolean(KEY_PREMIUM, false))
+    private val _isPremiumUnlocked = MutableStateFlow(runCatching { prefs.getBoolean(KEY_PREMIUM, false) }.getOrDefault(false))
     val isPremiumUnlockedFlow: StateFlow<Boolean> = _isPremiumUnlocked.asStateFlow()
 
     var photosArchivedCount: Int
-        get() = prefs.getInt(KEY_PHOTOS_COUNT, 0)
+        get() = runCatching { prefs.getInt(KEY_PHOTOS_COUNT, 0) }.getOrDefault(_photosArchivedCount.value)
         set(value) {
-            prefs.edit().putInt(KEY_PHOTOS_COUNT, value).apply()
+            runCatching { prefs.edit().putInt(KEY_PHOTOS_COUNT, value).apply() }
             _photosArchivedCount.value = value
         }
 
     var videosArchivedCount: Int
-        get() = prefs.getInt(KEY_VIDEOS_COUNT, 0)
+        get() = runCatching { prefs.getInt(KEY_VIDEOS_COUNT, 0) }.getOrDefault(_videosArchivedCount.value)
         set(value) {
-            prefs.edit().putInt(KEY_VIDEOS_COUNT, value).apply()
+            runCatching { prefs.edit().putInt(KEY_VIDEOS_COUNT, value).apply() }
             _videosArchivedCount.value = value
         }
 
     var isPremiumUnlocked: Boolean
-        get() = prefs.getBoolean(KEY_PREMIUM, false)
+        get() = runCatching { prefs.getBoolean(KEY_PREMIUM, false) }.getOrDefault(_isPremiumUnlocked.value)
         set(value) {
-            prefs.edit().putBoolean(KEY_PREMIUM, value).apply()
+            runCatching { prefs.edit().putBoolean(KEY_PREMIUM, value).apply() }
             _isPremiumUnlocked.value = value
         }
 
     var trustLevel: Int
-        get() = prefs.getInt(KEY_TRUST_LEVEL, 0)
-        set(value) = prefs.edit().putInt(KEY_TRUST_LEVEL, value).apply()
+        get() = runCatching { prefs.getInt(KEY_TRUST_LEVEL, 0) }.getOrDefault(0)
+        set(value) {
+            runCatching { prefs.edit().putInt(KEY_TRUST_LEVEL, value).apply() }
+        }
 
     // --- Промокод ---
 
     /** Код последнего активированного промокода (или null) */
     var appliedPromoCode: String?
-        get() = prefs.getString(KEY_PROMO_CODE, null)
-        set(value) = prefs.edit().putString(KEY_PROMO_CODE, value).apply()
+        get() = runCatching { prefs.getString(KEY_PROMO_CODE, null) }.getOrNull()
+        set(value) {
+            runCatching { prefs.edit().putString(KEY_PROMO_CODE, value).apply() }
+        }
 
     /** Timestamp (мс) до которого промокод активен. 0 = неактивен */
     var promoUntilTimestamp: Long
-        get() = prefs.getLong(KEY_PROMO_UNTIL, 0L)
+        get() = runCatching { prefs.getLong(KEY_PROMO_UNTIL, 0L) }.getOrDefault(0L)
         set(value) {
-            prefs.edit().putLong(KEY_PROMO_UNTIL, value).apply()
+            runCatching { prefs.edit().putLong(KEY_PROMO_UNTIL, value).apply() }
             _isPromoActive.value = value > System.currentTimeMillis()
         }
 
     private val _isPromoActive = MutableStateFlow(
-        prefs.getLong(KEY_PROMO_UNTIL, 0L) > System.currentTimeMillis()
+        runCatching { prefs.getLong(KEY_PROMO_UNTIL, 0L) > System.currentTimeMillis() }.getOrDefault(false)
     )
     /** true пока промокод действует */
     val isPromoActiveFlow: StateFlow<Boolean> = _isPromoActive.asStateFlow()
@@ -111,14 +124,9 @@ class LimitRepository(context: Context) {
      * Проверка: бесплатный триал ещё активен.
      * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
      */
-    /**
-     * Проверка: бесплатный триал ещё активен.
-     * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
-     */
     fun isTrialActive(trialDays: Int): Boolean {
         if (trialDays <= 0) return false
-        if (firstInstallTime == 0L) return false
-        val trialEndTime = firstInstallTime + trialDays.toLong() * 24 * 60 * 60 * 1000
+        val trialEndTime = firstLaunchTime + trialDays.toLong() * 24 * 60 * 60 * 1000
         return System.currentTimeMillis() < trialEndTime
     }
 
@@ -126,8 +134,8 @@ class LimitRepository(context: Context) {
      * Возвращает оставшееся количество дней триала.
      */
     fun getRemainingTrialDays(trialDays: Int): Int {
-        if (trialDays <= 0 || firstInstallTime == 0L) return 0
-        val trialEndTime = firstInstallTime + trialDays.toLong() * 24 * 60 * 60 * 1000
+        if (trialDays <= 0) return 0
+        val trialEndTime = firstLaunchTime + trialDays.toLong() * 24 * 60 * 60 * 1000
         val diffMs = trialEndTime - System.currentTimeMillis()
         if (diffMs <= 0) return 0
         return ((diffMs + 86399999L) / 86400000L).toInt()
@@ -135,8 +143,10 @@ class LimitRepository(context: Context) {
 
     /** ID последнего показанного дистанционного объявления */
     var lastSeenAnnouncementId: String?
-        get() = prefs.getString(KEY_LAST_SEEN_ANNOUNCEMENT, null)
-        set(value) = prefs.edit().putString(KEY_LAST_SEEN_ANNOUNCEMENT, value).apply()
+        get() = runCatching { prefs.getString(KEY_LAST_SEEN_ANNOUNCEMENT, null) }.getOrNull()
+        set(value) {
+            runCatching { prefs.edit().putString(KEY_LAST_SEEN_ANNOUNCEMENT, value).apply() }
+        }
 
     /**
      * Главный метод: нужно ли применять лимиты к пользователю?
@@ -157,6 +167,7 @@ class LimitRepository(context: Context) {
         const val MAX_PHOTOS = 100
         const val MAX_VIDEOS = 5
 
+        private const val KEY_FIRST_LAUNCH_TIME = "first_launch_time"
         private const val KEY_PHOTOS_COUNT = "photos_archived_count"
         private const val KEY_VIDEOS_COUNT = "videos_archived_count"
         private const val KEY_PREMIUM = "is_premium_unlocked"

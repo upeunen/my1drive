@@ -324,8 +324,8 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="action_cancel">Cancelar</string>
     <string name="free_version_limits">Versión gratuita. Disponible: %1$d/%2$d fotos, %3$d/%4$d vídeos</string>
     <string name="trial_active_days">Prueba gratuita: %1$d días restantes</string>
-    <string name="topbar_chip_trial">⏳ %1$d d. • PRO</string>
-    <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d • PRO</string>
+    <string name="topbar_chip_trial">⏳ %1$d d.</string>
+    <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d</string>
     <string name="topbar_chip_pro">PRO</string>
     <string name="promo_success_title">¡Código Promocional Activado!</string>
     <string name="promo_success_message">Ha recibido con éxito %1$d días de acceso gratuito.</string>
