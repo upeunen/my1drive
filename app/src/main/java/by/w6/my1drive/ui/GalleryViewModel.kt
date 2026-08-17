@@ -130,14 +130,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val json = remoteConfigManager.promoCodesJson.value
         val entry = by.w6.my1drive.billing.PromoCodeValidator.validateWithDetails(code, json)
         return if (entry != null) {
-            val until = System.currentTimeMillis() + entry.days.toLong() * 24 * 60 * 60 * 1000
+            val baseTime = maxOf(System.currentTimeMillis(), limitRepository.userTrialEndTime.value, limitRepository.promoUntilTimestamp)
+            val until = baseTime + entry.days.toLong() * 24 * 60 * 60 * 1000
             limitRepository.appliedPromoCode = code.trim().uppercase()
             limitRepository.promoUntilTimestamp = until
             _activeDialog.value = AppDialog.PromoSuccess(entry.days, entry.message)
             
             entry.days
         } else {
-            
             null
         }
     }

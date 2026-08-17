@@ -18,31 +18,21 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Менеджер конфигурации, загружающий лимиты и промокоды с сервера my1drive.com.
- * Работает одинаково для всех вариантов сборки (Google Play, RuStore и др.).
- * Хранит кешированные значения в SharedPreferences для мгновенного старта офлайн.
+ * Менеджер конфигурации, загружающий лимиты, промокоды и объявления с сервера my1drive.com.
+ * Лимиты и триал закрепляются для пользователя один раз при первой установке (Grandfathering).
+ * Промокоды и объявления регулярно обновляются с сервера.
  */
 class ServerRemoteConfigManager private constructor(context: Context) : RemoteConfigManager {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val prefs = context.getSharedPreferences("server_remote_config_prefs", Context.MODE_PRIVATE)
+    private val limitRepository = LimitRepository(context)
 
-    // --- StateFlow с кешированными или дефолтными значениями ---
+    // --- StateFlow со значениями ---
 
-    private val _maxPhotos = MutableStateFlow(
-        prefs.getInt(KEY_MAX_PHOTOS, LimitRepository.MAX_PHOTOS).takeIf { it > 0 } ?: LimitRepository.MAX_PHOTOS
-    )
-    override val maxPhotos: StateFlow<Int> = _maxPhotos.asStateFlow()
-
-    private val _maxVideos = MutableStateFlow(
-        prefs.getInt(KEY_MAX_VIDEOS, LimitRepository.MAX_VIDEOS).takeIf { it > 0 } ?: LimitRepository.MAX_VIDEOS
-    )
-    override val maxVideos: StateFlow<Int> = _maxVideos.asStateFlow()
-
-    private val _freeTrialDays = MutableStateFlow(
-        prefs.getInt(KEY_TRIAL_DAYS, 0)
-    )
-    override val freeTrialDays: StateFlow<Int> = _freeTrialDays.asStateFlow()
+    override val maxPhotos: StateFlow<Int> = limitRepository.userMaxPhotos
+    override val maxVideos: StateFlow<Int> = limitRepository.userMaxVideos
+    override val freeTrialDays: StateFlow<Int> = limitRepository.userTrialDays
 
     private val _promoCodesJson = MutableStateFlow(
         prefs.getString(KEY_PROMO_CODES, "") ?: ""
@@ -125,7 +115,7 @@ class ServerRemoteConfigManager private constructor(context: Context) : RemoteCo
         try {
             val root = JSONObject(jsonStr)
 
-            val limitsEnabledVal = root.optBoolean("limits_enabled", false)
+            val limitsEnabledVal = root.optBoolean("limits_enabled", true)
             val maxPhotosVal = root.optInt("free_max_photos", LimitRepository.MAX_PHOTOS).takeIf { it > 0 } ?: LimitRepository.MAX_PHOTOS
             val maxVideosVal = root.optInt("free_max_videos", LimitRepository.MAX_VIDEOS).takeIf { it > 0 } ?: LimitRepository.MAX_VIDEOS
             val freeTrialDaysVal = root.optInt("free_trial_days", 0)
@@ -138,19 +128,16 @@ class ServerRemoteConfigManager private constructor(context: Context) : RemoteCo
                 root.get("announcement").toString()
             } else ""
 
+            // Закрепляем лимиты и триал при первом получении конфигурации с сервера
+            limitRepository.lockInitialConfig(maxPhotosVal, maxVideosVal, freeTrialDaysVal)
+
             _limitsEnabled.value = limitsEnabledVal
-            _maxPhotos.value = maxPhotosVal
-            _maxVideos.value = maxVideosVal
-            _freeTrialDays.value = freeTrialDaysVal
             _promoCodesJson.value = promoCodesVal
             _announcementJson.value = announcementVal
             _isLoaded.value = true
 
             prefs.edit()
                 .putBoolean(KEY_LIMITS_ENABLED, limitsEnabledVal)
-                .putInt(KEY_MAX_PHOTOS, maxPhotosVal)
-                .putInt(KEY_MAX_VIDEOS, maxVideosVal)
-                .putInt(KEY_TRIAL_DAYS, freeTrialDaysVal)
                 .putString(KEY_PROMO_CODES, promoCodesVal)
                 .putString(KEY_ANNOUNCEMENT_JSON, announcementVal)
                 .putLong(KEY_LAST_FETCH_TIME, System.currentTimeMillis())
@@ -180,9 +167,6 @@ class ServerRemoteConfigManager private constructor(context: Context) : RemoteCo
         private const val CONFIG_URL = "https://my1drive.com/app-config.php"
         private const val REFRESH_INTERVAL_MS = 15 * 60 * 1000L // 15 минут
 
-        private const val KEY_MAX_PHOTOS = "free_max_photos"
-        private const val KEY_MAX_VIDEOS = "free_max_videos"
-        private const val KEY_TRIAL_DAYS = "free_trial_days"
         private const val KEY_PROMO_CODES = "promo_codes_json"
         private const val KEY_LIMITS_ENABLED = "limits_enabled"
         private const val KEY_ANNOUNCEMENT_JSON = "announcement_json"

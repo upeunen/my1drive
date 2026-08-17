@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -53,6 +52,57 @@ class LimitRepository(context: Context) {
             saved
         }
     }.getOrDefault(System.currentTimeMillis())
+
+    // --- Закрепленные первоначальные лимиты пользователя (Grandfathering) ---
+
+    private val _isConfigLocked = MutableStateFlow(
+        runCatching { prefs.getBoolean(KEY_IS_CONFIG_LOCKED, false) }.getOrDefault(false)
+    )
+    val isConfigLocked: StateFlow<Boolean> = _isConfigLocked.asStateFlow()
+
+    private val _userMaxPhotos = MutableStateFlow(
+        runCatching { prefs.getInt(KEY_USER_MAX_PHOTOS, MAX_PHOTOS) }.getOrDefault(MAX_PHOTOS)
+    )
+    val userMaxPhotos: StateFlow<Int> = _userMaxPhotos.asStateFlow()
+
+    private val _userMaxVideos = MutableStateFlow(
+        runCatching { prefs.getInt(KEY_USER_MAX_VIDEOS, MAX_VIDEOS) }.getOrDefault(MAX_VIDEOS)
+    )
+    val userMaxVideos: StateFlow<Int> = _userMaxVideos.asStateFlow()
+
+    private val _userTrialDays = MutableStateFlow(
+        runCatching { prefs.getInt(KEY_USER_TRIAL_DAYS, 0) }.getOrDefault(0)
+    )
+    val userTrialDays: StateFlow<Int> = _userTrialDays.asStateFlow()
+
+    private val _userTrialEndTime = MutableStateFlow(
+        runCatching { prefs.getLong(KEY_USER_TRIAL_END_TIME, 0L) }.getOrDefault(0L)
+    )
+    val userTrialEndTime: StateFlow<Long> = _userTrialEndTime.asStateFlow()
+
+    /**
+     * Фиксирует первоначальные лимиты и триал ровно один раз при первом получении конфигурации.
+     * Последующие изменения в админке не перезаписывают данные у существующего пользователя.
+     */
+    fun lockInitialConfig(maxPhotos: Int, maxVideos: Int, trialDays: Int) {
+        if (_isConfigLocked.value) return
+        val now = System.currentTimeMillis()
+        val trialEnd = if (trialDays > 0) now + trialDays.toLong() * 24 * 60 * 60 * 1000L else 0L
+        runCatching {
+            prefs.edit()
+                .putBoolean(KEY_IS_CONFIG_LOCKED, true)
+                .putInt(KEY_USER_MAX_PHOTOS, maxPhotos)
+                .putInt(KEY_USER_MAX_VIDEOS, maxVideos)
+                .putInt(KEY_USER_TRIAL_DAYS, trialDays)
+                .putLong(KEY_USER_TRIAL_END_TIME, trialEnd)
+                .apply()
+        }
+        _isConfigLocked.value = true
+        _userMaxPhotos.value = maxPhotos
+        _userMaxVideos.value = maxVideos
+        _userTrialDays.value = trialDays
+        _userTrialEndTime.value = trialEnd
+    }
 
     // --- Счётчики архивации ---
 
@@ -122,23 +172,41 @@ class LimitRepository(context: Context) {
 
     /**
      * Проверка: бесплатный триал ещё активен.
-     * @param trialDays кол-во дней триала из Remote Config (0 = выключен)
      */
+    fun isTrialActive(): Boolean {
+        val end = _userTrialEndTime.value
+        return end > 0L && System.currentTimeMillis() < end
+    }
+
     fun isTrialActive(trialDays: Int): Boolean {
-        if (trialDays <= 0) return false
-        val trialEndTime = firstLaunchTime + trialDays.toLong() * 24 * 60 * 60 * 1000
-        return System.currentTimeMillis() < trialEndTime
+        if (!_isConfigLocked.value) {
+            if (trialDays <= 0) return false
+            val trialEndTime = firstLaunchTime + trialDays.toLong() * 24 * 60 * 60 * 1000
+            return System.currentTimeMillis() < trialEndTime
+        }
+        return isTrialActive()
     }
 
     /**
      * Возвращает оставшееся количество дней триала.
      */
-    fun getRemainingTrialDays(trialDays: Int): Int {
-        if (trialDays <= 0) return 0
-        val trialEndTime = firstLaunchTime + trialDays.toLong() * 24 * 60 * 60 * 1000
-        val diffMs = trialEndTime - System.currentTimeMillis()
+    fun getRemainingTrialDays(): Int {
+        val end = _userTrialEndTime.value
+        if (end <= 0L) return 0
+        val diffMs = end - System.currentTimeMillis()
         if (diffMs <= 0) return 0
         return ((diffMs + 86399999L) / 86400000L).toInt()
+    }
+
+    fun getRemainingTrialDays(trialDays: Int): Int {
+        if (!_isConfigLocked.value) {
+            if (trialDays <= 0) return 0
+            val trialEndTime = firstLaunchTime + trialDays.toLong() * 24 * 60 * 60 * 1000
+            val diffMs = trialEndTime - System.currentTimeMillis()
+            if (diffMs <= 0) return 0
+            return ((diffMs + 86399999L) / 86400000L).toInt()
+        }
+        return getRemainingTrialDays()
     }
 
     /** ID последнего показанного дистанционного объявления */
@@ -155,7 +223,7 @@ class LimitRepository(context: Context) {
      *   - активен бесплатный триал
      *   - введён действующий промокод
      */
-    fun shouldApplyLimits(trialDays: Int): Boolean {
+    fun shouldApplyLimits(trialDays: Int = 0): Boolean {
         if (isPremiumUnlocked) return false
         if (isTrialActive(trialDays)) return false
         if (isPromoActive()) return false
@@ -168,6 +236,12 @@ class LimitRepository(context: Context) {
         const val MAX_VIDEOS = 5
 
         private const val KEY_FIRST_LAUNCH_TIME = "first_launch_time"
+        private const val KEY_IS_CONFIG_LOCKED = "is_config_locked"
+        private const val KEY_USER_MAX_PHOTOS = "user_max_photos"
+        private const val KEY_USER_MAX_VIDEOS = "user_max_videos"
+        private const val KEY_USER_TRIAL_DAYS = "user_trial_days"
+        private const val KEY_USER_TRIAL_END_TIME = "user_trial_end_time"
+
         private const val KEY_PHOTOS_COUNT = "photos_archived_count"
         private const val KEY_VIDEOS_COUNT = "videos_archived_count"
         private const val KEY_PREMIUM = "is_premium_unlocked"
@@ -177,4 +251,3 @@ class LimitRepository(context: Context) {
         private const val KEY_LAST_SEEN_ANNOUNCEMENT = "last_seen_announcement_id"
     }
 }
-
