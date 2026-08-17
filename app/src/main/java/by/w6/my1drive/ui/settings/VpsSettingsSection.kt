@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import by.w6.my1drive.R
 import by.w6.my1drive.utils.VpsConnectionManager
 import kotlinx.coroutines.launch
@@ -73,25 +74,32 @@ fun VpsSettingsSection(
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Text(
                                 text = stringResource(R.string.settings_category_cloud),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
-                            Spacer(Modifier.width(8.dp))
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
+                                shape = RoundedCornerShape(4.dp),
                                 color = MaterialTheme.colorScheme.tertiaryContainer
                             ) {
                                 Text(
                                     text = stringResource(R.string.badge_beta),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 8.5.sp,
+                                    lineHeight = 8.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.5.dp)
                                 )
                             }
                         }
