@@ -94,6 +94,7 @@ import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.ui.GalleryItem
+import by.w6.my1drive.utils.FormatterUtils
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
 import androidx.compose.animation.AnimatedVisibility
@@ -594,7 +595,25 @@ fun GalleryScreenContent(
                                 hasAllFilesAccess = viewModel.hasAllFilesAccess(),
                                 onRequestManageStorage = { viewModel.proceedWithManageStorageRequest(null) },
                                 onPromoCode = { viewModel.showPromoCodeDialog() },
-                                hasPromoCodes = viewModel.hasPromoCodes
+                                hasPromoCodes = viewModel.hasPromoCodes,
+                                onCleanOrphans = {
+                                    viewModel.cleanupOrphanPreviews { count, bytes ->
+                                        if (count > 0) {
+                                            val freedStr = FormatterUtils.formatFileSize(bytes)
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                context.getString(R.string.clean_orphan_cache_success, count, freedStr),
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        } else {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                context.getString(R.string.clean_orphan_cache_empty),
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                }
                             )
                     }
                 }

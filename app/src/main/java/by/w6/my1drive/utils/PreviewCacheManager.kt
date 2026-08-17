@@ -108,16 +108,25 @@ class PreviewCacheManager(
         cleanupOrphanedPreviews()
     }
 
+    data class CleanupResult(val deletedCount: Int, val freedBytes: Long)
+
     /** Removes cache files that have no corresponding DB entry */
-    suspend fun cleanupOrphanedPreviews(validHashes: Set<String>? = null) = withContext(Dispatchers.IO) {
-        val cacheFiles = previewDir.listFiles() ?: return@withContext
+    suspend fun cleanupOrphanedPreviews(validHashes: Set<String>? = null): CleanupResult = withContext(Dispatchers.IO) {
+        val cacheFiles = previewDir.listFiles() ?: return@withContext CleanupResult(0, 0L)
         val dbIds = validHashes ?: mediaDao.getAllSync().map { it.id }.toSet()
+        var deletedCount = 0
+        var freedBytes = 0L
         for (file in cacheFiles) {
             val hash = file.nameWithoutExtension
             if (hash !in dbIds && file.name != ".nomedia") {
-                file.delete()
+                val len = file.length()
+                if (file.delete()) {
+                    deletedCount++
+                    freedBytes += len
+                }
             }
         }
+        CleanupResult(deletedCount, freedBytes)
     }
 
     /** Clears ALL cached previews and resets thumbnailPath in DB */

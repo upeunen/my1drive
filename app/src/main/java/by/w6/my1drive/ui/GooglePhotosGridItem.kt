@@ -150,12 +150,16 @@ fun GooglePhotosGridItem(
             .clip(GridItemCardShape),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .combinedClickable(
                     onClick = onClick,
-                    onLongClick = onLongClick
+                    onLongClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onLongClick()
+                    }
                 )
         ) {
 

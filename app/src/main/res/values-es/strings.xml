@@ -442,4 +442,9 @@ Errores:
     <string name="click_to_change_folder">Toca para cambiar de carpeta</string>
     <string name="click_to_select_folder">Toca para seleccionar carpeta</string>
     <string name="badge_folder_name">Carpeta: %1$s</string>
+    <string name="exif_camera">Cámara</string>
+    <string name="clean_orphan_cache">Limpiar miniaturas no utilizadas</string>
+    <string name="clean_orphan_cache_desc">Elimina miniaturas de fotos que ya no están en el archivo</string>
+    <string name="clean_orphan_cache_success">Se limpiaron %1$d archivos (%2$s liberados)</string>
+    <string name="clean_orphan_cache_empty">No se encontraron miniaturas no utilizadas</string>
 </resources>

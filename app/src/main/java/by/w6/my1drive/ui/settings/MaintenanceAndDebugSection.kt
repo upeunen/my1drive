@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -25,6 +26,7 @@ import by.w6.my1drive.R
 @Composable
 fun MaintenanceAndDebugSection(
     onShowDebugLogs: () -> Unit,
+    onCleanOrphans: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -88,6 +90,27 @@ fun MaintenanceAndDebugSection(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.view_debug_logs),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Clean orphan cache action
+            OutlinedButton(
+                onClick = onCleanOrphans,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DeleteSweep,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.clean_orphan_cache),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

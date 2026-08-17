@@ -442,4 +442,9 @@ Errors:
     <string name="click_to_change_folder">Tap to change folder</string>
     <string name="click_to_select_folder">Tap to select folder</string>
     <string name="badge_folder_name">Folder: %1$s</string>
+    <string name="exif_camera">Camera</string>
+    <string name="clean_orphan_cache">Clean Unused Previews</string>
+    <string name="clean_orphan_cache_desc">Deletes cached thumbnails for photos that are no longer in archive</string>
+    <string name="clean_orphan_cache_success">Cleaned %1$d files (%2$s freed)</string>
+    <string name="clean_orphan_cache_empty">No unused preview files found</string>
 </resources>

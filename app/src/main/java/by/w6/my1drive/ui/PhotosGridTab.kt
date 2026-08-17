@@ -102,6 +102,8 @@ fun PhotosGridTab(
 
     var zoomAccumulator by remember { mutableFloatStateOf(1f) }
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -111,12 +113,14 @@ fun PhotosGridTab(
                     if (zoomAccumulator > 1.30f) {
                         // Pinch out -> larger items, fewer columns
                         if (gridColumnsCount > 2) {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             onGridColumnsChange(gridColumnsCount - 1)
                         }
                         zoomAccumulator = 1f
                     } else if (zoomAccumulator < 0.75f) {
                         // Pinch in -> smaller items, more columns
                         if (gridColumnsCount < 4) {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             onGridColumnsChange(gridColumnsCount + 1)
                         }
                         zoomAccumulator = 1f

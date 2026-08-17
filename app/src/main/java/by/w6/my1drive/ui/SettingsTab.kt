@@ -52,7 +52,8 @@ fun SettingsTab(
     hasAllFilesAccess: Boolean = true,
     onRequestManageStorage: () -> Unit = {},
     onPromoCode: () -> Unit = {},
-    hasPromoCodes: Boolean = false
+    hasPromoCodes: Boolean = false,
+    onCleanOrphans: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -126,7 +127,8 @@ fun SettingsTab(
 
         // 6. Maintenance, Diagnostics & About Card
         MaintenanceAndDebugSection(
-            onShowDebugLogs = onShowDebugLogs
+            onShowDebugLogs = onShowDebugLogs,
+            onCleanOrphans = onCleanOrphans
         )
 
         Spacer(Modifier.height(16.dp))

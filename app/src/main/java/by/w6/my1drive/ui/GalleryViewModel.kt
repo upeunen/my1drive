@@ -597,6 +597,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun getCacheMaxMb(): Long = previewCache.getMaxBytes() / (1024 * 1024)
     fun getPreviewCacheManager(): PreviewCacheManager = previewCache
     fun setCacheMaxMb(mb: Long) { previewCache.setMaxBytes(mb * 1024 * 1024); viewModelScope.launch { previewCache.evictIfNeeded() } }
+    fun cleanupOrphanPreviews(onResult: (Int, Long) -> Unit) {
+        viewModelScope.launch {
+            val result = previewCache.cleanupOrphanedPreviews()
+            onResult(result.deletedCount, result.freedBytes)
+        }
+    }
 
         // ─── OTG folder ───
 

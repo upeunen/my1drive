@@ -810,6 +810,7 @@ private fun ImagePage(
 
     val swipeOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     var lastTapTime by remember { mutableStateOf(0L) }
     var lastTapPosition by remember { mutableStateOf(Offset.Zero) }
@@ -986,6 +987,7 @@ private fun ImagePage(
                             if (diffTime < doubleTapTimeout && diffPos < 100f) {
                                 tapJob?.cancel()
                                 lastTapTime = 0L
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
                                 if (zoomScale > 1f) {
                                     zoomScale = 1f

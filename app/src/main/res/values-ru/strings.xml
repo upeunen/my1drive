@@ -442,4 +442,9 @@
     <string name="click_to_change_folder">Нажмите для смены папки</string>
     <string name="click_to_select_folder">Нажмите для выбора папки</string>
     <string name="badge_folder_name">Папка: %1$s</string>
+    <string name="exif_camera">Камера</string>
+    <string name="clean_orphan_cache">Очистить неиспользуемые превью</string>
+    <string name="clean_orphan_cache_desc">Удаляет превью файлов, которых больше нет в архиве</string>
+    <string name="clean_orphan_cache_success">Очищено %1$d файлов (освобождено %2$s)</string>
+    <string name="clean_orphan_cache_empty">Лишних файлов превью не обнаружено</string>
 </resources>
