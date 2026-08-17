@@ -49,6 +49,14 @@ import by.w6.my1drive.R
 import androidx.compose.material3.CircularProgressIndicator
 import by.w6.my1drive.utils.FormatterUtils
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun GooglePhotosTopBar(
     selectedCount: Int,
@@ -96,20 +104,34 @@ fun GooglePhotosTopBar(
     ) {
         if (selectedCount > 0) {
             // ← Back / clear selection
-            IconButton(onClick = onClearSelection) {
+            IconButton(
+                onClick = onClearSelection,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.topbar_content_desc_deselect)
                 )
             }
 
-            // Counter & Size
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
+            // Counter & Size with smooth ticker animation
+            AnimatedContent(
+                targetState = title,
+                transitionSpec = {
+                    (slideInVertically { height -> height } + fadeIn())
+                        .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                },
+                modifier = Modifier.weight(1f),
+                label = "SelectionCounterAnimation"
+            ) { targetTitle ->
+                Text(
+                    text = targetTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             // Группа toggle button
             Box(
@@ -140,10 +162,10 @@ fun GooglePhotosTopBar(
 
             Spacer(Modifier.width(4.dp))
 
-            // Share button (larger icon & touch target)
+            // Share button (48dp touch target, 28dp icon)
             IconButton(
                 onClick = onShare,
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Share,
@@ -153,11 +175,11 @@ fun GooglePhotosTopBar(
                 )
             }
 
-            // Delete button (conditionally enabled, larger icon & touch target)
+            // Delete button (conditionally enabled, 48dp touch target, 28dp icon)
             if (deleteEnabled) {
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,

@@ -2,6 +2,9 @@ package by.w6.my1drive.ui
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -386,6 +389,8 @@ fun GalleryScreenContent(
         }
         else -> null
     }
+
+    BackHandler(enabled = selectedIds.isNotEmpty(), onBack = onClearSelection)
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -876,6 +881,7 @@ fun SelectionQuickFilterBar(
     onSelectDateRangeClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val hasSelected = firstSelectedItem != null
     val hasFolder = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty()
 
@@ -901,25 +907,30 @@ fun SelectionQuickFilterBar(
                 text = stringResource(R.string.gallery_filter_all),
                 icon = Icons.Outlined.CheckCircleOutline,
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     val allIds = visibleItems.map { it.id }
                     onSelectItems(allIds)
                 }
             )
 
-            // Chip 2: С этой датой
+            // Chip 2: С этой датой (Zero-allocation day range filter)
             SelectionHelperChip(
                 text = stringResource(R.string.gallery_filter_with_date),
                 icon = Icons.Outlined.CalendarToday,
                 enabled = hasSelected,
                 onClick = {
                     if (firstSelectedItem != null) {
-                        val targetDate = firstSelectedItem.dateModified
-                        val cal1 = Calendar.getInstance().apply { timeInMillis = targetDate * 1000L }
-                        val matching = visibleItems.filter { item ->
-                            val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000L }
-                            cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                                    cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
-                        }.map { it.id }
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val cal = Calendar.getInstance().apply {
+                            timeInMillis = firstSelectedItem.dateModified * 1000L
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val startSec = cal.timeInMillis / 1000L
+                        val endSec = startSec + 86399L
+                        val matching = visibleItems.filter { it.dateModified in startSec..endSec }.map { it.id }
                         onSelectItems(matching)
                     }
                 }
@@ -932,6 +943,7 @@ fun SelectionQuickFilterBar(
                 enabled = hasFolder,
                 onClick = {
                     if (firstSelectedItem != null) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val targetPath = firstSelectedItem.originalRelativePath
                         val matching = visibleItems.filter { it.originalRelativePath == targetPath }.map { it.id }
                         onSelectItems(matching)
@@ -943,7 +955,10 @@ fun SelectionQuickFilterBar(
             SelectionHelperChip(
                 text = stringResource(R.string.gallery_filter_range),
                 icon = Icons.Outlined.DateRange,
-                onClick = onSelectDateRangeClick
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSelectDateRangeClick()
+                }
             )
         }
     }

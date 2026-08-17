@@ -44,9 +44,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipboardManager
+import android.content.ClipData
+import android.content.Context
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,7 +60,6 @@ fun DebugLogsDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
     
     // Track logs text in local state to allow instant refresh when cleared
     var logsText by remember { mutableStateOf(DebugLogBuffer.getLogText()) }
@@ -158,7 +158,8 @@ fun DebugLogsDialog(
                         OutlinedButton(
                             onClick = {
                                 if (logsText.isNotEmpty()) {
-                                    clipboardManager.setText(AnnotatedString(logsText))
+                                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    cm.setPrimaryClip(ClipData.newPlainText("Logs", logsText))
                                     Toast.makeText(context, context.getString(R.string.logs_toast_copied), Toast.LENGTH_SHORT).show()
                                 } else {
                                     Toast.makeText(context, context.getString(R.string.logs_toast_nothing_to_copy), Toast.LENGTH_SHORT).show()

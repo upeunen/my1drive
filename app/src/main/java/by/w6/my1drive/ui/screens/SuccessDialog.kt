@@ -47,7 +47,7 @@ fun SuccessDialog(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     LinearProgressIndicator(
-                        progress = progress,
+                        progress = { progress },
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
