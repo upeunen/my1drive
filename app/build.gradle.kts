@@ -79,7 +79,6 @@ dependencies {
     
     "rustoreImplementation"(platform("ru.rustore.sdk:bom:2026.06.01"))
     "rustoreImplementation"("ru.rustore.sdk:pay")
-    "rustoreImplementation"("ru.rustore.sdk:remoteconfig")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

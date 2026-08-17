@@ -4,8 +4,6 @@ import android.app.Application
 import android.content.Intent
 import by.w6.my1drive.R
 import by.w6.my1drive.billing.RuStoreRemoteConfigManager
-import ru.rustore.sdk.remoteconfig.AppId
-import ru.rustore.sdk.remoteconfig.RemoteConfigClientBuilder
 
 object StoreAppInitializer : StoreInitializer {
     override fun initApplication(app: Application) {

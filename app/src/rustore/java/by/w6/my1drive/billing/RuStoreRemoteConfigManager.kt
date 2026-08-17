@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
  * Каждый параметр считывается изолированно через runCatching, чтобы сбой одного ключа не ломал остальные.
  */
 class RuStoreRemoteConfigManager private constructor(context: Context) : RemoteConfigManager {
-    var remoteConfigClient: ru.rustore.sdk.remoteconfig.RemoteConfigClient? = null
-
     private val serverManager = ServerRemoteConfigManager.getInstance(context)
 
     override val maxPhotos: StateFlow<Int> = serverManager.maxPhotos
