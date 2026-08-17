@@ -22,7 +22,11 @@
 *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив).
 
 ### 3. `ui` (Пользовательский интерфейс и Состояния)
-*   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`.
+*   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `SettingsTab`.
+*   **`ui.layout` (Геометрия и мозаика)**:
+    *   `BentoLayoutHelper`: Модульный алгоритм компоновки Apple Photos style с Lookahead-группировкой для бесшовного отображения 9:16 (вертикальных), 16:9 (пейзажных) и квадратных медиафайлов без паразитной обрезки.
+    *   `BentoBlockView`: Компонент отрисовки блоков (`TallWithHero`, `TallWithFourSmall`, `TwoTallWithTwoSmall`, `ThreeTall`, `TwoTall`, `FourTall`, `HeroWithTwoSmall`, `DuetRow`, `TripletRow`, `PanoramaRow`, `TailRow`).
+    *   `JustifiedLayoutHelper`: Заготовка для адаптивной Justified сетки в стиле Google Photos (динамическая высота строк под пропорции кадров).
 *   **Состояние (MVI Pattern)**: `GalleryUiState` — единый неизменяемый (immutable) data-класс, хранящий всё состояние экрана (списки файлов, режимы сортировки, статусы синхронизации и диалоги).
 *   **`GalleryViewModel`**: Главный координатор состояний. Собирает данные от различных менеджеров (через `collect` / `combine`) и атомарно обновляет единый `StateFlow<GalleryUiState>`, предоставляя UI единственный источник правды (Single Source of Truth).
 *   **Отдельные менеджеры (Декомпозиция)**:
@@ -46,9 +50,11 @@
     *   В `rustore`: используется RuStore Pay SDK (`RuStoreBillingManager`) и RuStore RemoteConfig SDK (`RuStoreRemoteConfigManager`).
     *   В `googleplay`: используется Google Play Billing (`GooglePlayBillingManager`) и автономные/Google Play стабы (`GooglePlayRemoteConfigManager`). Зависимости RuStore полностью отсутствуют в сборке `googleplay`.
 
-### 4. `utils` (Утилиты)
+### 5. `utils` (Утилиты)
 *   `OtgArchiveUtil`: Работа с файловой системой внешнего накопителя через `DocumentFile` и `ContentResolver` (для обхода ограничений Android SAF).
 *   `PreviewCacheManager`: Управление локальным кэшем миниатюр (генерация, хранение файлов `.webp` в `context.filesDir`, удаление кэша).
+*   `OtgThumbnailFetcher`: Coil Fetcher для генерации и кэширования миниатюр с OTG-накопителей по требованию.
+*   `MediaStoreThumbnailFetcher`: Аппаратный Coil Fetcher для ускоренной загрузки локальных миниатюр через системный `ContentResolver.loadThumbnail` (Android 10+).
 *   `ArchiveMetadataStore`: Сохранение метаданных архива в JSON-файл (`metadata.json`) на самом накопителе.
 *   `MediaShareHelper`: Утилита для отправки (Share) и копирования файлов и метаданных. При шаринге офлайн-файла берется локальная миниатюра.
 
