@@ -358,10 +358,39 @@ fun GalleryScreenContent(
         }
     }
 
+    val selectedTotalBytes = remember(selectedIds, mediaItems) {
+        if (selectedIds.isEmpty()) 0L
+        else {
+            var sum = 0L
+            for (item in mediaItems) {
+                if (item.id in selectedIds) {
+                    sum += item.size
+                }
+            }
+            sum
+        }
+    }
+
+    val isSyncingActive = archiveState.isArchiving || syncProgressState.isSyncing
+    val syncProgressLabel = when {
+        archiveState.isArchiving -> {
+            val total = archiveState.totalFiles
+            val current = archiveState.currentFileIndex
+            if (total > 0) "${stringResource(R.string.title_archiving)} $current/$total" else stringResource(R.string.title_archiving)
+        }
+        syncProgressState.isSyncing -> {
+            val total = syncProgressState.totalFiles
+            val current = syncProgressState.currentFileIndex
+            if (total > 0) "${stringResource(R.string.title_syncing)} $current/$total" else stringResource(R.string.title_syncing)
+        }
+        else -> null
+    }
+
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             GooglePhotosTopBar(
                 selectedCount = selectedIds.size,
+                selectedBytes = selectedTotalBytes,
                 isOtgConnected = isOtgConnected,
                 otgUriSet = otgDirectoryUri != null,
                 isGroupExpanded = isGroupExpanded,
@@ -396,7 +425,9 @@ fun GalleryScreenContent(
                 onDelete = { viewModel.requestDeleteSelected() },
                 gridColumnsCount = gridColumnsCount,
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) },
-                showGridToggle = currentScreenRoute != "settings"
+                showGridToggle = currentScreenRoute != "settings",
+                isSyncing = isSyncingActive,
+                syncProgressText = syncProgressLabel
             )
 
             ConnectingUsbBanner(visible = isCheckingConnection || isSilentSyncing)

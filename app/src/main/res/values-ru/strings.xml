@@ -447,4 +447,7 @@
     <string name="clean_orphan_cache_desc">Удаляет превью файлов, которых больше нет в архиве</string>
     <string name="clean_orphan_cache_success">Очищено %1$d файлов (освобождено %2$s)</string>
     <string name="clean_orphan_cache_empty">Лишних файлов превью не обнаружено</string>
+    <string name="filter_photos">Фото</string>
+    <string name="filter_videos">Видео</string>
+    <string name="cd_scroll_to_top">Прокрутить наверх</string>
 </resources>

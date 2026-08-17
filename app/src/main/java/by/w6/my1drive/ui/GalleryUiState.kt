@@ -11,6 +11,7 @@ data class GalleryUiState(
     val activeArchiveUuid: String? = null,
     val deviceSortMode: DeviceSortMode = DeviceSortMode.BY_PHOTO_DATE,
     val archiveSortMode: ArchiveSortMode = ArchiveSortMode.BY_PHOTO_DATE,
+    val mediaFilterMode: MediaFilterMode = MediaFilterMode.ALL,
     val archivingItemIds: Set<String> = emptySet(),
     val restoringItemIds: Set<String> = emptySet(),
     val copiedItemIds: Set<String> = emptySet(),

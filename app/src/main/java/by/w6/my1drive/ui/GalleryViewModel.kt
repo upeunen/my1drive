@@ -71,6 +71,12 @@ enum class DeviceSortMode {
     BY_RESTORE_DATE
 }
 
+enum class MediaFilterMode {
+    ALL,
+    PHOTOS_ONLY,
+    VIDEOS_ONLY
+}
+
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -229,6 +235,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     
     val deviceSortMode = displayManager.deviceSortMode
     fun setDeviceSortMode(mode: DeviceSortMode) { displayManager.setDeviceSortMode(mode) }
+
+    val mediaFilterMode = displayManager.mediaFilterMode
+    fun setMediaFilterMode(mode: MediaFilterMode) { displayManager.setMediaFilterMode(mode) }
 
     val gridColumnsCount = displayManager.gridColumnsCount
     fun setGridColumnsCount(count: Int) { displayManager.setGridColumnsCount(count) }
@@ -961,7 +970,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val yearGroups: List<by.w6.my1drive.ui.model.YearGroup>,
         val items: List<MediaItem>,
         val devSort: DeviceSortMode,
-        val archSort: ArchiveSortMode
+        val archSort: ArchiveSortMode,
+        val filterMode: MediaFilterMode
     )
 
     private data class OtgSubState(
@@ -1015,11 +1025,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         combine(displayManager.groupedMediaItems, displayManager.archivedGroupedItems, archiveYearGroups, mediaItems) { g, ag, yg, items ->
             Triple(g, ag, Pair(yg, items))
         },
-        combine(displayManager.deviceSortMode, displayManager.archiveSortMode) { ds, asort ->
-            Pair(ds, asort)
+        combine(displayManager.deviceSortMode, displayManager.archiveSortMode, displayManager.mediaFilterMode) { ds, asort, filter ->
+            Triple(ds, asort, filter)
         }
     ) { p1, p2 ->
-        MediaSubState(p1.first, p1.second, p1.third.first, p1.third.second, p2.first, p2.second)
+        MediaSubState(p1.first, p1.second, p1.third.first, p1.third.second, p2.first, p2.second, p2.third)
     }
 
     private val otgSubFlow = combine(
@@ -1090,6 +1100,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             mediaItems = media.items,
             deviceSortMode = media.devSort,
             archiveSortMode = media.archSort,
+            mediaFilterMode = media.filterMode,
 
             activeArchiveUuid = otg.activeArchiveUuid,
             isCheckingConnection = otg.isChecking,

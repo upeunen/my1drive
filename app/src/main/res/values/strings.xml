@@ -447,4 +447,7 @@ Errors:
     <string name="clean_orphan_cache_desc">Deletes cached thumbnails for photos that are no longer in archive</string>
     <string name="clean_orphan_cache_success">Cleaned %1$d files (%2$s freed)</string>
     <string name="clean_orphan_cache_empty">No unused preview files found</string>
+    <string name="filter_photos">Photos</string>
+    <string name="filter_videos">Videos</string>
+    <string name="cd_scroll_to_top">Scroll to top</string>
 </resources>

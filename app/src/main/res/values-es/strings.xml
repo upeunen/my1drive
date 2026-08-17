@@ -447,4 +447,7 @@ Errores:
     <string name="clean_orphan_cache_desc">Elimina miniaturas de fotos que ya no están en el archivo</string>
     <string name="clean_orphan_cache_success">Se limpiaron %1$d archivos (%2$s liberados)</string>
     <string name="clean_orphan_cache_empty">No se encontraron miniaturas no utilizadas</string>
+    <string name="filter_photos">Fotos</string>
+    <string name="filter_videos">Videos</string>
+    <string name="cd_scroll_to_top">Ir arriba</string>
 </resources>

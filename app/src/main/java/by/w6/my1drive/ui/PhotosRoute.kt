@@ -44,20 +44,52 @@ fun PhotosRoute(
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
 
+    val filterMode by viewModel.mediaFilterMode.collectAsStateWithLifecycle()
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.End,
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stringResource(by.w6.my1drive.R.string.sort_by),
-                style = MaterialTheme.typography.bodySmall,
-                color = onSurfaceVariantColor
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            // Media Filter: All / Photos / Videos
+            Row(
+                modifier = Modifier
+                    .background(
+                        color = surfaceVariantColor,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(2.dp)
+            ) {
+                MediaFilterMode.values().forEach { mode ->
+                    val isActive = filterMode == mode
+                    val filterBg by animateColorAsState(if (isActive) primaryColor else transparentColor, label = "filterBg")
+                    val filterText by animateColorAsState(if (isActive) onPrimaryColor else onSurfaceVariantColor, label = "filterText")
+                    val labelRes = when (mode) {
+                        MediaFilterMode.ALL -> by.w6.my1drive.R.string.filter_all
+                        MediaFilterMode.PHOTOS_ONLY -> by.w6.my1drive.R.string.filter_photos
+                        MediaFilterMode.VIDEOS_ONLY -> by.w6.my1drive.R.string.filter_videos
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(filterBg, RoundedCornerShape(14.dp))
+                            .clickable { viewModel.setMediaFilterMode(mode) }
+                            .padding(horizontal = 9.dp, vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(labelRes),
+                            color = filterText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Sort by: Photo Date / Restore Date
             Row(
                 modifier = Modifier
                     .background(
@@ -74,13 +106,13 @@ fun PhotosRoute(
                     modifier = Modifier
                         .background(photoDateBgColor, RoundedCornerShape(14.dp))
                         .clickable { viewModel.setDeviceSortMode(DeviceSortMode.BY_PHOTO_DATE) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 9.dp, vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = stringResource(by.w6.my1drive.R.string.sort_photo_date),
                         color = photoDateTextColor,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -93,13 +125,13 @@ fun PhotosRoute(
                     modifier = Modifier
                         .background(restoreDateBgColor, RoundedCornerShape(14.dp))
                         .clickable { viewModel.setDeviceSortMode(DeviceSortMode.BY_RESTORE_DATE) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 9.dp, vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = stringResource(by.w6.my1drive.R.string.sort_restore_date),
                         color = restoreDateTextColor,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )
                 }

@@ -46,9 +46,13 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import by.w6.my1drive.R
 
+import androidx.compose.material3.CircularProgressIndicator
+import by.w6.my1drive.utils.FormatterUtils
+
 @Composable
 fun GooglePhotosTopBar(
     selectedCount: Int,
+    selectedBytes: Long = 0L,
     isOtgConnected: Boolean,
     otgUriSet: Boolean,
     isGroupExpanded: Boolean = false,
@@ -70,10 +74,15 @@ fun GooglePhotosTopBar(
     onDelete: () -> Unit = {},
     gridColumnsCount: Int = 3,
     onToggleGridColumns: () -> Unit = {},
-    showGridToggle: Boolean = true
+    showGridToggle: Boolean = true,
+    isSyncing: Boolean = false,
+    syncProgressText: String? = null
 ) {
     val title = when {
-        selectedCount > 0 -> "$selectedCount"
+        selectedCount > 0 -> {
+            val sizeFormatted = if (selectedBytes > 0L) " • ${FormatterUtils.formatFileSize(selectedBytes)}" else ""
+            "$selectedCount$sizeFormatted"
+        }
         isPremium -> "My1Drive PRO"
         else -> "My1Drive"
     }
@@ -94,10 +103,10 @@ fun GooglePhotosTopBar(
                 )
             }
 
-            // Counter
+            // Counter & Size
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
@@ -167,6 +176,33 @@ fun GooglePhotosTopBar(
             )
 
             Spacer(Modifier.weight(1f))
+
+            // Live Syncing / Archiving indicator pill
+            if (isSyncing && syncProgressText != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(12.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = syncProgressText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
 
             // Laconic Smart Chip for Trial / Free Limit
             if (!isPremium) {

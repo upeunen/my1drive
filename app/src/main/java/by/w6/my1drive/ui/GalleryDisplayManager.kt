@@ -79,6 +79,13 @@ class GalleryDisplayManager(
         _archiveFilterUuid.value = uuid
     }
 
+    private val _mediaFilterMode = MutableStateFlow(MediaFilterMode.ALL)
+    val mediaFilterMode = _mediaFilterMode.asStateFlow()
+
+    fun setMediaFilterMode(mode: MediaFilterMode) {
+        _mediaFilterMode.value = mode
+    }
+
     private var activeLocaleTag: String = ""
     val localeVersion = MutableStateFlow(0)
 
@@ -118,9 +125,17 @@ class GalleryDisplayManager(
     val groupedMediaItems: StateFlow<List<GalleryItem>> = combine(
         mediaItems,
         deviceSortMode,
+        mediaFilterMode,
         localeVersion
-    ) { list, sortMode, _ ->
-        val localItems = list.filter { it.status == MediaStatus.ON_DEVICE }.run {
+    ) { list, sortMode, filterMode, _ ->
+        val localItems = list.filter {
+            it.status == MediaStatus.ON_DEVICE &&
+            when (filterMode) {
+                MediaFilterMode.ALL -> it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/")
+                MediaFilterMode.PHOTOS_ONLY -> it.mimeType.startsWith("image/")
+                MediaFilterMode.VIDEOS_ONLY -> it.mimeType.startsWith("video/")
+            }
+        }.run {
             if (sortMode == DeviceSortMode.BY_RESTORE_DATE) {
                 sortedByDescending { it.dateAdded ?: 0L }
             } else {
