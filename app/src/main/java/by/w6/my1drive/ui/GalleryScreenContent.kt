@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -429,6 +430,21 @@ fun GalleryScreenContent(
                 isSyncing = isSyncingActive,
                 syncProgressText = syncProgressLabel
             )
+
+            AnimatedVisibility(
+                visible = isGroupExpanded && selectedIds.isNotEmpty(),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                SelectionQuickFilterBar(
+                    firstSelectedItem = firstSelectedItem,
+                    visibleItems = visibleItemsForChips,
+                    onSelectItems = { ids ->
+                        viewModel.selectItems(ids)
+                    },
+                    onSelectDateRangeClick = onSelectDateRangeClick
+                )
+            }
 
             ConnectingUsbBanner(visible = isCheckingConnection || isSilentSyncing)
 
@@ -853,22 +869,101 @@ fun GalleryScreenContent(
 }
 
 @Composable
+fun SelectionQuickFilterBar(
+    firstSelectedItem: MediaItem?,
+    visibleItems: List<MediaItem>,
+    onSelectItems: (Collection<String>) -> Unit,
+    onSelectDateRangeClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val hasSelected = firstSelectedItem != null
+    val hasFolder = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty()
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+        tonalElevation = 2.dp,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Chip 1: Все
+            SelectionHelperChip(
+                text = stringResource(R.string.gallery_filter_all),
+                icon = Icons.Outlined.CheckCircleOutline,
+                onClick = {
+                    val allIds = visibleItems.map { it.id }
+                    onSelectItems(allIds)
+                }
+            )
+
+            // Chip 2: С этой датой
+            SelectionHelperChip(
+                text = stringResource(R.string.gallery_filter_with_date),
+                icon = Icons.Outlined.CalendarToday,
+                enabled = hasSelected,
+                onClick = {
+                    if (firstSelectedItem != null) {
+                        val targetDate = firstSelectedItem.dateModified
+                        val cal1 = Calendar.getInstance().apply { timeInMillis = targetDate * 1000L }
+                        val matching = visibleItems.filter { item ->
+                            val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000L }
+                            cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                                    cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+                        }.map { it.id }
+                        onSelectItems(matching)
+                    }
+                }
+            )
+
+            // Chip 3: В папке
+            SelectionHelperChip(
+                text = stringResource(R.string.gallery_filter_in_folder),
+                icon = Icons.Outlined.Folder,
+                enabled = hasFolder,
+                onClick = {
+                    if (firstSelectedItem != null) {
+                        val targetPath = firstSelectedItem.originalRelativePath
+                        val matching = visibleItems.filter { it.originalRelativePath == targetPath }.map { it.id }
+                        onSelectItems(matching)
+                    }
+                }
+            )
+
+            // Chip 4: Диапазон
+            SelectionHelperChip(
+                text = stringResource(R.string.gallery_filter_range),
+                icon = Icons.Outlined.DateRange,
+                onClick = onSelectDateRangeClick
+            )
+        }
+    }
+}
+
+@Composable
 fun SelectionHelperChip(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
-    shape: Shape,
     enabled: Boolean = true,
-    isRightAligned: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val containerColor = if (enabled) {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f)
     } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     }
     val contentColor = if (enabled) {
-        MaterialTheme.colorScheme.onSurfaceVariant
+        MaterialTheme.colorScheme.onSecondaryContainer
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
     }
@@ -878,326 +973,34 @@ fun SelectionHelperChip(
         MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
     }
 
-    Box(
-        modifier = modifier
-            .height(30.dp)
-            .clip(shape)
-            .background(containerColor)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        modifier = modifier.height(34.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = if (isRightAligned) Arrangement.End else Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (isRightAligned) {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.15f),
-                    color = contentColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(14.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.15f),
-                    color = contentColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = contentColor,
+                maxLines = 1
+            )
         }
     }
 }
 
-@Composable
-fun SelectionHelperPanel(
-    firstSelectedItem: MediaItem?,
-    visibleItems: List<MediaItem>,
-    onSelectItems: (Collection<String>) -> Unit,
-    onSelectDateRangeClick: () -> Unit,
-    onClearSelection: () -> Unit
-) {
-    val hasSelected = firstSelectedItem != null
-    val hasFolder = firstSelectedItem != null && !firstSelectedItem.originalRelativePath.isNullOrEmpty()
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Text(
-            text = "Р’Р«Р”Р•Р›РРўР¬",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 2.dp)
-        )
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Chip 1: Р’СЃРµ
-                    SelectionHelperChip(
-                        text = stringResource(R.string.gallery_filter_all),
-                        icon = Icons.Outlined.CheckCircleOutline,
-                        onClick = {
-                            val allIds = visibleItems.map { it.id }
-                            onSelectItems(allIds)
-                        },
-                        shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_RIGHT),
-                        modifier = Modifier.weight(1f)
-                    )
-                    // Chip 2: РЎ СЌС‚РѕР№ РґР°С‚РѕР№
-                    SelectionHelperChip(
-                        text = stringResource(R.string.gallery_filter_with_date),
-                        icon = Icons.Outlined.CalendarToday,
-                        enabled = hasSelected,
-                        onClick = {
-                            if (firstSelectedItem != null) {
-                                val targetDate = firstSelectedItem.dateModified
-                                val cal1 = Calendar.getInstance().apply { timeInMillis = targetDate * 1000 }
-                                val matching = visibleItems.filter { item ->
-                                    val cal2 = Calendar.getInstance().apply { timeInMillis = item.dateModified * 1000 }
-                                    cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                                            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
-                                } .map { it.id }
-                                onSelectItems(matching)
-                            }
-                        },
-                        shape = ConcaveCutoutShape(CutoutCorner.BOTTOM_LEFT),
-                        isRightAligned = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Chip 3: Р’ СЌС‚РѕР№ РїР°РїРєРµ
-                    SelectionHelperChip(
-                        text = stringResource(R.string.gallery_filter_in_folder),
-                        icon = Icons.Outlined.Folder,
-                        enabled = hasFolder,
-                        onClick = {
-                            if (firstSelectedItem != null) {
-                                val targetPath = firstSelectedItem.originalRelativePath
-                                val matching = visibleItems.filter { it.originalRelativePath == targetPath } .map { it.id }
-                                onSelectItems(matching)
-                            }
-                        },
-                        shape = ConcaveCutoutShape(CutoutCorner.TOP_RIGHT),
-                        modifier = Modifier.weight(1f)
-                    )
-                    // Chip 4: Р’С‹Р±СЂР°С‚СЊ РґРёР°РїР°Р·РѕРЅ
-                    SelectionHelperChip(
-                        text = stringResource(R.string.gallery_filter_range),
-                        icon = Icons.Outlined.DateRange,
-                        onClick = onSelectDateRangeClick,
-                        shape = ConcaveCutoutShape(CutoutCorner.TOP_LEFT),
-                        isRightAligned = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            // Central circular button for clear/cancel selection (TV-remote style)
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
-                    .border(3.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    .clickable { onClearSelection() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.gallery_content_desc_deselect),
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-enum class CutoutCorner {
-    TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
-}
-
-class ConcaveCutoutShape(
-    val cutoutCorner: CutoutCorner,
-    val outerRadius: Dp = 12.dp,
-    val cutoutRadius: Dp = 26.dp
-) : Shape {
-    override fun createOutline(
-        size: Size,
-        layoutDirection: LayoutDirection,
-        density: Density
-    ): Outline {
-        val path = Path()
-        val w = size.width
-        val h = size.height
-        val rOuter = with(density) { outerRadius.toPx() }
-        val rCut = with(density) { cutoutRadius.toPx() }
-
-        when (cutoutCorner) {
-            CutoutCorner.BOTTOM_RIGHT -> {
-                path.moveTo(0f, rOuter)
-                path.arcTo(
-                    rect = Rect(0f, 0f, rOuter * 2, rOuter * 2),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(w - rOuter, 0f)
-                path.arcTo(
-                    rect = Rect(w - rOuter * 2, 0f, w, rOuter * 2),
-                    startAngleDegrees = 270f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(w, h - rCut)
-                path.arcTo(
-                    rect = Rect(w - rCut, h - rCut, w + rCut, h + rCut),
-                    startAngleDegrees = 270f,
-                    sweepAngleDegrees = -90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(rOuter, h)
-                path.arcTo(
-                    rect = Rect(0f, h - rOuter * 2, rOuter * 2, h),
-                    startAngleDegrees = 90f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.close()
-            }
-            CutoutCorner.BOTTOM_LEFT -> {
-                path.moveTo(rOuter, 0f)
-                path.lineTo(w - rOuter, 0f)
-                path.arcTo(
-                    rect = Rect(w - rOuter * 2, 0f, w, rOuter * 2),
-                    startAngleDegrees = 270f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(w, h - rOuter)
-                path.arcTo(
-                    rect = Rect(w - rOuter * 2, h - rOuter * 2, w, h),
-                    startAngleDegrees = 0f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(rCut, h)
-                path.arcTo(
-                    rect = Rect(-rCut, h - rCut, rCut, h + rCut),
-                    startAngleDegrees = 0f,
-                    sweepAngleDegrees = -90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(0f, rOuter)
-                path.arcTo(
-                    rect = Rect(0f, 0f, rOuter * 2, rOuter * 2),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.close()
-            }
-            CutoutCorner.TOP_RIGHT -> {
-                path.moveTo(0f, rOuter)
-                path.arcTo(
-                    rect = Rect(0f, 0f, rOuter * 2, rOuter * 2),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(w - rCut, 0f)
-                path.arcTo(
-                    rect = Rect(w - rCut, -rCut, w + rCut, rCut),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = -90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(w, h - rOuter)
-                path.arcTo(
-                    rect = Rect(w - rOuter * 2, h - rOuter * 2, w, h),
-                    startAngleDegrees = 0f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(rOuter, h)
-                path.arcTo(
-                    rect = Rect(0f, h - rOuter * 2, rOuter * 2, h),
-                    startAngleDegrees = 90f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.close()
-            }
-            CutoutCorner.TOP_LEFT -> {
-                path.moveTo(rCut, 0f)
-                path.lineTo(w - rOuter, 0f)
-                path.arcTo(
-                    rect = Rect(w - rOuter * 2, 0f, w, rOuter * 2),
-                    startAngleDegrees = 270f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(w, h - rOuter)
-                path.arcTo(
-                    rect = Rect(w - rOuter * 2, h - rOuter * 2, w, h),
-                    startAngleDegrees = 0f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(rOuter, h)
-                path.arcTo(
-                    rect = Rect(0f, h - rOuter * 2, rOuter * 2, h),
-                    startAngleDegrees = 90f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                path.lineTo(0f, rCut)
-                path.arcTo(
-                    rect = Rect(-rCut, -rCut, rCut, rCut),
-                    startAngleDegrees = 90f,
-                    sweepAngleDegrees = -90f,
-                    forceMoveTo = false
-                )
-                path.close()
-            }
-        }
-        return Outline.Generic(path)
-    }
-}
 
 

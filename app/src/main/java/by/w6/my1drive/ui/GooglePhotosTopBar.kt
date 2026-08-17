@@ -116,7 +116,7 @@ fun GooglePhotosTopBar(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .clickable(onClick = onGroupClick)
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -133,38 +133,39 @@ fun GooglePhotosTopBar(
                         imageVector = if (isGroupExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            // Share button
-            IconButton(onClick = onShare) {
+            Spacer(Modifier.width(4.dp))
+
+            // Share button (larger icon & touch target)
+            IconButton(
+                onClick = onShare,
+                modifier = Modifier.size(44.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = stringResource(R.string.topbar_content_desc_share),
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(28.dp)
                 )
             }
 
-            // Delete button (conditionally enabled)
+            // Delete button (conditionally enabled, larger icon & touch target)
             if (deleteEnabled) {
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(44.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = stringResource(R.string.topbar_content_desc_delete),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-            }
-
-            // ✕ always visible on the right
-            IconButton(onClick = onClearSelection) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.topbar_content_desc_reset_selection),
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
             }
         } else {
             // Normal (non-selection) mode
