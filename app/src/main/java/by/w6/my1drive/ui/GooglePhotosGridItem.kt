@@ -266,6 +266,30 @@ fun GooglePhotosGridItem(
                         }
                     }
                 }
+            } else if (item.mimeType.equals("image/gif", ignoreCase = true)) {
+                Text(
+                    text = "GIF",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(6.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), DurationBadgeShape)
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            } else if (!item.isVideo && item.aspectRatio >= 1.85f) {
+                Text(
+                    text = "PANO",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(6.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), DurationBadgeShape)
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                )
             }
             // Storage status icon removed
             // Selection badge with smooth animations

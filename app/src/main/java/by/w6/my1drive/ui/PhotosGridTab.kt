@@ -38,6 +38,19 @@ import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material3.Surface
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.text.font.FontWeight
+
 private sealed interface BentoFeedItem {
     data class HeaderItem(val title: String, val sectionItems: List<MediaItem>) : BentoFeedItem
     data class BlockItem(val block: BentoBlock) : BentoFeedItem
@@ -57,6 +70,7 @@ fun PhotosGridTab(
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
     onSelectItems: (Collection<String>, Boolean) -> Unit = { _, _ -> },
+    onGridColumnsChange: (Int) -> Unit = {},
     onScrollStateChanged: (Boolean) -> Unit = {}
 ) {
     if (groupedItems.isEmpty()) {
@@ -86,7 +100,30 @@ fun PhotosGridTab(
         onScrollStateChanged(listState.isScrollInProgress)
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    var zoomAccumulator by remember { mutableFloatStateOf(1f) }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(gridColumnsCount) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    zoomAccumulator *= zoom
+                    if (zoomAccumulator > 1.30f) {
+                        // Pinch out -> larger items, fewer columns
+                        if (gridColumnsCount > 2) {
+                            onGridColumnsChange(gridColumnsCount - 1)
+                        }
+                        zoomAccumulator = 1f
+                    } else if (zoomAccumulator < 0.75f) {
+                        // Pinch in -> smaller items, more columns
+                        if (gridColumnsCount < 4) {
+                            onGridColumnsChange(gridColumnsCount + 1)
+                        }
+                        zoomAccumulator = 1f
+                    }
+                }
+            }
+    ) {
         val horizontalPadding = 2.dp
         val spacing = 3.dp
         val availableWidth = (maxWidth - (horizontalPadding * 2)).coerceAtLeast(0.dp)
@@ -183,6 +220,45 @@ fun PhotosGridTab(
                         )
                     }
                 }
+            }
+        }
+
+        // Floating FastScroll Date Indicator
+        val firstVisibleIndex = listState.firstVisibleItemIndex
+        val currentDateLabel = remember(firstVisibleIndex, feedItems) {
+            if (feedItems.isEmpty()) ""
+            else {
+                var currentTitle = ""
+                for (i in 0..minOf(firstVisibleIndex, feedItems.lastIndex)) {
+                    val item = feedItems[i]
+                    if (item is BentoFeedItem.HeaderItem) {
+                        currentTitle = item.title
+                    }
+                }
+                currentTitle
+            }
+        }
+
+        AnimatedVisibility(
+            visible = listState.isScrollInProgress && currentDateLabel.isNotEmpty(),
+            enter = fadeIn(animationSpec = tween(150)),
+            exit = fadeOut(animationSpec = tween(300)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = 12.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.85f),
+                contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                shadowElevation = 4.dp
+            ) {
+                Text(
+                    text = currentDateLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }

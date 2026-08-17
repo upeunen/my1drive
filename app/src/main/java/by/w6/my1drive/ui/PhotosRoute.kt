@@ -125,6 +125,7 @@ fun PhotosRoute(
                     viewModel.deselectItems(ids)
                 }
             },
+            onGridColumnsChange = { viewModel.setGridColumnsCount(it) },
             onScrollStateChanged = onScrollStateChanged
         )
     }
