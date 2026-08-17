@@ -116,6 +116,8 @@ import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -1029,9 +1031,16 @@ private fun ImagePage(
             contentAlignment = Alignment.Center
         ) {
             if (!isOfflineOtg) {
+                val context = LocalContext.current
+                val fullResRequest = remember(imageUri) {
+                    ImageRequest.Builder(context)
+                        .data(imageUri)
+                        .size(Size.ORIGINAL)
+                        .crossfade(true)
+                        .build()
+                }
                 AsyncImage(
-                    model = imageUri,
-                    imageLoader = imageLoader,
+                    model = fullResRequest,
                     contentDescription = item.displayName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()

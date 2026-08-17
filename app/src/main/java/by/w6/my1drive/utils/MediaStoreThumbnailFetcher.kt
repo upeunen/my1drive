@@ -39,6 +39,21 @@ class MediaStoreThumbnailFetcher(
             if (data.scheme != ContentResolver.SCHEME_CONTENT) return null
             if (data.authority != MediaStore.AUTHORITY) return null
 
+            val isOriginal = options.size == coil.size.Size.ORIGINAL
+            val widthPx = when (val w = options.size.width) {
+                is coil.size.Dimension.Pixels -> w.px
+                else -> Int.MAX_VALUE
+            }
+            val heightPx = when (val h = options.size.height) {
+                is coil.size.Dimension.Pixels -> h.px
+                else -> Int.MAX_VALUE
+            }
+
+            // Do NOT downscale full-size or original image requests (e.g. fullscreen viewer)
+            if (isOriginal || widthPx > 600 || heightPx > 600) {
+                return null
+            }
+
             return MediaStoreThumbnailFetcher(data, context, targetSize)
         }
     }
