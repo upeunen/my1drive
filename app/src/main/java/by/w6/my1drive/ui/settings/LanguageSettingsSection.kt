@@ -19,7 +19,8 @@ import by.w6.my1drive.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LanguageSettingsSection(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLanguageChanged: () -> Unit = {}
 ) {
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLanguage = if (currentLocales.isEmpty) "" else currentLocales[0]?.language ?: ""
@@ -115,6 +116,7 @@ fun LanguageSettingsSection(
                                         if (option.first.isEmpty()) LocaleListCompat.getEmptyLocaleList()
                                         else LocaleListCompat.forLanguageTags(option.first)
                                     )
+                                    onLanguageChanged()
                                 }
                             }
                         )

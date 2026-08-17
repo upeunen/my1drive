@@ -644,6 +644,9 @@ fun GalleryScreenContent(
                                             ).show()
                                         }
                                     }
+                                },
+                                onLanguageChanged = {
+                                    viewModel.notifyLocaleChanged()
                                 }
                             )
                     }

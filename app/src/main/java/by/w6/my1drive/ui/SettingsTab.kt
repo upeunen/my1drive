@@ -53,7 +53,8 @@ fun SettingsTab(
     onRequestManageStorage: () -> Unit = {},
     onPromoCode: () -> Unit = {},
     hasPromoCodes: Boolean = false,
-    onCleanOrphans: () -> Unit = {}
+    onCleanOrphans: () -> Unit = {},
+    onLanguageChanged: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -121,7 +122,9 @@ fun SettingsTab(
         Spacer(Modifier.height(16.dp))
 
         // 5. Language Settings Card
-        LanguageSettingsSection()
+        LanguageSettingsSection(
+            onLanguageChanged = onLanguageChanged
+        )
 
         Spacer(Modifier.height(16.dp))
 

@@ -617,6 +617,7 @@ bm.handleIntent(intent)
     override fun onResume() {
         super.onResume()
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "onResume called")
+        viewModel.notifyLocaleChanged()
         updatePermissionStates()
 
         viewModel.billingManager.checkPurchases { hasPremium ->
@@ -714,5 +715,10 @@ bm.handleIntent(intent)
             val bm = by.w6.my1drive.billing.BillingManagerProvider.getBillingManager(application)
 bm.handleIntent(intent)
         } catch (_: Exception) {}
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        viewModel.notifyLocaleChanged()
     }
 }

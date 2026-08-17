@@ -86,6 +86,10 @@ fun GalleryScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+    LaunchedEffect(configuration) {
+        viewModel.notifyLocaleChanged()
+    }
+
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentScreenRoute = navBackStackEntry?.destination?.route ?: "photos"

@@ -20,6 +20,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+import androidx.appcompat.app.AppCompatDelegate
 import by.w6.my1drive.ui.model.MonthGroup
 import by.w6.my1drive.ui.model.YearGroup
 
@@ -47,13 +48,14 @@ class GalleryDisplayManager(
     }
 
     private val _gridColumnsCount = MutableStateFlow(
-        prefs.getInt("grid_columns_count", 3)
+        prefs.getInt("grid_columns_count", 3).coerceIn(1, 5)
     )
     val gridColumnsCount = _gridColumnsCount.asStateFlow()
 
     fun setGridColumnsCount(count: Int) {
-        _gridColumnsCount.value = count
-        prefs.edit().putInt("grid_columns_count", count).apply()
+        val coerced = count.coerceIn(1, 5)
+        _gridColumnsCount.value = coerced
+        prefs.edit().putInt("grid_columns_count", coerced).apply()
     }
 
     private val _archiveSortMode = MutableStateFlow(
@@ -86,11 +88,23 @@ class GalleryDisplayManager(
         _mediaFilterMode.value = mode
     }
 
-    private var activeLocaleTag: String = ""
     val localeVersion = MutableStateFlow(0)
 
-    fun updateLocale(tag: String) {
-        activeLocaleTag = tag
+    fun getActiveLocale(): Locale {
+        val appLocales = AppCompatDelegate.getApplicationLocales()
+        return if (!appLocales.isEmpty) {
+            appLocales[0] ?: Locale.getDefault()
+        } else {
+            val configLocales = context.resources.configuration.locales
+            if (!configLocales.isEmpty) {
+                configLocales[0]
+            } else {
+                Locale.getDefault()
+            }
+        }
+    }
+
+    fun notifyLocaleChanged() {
         localeVersion.value++
     }
 
@@ -104,12 +118,12 @@ class GalleryDisplayManager(
         val now = Calendar.getInstance()
         val tc = Calendar.getInstance().apply { timeInMillis = dateMs }
 
-        val tag = activeLocaleTag
-        val locale = if (tag.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(tag)
+        val locale = getActiveLocale()
         val config = android.content.res.Configuration(context.resources.configuration)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
             config.setLocales(android.os.LocaleList(locale))
         } else {
+            @Suppress("DEPRECATION")
             config.setLocale(locale)
         }
         val localizedContext = context.createConfigurationContext(config)
@@ -238,8 +252,7 @@ class GalleryDisplayManager(
                     if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) dateArchived ?: dateModified else dateModified
                 } ?: 0L) * 1000
 
-                val tag = activeLocaleTag
-                val monthLocale = if (tag.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(tag)
+                val monthLocale = getActiveLocale()
                 val monthName = SimpleDateFormat("LLLL", monthLocale).format(Date(sampleTimestamp))
                     .replaceFirstChar { if (it.isLowerCase()) it.titlecase(monthLocale) else it.toString() }
 

@@ -254,6 +254,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val archiveFilterUuid = displayManager.archiveFilterUuid
     fun setArchiveFilterUuid(uuid: String?) { displayManager.setArchiveFilterUuid(uuid) }
 
+    fun notifyLocaleChanged() {
+        displayManager.notifyLocaleChanged()
+    }
+
     val selectionManager = SelectionManager()
     val selectedIds = selectionManager.selectedIds
 
