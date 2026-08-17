@@ -327,6 +327,9 @@
     <string name="topbar_chip_trial">⏳ %1$d дн.</string>
     <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d</string>
     <string name="topbar_chip_pro">PRO</string>
+    <string name="topbar_bubble_trial_text">Пробный период: осталось %1$d дн.</string>
+    <string name="topbar_bubble_limits_text">В бесплатной версии осталось: %1$d фото, %2$d видео</string>
+    <string name="topbar_bubble_action_pro">Купить PRO</string>
     <string name="promo_success_title">Промокод активирован!</string>
     <string name="promo_success_message">Вам успешно начислено %1$d дн. бесплатного доступа.</string>
     <string name="pro_unlimited">PRO: Безлимит</string>
@@ -413,4 +416,30 @@
     <string name="settings_lang_en">English</string>
     <string name="settings_lang_ru">Русский</string>
     <string name="settings_lang_es">Español</string>
+
+    <string name="settings_category_storage">Хранилище и накопители</string>
+    <string name="settings_category_cloud">Облачный сервер (SFTP)</string>
+    <string name="settings_category_general">Общие настройки</string>
+    <string name="settings_category_about">Диагностика и о приложении</string>
+    <string name="dashboard_drive_status">Статус накопителя</string>
+    <string name="dashboard_cache_title">Кэш миниатюр</string>
+    <string name="dashboard_quick_clear">Очистить</string>
+    <string name="dashboard_storage_local">Внутренняя память</string>
+    <string name="dashboard_storage_otg">USB-накопитель</string>
+    <string name="sync_thumbnails_title">Синхронизация миниатюр</string>
+    <string name="sync_thumbnails_desc">Отсутствует %1$d миниатюр для офлайн-просмотра. Подключите диск для создания.</string>
+    <string name="sync_thumbnails_btn">Создать миниатюры</string>
+    <string name="sync_thumbnails_progress">Синхронизация миниатюр (%1$d / %2$d)…</string>
+    <string name="btn_app_settings">Системные настройки</string>
+    <string name="badge_beta">BETA</string>
+    <string name="dashboard_cache_security_hint">Для приватности: очистка скроет эскизы на телефоне. Они восстановятся при следующем подключении накопителя.</string>
+    <string name="dialog_clear_cache_title">Очистить кэш миниатюр?</string>
+    <string name="dialog_clear_cache_message">Это удалит сохраненные локальные миниатюры фотографий с телефона. Если телефон попадёт к посторонним лицам, ваши фото не будут видны в галерее без подключённого накопителя архива.\n\nПри следующем подключении накопителя архива миниатюры будут автоматически созданы заново.</string>
+    <string name="dialog_clear_cache_confirm">Очистить</string>
+    <string name="tag_usb_storage">USB</string>
+    <string name="tag_internal_storage">Внутренняя память</string>
+    <string name="archive_folder_label">Папка архива:</string>
+    <string name="click_to_change_folder">Нажмите для смены папки</string>
+    <string name="click_to_select_folder">Нажмите для выбора папки</string>
+    <string name="badge_folder_name">Папка: %1$s</string>
 </resources>

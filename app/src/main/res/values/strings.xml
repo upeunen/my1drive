@@ -327,6 +327,9 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="topbar_chip_trial">⏳ %1$d d.</string>
     <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d</string>
     <string name="topbar_chip_pro">PRO</string>
+    <string name="topbar_bubble_trial_text">Free trial: %1$d days remaining</string>
+    <string name="topbar_bubble_limits_text">Free version left: %1$d photos, %2$d videos</string>
+    <string name="topbar_bubble_action_pro">Get PRO</string>
     <string name="promo_success_title">Promo Code Activated!</string>
     <string name="promo_success_message">You have successfully received %1$d days of free access.</string>
     <string name="pro_unlimited">PRO: Unlimited</string>
@@ -413,4 +416,30 @@ Errors:
     <string name="settings_lang_en">English</string>
     <string name="settings_lang_ru">Русский</string>
     <string name="settings_lang_es">Español</string>
+
+    <string name="settings_category_storage">Storage &amp; Removable Drives</string>
+    <string name="settings_category_cloud">Cloud Server (SFTP)</string>
+    <string name="settings_category_general">General Settings</string>
+    <string name="settings_category_about">About &amp; Diagnostics</string>
+    <string name="dashboard_drive_status">Drive Status</string>
+    <string name="dashboard_cache_title">Thumbnail Cache</string>
+    <string name="dashboard_quick_clear">Clear</string>
+    <string name="dashboard_storage_local">Internal Storage</string>
+    <string name="dashboard_storage_otg">OTG USB Drive</string>
+    <string name="sync_thumbnails_title">Thumbnail Synchronization</string>
+    <string name="sync_thumbnails_desc">Missing %1$d thumbnails for offline preview. Connect drive to sync.</string>
+    <string name="sync_thumbnails_btn">Sync Thumbnails</string>
+    <string name="sync_thumbnails_progress">Syncing thumbnails (%1$d / %2$d)…</string>
+    <string name="btn_app_settings">System Settings</string>
+    <string name="badge_beta">BETA</string>
+    <string name="dashboard_cache_security_hint">For privacy: clearing removes thumbnails from this phone. They will recreate upon connecting your archive drive.</string>
+    <string name="dialog_clear_cache_title">Clear Thumbnail Cache?</string>
+    <string name="dialog_clear_cache_message">This removes local photo thumbnails from your device. If unauthorized people view your phone, photos won\'t be visible in the gallery without connecting the archive drive.\n\nThumbnails will automatically recreate on next drive connection.</string>
+    <string name="dialog_clear_cache_confirm">Clear Cache</string>
+    <string name="tag_usb_storage">USB</string>
+    <string name="tag_internal_storage">Internal Storage</string>
+    <string name="archive_folder_label">Archive Folder:</string>
+    <string name="click_to_change_folder">Tap to change folder</string>
+    <string name="click_to_select_folder">Tap to select folder</string>
+    <string name="badge_folder_name">Folder: %1$s</string>
 </resources>

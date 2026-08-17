@@ -327,6 +327,9 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="topbar_chip_trial">⏳ %1$d d.</string>
     <string name="topbar_chip_limits">📷 %1$d/%2$d  🎥 %3$d/%4$d</string>
     <string name="topbar_chip_pro">PRO</string>
+    <string name="topbar_bubble_trial_text">Prueba gratuita: quedan %1$d días</string>
+    <string name="topbar_bubble_limits_text">En la versión gratuita quedan: %1$d fotos, %2$d vídeos</string>
+    <string name="topbar_bubble_action_pro">Obtener PRO</string>
     <string name="promo_success_title">¡Código Promocional Activado!</string>
     <string name="promo_success_message">Ha recibido con éxito %1$d días de acceso gratuito.</string>
     <string name="pro_unlimited">PRO: Ilimitado</string>
@@ -413,4 +416,30 @@ Errores:
     <string name="settings_lang_en">English</string>
     <string name="settings_lang_ru">Русский</string>
     <string name="settings_lang_es">Español</string>
+
+    <string name="settings_category_storage">Almacenamiento y unidades</string>
+    <string name="settings_category_cloud">Servidor en la nube (SFTP)</string>
+    <string name="settings_category_general">Ajustes generales</string>
+    <string name="settings_category_about">Diagnóstico y acerca de</string>
+    <string name="dashboard_drive_status">Estado de la unidad</string>
+    <string name="dashboard_cache_title">Caché de miniaturas</string>
+    <string name="dashboard_quick_clear">Limpiar</string>
+    <string name="dashboard_storage_local">Almacenamiento interno</string>
+    <string name="dashboard_storage_otg">Unidad USB OTG</string>
+    <string name="sync_thumbnails_title">Sincronización de miniaturas</string>
+    <string name="sync_thumbnails_desc">Faltan %1$d miniaturas para vista previa. Conecte la unidad para sincronizar.</string>
+    <string name="sync_thumbnails_btn">Crear miniaturas</string>
+    <string name="sync_thumbnails_progress">Sincronizando miniaturas (%1$d / %2$d)…</string>
+    <string name="btn_app_settings">Ajustes del sistema</string>
+    <string name="badge_beta">BETA</string>
+    <string name="dashboard_cache_security_hint">Para privacidad: borrar elimina miniaturas del dispositivo. Se restaurarán al conectar la unidad de archivo.</string>
+    <string name="dialog_clear_cache_title">¿Borrar caché de miniaturas?</string>
+    <string name="dialog_clear_cache_message">Esto elimina las miniaturas locales de su teléfono. Si personas no deseadas acceden a su dispositivo, las fotos no serán visibles sin conectar la unidad de archivo.\n\nLas miniaturas se volverán a crear automáticamente la próxima vez que conecte la unidad.</string>
+    <string name="dialog_clear_cache_confirm">Borrar</string>
+    <string name="tag_usb_storage">USB</string>
+    <string name="tag_internal_storage">Almacenamiento interno</string>
+    <string name="archive_folder_label">Carpeta de archivo:</string>
+    <string name="click_to_change_folder">Toca para cambiar de carpeta</string>
+    <string name="click_to_select_folder">Toca para seleccionar carpeta</string>
+    <string name="badge_folder_name">Carpeta: %1$s</string>
 </resources>

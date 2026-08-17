@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,30 @@ fun clampedAspectRatio(
     }.coerceIn(0f, maxCrop)
     return Pair(display, cropFraction)
 }
+private val GridItemCardShape = RoundedCornerShape(8.dp)
+private val DurationBadgeShape = RoundedCornerShape(4.dp)
+private val OfflinePlaceholderBg = Color(0xFF1A1A2A)
+private val OfflineIconTint = Color(0xFF5E35B1).copy(alpha = 0.6f)
+
+@Composable
+private fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
+    val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
+    val shimmerAlpha by shimmerTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Gray.copy(alpha = shimmerAlpha))
+    )
+}
+
 @Composable
 fun GooglePhotosGridItem(
     item: MediaItem,
@@ -106,17 +131,6 @@ fun GooglePhotosGridItem(
     val selectionBorderWidth by animateFloatAsState(targetValue = if (isSelected) 3f else 0f, label = "SelectionBorderWidth")
     val overlayAlpha by animateFloatAsState(targetValue = if (isSelected) 0.25f else 0.0f, label = "OverlayAlpha")
     val checkmarkScale by animateFloatAsState(targetValue = if (isSelected) 1.0f else 0.0f, label = "CheckmarkScale")
-    // Shimmer: всегда вызывается вне условий (Rules of Composables)
-    val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerAlpha by shimmerTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shimmerAlpha"
-    )
     val isArchivedOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     val hasCachedPreview = item.hasCachedPreview
     var isImageLoading by remember { mutableStateOf(false) }
@@ -124,13 +138,16 @@ fun GooglePhotosGridItem(
 
     Card(
         modifier = modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .border(
                 width = selectionBorderWidth.dp,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
+                shape = GridItemCardShape
             )
-            .clip(RoundedCornerShape(8.dp)),
+            .clip(GridItemCardShape),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Box(
@@ -147,14 +164,14 @@ fun GooglePhotosGridItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF1A1A2A)),
+                        .background(OfflinePlaceholderBg),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = if (item.isVideo) Icons.Default.PlayCircle else Icons.Default.SdStorage,
                             contentDescription = null,
-                            tint = Color(0xFF5E35B1).copy(alpha = 0.6f),
+                            tint = OfflineIconTint,
                             modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -167,6 +184,7 @@ fun GooglePhotosGridItem(
                     }
                 }
             } else {
+                val imageAlpha = if (isCopied || (item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected && !isArchiving)) 0.5f else 1.0f
                 AsyncImage(
                     model = imageModel,
                     imageLoader = imageLoader,
@@ -177,7 +195,7 @@ fun GooglePhotosGridItem(
                     onError = { isImageLoading = false },
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(if (isCopied || (item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected && !isArchiving)) 0.5f else 1.0f)
+                        .graphicsLayer { alpha = imageAlpha }
                 )
                 // Crop-edge fade indicator: subtle gradient showing photo is cropped
                 if (cropFraction > 0.05f) {
@@ -210,11 +228,7 @@ fun GooglePhotosGridItem(
                     }
                 }
                 if (isImageLoading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Gray.copy(alpha = shimmerAlpha))
-                    )
+                    ShimmerPlaceholder()
                 }
             }
 
@@ -246,7 +260,7 @@ fun GooglePhotosGridItem(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
-                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                    .background(Color.Black.copy(alpha = 0.6f), DurationBadgeShape)
                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }

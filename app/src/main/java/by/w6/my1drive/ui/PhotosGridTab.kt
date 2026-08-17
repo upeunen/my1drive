@@ -34,6 +34,10 @@ import by.w6.my1drive.ui.layout.BentoBlockView
 import by.w6.my1drive.ui.layout.BentoLayoutHelper
 import coil.ImageLoader
 
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 private sealed interface BentoFeedItem {
     data class HeaderItem(val title: String, val sectionItems: List<MediaItem>) : BentoFeedItem
     data class BlockItem(val block: BentoBlock) : BentoFeedItem
@@ -90,43 +94,45 @@ fun PhotosGridTab(
             BentoLayoutHelper.calculateUnitSize(availableWidth, gridColumnsCount, spacing)
         }
 
-        val feedItems = remember(groupedItems, gridColumnsCount) {
-            val result = mutableListOf<BentoFeedItem>()
-            var currentHeader: String? = null
-            val currentSectionMedia = mutableListOf<MediaItem>()
+        val feedItems by produceState<List<BentoFeedItem>>(initialValue = emptyList(), groupedItems, gridColumnsCount) {
+            value = withContext(Dispatchers.Default) {
+                val result = mutableListOf<BentoFeedItem>()
+                var currentHeader: String? = null
+                val currentSectionMedia = mutableListOf<MediaItem>()
 
-            fun flushSection() {
-                if (currentHeader != null || currentSectionMedia.isNotEmpty()) {
-                    val sectionList = currentSectionMedia.toList()
-                    if (currentHeader != null) {
-                        result.add(BentoFeedItem.HeaderItem(currentHeader!!, sectionList))
+                fun flushSection() {
+                    if (currentHeader != null || currentSectionMedia.isNotEmpty()) {
+                        val sectionList = currentSectionMedia.toList()
+                        if (currentHeader != null) {
+                            result.add(BentoFeedItem.HeaderItem(currentHeader!!, sectionList))
+                        }
+                        if (sectionList.isNotEmpty()) {
+                            val blocks = BentoLayoutHelper.computeBlocks(
+                                items = sectionList,
+                                gridColumnsCount = gridColumnsCount
+                            )
+                            for (block in blocks) {
+                                result.add(BentoFeedItem.BlockItem(block))
+                            }
+                        }
+                        currentSectionMedia.clear()
                     }
-                    if (sectionList.isNotEmpty()) {
-                        val blocks = BentoLayoutHelper.computeBlocks(
-                            items = sectionList,
-                            gridColumnsCount = gridColumnsCount
-                        )
-                        for (block in blocks) {
-                            result.add(BentoFeedItem.BlockItem(block))
+                }
+
+                for (gi in groupedItems) {
+                    when (gi) {
+                        is GalleryItem.Header -> {
+                            flushSection()
+                            currentHeader = gi.title
+                        }
+                        is GalleryItem.Media -> {
+                            currentSectionMedia.add(gi.item)
                         }
                     }
-                    currentSectionMedia.clear()
                 }
+                flushSection()
+                result
             }
-
-            for (gi in groupedItems) {
-                when (gi) {
-                    is GalleryItem.Header -> {
-                        flushSection()
-                        currentHeader = gi.title
-                    }
-                    is GalleryItem.Media -> {
-                        currentSectionMedia.add(gi.item)
-                    }
-                }
-            }
-            flushSection()
-            result
         }
 
         LazyColumn(
@@ -147,15 +153,17 @@ fun PhotosGridTab(
                 when (feedItem) {
                     is BentoFeedItem.HeaderItem -> {
                         val sectionItems = feedItem.sectionItems
-                        val allSelected = remember(currentSelectedIds, sectionItems) {
-                            sectionItems.isNotEmpty() && sectionItems.all { currentSelectedIds.contains(it.id) }
+                        val isSelectionMode = currentSelectedIds.isNotEmpty()
+                        val sectionIds = remember(sectionItems) { sectionItems.map { it.id }.toSet() }
+                        val allSelected = remember(isSelectionMode, currentSelectedIds.size, sectionIds) {
+                            isSelectionMode && sectionIds.isNotEmpty() && currentSelectedIds.containsAll(sectionIds)
                         }
                         DateCategoryHeader(
                             title = feedItem.title,
-                            isSelectionMode = currentSelectedIds.isNotEmpty(),
+                            isSelectionMode = isSelectionMode,
                             isSelected = allSelected,
                             onToggleSelection = {
-                                onSelectItems(sectionItems.map { it.id }, !allSelected)
+                                onSelectItems(sectionIds, !allSelected)
                             }
                         )
                     }

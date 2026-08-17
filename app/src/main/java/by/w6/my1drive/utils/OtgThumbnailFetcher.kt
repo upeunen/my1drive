@@ -90,9 +90,9 @@ class OtgThumbnailFetcher(
         previewDir.mkdirs()
         try {
             cacheFile.outputStream().buffered().use { out ->
-                // Scale to max 256×256 keeping aspect ratio
-                val scaled = scaleBitmap(bitmap, 256)
-                scaled.compress(Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                // Scale to max 512×512 keeping aspect ratio
+                val scaled = scaleBitmap(bitmap, 512)
+                scaled.compress(Bitmap.CompressFormat.WEBP_LOSSY, 75, out)
                 if (scaled !== bitmap) scaled.recycle()
             }
             bitmap.recycle()
@@ -128,7 +128,7 @@ class OtgThumbnailFetcher(
                 BitmapFactory.decodeStream(input, null, boundsOpts)
             }
 
-            val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 256)
+            val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 512)
             val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
             context.contentResolver.openInputStream(uri)?.use { input ->
                 BitmapFactory.decodeStream(input, null, decodeOpts)

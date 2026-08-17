@@ -2,10 +2,12 @@ package by.w6.my1drive.ui.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +23,10 @@ import by.w6.my1drive.utils.VpsConnectionManager
 import kotlinx.coroutines.launch
 
 @Composable
-fun VpsSettingsSection(vpsManager: VpsConnectionManager?) {
+fun VpsSettingsSection(
+    vpsManager: VpsConnectionManager?,
+    modifier: Modifier = Modifier
+) {
     if (vpsManager == null) return
 
     val context = LocalContext.current
@@ -36,37 +41,70 @@ fun VpsSettingsSection(vpsManager: VpsConnectionManager?) {
     var testingConnection by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header Row: Cloud Icon Badge + Title + Switch
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Icon(
-                        imageVector = Icons.Default.Cloud,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Cloud,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(
-                            text = stringResource(R.string.vps_server_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.settings_category_cloud),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.badge_beta),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                         Text(
                             text = stringResource(R.string.vps_server_desc),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+
+                Spacer(Modifier.width(8.dp))
+
                 Switch(
                     checked = vpsEnabled,
                     onCheckedChange = { checked ->
@@ -80,79 +118,116 @@ fun VpsSettingsSection(vpsManager: VpsConnectionManager?) {
 
             if (vpsEnabled) {
                 Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                Spacer(Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = host,
                     onValueChange = { host = it },
                     label = { Text(stringResource(R.string.vps_host)) },
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = portStr,
                         onValueChange = { portStr = it },
                         label = { Text(stringResource(R.string.vps_port)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(10.dp))
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
                         label = { Text(stringResource(R.string.vps_username)) },
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(2f),
                         singleLine = true
                     )
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text(stringResource(R.string.vps_password)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation()
+                    singleLine = true
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = remotePath,
                     onValueChange = { remotePath = it },
                     label = { Text(stringResource(R.string.vps_path)) },
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = vpsLimitGbStr,
                     onValueChange = { vpsLimitGbStr = it },
                     label = { Text(stringResource(R.string.vps_limit)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    singleLine = true
                 )
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
                         val port = portStr.toIntOrNull() ?: 22
-                        val limit = vpsLimitGbStr.toIntOrNull() ?: 10
-                        testingConnection = true
+                        val limitGb = vpsLimitGbStr.toIntOrNull() ?: 100
                         coroutineScope.launch {
-                            val result = vpsManager.testConnection(host, port, username, password, remotePath)
+                            testingConnection = true
+                            val result = vpsManager.testConnection(
+                                host = host,
+                                port = port,
+                                username = username,
+                                password = password,
+                                remotePath = remotePath
+                            )
                             testingConnection = false
                             if (result.isSuccess) {
-                                vpsManager.saveConfig(host, port, username, password, remotePath)
-                                vpsManager.setVpsLimitGb(limit)
+                                vpsManager.saveConfig(
+                                    host = host,
+                                    port = port,
+                                    username = username,
+                                    password = password,
+                                    remotePath = remotePath
+                                )
+                                vpsManager.setVpsLimitGb(limitGb)
                                 Toast.makeText(context, context.getString(R.string.toast_vps_success), Toast.LENGTH_LONG).show()
                             } else {
-                                Toast.makeText(context, context.getString(R.string.toast_vps_error, result.exceptionOrNull()?.localizedMessage), Toast.LENGTH_LONG).show()
+                                val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Unknown error"
+                                Toast.makeText(context, context.getString(R.string.toast_vps_error, errorMsg), Toast.LENGTH_LONG).show()
                             }
                         }
                     },
-                    enabled = !testingConnection && host.isNotEmpty() && username.isNotEmpty(),
+                    enabled = !testingConnection,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (testingConnection) stringResource(R.string.btn_vps_testing) else stringResource(R.string.btn_vps_test))
+                    if (testingConnection) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(stringResource(R.string.btn_vps_testing))
+                    } else {
+                        Icon(Icons.Default.CloudDone, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.btn_vps_test))
+                    }
                 }
             }
         }

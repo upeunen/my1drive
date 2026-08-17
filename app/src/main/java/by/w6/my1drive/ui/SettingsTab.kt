@@ -17,12 +17,13 @@ import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.data.local.ArchiveEntity
 import by.w6.my1drive.utils.VpsConnectionManager
-import by.w6.my1drive.ui.settings.ArchiveProgressSection
+import by.w6.my1drive.ui.settings.LanguageSettingsSection
 import by.w6.my1drive.ui.settings.MaintenanceAndDebugSection
+import by.w6.my1drive.ui.settings.ManageStorageCard
 import by.w6.my1drive.ui.settings.OtgSettingsSection
 import by.w6.my1drive.ui.settings.PromoCodeCard
+import by.w6.my1drive.ui.settings.SettingsDashboardHeader
 import by.w6.my1drive.ui.settings.VpsSettingsSection
-import by.w6.my1drive.ui.settings.LanguageSettingsSection
 
 @Composable
 fun SettingsTab(
@@ -65,20 +66,30 @@ fun SettingsTab(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
+        // 1. Top Gradient Summary Dashboard Widget
+        SettingsDashboardHeader(
+            isOtgConnected = isOtgConnected,
+            otgDirectoryDisplayName = otgDirectoryDisplayName,
+            isLocalFolder = isLocalFolder,
+            cacheFilesCount = cacheFilesCount,
+            cacheSize = cacheSize,
+            isStorageLow = isStorageLow,
+            onClearCache = onClearCache
+        )
+
+        // Permission card if Manage External Storage is missing
         if (!hasAllFilesAccess) {
-            by.w6.my1drive.ui.settings.ManageStorageCard(
+            Spacer(Modifier.height(16.dp))
+            ManageStorageCard(
                 onRequestManageStorage = onRequestManageStorage
             )
-            Spacer(Modifier.height(16.dp))
         }
-
-        LanguageSettingsSection()
 
         Spacer(Modifier.height(16.dp))
 
-        // 1. OTG/USB Storage Card & Multi-Archive settings
+        // 2. OTG/USB Storage Section & Multi-Archive settings & Thumbnail sync
         OtgSettingsSection(
             isOtgConnected = isOtgConnected,
             otgDirectoryDisplayName = otgDirectoryDisplayName,
@@ -87,15 +98,20 @@ fun SettingsTab(
             knownArchives = knownArchives,
             onDeleteArchive = onDeleteArchive,
             activeArchiveUuid = activeArchiveUuid,
-            onRefresh = onRefresh
+            onRefresh = onRefresh,
+            isSyncingThumbnails = isSyncingThumbnails,
+            syncThumbnailsProgress = syncThumbnailsProgress,
+            missingThumbnailsCount = missingThumbnailsCount,
+            onSyncThumbnails = onSyncThumbnails,
+            onCancelSyncThumbnails = onCancelSyncThumbnails
         )
 
         Spacer(Modifier.height(16.dp))
 
-        // VPS Settings Card
+        // 3. VPS Cloud Server Settings Card
         VpsSettingsSection(vpsManager = vpsManager)
 
-        // Промокод — показываем если в Remote Config есть коды
+        // 4. Promo Code Card (if available in Remote Config)
         if (hasPromoCodes) {
             Spacer(Modifier.height(16.dp))
             PromoCodeCard(onPromoCode = onPromoCode)
@@ -103,13 +119,16 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
-        // 3. Maintenance & Debug Info Card
+        // 5. Language Settings Card
+        LanguageSettingsSection()
+
+        Spacer(Modifier.height(16.dp))
+
+        // 6. Maintenance, Diagnostics & About Card
         MaintenanceAndDebugSection(
-            cacheFilesCount = cacheFilesCount,
-            cacheSize = cacheSize,
-            isStorageLow = isStorageLow,
-            onClearCache = onClearCache,
             onShowDebugLogs = onShowDebugLogs
         )
+
+        Spacer(Modifier.height(16.dp))
     }
 }

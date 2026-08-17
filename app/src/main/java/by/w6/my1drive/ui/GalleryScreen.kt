@@ -48,11 +48,14 @@ import by.w6.my1drive.ui.components.BottomNavigationBar
 import by.w6.my1drive.ui.components.SideNavigationBar
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
 import coil.decode.VideoFrameDecoder
+import coil.memory.MemoryCache
+import by.w6.my1drive.utils.MediaStoreThumbnailFetcher
 import by.w6.my1drive.utils.OtgThumbnailFetcher
 import java.io.File
 import androidx.compose.foundation.layout.fillMaxSize
@@ -98,10 +101,18 @@ fun GalleryScreen(
         ImageLoader.Builder(context)
             .components {
                 add(VideoFrameDecoder.Factory())
+                add(MediaStoreThumbnailFetcher.Factory(context))
                 add(OtgThumbnailFetcher.Factory(
                     previewDir = previewDir,
                     onCached = { hash, path -> viewModel.onPreviewCached(hash, path) }
                 ))
+            }
+            .allowRgb565(true)
+            .bitmapConfig(Bitmap.Config.RGB_565)
+            .memoryCache {
+                MemoryCache.Builder(context)
+                    .maxSizePercent(0.25)
+                    .build()
             }
             .crossfade(true)
             .build()

@@ -20,6 +20,41 @@ import by.w6.my1drive.ui.GooglePhotosGridItem
 import coil.ImageLoader
 
 @Composable
+private fun BentoItemRenderer(
+    item: MediaItem,
+    selectedIds: Set<String>,
+    imageLoader: ImageLoader,
+    isOtgConnected: Boolean,
+    activeArchiveUuid: String?,
+    archivingItemIds: Set<String>,
+    copiedItemIds: Set<String>,
+    archiveStripeColorProvider: ((MediaItem) -> Color?)?,
+    modifier: Modifier = Modifier,
+    onClick: (MediaItem) -> Unit,
+    onLongClick: (MediaItem) -> Unit
+) {
+    val isSelected = selectedIds.contains(item.id)
+    val isArchiving = archivingItemIds.contains(item.id)
+    val isCopied = copiedItemIds.contains(item.id)
+    val connected = if (item.status == MediaStatus.ARCHIVED_OTG) {
+        isOtgConnected && item.archiveUuid == activeArchiveUuid
+    } else isOtgConnected
+
+    GooglePhotosGridItem(
+        item = item,
+        isSelected = isSelected,
+        imageLoader = imageLoader,
+        isOtgConnected = connected,
+        isArchiving = isArchiving,
+        isCopied = isCopied,
+        archiveStripeOverrideColor = archiveStripeColorProvider?.invoke(item),
+        modifier = modifier,
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) }
+    )
+}
+
+@Composable
 fun BentoBlockView(
     block: BentoBlock,
     unitSize: Dp,
@@ -36,24 +71,18 @@ fun BentoBlockView(
 ) {
     @Composable
     fun RenderItem(item: MediaItem, modifier: Modifier = Modifier) {
-        val isSelected = selectedIds.contains(item.id)
-        val isArchiving = archivingItemIds.contains(item.id)
-        val isCopied = copiedItemIds.contains(item.id)
-        val connected = if (item.status == MediaStatus.ARCHIVED_OTG) {
-            isOtgConnected && item.archiveUuid == activeArchiveUuid
-        } else isOtgConnected
-
-        GooglePhotosGridItem(
+        BentoItemRenderer(
             item = item,
-            isSelected = isSelected,
+            selectedIds = selectedIds,
             imageLoader = imageLoader,
-            isOtgConnected = connected,
-            isArchiving = isArchiving,
-            isCopied = isCopied,
-            archiveStripeOverrideColor = archiveStripeColorProvider?.invoke(item),
+            isOtgConnected = isOtgConnected,
+            activeArchiveUuid = activeArchiveUuid,
+            archivingItemIds = archivingItemIds,
+            copiedItemIds = copiedItemIds,
+            archiveStripeColorProvider = archiveStripeColorProvider,
             modifier = modifier,
-            onClick = { onItemClick(item) },
-            onLongClick = { onItemLongClick(item) }
+            onClick = onItemClick,
+            onLongClick = onItemLongClick
         )
     }
 
@@ -106,7 +135,98 @@ fun BentoBlockView(
             }
         }
 
+        is BentoBlock.TallWithFourSmall -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(doubleHeight),
+                horizontalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                val tallComposable: @Composable (Modifier) -> Unit = { mod ->
+                    RenderItem(block.tallItem, modifier = mod)
+                }
+                val fourSmallComposable: @Composable (Modifier) -> Unit = { mod ->
+                    Column(
+                        modifier = mod,
+                        verticalArrangement = Arrangement.spacedBy(spacing)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(spacing)
+                        ) {
+                            RenderItem(block.small1, modifier = Modifier.weight(1f).fillMaxHeight())
+                            RenderItem(block.small2, modifier = Modifier.weight(1f).fillMaxHeight())
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(spacing)
+                        ) {
+                            RenderItem(block.small3, modifier = Modifier.weight(1f).fillMaxHeight())
+                            RenderItem(block.small4, modifier = Modifier.weight(1f).fillMaxHeight())
+                        }
+                    }
+                }
+
+                if (block.isTallLeft) {
+                    tallComposable(Modifier.weight(1f).fillMaxHeight())
+                    fourSmallComposable(Modifier.weight(2f).fillMaxHeight())
+                } else {
+                    fourSmallComposable(Modifier.weight(2f).fillMaxHeight())
+                    tallComposable(Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+        }
+
         is BentoBlock.TwoTallWithTwoSmall -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(doubleHeight),
+                horizontalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                val tallPart: @Composable (Modifier) -> Unit = { mod ->
+                    Row(
+                        modifier = mod,
+                        horizontalArrangement = Arrangement.spacedBy(spacing)
+                    ) {
+                        RenderItem(block.tall1, modifier = Modifier.weight(1f).fillMaxHeight())
+                        RenderItem(block.tall2, modifier = Modifier.weight(1f).fillMaxHeight())
+                    }
+                }
+                val smallPart: @Composable (Modifier) -> Unit = { mod ->
+                    Column(
+                        modifier = mod,
+                        verticalArrangement = Arrangement.spacedBy(spacing)
+                    ) {
+                        RenderItem(block.smallTop, modifier = Modifier.fillMaxWidth().weight(1f))
+                        RenderItem(block.smallBottom, modifier = Modifier.fillMaxWidth().weight(1f))
+                    }
+                }
+
+                if (block.isTallLeft) {
+                    tallPart(Modifier.weight(2f).fillMaxHeight())
+                    smallPart(Modifier.weight(1f).fillMaxHeight())
+                } else {
+                    smallPart(Modifier.weight(1f).fillMaxHeight())
+                    tallPart(Modifier.weight(2f).fillMaxHeight())
+                }
+            }
+        }
+
+        is BentoBlock.ThreeTall -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(doubleHeight),
+                horizontalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                block.items.forEach { item ->
+                    RenderItem(item, modifier = Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+        }
+
+        is BentoBlock.TwoTall -> {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -115,17 +235,11 @@ fun BentoBlockView(
             ) {
                 RenderItem(block.tall1, modifier = Modifier.weight(1f).fillMaxHeight())
                 RenderItem(block.tall2, modifier = Modifier.weight(1f).fillMaxHeight())
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(spacing)
-                ) {
-                    RenderItem(block.smallTop, modifier = Modifier.fillMaxWidth().weight(1f))
-                    RenderItem(block.smallBottom, modifier = Modifier.fillMaxWidth().weight(1f))
-                }
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f).fillMaxHeight())
             }
         }
 
-        is BentoBlock.ThreeTall -> {
+        is BentoBlock.FourTall -> {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

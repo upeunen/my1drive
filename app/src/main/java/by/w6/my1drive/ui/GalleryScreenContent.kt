@@ -330,14 +330,10 @@ fun GalleryScreenContent(
     val photosRemaining = (uiState.maxPhotos - uiState.photosArchivedCount).coerceAtLeast(0)
     val videosRemaining = (uiState.maxVideos - uiState.videosArchivedCount).coerceAtLeast(0)
 
-    var showLimitBanner by remember { mutableStateOf(false) }
-    var limitBannerMessage by remember { mutableStateOf("") }
+    var showLimitBubble by remember { mutableStateOf(false) }
     var prevPhotosRemaining by remember { mutableStateOf(photosRemaining) }
     var prevVideosRemaining by remember { mutableStateOf(videosRemaining) }
     var prevTrialDays by remember { mutableStateOf(uiState.remainingTrialDays) }
-    
-    val freeLimitsStr = stringResource(R.string.free_version_limits, photosRemaining, uiState.maxPhotos, videosRemaining, uiState.maxVideos)
-    val trialDaysStr = stringResource(R.string.trial_active_days, uiState.remainingTrialDays)
 
     LaunchedEffect(photosRemaining, videosRemaining, uiState.remainingTrialDays, uiState.isPremiumUnlocked) {
         if (!uiState.isPremiumUnlocked) {
@@ -346,8 +342,7 @@ fun GalleryScreenContent(
             val trialDecreased = uiState.remainingTrialDays < prevTrialDays
             
             if ((photosDecreased || videosDecreased || trialDecreased) && (prevPhotosRemaining > 0 || prevVideosRemaining > 0 || prevTrialDays > 0)) {
-                limitBannerMessage = if (uiState.isTrialActive) trialDaysStr else freeLimitsStr
-                showLimitBanner = true
+                showLimitBubble = true
             }
         }
         prevPhotosRemaining = photosRemaining
@@ -355,10 +350,10 @@ fun GalleryScreenContent(
         prevTrialDays = uiState.remainingTrialDays
     }
 
-    LaunchedEffect(showLimitBanner) {
-        if (showLimitBanner) {
-            kotlinx.coroutines.delay(3000)
-            showLimitBanner = false
+    LaunchedEffect(showLimitBubble) {
+        if (showLimitBubble) {
+            kotlinx.coroutines.delay(4000)
+            showLimitBubble = false
         }
     }
 
@@ -377,6 +372,8 @@ fun GalleryScreenContent(
                 maxPhotos = uiState.maxPhotos,
                 videosCount = uiState.videosArchivedCount,
                 maxVideos = uiState.maxVideos,
+                showLimitBubble = showLimitBubble,
+                onDismissLimitBubble = { showLimitBubble = false },
                 onProClick = { viewModel.showPaywall() },
                 onClearSelection = onClearSelection,
                 onEjectClick = { showEjectConfirmDialog = true },
@@ -470,7 +467,6 @@ fun GalleryScreenContent(
                     else if (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
                     if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
                     if (currentScreenRoute == "archive" && otgDirectoryUri == null) OtgRequiredBanner()
-                    LimitDecreasedBanner(visible = showLimitBanner, message = limitBannerMessage)
                 }
             }
 
