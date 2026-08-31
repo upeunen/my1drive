@@ -136,7 +136,17 @@ class ArchiveInteractor(
                                          }
                                      }
                                  } else {
-                                     val errStr = "${result.displayName}: ${result.message}"
+                                     val formattedMsg = if (result.message.startsWith("restore_no_space:")) {
+                                         val parts = result.message.removePrefix("restore_no_space:").split("|")
+                                         if (parts.size == 2) {
+                                             application.getString(by.w6.my1drive.R.string.error_insufficient_storage, parts[0], parts[1])
+                                         } else {
+                                             application.getString(by.w6.my1drive.R.string.error_no_space_on_device)
+                                         }
+                                     } else {
+                                         result.message
+                                     }
+                                     val errStr = "${result.displayName}: $formattedMsg"
                                      errors.add(errStr)
                                      DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
                                  }

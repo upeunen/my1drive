@@ -77,6 +77,8 @@
     <string name="error_no_delete_permission">Sin permiso para eliminar el archivo: %1$s</string>
     <string name="error_delete_completion_failed">Fallo al completar la eliminación: %1$s</string>
     <string name="error_archive_item_failed">Error al archivar %1$s: %2$s</string>
+    <string name="error_insufficient_storage">Espacio insuficiente en el almacenamiento del dispositivo (requiere %1$s, libre %2$s)</string>
+    <string name="error_no_space_on_device">No queda espacio en el dispositivo</string>
     
     
     <string name="restore_from_otg">Restaurar desde OTG</string>

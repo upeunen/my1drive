@@ -148,7 +148,11 @@ class OtgArchiveUtil(private val context: Context) {
                 DebugLogBuffer.log(logTag, "Copying cancelled for ${item.displayName}")
                 throw e
             }
-            emit(CopyVerifyResult.Error(item.displayName, "${e.javaClass.name}: ${e.message}"))
+            val isEnospc = e.localizedMessage?.contains("ENOSPC", ignoreCase = true) == true ||
+                          e.localizedMessage?.contains("No space left", ignoreCase = true) == true ||
+                          (e.cause != null && e.cause?.localizedMessage?.contains("ENOSPC", ignoreCase = true) == true)
+            val cleanMsg = if (isEnospc) "otg_no_space: ENOSPC" else "${e.javaClass.name}: ${e.message}"
+            emit(CopyVerifyResult.Error(item.displayName, cleanMsg))
         } finally {
             if (!success) {
                 createdFile?.let { f ->
@@ -318,6 +322,34 @@ class OtgArchiveUtil(private val context: Context) {
                 throw Exception("restore_empty_file: archived file has zero bytes")
             }
 
+            // Pre-check available free space on target storage device (with 50MB safety margin)
+            val safetyMargin = 50 * 1024 * 1024L
+            val requiredSpace = effectiveSize + safetyMargin
+            val usableSpace = try {
+                if (targetDirUri != null) {
+                    val destFile = getFileFromUri(targetDirUri)
+                    if (destFile != null && destFile.exists()) {
+                        destFile.usableSpace
+                    } else {
+                        Environment.getExternalStorageDirectory().usableSpace
+                    }
+                } else {
+                    Environment.getExternalStorageDirectory().usableSpace
+                }
+            } catch (spaceEx: Exception) {
+                DebugLogBuffer.log(logTag, "Failed to query usable space: ${spaceEx.localizedMessage}")
+                Long.MAX_VALUE
+            }
+
+            DebugLogBuffer.log(logTag, "Target usable space: $usableSpace bytes, required (with 50MB margin): $requiredSpace bytes")
+
+            if (usableSpace < requiredSpace) {
+                val reqMb = String.format(java.util.Locale.US, "%.1f MB", effectiveSize / (1024.0 * 1024.0))
+                val freeMb = String.format(java.util.Locale.US, "%.1f MB", usableSpace / (1024.0 * 1024.0))
+                DebugLogBuffer.log(logTag, "Insufficient free space for restore: required $reqMb, free $freeMb")
+                throw Exception("restore_no_space:${reqMb}|${freeMb}")
+            }
+
             var totalReadForOneMb = 0L
 
             // Write bytes to destination using stream with fsync
@@ -406,7 +438,16 @@ class OtgArchiveUtil(private val context: Context) {
                     DebugLogBuffer.log(logTag, "Cleanup error during restore: ${cleanupEx.localizedMessage}")
                 }
             }
-            emit(RestoreResult.Error(item.displayName, "${e.message}\n$sw"))
+            val isEnospc = e.localizedMessage?.contains("ENOSPC", ignoreCase = true) == true ||
+                          e.localizedMessage?.contains("No space left", ignoreCase = true) == true ||
+                          (e.cause != null && e.cause?.localizedMessage?.contains("ENOSPC", ignoreCase = true) == true)
+
+            val cleanMessage = when {
+                isEnospc -> "restore_no_space:ENOSPC"
+                e.message?.startsWith("restore_no_space:") == true -> e.message!!
+                else -> "${e.message}\n$sw"
+            }
+            emit(RestoreResult.Error(item.displayName, cleanMessage))
         }
     }.flowOn(Dispatchers.IO)
 

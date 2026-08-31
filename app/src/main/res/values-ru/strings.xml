@@ -77,6 +77,8 @@
     <string name="error_no_delete_permission">Нет разрешения на удаление файла: %1$s</string>
     <string name="error_delete_completion_failed">Не удалось завершить удаление: %1$s</string>
     <string name="error_archive_item_failed">Ошибка архивации %1$s: %2$s</string>
+    <string name="error_insufficient_storage">Недостаточно свободного места на устройстве (требуется %1$s, свободно %2$s)</string>
+    <string name="error_no_space_on_device">На устройстве закончилось свободное место</string>
     
     
     <string name="restore_from_otg">Восстановить с OTG</string>

@@ -77,6 +77,8 @@
     <string name="error_no_delete_permission">No permission to delete file: %1$s</string>
     <string name="error_delete_completion_failed">Failed to complete deletion: %1$s</string>
     <string name="error_archive_item_failed">Archiving error for %1$s: %2$s</string>
+    <string name="error_insufficient_storage">Not enough free space on device storage (requires %1$s, free %2$s)</string>
+    <string name="error_no_space_on_device">No space left on device</string>
     
     
     <string name="restore_from_otg">Restore from OTG</string>
