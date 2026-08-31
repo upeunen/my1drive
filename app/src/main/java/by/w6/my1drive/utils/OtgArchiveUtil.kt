@@ -26,10 +26,22 @@ sealed class CopyVerifyResult {
     data class Error(val displayName: String, val message: String) : CopyVerifyResult()
 }
 
+sealed interface RestoreError {
+    data class InsufficientStorage(val reqMbStr: String, val freeMbStr: String) : RestoreError
+    object NoOtgUri : RestoreError
+    object TargetAccessFailed : RestoreError
+    object CreateFailed : RestoreError
+    object MediaStoreInsertFailed : RestoreError
+    object EmptyFile : RestoreError
+    object ReadStreamFailed : RestoreError
+    object WriteFailed : RestoreError
+    data class Generic(val rawMessage: String) : RestoreError
+}
+
 sealed class RestoreResult {
     data class Progress(val displayName: String, val step: String, val progressFraction: Float) : RestoreResult()
     data class Success(val item: MediaItem) : RestoreResult()
-    data class Error(val displayName: String, val message: String) : RestoreResult()
+    data class Error(val displayName: String, val error: RestoreError, val rawMessage: String = "") : RestoreResult()
 }
 
 class OtgArchiveUtil(private val context: Context) {
@@ -325,23 +337,9 @@ class OtgArchiveUtil(private val context: Context) {
             // Pre-check available free space on target storage device (with 50MB safety margin)
             val safetyMargin = 50 * 1024 * 1024L
             val requiredSpace = effectiveSize + safetyMargin
-            val usableSpace = try {
-                if (targetDirUri != null) {
-                    val destFile = getFileFromUri(targetDirUri)
-                    if (destFile != null && destFile.exists()) {
-                        destFile.usableSpace
-                    } else {
-                        Environment.getExternalStorageDirectory().usableSpace
-                    }
-                } else {
-                    Environment.getExternalStorageDirectory().usableSpace
-                }
-            } catch (spaceEx: Exception) {
-                DebugLogBuffer.log(logTag, "Failed to query usable space: ${spaceEx.localizedMessage}")
-                Long.MAX_VALUE
-            }
+            val usableSpace = StorageSpaceUtil.getAvailableStorageBytes(context, targetDirUri)
 
-            DebugLogBuffer.log(logTag, "Target usable space: $usableSpace bytes, required (with 50MB margin): $requiredSpace bytes")
+            DebugLogBuffer.log(logTag, "Target usable space via StorageSpaceUtil: $usableSpace bytes, required (with 50MB margin): $requiredSpace bytes")
 
             if (usableSpace < requiredSpace) {
                 val reqMb = String.format(java.util.Locale.US, "%.1f MB", effectiveSize / (1024.0 * 1024.0))
@@ -442,12 +440,22 @@ class OtgArchiveUtil(private val context: Context) {
                           e.localizedMessage?.contains("No space left", ignoreCase = true) == true ||
                           (e.cause != null && e.cause?.localizedMessage?.contains("ENOSPC", ignoreCase = true) == true)
 
-            val cleanMessage = when {
-                isEnospc -> "restore_no_space:ENOSPC"
-                e.message?.startsWith("restore_no_space:") == true -> e.message!!
-                else -> "${e.message}\n$sw"
+            val (restoreErr, cleanMessage) = when {
+                isEnospc -> Pair(RestoreError.InsufficientStorage("", ""), "restore_no_space:ENOSPC")
+                e.message?.startsWith("restore_no_space:") == true -> {
+                    val parts = e.message!!.removePrefix("restore_no_space:").split("|")
+                    val req = parts.getOrNull(0) ?: ""
+                    val free = parts.getOrNull(1) ?: ""
+                    Pair(RestoreError.InsufficientStorage(req, free), e.message!!)
+                }
+                e.message?.contains("restore_no_otg_uri") == true -> Pair(RestoreError.NoOtgUri, "restore_no_otg_uri")
+                e.message?.contains("restore_target_access_failed") == true -> Pair(RestoreError.TargetAccessFailed, "restore_target_access_failed")
+                e.message?.contains("restore_create_failed") == true -> Pair(RestoreError.CreateFailed, "restore_create_failed")
+                e.message?.contains("restore_mediastore_insert_failed") == true -> Pair(RestoreError.MediaStoreInsertFailed, "restore_mediastore_insert_failed")
+                e.message?.contains("restore_empty_file") == true -> Pair(RestoreError.EmptyFile, "restore_empty_file")
+                else -> Pair(RestoreError.Generic("${e.message}\n$sw"), "${e.message}\n$sw")
             }
-            emit(RestoreResult.Error(item.displayName, cleanMessage))
+            emit(RestoreResult.Error(item.displayName, restoreErr, cleanMessage))
         }
     }.flowOn(Dispatchers.IO)
 

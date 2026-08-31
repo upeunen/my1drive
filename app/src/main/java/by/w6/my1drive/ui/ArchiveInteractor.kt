@@ -52,6 +52,31 @@ class ArchiveInteractor(
                 var globalApplyToAll = false
                 var globalFallbackUri: Uri? = null
 
+                // Batch pre-flight check: calculate total size of all selected items
+                val totalBatchSize = items.sumOf { item ->
+                    if (item.size > 0) item.size else {
+                        try {
+                            item.otgUri?.let { DocumentFile.fromSingleUri(application, Uri.parse(it))?.length() } ?: 0L
+                        } catch (_: Exception) { 0L }
+                    }
+                }
+                val usableBytes = by.w6.my1drive.utils.StorageSpaceUtil.getAvailableStorageBytes(application, targetDirUri)
+                val safetyMargin = 50 * 1024 * 1024L
+                DebugLogBuffer.log(logTag, "Batch pre-flight check: items=${items.size}, totalBatchSize=$totalBatchSize, usableBytes=$usableBytes")
+
+                if (totalBatchSize > 0 && usableBytes < totalBatchSize + safetyMargin) {
+                    val reqMbStr = String.format(java.util.Locale.US, "%.1f MB", totalBatchSize / (1024.0 * 1024.0))
+                    val freeMbStr = String.format(java.util.Locale.US, "%.1f MB", usableBytes / (1024.0 * 1024.0))
+                    val errorMsg = application.getString(by.w6.my1drive.R.string.error_insufficient_storage, reqMbStr, freeMbStr)
+                    DebugLogBuffer.log(logTag, "Batch pre-flight failed: $errorMsg")
+                    restoreState.value = RestoreState(
+                        isRestoring = false,
+                        successCount = 0,
+                        error = by.w6.my1drive.utils.UiText.DynamicString(errorMsg)
+                    )
+                    return@launch
+                }
+
                 for ((index, item) in items.withIndex()) {
                     if (isRestoreCancellationRequested) {
                         DebugLogBuffer.log(logTag, "Restore cancelled by user request. Stopping.")
@@ -97,60 +122,55 @@ class ArchiveInteractor(
                                     DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
                                 }
                             }
-                             is RestoreResult.Error -> {
-                                 val msg = result.message.lowercase()
-                                 if (msg.contains("restore_mediastore_insert_failed") ||
-                                     msg.contains("restore_target_access_failed") ||
-                                     msg.contains("restore_create_failed") ||
-                                     msg.contains("securityexception") ||
-                                     msg.contains("access") ||
-                                     msg.contains("permission")
-                                 ) {
-                                     if (globalApplyToAll) {
-                                         // Already applied to all and failed again? Just record error and skip.
-                                         val errStr = "${result.displayName}: Destination folder not accessible."
-                                         errors.add(errStr)
-                                         DebugLogBuffer.log(logTag, "Item restoration failed despite applyToAll: $errStr")
-                                     } else {
-                                         // Pause and ask user
-                                         val fallbackPath = if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
-                                         restoreState.value = restoreState.value.copy(
-                                             conflict = RestoreConflict(item.displayName, fallbackPath)
-                                         )
-                                         conflictDeferred = kotlinx.coroutines.CompletableDeferred()
-                                         val decision = conflictDeferred!!.await()
-                                         conflictDeferred = null
-                                         restoreState.value = restoreState.value.copy(conflict = null)
-                                         
-                                         if (decision.applyToAll) {
-                                             globalApplyToAll = true
-                                             globalFallbackUri = decision.uri
-                                         }
-                                         if (decision.uri != null) {
-                                             currentTargetDirUri = decision.uri
-                                             retry = true
-                                         } else {
-                                             // User chose to skip or MediaStore fallback via null URI
-                                             currentTargetDirUri = null
-                                             retry = true
-                                         }
-                                     }
-                                 } else {
-                                     val formattedMsg = if (result.message.startsWith("restore_no_space:")) {
-                                         val parts = result.message.removePrefix("restore_no_space:").split("|")
-                                         if (parts.size == 2) {
-                                             application.getString(by.w6.my1drive.R.string.error_insufficient_storage, parts[0], parts[1])
-                                         } else {
-                                             application.getString(by.w6.my1drive.R.string.error_no_space_on_device)
-                                         }
-                                     } else {
-                                         result.message
-                                     }
-                                     val errStr = "${result.displayName}: $formattedMsg"
-                                     errors.add(errStr)
-                                     DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
-                                 }
-                             }
+                              is RestoreResult.Error -> {
+                                  when (result.error) {
+                                      is by.w6.my1drive.utils.RestoreError.TargetAccessFailed,
+                                      is by.w6.my1drive.utils.RestoreError.CreateFailed,
+                                      is by.w6.my1drive.utils.RestoreError.MediaStoreInsertFailed -> {
+                                          if (globalApplyToAll) {
+                                              val errStr = "${result.displayName}: Destination folder not accessible."
+                                              errors.add(errStr)
+                                              DebugLogBuffer.log(logTag, "Item restoration failed despite applyToAll: $errStr")
+                                          } else {
+                                              val fallbackPath = if (item.mimeType.startsWith("video/")) "Movies/" else "Pictures/"
+                                              restoreState.value = restoreState.value.copy(
+                                                  conflict = RestoreConflict(item.displayName, fallbackPath)
+                                              )
+                                              conflictDeferred = kotlinx.coroutines.CompletableDeferred()
+                                              val decision = conflictDeferred!!.await()
+                                              conflictDeferred = null
+                                              restoreState.value = restoreState.value.copy(conflict = null)
+                                              
+                                              if (decision.applyToAll) {
+                                                  globalApplyToAll = true
+                                                  globalFallbackUri = decision.uri
+                                              }
+                                              if (decision.uri != null) {
+                                                  currentTargetDirUri = decision.uri
+                                                  retry = true
+                                              } else {
+                                                  currentTargetDirUri = null
+                                                  retry = true
+                                              }
+                                          }
+                                      }
+                                      is by.w6.my1drive.utils.RestoreError.InsufficientStorage -> {
+                                          val errStr = if (result.error.reqMbStr.isNotEmpty() && result.error.freeMbStr.isNotEmpty()) {
+                                              "${result.displayName}: ${application.getString(by.w6.my1drive.R.string.error_insufficient_storage, result.error.reqMbStr, result.error.freeMbStr)}"
+                                          } else {
+                                              "${result.displayName}: ${application.getString(by.w6.my1drive.R.string.error_no_space_on_device)}"
+                                          }
+                                          errors.add(errStr)
+                                          DebugLogBuffer.log(logTag, "Item restoration failed due to storage space: $errStr")
+                                      }
+                                      else -> {
+                                          val raw = result.rawMessage.ifEmpty { result.error.toString() }
+                                          val errStr = "${result.displayName}: $raw"
+                                          errors.add(errStr)
+                                          DebugLogBuffer.log(logTag, "Item restoration failed: $errStr")
+                                      }
+                                  }
+                              }
                         } // end when
                     } // end collect
                     } // end while (retry)

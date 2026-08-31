@@ -25,9 +25,33 @@ class ArchiveService : Service() {
 
     private var progressJob: Job? = null
 
+    private var storageLowReceiver: android.content.BroadcastReceiver? = null
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        registerStorageLowReceiver()
+    }
+
+    private fun registerStorageLowReceiver() {
+        try {
+            storageLowReceiver = object : android.content.BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    if (Intent.ACTION_DEVICE_STORAGE_LOW == intent?.action) {
+                        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveService", "Received ACTION_DEVICE_STORAGE_LOW broadcast!")
+                        updateNotification(getString(by.w6.my1drive.R.string.low_storage_warning))
+                    }
+                }
+            }
+            val filter = android.content.IntentFilter(Intent.ACTION_DEVICE_STORAGE_LOW)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(storageLowReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(storageLowReceiver, filter)
+            }
+        } catch (e: Exception) {
+            by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveService", "Failed to register storageLowReceiver: ${e.localizedMessage}")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -110,6 +134,9 @@ class ArchiveService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        storageLowReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+        }
         serviceJob.cancel()
     }
 
