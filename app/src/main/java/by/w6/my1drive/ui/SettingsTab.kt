@@ -124,10 +124,23 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
-        // 5. Pro Settings Accordion (Collapsible card containing VPS, Debug logs, and Copy Without Delete setting)
+        // 5. Pro Settings Accordion (Collapsible card containing Copy without delete, Cache, Multi-archives, VPS, Debug logs)
         ProSettingsSection(
             showCopyWithoutDelete = showCopyWithoutDelete,
             onToggleCopyWithoutDelete = onToggleCopyWithoutDelete,
+            cacheFilesCount = cacheFilesCount,
+            cacheSize = cacheSize,
+            onClearCache = onClearCache,
+            missingThumbnailsCount = missingThumbnailsCount,
+            isSyncingThumbnails = isSyncingThumbnails,
+            syncThumbnailsProgress = syncThumbnailsProgress,
+            onSyncThumbnails = onSyncThumbnails,
+            onCancelSyncThumbnails = onCancelSyncThumbnails,
+            knownArchives = knownArchives,
+            onDeleteArchive = onDeleteArchive,
+            activeArchiveUuid = activeArchiveUuid,
+            isOtgConnected = isOtgConnected,
+            onRefresh = onRefresh,
             vpsManager = vpsManager,
             onShowDebugLogs = onShowDebugLogs,
             onCleanOrphans = onCleanOrphans

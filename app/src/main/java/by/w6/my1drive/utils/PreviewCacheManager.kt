@@ -53,11 +53,11 @@ class PreviewCacheManager(
 
     /** Returns current cache size in bytes */
     fun getCacheSize(): Long =
-        previewDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        previewDir.walkTopDown().filter { it.isFile && it.name != ".nomedia" }.sumOf { it.length() }
 
     /** Returns count of cached preview files */
     fun getCacheFileCount(): Int =
-        previewDir.listFiles()?.size ?: 0
+        previewDir.listFiles()?.count { it.isFile && it.name != ".nomedia" } ?: 0
 
     /** Returns the cache File for a given id - uses .my1d extension to hide from other apps */
     fun cacheFileFor(id: String): File =
