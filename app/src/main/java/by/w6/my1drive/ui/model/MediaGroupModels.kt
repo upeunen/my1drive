@@ -6,7 +6,8 @@ data class MonthGroup(
     val monthIndex: Int,
     val monthName: String,
     val items: List<MediaItem>,
-    val chunkedItems: List<List<MediaItem>>
+    val chunkedItems: List<List<MediaItem>> = emptyList(),
+    val blocks: List<by.w6.my1drive.ui.layout.BentoBlock> = emptyList()
 )
 
 data class YearGroup(

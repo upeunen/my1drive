@@ -3,6 +3,7 @@ package by.w6.my1drive.ui
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -68,9 +69,9 @@ fun SetupWizardDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // Check if we need the local folder permission step (Android 11+)
+    // Check if we need the local folder permission step (Android 12+)
     val needsStoragePermission = remember {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !MediaStore.canManageMedia(context)
     }
     
     val pageCount = if (needsStoragePermission) 3 else 2
@@ -311,6 +312,14 @@ private fun WizardStep2Otg() {
 
 @Composable
 private fun WizardStep3Storage() {
+    val context = LocalContext.current
+    val rawResourceId = remember(context) {
+        val id = context.resources.getIdentifier("manage_media_guide", "raw", context.packageName)
+        if (id == 0) {
+            context.resources.getIdentifier("instr", "raw", context.packageName)
+        } else id
+    }
+
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
             Icon(
@@ -332,6 +341,20 @@ private fun WizardStep3Storage() {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        if (rawResourceId != 0) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                VideoGuidePlayer(rawResourceId = rawResourceId)
+            }
+        }
     }
 }
 

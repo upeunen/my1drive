@@ -6,15 +6,19 @@ import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.os.storage.StorageManager
+import android.provider.DocumentsContract
+import android.system.Os
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,11 +34,29 @@ fun OtgStorageSeparatorBar(
     isOtgConnected: Boolean,
     otgDirectoryDisplayName: String?,
     otgDirectoryUri: Uri? = null,
+    physicalArchiveSize: Long = 0L,
+    isArchiving: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var previousArchiving by remember { mutableStateOf(isArchiving) }
+    var triggerGlow by remember { mutableStateOf(false) }
+    var refreshCounter by remember { mutableIntStateOf(0) }
 
-    val (realFreeGb, realTotalGb, progress) = remember(isOtgConnected, otgDirectoryDisplayName, otgDirectoryUri) {
+    LaunchedEffect(isArchiving) {
+        if (previousArchiving && !isArchiving) {
+            triggerGlow = true
+            kotlinx.coroutines.delay(600)
+            refreshCounter++
+            kotlinx.coroutines.delay(1500)
+            refreshCounter++
+            kotlinx.coroutines.delay(1500)
+            triggerGlow = false
+        }
+        previousArchiving = isArchiving
+    }
+
+    val (realFreeGb, realTotalGb, progress) = remember(isOtgConnected, otgDirectoryDisplayName, otgDirectoryUri, physicalArchiveSize, isArchiving, refreshCounter) {
         var freeGbVal = -1.0
         var totalGbVal = -1.0
 
@@ -42,31 +64,86 @@ fun OtgStorageSeparatorBar(
             try {
                 val targetUuid = otgDirectoryUri?.let { OtgFolderResolver.extractVolumeId(it) }
 
-                // Strategy 1: StorageManager removable volumes
-                val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
-                if (sm != null) {
-                    val volumes = sm.storageVolumes
-                    val matchedVol = volumes.firstOrNull { vol ->
-                        (targetUuid != null && vol.uuid.equals(targetUuid, ignoreCase = true)) ||
-                        (vol.isRemovable && vol.state == Environment.MEDIA_MOUNTED)
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && matchedVol != null) {
-                        val dir = matchedVol.directory
-                        if (dir != null && dir.totalSpace > 0) {
-                            freeGbVal = dir.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                            totalGbVal = dir.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                // Strategy 1: SAF Document PFD + POSIX Os.fstatvfs (most reliable on Android 10+ for SAF tree/doc URIs)
+                if (otgDirectoryUri != null) {
+                    try {
+                        val documentUri = if (DocumentsContract.isTreeUri(otgDirectoryUri)) {
+                            val treeId = DocumentsContract.getTreeDocumentId(otgDirectoryUri)
+                            DocumentsContract.buildDocumentUriUsingTree(otgDirectoryUri, treeId)
+                        } else {
+                            otgDirectoryUri
                         }
+
+                        context.contentResolver.openFileDescriptor(documentUri, "r")?.use { pfd ->
+                            try {
+                                val stat = Os.fstatvfs(pfd.fileDescriptor)
+                                val blockMultiplier = if (stat.f_frsize > 0L) stat.f_frsize else stat.f_bsize
+                                val totalBytes = stat.f_blocks * blockMultiplier
+                                val freeBytes = stat.f_bavail * blockMultiplier
+
+                                if (totalBytes > 0L) {
+                                    freeGbVal = freeBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                    totalGbVal = totalBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                }
+                            } catch (_: Exception) {
+                                val statFs = StatFs("/proc/self/fd/${pfd.fd}")
+                                if (statFs.totalBytes > 0L) {
+                                    freeGbVal = statFs.availableBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                    totalGbVal = statFs.totalBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Ignore PFD exceptions
                     }
-                    if (totalGbVal <= 0 && matchedVol?.uuid != null) {
-                        val f = File("/storage/${matchedVol.uuid}")
-                        if (f.exists() && f.totalSpace > 0) {
-                            freeGbVal = f.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                            totalGbVal = f.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                }
+
+                // Strategy 2: Root tree document URI by UUID fallback if otgDirectoryUri root/tree failed
+                if (totalGbVal <= 0 && targetUuid != null) {
+                    try {
+                        val rootTreeUri = DocumentsContract.buildTreeDocumentUri("com.android.externalstorage.documents", "$targetUuid:")
+                        val rootDocUri = DocumentsContract.buildDocumentUriUsingTree(rootTreeUri, "$targetUuid:")
+                        context.contentResolver.openFileDescriptor(rootDocUri, "r")?.use { pfd ->
+                            val stat = Os.fstatvfs(pfd.fileDescriptor)
+                            val blockMultiplier = if (stat.f_frsize > 0L) stat.f_frsize else stat.f_bsize
+                            val totalBytes = stat.f_blocks * blockMultiplier
+                            val freeBytes = stat.f_bavail * blockMultiplier
+
+                            if (totalBytes > 0L) {
+                                freeGbVal = freeBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                totalGbVal = totalBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                // Strategy 3: StorageManager removable volumes
+                if (totalGbVal <= 0) {
+                    val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+                    if (sm != null) {
+                        val volumes = sm.storageVolumes
+                        val matchedVol = volumes.firstOrNull { vol ->
+                            (targetUuid != null && vol.uuid.equals(targetUuid, ignoreCase = true)) ||
+                            (vol.isRemovable && vol.state == Environment.MEDIA_MOUNTED)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && matchedVol != null) {
+                            val dir = matchedVol.directory
+                            if (dir != null && dir.totalSpace > 0) {
+                                freeGbVal = dir.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                totalGbVal = dir.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            }
+                        }
+                        if (totalGbVal <= 0 && matchedVol?.uuid != null) {
+                            val f = File("/storage/${matchedVol.uuid}")
+                            if (f.exists() && f.totalSpace > 0) {
+                                freeGbVal = f.usableSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                                totalGbVal = f.totalSpace.toDouble() / (1024.0 * 1024.0 * 1024.0)
+                            }
                         }
                     }
                 }
 
-                // Strategy 2: Direct File path resolution via Extracted UUID
+                // Strategy 4: Direct File path resolution via Extracted UUID
                 if (totalGbVal <= 0 && targetUuid != null) {
                     val candidatePaths = listOf(
                         File("/storage/$targetUuid"),
@@ -81,22 +158,7 @@ fun OtgStorageSeparatorBar(
                     }
                 }
 
-                // Strategy 3: Open PFD Descriptor on SAF tree URI
-                if (totalGbVal <= 0 && otgDirectoryUri != null) {
-                    try {
-                        context.contentResolver.openFileDescriptor(otgDirectoryUri, "r")?.use { pfd ->
-                            val stat = StatFs(pfd.fileDescriptor.toString())
-                            if (stat.totalBytes > 0) {
-                                freeGbVal = stat.availableBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                                totalGbVal = stat.totalBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        // Ignore PFD exceptions
-                    }
-                }
-
-                // Strategy 4: Directory scan of /storage and /mnt/media_rw
+                // Strategy 5: Directory scan of /storage and /mnt/media_rw
                 if (totalGbVal <= 0) {
                     val dirsToScan = listOf(File("/storage"), File("/mnt/media_rw"))
                     for (parent in dirsToScan) {
@@ -123,6 +185,23 @@ fun OtgStorageSeparatorBar(
 
         Triple(freeGbVal, totalGbVal, prog)
     }
+
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (triggerGlow) 1f else 0f,
+        animationSpec = tween(durationMillis = 800),
+        label = "otgGlowAlpha"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "otgShimmer")
+    val shimmerPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "otgShimmerPhase"
+    )
 
     val driveTitle = otgDirectoryDisplayName ?: stringResource(R.string.otg_archive_folder)
     val statusText = when {

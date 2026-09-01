@@ -278,7 +278,7 @@ class MediaOperationInteractor(
             missingFoldersQueue.clear()
             missingFoldersQueue.addAll(missingFolders)
             
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !MediaStore.canManageMedia(application)) {
                 val hasAsked = prefs.getBoolean("has_asked_manage_storage", false)
                 if (!hasAsked) {
                     onShowManageStorageDialog(items)
@@ -342,16 +342,13 @@ class MediaOperationInteractor(
     }
 
     private fun fallbackDeleteDeviceItems(items: List<MediaItem>) {
-        if (hasAllFilesAccess(application)) {
-            directDeleteDeviceItems(items)
-            return
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 val pendingIntent = MediaStore.createDeleteRequest(application.contentResolver, items.map { it.uri })
-                _deviceDeleteSender.value = pendingIntent.intentSender
                 _deviceDeletePendingItems.clear()
                 _deviceDeletePendingItems.addAll(items)
+                _deviceDeleteSender.value = pendingIntent.intentSender
+                return
             } catch (_: Exception) {
                 directDeleteDeviceItems(items)
             }
@@ -389,10 +386,10 @@ class MediaOperationInteractor(
     }
 
     fun hasAllFilesAccess(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaStore.canManageMedia(context)
         } else {
-            true
+            false
         }
     }
 
@@ -426,15 +423,16 @@ class MediaOperationInteractor(
     fun dispatchManageStorageIntent(items: List<MediaItem>?) {
         prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
         pendingDeleteTask = items
-        try {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = Uri.parse("package:${application.packageName}")
-            }
-            _manageStoragePermissionRequest.value = intent
-        } catch (e: Exception) {
-            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-            _manageStoragePermissionRequest.value = intent
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
+                    data = Uri.parse("package:${application.packageName}")
+                }
+                _manageStoragePermissionRequest.value = intent
+                return
+            } catch (_: Exception) {}
         }
+        requestNextFolderPermission()
     }
 
     fun requestNextFolderPermission() {

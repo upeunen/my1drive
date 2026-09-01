@@ -66,24 +66,35 @@ class OtgArchiveUtil(private val context: Context) {
                 ?: throw Exception("otg_access_failed")
 
             val existingFile = dir.findFile(item.displayName)
-            val file = if (existingFile != null) {
-                DebugLogBuffer.log(logTag, "File ${item.displayName} already exists on OTG, reusing existing file")
-                existingFile
-            } else {
-                DebugLogBuffer.log(logTag, "Creating new file ${item.displayName} on OTG")
+            val isOverwriting = existingFile != null
+
+            val targetFile = if (!isOverwriting) {
+                DebugLogBuffer.log(logTag, "Creating target file directly as ${item.displayName} on OTG")
                 dir.createFile(item.mimeType, item.displayName)
+                    ?: dir.createFile("application/octet-stream", item.displayName)
+                    ?: throw Exception("otg_create_failed")
+            } else {
+                val tempFileName = ".${item.displayName}.tmp"
+                dir.findFile(tempFileName)?.let {
+                    try { it.delete() } catch (_: Exception) {}
+                }
+                DebugLogBuffer.log(logTag, "Creating temp file $tempFileName on OTG for overwrite")
+                dir.createFile(item.mimeType, tempFileName)
+                    ?: dir.createFile("application/octet-stream", tempFileName)
                     ?: throw Exception("otg_create_failed")
             }
-            createdFile = file
-            val destUri = file.uri
+            
+            createdFile = targetFile
+            val destUri = targetFile.uri
             DebugLogBuffer.log(logTag, "Target file URI: $destUri")
 
             val srcHash = "${item.size}_${item.dateModified}"
             var totalBytesCopied = 0L
-            val buffer = ByteArray(2 * 1024 * 1024) // 2 MB buffer for faster OTG writing
+            val bufferSize = 256 * 1024 // 256 KB buffer for max I/O throughput
+            val buffer = ByteArray(bufferSize)
 
             DebugLogBuffer.log(logTag, "Opening streams for copy...")
-            val input = try {
+            val rawInput = try {
                 context.contentResolver.openInputStream(item.uri)
                     ?: throw Exception("otg_read_stream_failed: input stream is null")
             } catch (e: java.io.FileNotFoundException) {
@@ -92,9 +103,9 @@ class OtgArchiveUtil(private val context: Context) {
                 return@flow
             }
 
-            input.use { inputStream ->
+            java.io.BufferedInputStream(rawInput, bufferSize).use { inputStream ->
                 context.contentResolver.openFileDescriptor(destUri, "w")?.use { pfd ->
-                    java.io.FileOutputStream(pfd.fileDescriptor).use { output ->
+                    java.io.BufferedOutputStream(java.io.FileOutputStream(pfd.fileDescriptor), bufferSize).use { output ->
                         var lastEmittedStep = -1
                         var bytesRead = inputStream.read(buffer)
                         while (bytesRead != -1) {
@@ -117,13 +128,6 @@ class OtgArchiveUtil(private val context: Context) {
                         }
                         output.flush()
                     }
-                    try {
-                        DebugLogBuffer.log(logTag, "Syncing file descriptor to disk...")
-                        pfd.fileDescriptor.sync()
-                        DebugLogBuffer.log(logTag, "Sync completed successfully")
-                    } catch (syncEx: Exception) {
-                        DebugLogBuffer.log(logTag, "Failed to sync file descriptor: ${syncEx.localizedMessage}")
-                    }
                 } ?: throw Exception("otg_write_failed")
             }
 
@@ -139,18 +143,33 @@ class OtgArchiveUtil(private val context: Context) {
                 return@flow
             }
 
-            // Pre-cache thumbnail before original is deleted from device
-            val precachedPath = try {
-                precacheThumbnail(item, srcHash)
-            } catch (ex: Exception) {
-                DebugLogBuffer.log(logTag, "Error in precacheThumbnail: ${ex.localizedMessage}")
-                null
+            var finalUri = destUri
+            if (isOverwriting) {
+                existingFile?.let {
+                    DebugLogBuffer.log(logTag, "Deleting old file ${item.displayName} before rename")
+                    try { it.delete() } catch (_: Exception) {}
+                }
+                try {
+                    val renamedUri = DocumentsContract.renameDocument(context.contentResolver, targetFile.uri, item.displayName)
+                    if (renamedUri != null) {
+                        finalUri = renamedUri
+                        DebugLogBuffer.log(logTag, "Atomically renamed temp file to final name ${item.displayName}: $finalUri")
+                    }
+                } catch (renameEx: Exception) {
+                    DebugLogBuffer.log(logTag, "Failed to rename temp file: ${renameEx.localizedMessage}")
+                }
             }
-            DebugLogBuffer.log(logTag, "Precached thumbnail path: $precachedPath")
+
+            // Check if preview is already precached locally, without doing bitmap decode work during copy stream
+            val previewDir = java.io.File(context.filesDir, "my1drive_previews")
+            val existingCacheFile = java.io.File(previewDir, "$srcHash.my1d")
+            val precachedPath = if (existingCacheFile.exists() && existingCacheFile.length() > 0) {
+                existingCacheFile.absolutePath
+            } else null
 
             success = true
             DebugLogBuffer.log(logTag, "Successfully archived ${item.displayName}")
-            emit(CopyVerifyResult.Success(item, srcHash, destUri.toString(), thumbnailPath = precachedPath))
+            emit(CopyVerifyResult.Success(item, srcHash, finalUri.toString(), thumbnailPath = precachedPath))
         } catch (e: Exception) {
             DebugLogBuffer.log(logTag, "Error copying ${item.displayName}: ${e.javaClass.name} - ${e.localizedMessage}")
             val sw = java.io.StringWriter()
@@ -356,7 +375,7 @@ class OtgArchiveUtil(private val context: Context) {
                 java.io.FileOutputStream(pfd.fileDescriptor).use { output ->
                     context.contentResolver.openInputStream(otgUri)?.use { input ->
                         var lastEmittedPercent = -1
-                        val buffer = ByteArray(2 * 1024 * 1024) // 2 MB buffer
+                        val buffer = ByteArray(128 * 1024) // 128 KB buffer for steady streaming
                         var totalBytesCopied = 0L
                         var bytesRead = input.read(buffer)
                         while (bytesRead != -1) {

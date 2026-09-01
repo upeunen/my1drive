@@ -526,16 +526,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     // ─── Preview cache ───
 
+    private var lastCacheStatsRefreshTime = 0L
+
     fun onPreviewCached(hash: String, path: String) {
         viewModelScope.launch(Dispatchers.IO) {
             db.mediaDao().updateLastAccessed(hash, System.currentTimeMillis())
-            db.mediaDao().getById(hash)?.let { if (it.thumbnailPath != path) db.mediaDao().insert(it.copy(thumbnailPath = path)) }
-            previewCache.evictIfNeeded(); refreshCacheStats()
+            refreshCacheStatsThrottled()
         }
     }
 
     fun refreshCacheStats() {
         viewModelScope.launch(Dispatchers.IO) {
+            _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount())
+            _isStorageLow.value = checkIsStorageLow()
+        }
+    }
+
+    private fun refreshCacheStatsThrottled() {
+        val now = System.currentTimeMillis()
+        if (now - lastCacheStatsRefreshTime >= 5000L) {
+            lastCacheStatsRefreshTime = now
             _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount())
             _isStorageLow.value = checkIsStorageLow()
         }
@@ -642,6 +652,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         cancelThumbnailSync()
         thumbnailManager.resetProgress()
         otgManager.onEject()
+    }
+
+    fun renameActiveArchive(newName: String, onResult: (Boolean) -> Unit = {}) {
+        archiveInteractor.renameActiveArchive(newName, onResult)
     }
 
     fun cancelArchiving() {
@@ -970,7 +984,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private data class MediaSubState(
         val grouped: List<GalleryItem>,
-        val archivedGrouped: List<GalleryItem>,
         val yearGroups: List<by.w6.my1drive.ui.model.YearGroup>,
         val items: List<MediaItem>,
         val devSort: DeviceSortMode,
@@ -1026,14 +1039,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     )
 
     private val mediaSubFlow = combine(
-        combine(displayManager.groupedMediaItems, displayManager.archivedGroupedItems, archiveYearGroups, mediaItems) { g, ag, yg, items ->
-            Triple(g, ag, Pair(yg, items))
+        combine(displayManager.groupedMediaItems, archiveYearGroups, mediaItems) { g, yg, items ->
+            Pair(g, Pair(yg, items))
         },
         combine(displayManager.deviceSortMode, displayManager.archiveSortMode, displayManager.mediaFilterMode) { ds, asort, filter ->
             Triple(ds, asort, filter)
         }
     ) { p1, p2 ->
-        MediaSubState(p1.first, p1.second, p1.third.first, p1.third.second, p2.first, p2.second, p2.third)
+        MediaSubState(p1.first, p1.second.first, p1.second.second, p2.first, p2.second, p2.third)
     }
 
     private val otgSubFlow = combine(
@@ -1099,7 +1112,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     ) { media, otg, op, billing ->
         GalleryUiState(
             groupedItems = media.grouped,
-            archivedGroupedItems = media.archivedGrouped,
             archiveYearGroups = media.yearGroups,
             mediaItems = media.items,
             deviceSortMode = media.devSort,

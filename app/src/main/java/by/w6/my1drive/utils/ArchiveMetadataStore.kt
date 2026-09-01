@@ -36,8 +36,6 @@ data class JsonEntry(
     }
 
     companion object {
-        private const val METADATA_FILE_NAME = ".my1drive_db.json"
-
         fun fromJson(json: JSONObject): JsonEntry? = try {
             JsonEntry(
                 hash = json.getString("hash"),
@@ -54,7 +52,7 @@ data class JsonEntry(
 }
 
 /**
- * Manages the archive metadata file (.my1drive_db.json) on the OTG drive.
+ * Manages the archive metadata file (my1drive_db.json) on the OTG drive.
  *
  * The file on the OTG drive is the source of truth.
  * Every archive mutation (add, delete, restore) MUST:
@@ -64,7 +62,8 @@ data class JsonEntry(
 class ArchiveMetadataStore(private val context: Context) {
 
     companion object {
-        private const val METADATA_FILE_NAME = ".my1drive_db.json"
+        private const val METADATA_FILE_NAME = "my1drive_db.json"
+        private const val LEGACY_METADATA_FILE_NAME = ".my1drive_db.json"
         private const val JSON_VERSION = 2
     }
 

@@ -375,12 +375,12 @@
     <string name="paywall_error">Ошибка покупки: %1$s</string>
     <string name="paywall_close">Закрыть</string>
 
-    <string name="dialog_manage_storage_title">Разрешить удаление без вопросов</string>
-    <string name="dialog_manage_storage_desc">Для того чтобы удалять файлы с телефона незаметно и без постоянных всплывающих окон, приложению требуется специальный доступ ко всем файлам. Пожалуйста, включите его на следующем экране.</string>
-    <string name="dialog_manage_storage_btn">Перейти в Настройки</string>
-    <string name="settings_manage_storage_title">Полный доступ к файлам</string>
-    <string name="settings_manage_storage_desc">Позволяет удалять фото и видео без системных диалогов-подтверждений.</string>
-    <string name="settings_manage_storage_btn">Разрешить</string>
+    <string name="dialog_manage_storage_title">Архивация в 1 тап без дополнительных окон</string>
+    <string name="dialog_manage_storage_desc">Чтобы при архивации файлы перемещались и удалялись с телефона в один тап без постоянных окон подтверждения Android, включите разрешение на следующем экране.</string>
+    <string name="dialog_manage_storage_btn">Включить в Настройках</string>
+    <string name="settings_manage_storage_title">Архивация и удаление в 1 тап</string>
+    <string name="settings_manage_storage_desc">Позволяет переносить и удалять фото и видео в один тап без всплывающих окон системной безопасности.</string>
+    <string name="settings_manage_storage_btn">Настроить</string>
 
     <string name="local_folder_dialog_title">Разрешить My1drive работу с файлами</string>
     <string name="local_folder_dialog_desc">Приложению нужен доступ к вашим фото и видео, чтобы перемещать их в архив без дополнительных запросов. Нажмите «Разрешить» на следующем экране.</string>

@@ -109,7 +109,8 @@ class ArchiveSyncHelper private constructor(
                         if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) continue
                         val name = cursor.getString(nameIdx) ?: continue
                         
-                        if (name == ".my1drive_uuid" || name == ".my1drive_uuid.txt" || 
+                        if (name.startsWith(".") || name.endsWith(".tmp") ||
+                            name == ".my1drive_uuid" || name == ".my1drive_uuid.txt" || 
                             name == ".my1drive_db.json" || name == "my1drive_db.json") continue
                         
                         val docUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(dirUri, docId)
@@ -796,15 +797,29 @@ class ArchiveSyncHelper private constructor(
                 DebugLogBuffer.log(logTag, "Added entries to JSON metadata on OTG drive")
             }
 
-            // 2. Insert into Room (local cache)
-            for (info in list) {
-                repository.insertArchivedItem(
-                    info.item, info.otgUri, info.hash,
-                    info.thumbnailPath, info.item.originalRelativePath,
-                    currentTimeSec
+            // 2. Insert into Room (local cache) in a single batch transaction
+            val activeUuid = prefs.getString("active_archive_uuid", "") ?: ""
+            val entitiesToInsert = list.map { info ->
+                val item = info.item
+                by.w6.my1drive.data.local.MediaEntity(
+                    id = info.hash,
+                    displayName = item.displayName,
+                    mimeType = item.mimeType,
+                    size = item.size,
+                    dateModified = item.dateModified,
+                    otgUri = info.otgUri,
+                    thumbnailPath = info.thumbnailPath,
+                    duration = item.duration,
+                    originalRelativePath = info.item.originalRelativePath ?: item.originalRelativePath,
+                    dateArchived = currentTimeSec,
+                    archiveUuid = activeUuid,
+                    width = if (item.aspectRatio > 0f) (item.aspectRatio * 1000).toInt() else 0,
+                    height = if (item.aspectRatio > 0f) 1000 else 0
                 )
-                DebugLogBuffer.log(logTag, "Inserted item to local DB: ${info.item.displayName} (hash=${info.hash})")
             }
+            db.mediaDao().insertAll(entitiesToInsert)
+            repository.refresh()
+            DebugLogBuffer.log(logTag, "Batch inserted ${entitiesToInsert.size} items to Room database")
 
             _archiveState.value = ArchiveState(
                 isArchiving = false, 

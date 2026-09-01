@@ -316,15 +316,6 @@ fun ArchiveRoute(
                 BentoLayoutHelper.calculateUnitSize(availableWidth, gridColumnsCount, spacing)
             }
 
-            val monthBlocksMap = remember(yearGroups, gridColumnsCount) {
-                yearGroups.flatMap { yg ->
-                    yg.months.map { mg ->
-                        val monthKey = "${yg.year}_${mg.monthIndex}"
-                        monthKey to BentoLayoutHelper.computeBlocks(mg.items, gridColumnsCount)
-                    }
-                }.toMap()
-            }
-
             if (yearGroups.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -436,7 +427,7 @@ fun ArchiveRoute(
 
                             // 3. Bento-мозаика фотографий (если раскрыто)
                             if (isExpanded) {
-                                val blocks = monthBlocksMap[monthKey] ?: emptyList()
+                                val blocks = monthGroup.blocks
                                 items(blocks, key = { block -> "archive_${block.key}" }) { block ->
                                     BentoBlockView(
                                         block = block,

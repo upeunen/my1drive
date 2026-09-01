@@ -157,18 +157,20 @@ fun GalleryScreen(
     }
 
     val navigateToTab: (String) -> Unit = { route ->
-        if (activePreviewState != null) {
-            activePreviewState = null
-        }
-        if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
-            viewModel.clearSelection()
-        }
-        navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) {
-                saveState = true
+        if (currentScreenRoute != route) {
+            if (activePreviewState != null) {
+                activePreviewState = null
             }
-            launchSingleTop = true
-            this.restoreState = true
+            if (route != "settings" && selectionOriginRoute != null && selectionOriginRoute != route) {
+                viewModel.clearSelection()
+            }
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                this.restoreState = true
+            }
         }
     }
 
@@ -228,20 +230,6 @@ fun GalleryScreen(
                     onSelectDateRangeClick = { showDateRangePicker = true },
                     onNavigate = navigateToTab
                 )
-
-                val visibleItems = remember(currentScreenRoute, mediaItems) {
-                    if (currentScreenRoute == "photos") {
-                        mediaItems.filter { it.status == MediaStatus.ON_DEVICE }
-                    } else {
-                        mediaItems.filter {
-                            it.status == MediaStatus.ARCHIVED_OTG &&
-                            (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
-                        }
-                    }
-                }
-                val firstSelectedItem = remember(selectedIds, mediaItems) {
-                    mediaItems.firstOrNull { it.id in selectedIds }
-                }
 
                 androidx.compose.animation.AnimatedVisibility(
                     visible = selectedIds.isNotEmpty() && currentScreenRoute != "settings" && activePreviewState == null,

@@ -23,8 +23,8 @@ android {
         applicationId = "by.w6.my1drive2"
         minSdk = 28
         targetSdk = 36
-        versionCode = 21
-        versionName = "2.2.0"
+        versionCode = 22
+        versionName = "2.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -75,7 +75,7 @@ android {
 
 dependencies {
 
-    "googleplayImplementation"("com.android.billingclient:billing:7.0.0")
+    "googleplayImplementation"("com.android.billingclient:billing-ktx:7.1.1")
     
     "rustoreImplementation"(platform("ru.rustore.sdk:bom:2026.06.01"))
     "rustoreImplementation"("ru.rustore.sdk:pay")

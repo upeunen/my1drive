@@ -218,4 +218,24 @@ class ArchiveInteractor(
             otgManager.updateArchiveSize()
         }
     }
+
+    fun renameActiveArchive(newName: String, onResult: (Boolean) -> Unit) {
+        val rootUri = otgManager.otgDirectoryUri.value ?: run {
+            onResult(false)
+            return
+        }
+        val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(rootUri) ?: run {
+            onResult(false)
+            return
+        }
+        scope.launch {
+            val success = by.w6.my1drive.utils.OtgFolderResolver.renameArchive(application, rootUri, volumeUuid, newName)
+            if (success) {
+                otgManager.updateArchiveSize()
+                repository.refresh()
+            }
+            onResult(success)
+        }
+    }
 }
+

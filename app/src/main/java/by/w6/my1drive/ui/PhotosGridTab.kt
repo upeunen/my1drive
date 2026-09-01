@@ -137,45 +137,43 @@ fun PhotosGridTab(
             BentoLayoutHelper.calculateUnitSize(availableWidth, gridColumnsCount, spacing)
         }
 
-        val feedItems by produceState<List<BentoFeedItem>>(initialValue = emptyList(), groupedItems, gridColumnsCount) {
-            value = withContext(Dispatchers.Default) {
-                val result = mutableListOf<BentoFeedItem>()
-                var currentHeader: String? = null
-                val currentSectionMedia = mutableListOf<MediaItem>()
+        val feedItems = remember(groupedItems, gridColumnsCount) {
+            val result = mutableListOf<BentoFeedItem>()
+            var currentHeader: String? = null
+            val currentSectionMedia = mutableListOf<MediaItem>()
 
-                fun flushSection() {
-                    if (currentHeader != null || currentSectionMedia.isNotEmpty()) {
-                        val sectionList = currentSectionMedia.toList()
-                        if (currentHeader != null) {
-                            result.add(BentoFeedItem.HeaderItem(currentHeader!!, sectionList))
-                        }
-                        if (sectionList.isNotEmpty()) {
-                            val blocks = BentoLayoutHelper.computeBlocks(
-                                items = sectionList,
-                                gridColumnsCount = gridColumnsCount
-                            )
-                            for (block in blocks) {
-                                result.add(BentoFeedItem.BlockItem(block))
-                            }
-                        }
-                        currentSectionMedia.clear()
+            fun flushSection() {
+                if (currentHeader != null || currentSectionMedia.isNotEmpty()) {
+                    val sectionList = currentSectionMedia.toList()
+                    if (currentHeader != null) {
+                        result.add(BentoFeedItem.HeaderItem(currentHeader!!, sectionList))
                     }
-                }
-
-                for (gi in groupedItems) {
-                    when (gi) {
-                        is GalleryItem.Header -> {
-                            flushSection()
-                            currentHeader = gi.title
-                        }
-                        is GalleryItem.Media -> {
-                            currentSectionMedia.add(gi.item)
+                    if (sectionList.isNotEmpty()) {
+                        val blocks = BentoLayoutHelper.computeBlocks(
+                            items = sectionList,
+                            gridColumnsCount = gridColumnsCount
+                        )
+                        for (block in blocks) {
+                            result.add(BentoFeedItem.BlockItem(block))
                         }
                     }
+                    currentSectionMedia.clear()
                 }
-                flushSection()
-                result
             }
+
+            for (gi in groupedItems) {
+                when (gi) {
+                    is GalleryItem.Header -> {
+                        flushSection()
+                        currentHeader = gi.title
+                    }
+                    is GalleryItem.Media -> {
+                        currentSectionMedia.add(gi.item)
+                    }
+                }
+            }
+            flushSection()
+            result
         }
 
         LazyColumn(

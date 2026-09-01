@@ -375,12 +375,12 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="paywall_error">Purchase error: %1$s</string>
     <string name="paywall_close">Close</string>
 
-    <string name="dialog_manage_storage_title">Allow Deletion Without Confirmation</string>
-    <string name="dialog_manage_storage_desc">To delete files silently without constant pop-ups, the app needs special access to all files. Please enable it on the next screen.</string>
-    <string name="dialog_manage_storage_btn">Go to Settings</string>
-    <string name="settings_manage_storage_title">All Files Access</string>
-    <string name="settings_manage_storage_desc">Allows deleting photos and videos without system confirmation dialogs.</string>
-    <string name="settings_manage_storage_btn">Allow</string>
+    <string name="dialog_manage_storage_title">1-Tap Archiving Without Extra Windows</string>
+    <string name="dialog_manage_storage_desc">To archive and move photos and videos from your phone in one tap without constant Android confirmation pop-ups, enable the permission on the next screen.</string>
+    <string name="dialog_manage_storage_btn">Open Settings</string>
+    <string name="settings_manage_storage_title">1-Tap Archiving &amp; Deletion</string>
+    <string name="settings_manage_storage_desc">Allows moving and deleting photos and videos in one tap without system security pop-ups.</string>
+    <string name="settings_manage_storage_btn">Configure</string>
 
     <string name="local_folder_dialog_title">Allow My1Drive access to files</string>
     <string name="local_folder_dialog_desc">The app needs access to your photos and videos to move them to the archive without extra prompts. Tap "Allow" on the next screen.</string>
@@ -452,4 +452,9 @@ Errors:
     <string name="filter_photos">Photos</string>
     <string name="filter_videos">Videos</string>
     <string name="cd_scroll_to_top">Scroll to top</string>
+    <string name="action_rename_archive">Rename archive</string>
+    <string name="rename_archive_title">Rename archive</string>
+    <string name="rename_archive_hint">New archive name</string>
+    <string name="rename_archive_success">Archive renamed successfully</string>
+    <string name="rename_archive_error">Failed to rename archive folder</string>
 </resources>

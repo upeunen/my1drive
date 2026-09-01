@@ -18,6 +18,16 @@ import by.w6.my1drive.ui.ArchiveNamingDialog
 import by.w6.my1drive.ui.CreateArchiveGuideDialog
 import by.w6.my1drive.ui.components.UnknownDriveDialog
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.remember
+import by.w6.my1drive.ui.VideoGuidePlayer
 import by.w6.my1drive.ui.screens.SuccessDialog
 import by.w6.my1drive.ui.screens.PaywallScreen
 // import by.w6.my1drive.ui.UnreadableOtgDialog
@@ -148,6 +158,14 @@ fun AppDialogCoordinator(
         }
 
         is AppDialog.ManageStoragePermission -> {
+            val context = LocalContext.current
+            val rawResourceId = remember(context) {
+                val id = context.resources.getIdentifier("manage_media_guide", "raw", context.packageName)
+                if (id == 0) {
+                    context.resources.getIdentifier("instr", "raw", context.packageName)
+                } else id
+            }
+
             AlertDialog(
                 onDismissRequest = { viewModel.dismissDialog() },
                 icon = {
@@ -157,7 +175,26 @@ fun AppDialogCoordinator(
                     )
                 },
                 title = { Text(stringResource(id = R.string.dialog_manage_storage_title)) },
-                text = { Text(stringResource(id = R.string.dialog_manage_storage_desc)) },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (rawResourceId != 0) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                VideoGuidePlayer(rawResourceId = rawResourceId)
+                            }
+                        }
+                        Text(stringResource(id = R.string.dialog_manage_storage_desc))
+                    }
+                },
                 confirmButton = {
                     TextButton(onClick = { viewModel.proceedWithManageStorageRequest(activeDialog.itemsToWait) }) {
                         Text(stringResource(id = R.string.dialog_manage_storage_btn))

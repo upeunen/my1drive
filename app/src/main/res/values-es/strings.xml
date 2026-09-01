@@ -375,12 +375,12 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="paywall_error">Error de compra: %1$s</string>
     <string name="paywall_close">Cerrar</string>
 
-    <string name="dialog_manage_storage_title">Permitir Eliminación Sin Confirmación</string>
-    <string name="dialog_manage_storage_desc">Para eliminar archivos silenciosamente sin ventanas emergentes constantes, la aplicación necesita acceso especial a todos los archivos.</string>
+    <string name="dialog_manage_storage_title">Archivado en 1 Toque Sin Ventanas Extras</string>
+    <string name="dialog_manage_storage_desc">Para archivar y eliminar fotos y vídeos de tu teléfono en un solo toque sin constantes ventanas emergentes de Android, activa el permiso en la siguiente pantalla.</string>
     <string name="dialog_manage_storage_btn">Ir a Ajustes</string>
-    <string name="settings_manage_storage_title">Acceso a Todos los Archivos</string>
-    <string name="settings_manage_storage_desc">Permite eliminar fotos y vídeos sin cuadros de diálogo de confirmación del sistema.</string>
-    <string name="settings_manage_storage_btn">Permitir</string>
+    <string name="settings_manage_storage_title">Archivado y Eliminación en 1 Toque</string>
+    <string name="settings_manage_storage_desc">Permite mover y eliminar fotos y vídeos en un solo toque sin ventanas emergentes de seguridad del sistema.</string>
+    <string name="settings_manage_storage_btn">Configurar</string>
 
     <string name="local_folder_dialog_title">Permitir que My1Drive acceda a los archivos</string>
     <string name="local_folder_dialog_desc">La aplicación necesita acceso a sus fotos y vídeos para moverlos al archivo sin preguntas adicionales. Toque "Permitir" en la siguiente pantalla.</string>

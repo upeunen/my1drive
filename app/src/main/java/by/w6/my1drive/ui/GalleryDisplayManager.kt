@@ -172,37 +172,7 @@ class GalleryDisplayManager(
         resultList
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
 
-    val archivedGroupedItems: StateFlow<List<GalleryItem>> = combine(
-        mediaItems,
-        archiveSortMode,
-        localeVersion
-    ) { list, sortMode, _ ->
-        val archivedList = list.filter {
-            it.status == MediaStatus.ARCHIVED_OTG &&
-                    (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
-        }.run {
-            if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                sortedByDescending { it.dateArchived ?: 0L }
-            } else {
-                sortedByDescending { it.dateModified }
-            }
-        }
-
-        val resultList = mutableListOf<GalleryItem>()
-        val grouped = archivedList.groupBy { item ->
-            val date = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                item.dateArchived ?: 0L
-            } else {
-                item.dateModified
-            }
-            formatDateHeader(date)
-        }
-        for ((headerText, items) in grouped) {
-            resultList.add(GalleryItem.Header(headerText))
-            items.forEach { resultList.add(GalleryItem.Media(it)) }
-        }
-        resultList
-    }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
+    val archivedGroupedItems: StateFlow<List<GalleryItem>> = MutableStateFlow(emptyList())
 
     val archiveYearGroups: StateFlow<List<YearGroup>> = combine(
         mediaItems,
@@ -215,55 +185,54 @@ class GalleryDisplayManager(
             it.status == MediaStatus.ARCHIVED_OTG &&
                     (it.mimeType.startsWith("image/") || it.mimeType.startsWith("video/"))
         }.let { all -> if (filterUuid != null) all.filter { it.archiveUuid == filterUuid } else all }
-            .let { all ->
-                if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                    all.sortedByDescending { it.dateArchived ?: 0L }
-                } else {
-                    all.sortedByDescending { it.dateModified }
-                }
-            }
 
-        archivedItems.groupBy { item ->
+        if (archivedItems.isEmpty()) return@combine emptyList<YearGroup>()
+
+        val zoneId = java.time.ZoneId.systemDefault()
+
+        // Быстрая группировка за один проход по год/месяц без создания тысяч объектов Calendar
+        val yearMonthGrouped = archivedItems.groupBy { item ->
             val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
                 item.dateArchived ?: item.dateModified
             } else {
                 item.dateModified
             }
-            val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
-            cal.get(Calendar.YEAR)
-        }.map { (year, yearItems) ->
-            val monthGroups = yearItems.groupBy { item ->
-                val timestamp = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                    item.dateArchived ?: item.dateModified
-                } else {
-                    item.dateModified
-                }
-                val cal = Calendar.getInstance().apply { timeInMillis = timestamp * 1000 }
-                cal.get(Calendar.MONTH)
-            }.map { (monthIdx, monthItems) ->
-                // Сортируем элементы внутри месяца по нужному полю
-                val sortedMonthItems = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
-                    monthItems.sortedByDescending { it.dateArchived ?: 0L }
-                } else {
-                    monthItems.sortedByDescending { it.dateModified }
-                }
+            val zdt = java.time.Instant.ofEpochSecond(timestamp).atZone(zoneId)
+            zdt.year to (zdt.monthValue - 1)
+        }
 
-                val sampleTimestamp = (sortedMonthItems.firstOrNull()?.run {
-                    if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) dateArchived ?: dateModified else dateModified
-                } ?: 0L) * 1000
+        val monthLocale = getActiveLocale()
+        val monthNames = java.text.DateFormatSymbols(monthLocale).months
+        val yearGroupsMap = mutableMapOf<Int, MutableList<MonthGroup>>()
 
-                val monthLocale = getActiveLocale()
-                val monthName = SimpleDateFormat("LLLL", monthLocale).format(Date(sampleTimestamp))
-                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(monthLocale) else it.toString() }
+        for ((yearMonth, itemsInMonth) in yearMonthGrouped) {
+            val year = yearMonth.first
+            val monthIdx = yearMonth.second
 
-                MonthGroup(
-                    monthIndex = monthIdx,
-                    monthName = monthName,
-                    items = sortedMonthItems,
-                    chunkedItems = sortedMonthItems.chunked(columnsCount)
-                )
-            }.sortedByDescending { monthGroup ->
-                // Сортируем месяцы по максимальному timestamp нужного поля
+            val sortedMonthItems = if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
+                itemsInMonth.sortedByDescending { it.dateArchived ?: 0L }
+            } else {
+                itemsInMonth.sortedByDescending { it.dateModified }
+            }
+
+            val rawMonthName = if (monthIdx in 0..11) monthNames[monthIdx] else ""
+            val monthName = rawMonthName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(monthLocale) else it.toString() }
+
+            val blocks = by.w6.my1drive.ui.layout.BentoLayoutHelper.computeBlocks(sortedMonthItems, columnsCount)
+
+            val monthGroup = MonthGroup(
+                monthIndex = monthIdx,
+                monthName = monthName,
+                items = sortedMonthItems,
+                chunkedItems = sortedMonthItems.chunked(columnsCount),
+                blocks = blocks
+            )
+
+            yearGroupsMap.getOrPut(year) { mutableListOf() }.add(monthGroup)
+        }
+
+        yearGroupsMap.map { (year, monthGroups) ->
+            val sortedMonths = monthGroups.sortedByDescending { monthGroup ->
                 monthGroup.items.maxOfOrNull { item ->
                     if (sortMode == ArchiveSortMode.BY_ARCHIVE_DATE) {
                         item.dateArchived ?: item.dateModified
@@ -272,10 +241,9 @@ class GalleryDisplayManager(
                     }
                 } ?: 0L
             }
-
             YearGroup(
                 year = year,
-                months = monthGroups
+                months = sortedMonths
             )
         }.sortedByDescending { it.year }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())

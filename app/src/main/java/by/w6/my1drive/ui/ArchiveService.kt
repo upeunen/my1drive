@@ -89,7 +89,7 @@ class ArchiveService : Service() {
                     if (!state.isArchiving && !syncHelper.isSilentSyncing) {
                         stopSelf() // Stop service when work is done
                     } else if (state.error != null) {
-                        updateNotification(getString(by.w6.my1drive.R.string.service_error, state.error ?: ""))
+                        updateNotification(getString(by.w6.my1drive.R.string.service_error, state.error ?: ""), force = true)
                     }
                 }
             }
@@ -99,16 +99,25 @@ class ArchiveService : Service() {
                 syncHelper.syncProgressState.collect { progress ->
                     if (progress.totalFiles > 0) {
                         val text = getString(by.w6.my1drive.R.string.service_copying_progress, progress.currentFileIndex.toString(), progress.totalFiles.toString())
-                        updateNotification(text)
+                        val isStartOrEnd = progress.currentFileIndex == 1 || progress.currentFileIndex == progress.totalFiles
+                        updateNotification(text, force = isStartOrEnd)
                     }
                 }
             }
         }
     }
 
-    private fun updateNotification(text: String) {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, buildNotification(text))
+    private var lastNotificationTime = 0L
+    private var lastNotificationText = ""
+
+    private fun updateNotification(text: String, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (force || now - lastNotificationTime >= 350L || text != lastNotificationText) {
+            lastNotificationTime = now
+            lastNotificationText = text
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(NOTIFICATION_ID, buildNotification(text))
+        }
     }
 
     private fun buildNotification(text: String): android.app.Notification {

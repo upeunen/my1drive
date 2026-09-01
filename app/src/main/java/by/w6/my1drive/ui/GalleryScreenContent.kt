@@ -216,7 +216,6 @@ fun GalleryScreenContent(
     var showEjectConfirmDialog by remember { mutableStateOf(false) }
     var showOfflineShareConfirm by remember { mutableStateOf(false) }
     val groupedItems = uiState.groupedItems
-    val archivedGroupedItems = uiState.archivedGroupedItems
     val mediaItems = uiState.mediaItems
     val gridColumnsCount = uiState.gridColumnsCount
     val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
@@ -464,7 +463,9 @@ fun GalleryScreenContent(
                 by.w6.my1drive.ui.components.OtgStorageSeparatorBar(
                     isOtgConnected = isOtgConnected,
                     otgDirectoryDisplayName = otgDirectoryDisplayName,
-                    otgDirectoryUri = otgDirectoryUri
+                    otgDirectoryUri = otgDirectoryUri,
+                    physicalArchiveSize = physicalArchiveSize,
+                    isArchiving = archiveState.isArchiving
                 )
             }
 
@@ -528,8 +529,8 @@ fun GalleryScreenContent(
                     navController = navController,
                     startDestination = "photos",
                     modifier = Modifier.fillMaxSize(),
-                    enterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(200)) },
-                    exitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) }
+                    enterTransition = { androidx.compose.animation.EnterTransition.None },
+                    exitTransition = { androidx.compose.animation.ExitTransition.None }
                 ) {
                     composable("photos") {
                         PhotosRoute(
