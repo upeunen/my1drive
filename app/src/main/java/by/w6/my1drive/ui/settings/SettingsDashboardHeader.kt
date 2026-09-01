@@ -176,7 +176,9 @@ fun SettingsDashboardHeader(
                                 else stringResource(R.string.drive_known_disconnected),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOtgConnected) Color(0xFF2E7D32)
+                                color = if (isOtgConnected) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 

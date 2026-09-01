@@ -227,10 +227,10 @@ fun ProSettingsSection(
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                imageVector = Icons.Default.CleaningServices,
+                                                imageVector = Icons.Default.LocalPolice,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(17.dp),
-                                                tint = MaterialTheme.colorScheme.secondary
+                                                tint = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     }
@@ -473,7 +473,7 @@ fun ProSettingsSection(
                                             color = Color(0xFF2E7D32).copy(alpha = 0.15f)
                                         ) {
                                             Text(
-                                                text = stringResource(R.string.archive_status_active),
+                                                text = stringResource(R.string.status_active),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = Color(0xFF2E7D32),
                                                 fontWeight = FontWeight.Bold,

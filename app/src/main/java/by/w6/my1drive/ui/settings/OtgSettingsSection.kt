@@ -172,7 +172,9 @@ fun OtgSettingsSection(
                             Spacer(Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (otgDirectoryDisplayName != null) "/$otgDirectoryDisplayName" else stringResource(R.string.drive_not_selected),
+                                    text = if (otgDirectoryDisplayName != null) {
+                                        if (isLocalFolder) "/$otgDirectoryDisplayName" else "USB: $otgDirectoryDisplayName"
+                                    } else stringResource(R.string.drive_not_selected),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -225,4 +227,4 @@ fun OtgSettingsSection(
 fun archiveStripeColor(uuid: String): Color {
     val hue = Math.abs(uuid.hashCode() % 360).toFloat()
     return Color.hsv(hue, 0.6f, 0.8f)
-
+}
