@@ -452,4 +452,15 @@
     <string name="filter_photos">Фото</string>
     <string name="filter_videos">Видео</string>
     <string name="cd_scroll_to_top">Прокрутить наверх</string>
+    <string name="action_rename_archive">Переименовать архив</string>
+    <string name="rename_archive_title">Переименование архива</string>
+    <string name="rename_archive_hint">Новое имя архива</string>
+    <string name="rename_archive_success">Архив успешно переименован</string>
+    <string name="rename_archive_error">Не удалось переименовать папку архива</string>
+    <string name="setting_copy_without_delete_title">Показывать кнопку «Копировать»</string>
+    <string name="setting_copy_without_delete_summary">Добавляет вторую кнопку в галерею для создания копий на флешке без удаления исходников с телефона</string>
+    <string name="btn_copy_only">Копировать</string>
+    <string name="toast_copy_only_success">Скопировано %1$d файлов на флешку (оригиналы сохранены на телефоне)</string>
+    <string name="pro_settings_title">Настройки Профи</string>
+    <string name="pro_settings_subtitle">VPS-сервер, мульти-архивы, логи и доп. кнопки</string>
 </resources>

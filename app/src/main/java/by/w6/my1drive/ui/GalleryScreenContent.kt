@@ -669,7 +669,9 @@ fun GalleryScreenContent(
                                 },
                                 onLanguageChanged = {
                                     viewModel.notifyLocaleChanged()
-                                }
+                                },
+                                showCopyWithoutDelete = viewModel.showCopyWithoutDelete.collectAsStateWithLifecycle().value,
+                                onToggleCopyWithoutDelete = { viewModel.setShowCopyWithoutDelete(it) }
                             )
                     }
                 }

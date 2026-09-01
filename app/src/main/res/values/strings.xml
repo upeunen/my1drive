@@ -457,4 +457,10 @@ Errors:
     <string name="rename_archive_hint">New archive name</string>
     <string name="rename_archive_success">Archive renamed successfully</string>
     <string name="rename_archive_error">Failed to rename archive folder</string>
+    <string name="setting_copy_without_delete_title">Show \"Copy\" button</string>
+    <string name="setting_copy_without_delete_summary">Adds a second button in gallery to copy files to drive without deleting originals from phone</string>
+    <string name="btn_copy_only">Copy</string>
+    <string name="toast_copy_only_success">Copied %1$d files to drive (originals kept on phone)</string>
+    <string name="pro_settings_title">Pro Settings</string>
+    <string name="pro_settings_subtitle">VPS server, multi-archives, thumbnail sync, and debug logs</string>
 </resources>

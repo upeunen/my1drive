@@ -59,6 +59,7 @@ private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
 private const val PREF_LOCAL_FOLDER_SKIP_COUNT = "local_folder_skip_count"
 private const val PREF_LAST_REQUESTED_FOLDER = "last_requested_folder_path"
+private const val PREF_SHOW_COPY_WITHOUT_DELETE = "show_copy_without_delete"
 private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
 
 enum class ArchiveSortMode {
@@ -329,6 +330,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _askRestorePath = MutableStateFlow(prefs.getBoolean(PREF_ASK_RESTORE_PATH, false))
     val askRestorePath = _askRestorePath.asStateFlow()
+
+    private val _showCopyWithoutDelete = MutableStateFlow(prefs.getBoolean(PREF_SHOW_COPY_WITHOUT_DELETE, false))
+    val showCopyWithoutDelete: StateFlow<Boolean> = _showCopyWithoutDelete.asStateFlow()
+    fun setShowCopyWithoutDelete(enabled: Boolean) {
+        _showCopyWithoutDelete.value = enabled
+        prefs.edit().putBoolean(PREF_SHOW_COPY_WITHOUT_DELETE, enabled).apply()
+    }
+
+    private var isCopyOnlyOperation = false
+    fun startCopyingOnly(targetUri: Uri) {
+        isCopyOnlyOperation = true
+        startArchiving(targetUri)
+    }
 
     private val _restoreRequest = MutableStateFlow<RestoreRequest?>(null)
     val restoreRequest = _restoreRequest.asStateFlow()
@@ -1184,7 +1198,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     limitRepository.trustLevel = 1
                 }
                 
-                if (pendingForPaywallPhotos > 0 || pendingForPaywallVideos > 0) {
+                if (isCopyOnlyOperation) {
+                    isCopyOnlyOperation = false
+                    val count = items.size
+                    Toast.makeText(
+                        getApplication(),
+                        getApplication<Application>().getString(by.w6.my1drive.R.string.toast_copy_only_success, count),
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else if (pendingForPaywallPhotos > 0 || pendingForPaywallVideos > 0) {
                     pendingItemsToDelete = items
                     showPaywall(pendingForPaywallPhotos, pendingForPaywallVideos)
                     pendingForPaywallPhotos = 0

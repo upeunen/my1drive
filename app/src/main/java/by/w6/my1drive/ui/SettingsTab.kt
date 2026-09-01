@@ -18,12 +18,11 @@ import by.w6.my1drive.R
 import by.w6.my1drive.data.local.ArchiveEntity
 import by.w6.my1drive.utils.VpsConnectionManager
 import by.w6.my1drive.ui.settings.LanguageSettingsSection
-import by.w6.my1drive.ui.settings.MaintenanceAndDebugSection
 import by.w6.my1drive.ui.settings.ManageStorageCard
 import by.w6.my1drive.ui.settings.OtgSettingsSection
+import by.w6.my1drive.ui.settings.ProSettingsSection
 import by.w6.my1drive.ui.settings.PromoCodeCard
 import by.w6.my1drive.ui.settings.SettingsDashboardHeader
-import by.w6.my1drive.ui.settings.VpsSettingsSection
 
 @Composable
 fun SettingsTab(
@@ -54,7 +53,9 @@ fun SettingsTab(
     onPromoCode: () -> Unit = {},
     hasPromoCodes: Boolean = false,
     onCleanOrphans: () -> Unit = {},
-    onLanguageChanged: () -> Unit = {}
+    onLanguageChanged: () -> Unit = {},
+    showCopyWithoutDelete: Boolean = false,
+    onToggleCopyWithoutDelete: (Boolean) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -108,12 +109,7 @@ fun SettingsTab(
             onCancelSyncThumbnails = onCancelSyncThumbnails
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        // 3. VPS Cloud Server Settings Card
-        VpsSettingsSection(vpsManager = vpsManager)
-
-        // 4. Promo Code Card (if available in Remote Config)
+        // 3. Promo Code Card (if available in Remote Config)
         if (hasPromoCodes) {
             Spacer(Modifier.height(16.dp))
             PromoCodeCard(onPromoCode = onPromoCode)
@@ -121,15 +117,18 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
-        // 5. Language Settings Card
+        // 4. Language Settings Card
         LanguageSettingsSection(
             onLanguageChanged = onLanguageChanged
         )
 
         Spacer(Modifier.height(16.dp))
 
-        // 6. Maintenance, Diagnostics & About Card
-        MaintenanceAndDebugSection(
+        // 5. Pro Settings Accordion (Collapsible card containing VPS, Debug logs, and Copy Without Delete setting)
+        ProSettingsSection(
+            showCopyWithoutDelete = showCopyWithoutDelete,
+            onToggleCopyWithoutDelete = onToggleCopyWithoutDelete,
+            vpsManager = vpsManager,
             onShowDebugLogs = onShowDebugLogs,
             onCleanOrphans = onCleanOrphans
         )
