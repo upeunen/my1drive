@@ -13,14 +13,15 @@ import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.repository.MediaRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 class MediaRepositoryImpl(
     private val context: Context,
@@ -28,6 +29,7 @@ class MediaRepositoryImpl(
 ) : MediaRepository {
 
     private val _localItemsCache = kotlinx.coroutines.flow.MutableStateFlow<List<MediaItem>>(emptyList())
+    private val aspectRatioCache = ConcurrentHashMap<String, Float>()
     
     init {
         GlobalScope.launch(Dispatchers.IO) {
@@ -81,7 +83,9 @@ class MediaRepositoryImpl(
             val archivedItems = filteredEntities.map { entity ->
                 var effectiveRatio = if (entity.width > 0 && entity.height > 0) {
                     entity.width.toFloat() / entity.height.toFloat()
-                } else 0f
+                } else {
+                    aspectRatioCache[entity.id] ?: 0f
+                }
 
                 if (effectiveRatio <= 0f && entity.thumbnailPath != null) {
                     val previewFile = File(entity.thumbnailPath)
@@ -90,6 +94,7 @@ class MediaRepositoryImpl(
                         BitmapFactory.decodeFile(entity.thumbnailPath, opts)
                         if (opts.outWidth > 0 && opts.outHeight > 0) {
                             effectiveRatio = opts.outWidth.toFloat() / opts.outHeight.toFloat()
+                            aspectRatioCache[entity.id] = effectiveRatio
                         }
                     }
                 }
@@ -121,7 +126,7 @@ class MediaRepositoryImpl(
             }
 
             (filteredLocalList + archivedItems).sortedByDescending { it.dateModified }
-        }.flowOn(Dispatchers.IO)
+        }.flowOn(Dispatchers.IO).distinctUntilChanged()
     }
 
     override fun refresh() {

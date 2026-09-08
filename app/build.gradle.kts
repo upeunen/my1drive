@@ -23,8 +23,8 @@ android {
         applicationId = "by.w6.my1drive2"
         minSdk = 28
         targetSdk = 36
-        versionCode = 24
-        versionName = "2.2.3"
+        versionCode = 26
+        versionName = "2.2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -54,8 +54,8 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -75,7 +75,7 @@ android {
 
 dependencies {
 
-    "googleplayImplementation"("com.android.billingclient:billing-ktx:7.1.1")
+    "googleplayImplementation"("com.android.billingclient:billing-ktx:8.0.0")
     
     "rustoreImplementation"(platform("ru.rustore.sdk:bom:2026.06.01"))
     "rustoreImplementation"("ru.rustore.sdk:pay")

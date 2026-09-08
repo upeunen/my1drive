@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import android.content.Context
 import android.text.format.DateUtils
@@ -172,7 +173,7 @@ class GalleryDisplayManager(
         resultList
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
 
-    val archivedGroupedItems: StateFlow<List<GalleryItem>> = MutableStateFlow(emptyList())
+    private val bentoCache = java.util.concurrent.ConcurrentHashMap<String, Pair<List<String>, List<by.w6.my1drive.ui.layout.BentoBlock>>>()
 
     val archiveYearGroups: StateFlow<List<YearGroup>> = combine(
         mediaItems,
@@ -218,7 +219,17 @@ class GalleryDisplayManager(
             val rawMonthName = if (monthIdx in 0..11) monthNames[monthIdx] else ""
             val monthName = rawMonthName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(monthLocale) else it.toString() }
 
-            val blocks = by.w6.my1drive.ui.layout.BentoLayoutHelper.computeBlocks(sortedMonthItems, columnsCount)
+            val cacheKey = "${year}_${monthIdx}_${columnsCount}_${sortMode.name}"
+            val monthItemIds = sortedMonthItems.map { it.id }
+            val cachedEntry = bentoCache[cacheKey]
+
+            val blocks = if (cachedEntry != null && cachedEntry.first == monthItemIds) {
+                cachedEntry.second
+            } else {
+                val newBlocks = by.w6.my1drive.ui.layout.BentoLayoutHelper.computeBlocks(sortedMonthItems, columnsCount)
+                bentoCache[cacheKey] = monthItemIds to newBlocks
+                newBlocks
+            }
 
             val monthGroup = MonthGroup(
                 monthIndex = monthIdx,
@@ -247,4 +258,12 @@ class GalleryDisplayManager(
             )
         }.sortedByDescending { it.year }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
+
+    val archivedGroupedItems: StateFlow<List<GalleryItem>> = archiveYearGroups.map { yearGroups ->
+        yearGroups.flatMap { yearGroup ->
+            yearGroup.months.flatMap { monthGroup ->
+                monthGroup.items.map { GalleryItem.Media(it) }
+            }
+        }
+    }.stateIn(scope, SharingStarted.Lazily, emptyList())
 }

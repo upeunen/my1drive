@@ -26,10 +26,22 @@
 -dontwarn io.appmetrica.analytics.**
 
 # ---- Room ----
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keep @androidx.room.Dao class *
+-keep class * extends androidx.room.RoomDatabase {
+    <init>();
+    *;
+}
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao class * { *; }
+-keep class by.w6.my1drive.data.local.** { *; }
 -dontwarn androidx.room.**
+
+# ---- ViewModel ----
+-keep class * extends androidx.lifecycle.ViewModel {
+    <init>(...);
+}
+-keep class * extends androidx.lifecycle.AndroidViewModel {
+    <init>(...);
+}
 
 # ---- Coil ----
 -dontwarn coil.**
@@ -58,6 +70,7 @@
 -keep class by.w6.my1drive.domain.model.** { *; }
 -keep class by.w6.my1drive.data.local.**Entity { *; }
 -keep class by.w6.my1drive.billing.PromoCodeEntry { *; }
+-keep class by.w6.my1drive.utils.ArchiveMetadataStore$JsonEntry { *; }
 
 # ---- Убираем лишние предупреждения ----
 -dontwarn java.lang.invoke.**

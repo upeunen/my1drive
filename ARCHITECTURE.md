@@ -19,9 +19,8 @@
 *   **`data.local`**: Room Database (`AppDatabase`).
     *   `MediaDao`, `ArchiveDao` — интерфейсы для доступа к данным.
     *   `MediaEntity`, `ArchiveEntity` — сущности БД (сохраняют пути, хэши, ID накопителя и ссылки на кэш миниатюр).
-*   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив).
-
-### 3. `ui` (Пользовательский интерфейс и Состояния)
+    *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Использует вложенный кэш пропорций кадра (`aspectRatioCache`) для исключения дискового I/O при трансформации потока, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
+*   **`ui` (Пользовательский интерфейс и Состояния)**:
 *   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `SettingsTab`.
 *   **`ui.layout` (Геометрия и мозаика)**:
     *   `BentoLayoutHelper`: Модульный алгоритм компоновки Apple Photos style с Lookahead-группировкой для бесшовного отображения 9:16 (вертикальных), 16:9 (пейзажных) и квадратных медиафайлов без паразитной обрезки.
@@ -32,10 +31,10 @@
 *   **Отдельные менеджеры (Декомпозиция)**:
     *   `OtgConnectionManager`: Управляет подключением SAF, разрешениями, поллингом (проверкой физического подключения OTG) и диалогами монтирования.
     *   `ArchiveInteractor`: Отвечает за ручные операции с архивом, инициированные пользователем (запуск архивации, восстановление файлов, разрешение конфликтов).
-    *   `ArchiveSyncHelper`: Синглтон (`getInstance`), выполняющий фоновую работу (проверка наличия файлов при подключении флешки, фоновая генерация кэшированных миниатюр, отслеживание прогресса синхронизации через `StateFlow` / `SharedFlow`).
+    *   `ArchiveSyncHelper`: Синглтон (`getInstance`), выполняющий фоновую работу (проверка наличия файлов при подключении флешки, фоновая генерация кэшированных миниатюр с пакетным сохранением в БД через `insertAll`, отслеживание прогресса синхронизации через `StateFlow` / `SharedFlow`).
     *   `ArchiveService`: **Foreground Service**, обеспечивающий надежную работу процесса архивации даже при сворачивании приложения. Получает команды через `Intent` и уведомляет пользователя о прогрессе копирования (отображает Notification), опираясь на стейты `ArchiveSyncHelper`.
     *   `SelectionManager`: Инкапсулирует логику выбора элементов в галерее (одиночный выбор, выделение всех, отмена).
-    *   **`GalleryDisplayManager`**: Отвечает за логику сортировки (`deviceSortMode`, `archiveSortMode`), быструю однопроходную группировку элементов архива по годам и месяцам на корутинах `Dispatchers.Default` (без тяжелогласных `Calendar.getInstance()`) и предрасчет геометрии Bento-сетки для `MonthGroup.blocks`.
+    *   **`GalleryDisplayManager`**: Отвечает за логику сортировки (`deviceSortMode`, `archiveSortMode`), быструю однопроходную группировку элементов архива по годам и месяцам на корутинах `Dispatchers.Default` (без тяжелогласных `Calendar.getInstance()`), мемоизацию расчета Bento-блоков (`bentoCache`) и формирование потоков `archiveYearGroups` и `archivedGroupedItems`.
     *   `ThumbnailSyncManager`: Управляет корутинами и состояниями ручной и тихой (фоновой) синхронизации локальных миниатюр.
     *   `MediaOperationInteractor`: Управляет файловыми операциями (шаринг, удаление с устройства, создание папок). Обеспечивает асинхронную подготовку файлов (параллельное копирование в кэш через `async`/`awaitAll`) без блокировки UI и инкапсулирует проверки SAF-разрешений для файловых операций.
 
@@ -47,7 +46,7 @@
     *   `StoreInitializer`: Интерфейс инициализации приложения и обработчика `Intent` для конкретного магазина.
 *   **Реализации (`src/rustore/` и `src/googleplay/`)**:
     *   В `rustore`: используется RuStore Pay SDK (`RuStoreBillingManager`) и RuStore RemoteConfig SDK (`RuStoreRemoteConfigManager`).
-    *   В `googleplay`: используется Google Play Billing (`GooglePlayBillingManager`) и автономные/Google Play стабы (`GooglePlayRemoteConfigManager`). Зависимости RuStore полностью отсутствуют в сборке `googleplay`.
+    *   В `googleplay`: используется Google Play Billing (`GooglePlayBillingManager` с Play Billing Library 8.0.0) и автономные/Google Play стабы (`GooglePlayRemoteConfigManager`). Зависимости RuStore полностью отсутствуют в сборке `googleplay`.
 
 ### 5. `utils` (Утилиты)
 *   `OtgArchiveUtil`: Работа с файловой системой внешнего накопителя через `DocumentFile` и `ContentResolver` (для обхода ограничений Android SAF).

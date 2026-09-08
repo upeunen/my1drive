@@ -69,12 +69,8 @@ fun SetupWizardDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // Check if we need the local folder permission step (Android 12+)
-    val needsStoragePermission = remember {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !MediaStore.canManageMedia(context)
-    }
-    
-    val pageCount = if (needsStoragePermission) 3 else 2
+    val needsStoragePermission = false
+    val pageCount = 2
     val pagerState = rememberPagerState(initialPage = initialStep.coerceIn(0, pageCount - 1), pageCount = { pageCount })
 
     Dialog(

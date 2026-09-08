@@ -88,7 +88,7 @@ fun ArchiveRoute(
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
 
-    val filterUuid = viewModel.archiveFilterUuid.collectAsState().value
+    val filterUuid by viewModel.archiveFilterUuid.collectAsState()
 
     // Автоматически переключаем фильтр на подключенную флешку при её подключении
     LaunchedEffect(isOtgConnected, activeArchiveUuid) {
@@ -102,6 +102,12 @@ fun ArchiveRoute(
         knownArchives.associate { archive ->
             archive.uuid to archiveStripeColor(archive.uuid)
         }
+    }
+
+    val archiveStripeColorProvider: ((MediaItem) -> Color?)? = remember(archiveColorMap, showOffline, knownArchives.size) {
+        if (showOffline && knownArchives.size > 1) {
+            { item: MediaItem -> archiveColorMap[item.archiveUuid] }
+        } else null
     }
 
     // Получаем yearGroups прямо из стейта
@@ -439,9 +445,7 @@ fun ArchiveRoute(
                                         activeArchiveUuid = activeArchiveUuid,
                                         archivingItemIds = archivingItemIds,
                                         copiedItemIds = copiedItemIds,
-                                        archiveStripeColorProvider = if (showOffline && knownArchives.size > 1) {
-                                            { item -> archiveColorMap[item.archiveUuid] }
-                                        } else null,
+                                        archiveStripeColorProvider = archiveStripeColorProvider,
                                         onItemClick = onItemClick,
                                         onItemLongClick = onItemLongClick
                                     )

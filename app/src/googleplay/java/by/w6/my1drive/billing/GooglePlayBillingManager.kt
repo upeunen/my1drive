@@ -125,8 +125,9 @@ class GooglePlayBillingManager(private val application: Application) : IBillingM
                     .setProductList(productList)
                     .build()
 
-                billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+                billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
                     if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        val productDetailsList = productDetailsResult.productDetailsList ?: emptyList()
                         val product = productDetailsList.find {
                             it.productId == PRODUCT_ID || it.productId == ALT_PRODUCT_ID
                         }
@@ -180,7 +181,8 @@ class GooglePlayBillingManager(private val application: Application) : IBillingM
                         .setProductList(productList)
                         .build()
 
-                    billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+                    billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
+                        val productDetailsList = productDetailsResult.productDetailsList ?: emptyList()
                         if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && productDetailsList.isNotEmpty()) {
                             val product = productDetailsList.first()
                             _premiumProductDetails.value = product

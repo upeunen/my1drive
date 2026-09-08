@@ -15,7 +15,11 @@ object OtgFolderResolver {
     const val GLOBAL_INDEX_FILE_NAME = "my1drive_index.json"
 
     fun extractVolumeId(uri: Uri): String? {
-        val path = uri.path ?: return null
+        return extractVolumeIdFromPath(uri.path)
+    }
+
+    fun extractVolumeIdFromPath(path: String?): String? {
+        if (path == null) return null
 
         val rootSegment = path.substringAfter("/root/", "")
         if (rootSegment.isNotEmpty()) {

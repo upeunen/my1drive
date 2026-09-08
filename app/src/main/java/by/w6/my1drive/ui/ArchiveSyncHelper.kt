@@ -907,50 +907,68 @@ class ArchiveSyncHelper private constructor(
         if (total == 0) return@withContext
 
         val pDir = previewCache.previewDir
+        val pendingBatch = mutableListOf<MediaEntity>()
+        val pendingEvents = mutableListOf<Pair<String, String>>()
 
-        for ((idx, entity) in missingItems.withIndex()) {
-            if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
-                DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery)")
-                break
+        fun flushBatch() {
+            if (pendingBatch.isNotEmpty()) {
+                db.mediaDao().insertAll(pendingBatch)
+                pendingEvents.forEach { previewCachedEvent.tryEmit(it) }
+                pendingBatch.clear()
+                pendingEvents.clear()
             }
-            val uriStr = entity.otgUri ?: ""
-            if (uriStr.isEmpty()) continue
+        }
 
-            val cacheFile = previewCache.cacheFileFor(entity.id)
-            var success = false
+        try {
+            for ((idx, entity) in missingItems.withIndex()) {
+                if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
+                    DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery)")
+                    break
+                }
+                val uriStr = entity.otgUri ?: ""
+                if (uriStr.isEmpty()) continue
 
-            if (cacheFile.exists() && cacheFile.length() > 0) {
-                // Already cached
-                db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
-                previewCachedEvent.tryEmit(Pair(entity.id, cacheFile.absolutePath))
-                success = true
-            } else {
-                try {
-                    val uri = Uri.parse(uriStr)
-                    val bitmap = generateThumbnailHelper(uri, entity.mimeType)
-                    if (bitmap != null) {
-                        pDir.mkdirs()
-                        cacheFile.outputStream().buffered().use { out ->
-                            val scaled = scaleBitmapHelper(bitmap, 256)
-                            scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
-                            if (scaled !== bitmap) scaled.recycle()
+                val cacheFile = previewCache.cacheFileFor(entity.id)
+
+                if (cacheFile.exists() && cacheFile.length() > 0) {
+                    // Already cached
+                    val updated = entity.copy(thumbnailPath = cacheFile.absolutePath)
+                    pendingBatch.add(updated)
+                    pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
+                } else {
+                    try {
+                        val uri = Uri.parse(uriStr)
+                        val bitmap = generateThumbnailHelper(uri, entity.mimeType)
+                        if (bitmap != null) {
+                            pDir.mkdirs()
+                            cacheFile.outputStream().buffered().use { out ->
+                                val scaled = scaleBitmapHelper(bitmap, 256)
+                                scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                                if (scaled !== bitmap) scaled.recycle()
+                            }
+                            bitmap.recycle()
+                            val updated = entity.copy(thumbnailPath = cacheFile.absolutePath)
+                            pendingBatch.add(updated)
+                            pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
                         }
-                        bitmap.recycle()
-                        db.mediaDao().insert(entity.copy(thumbnailPath = cacheFile.absolutePath))
-                        previewCachedEvent.tryEmit(Pair(entity.id, cacheFile.absolutePath))
-                        success = true
+                    } catch (e: Exception) {
+                        DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
                     }
-                } catch (e: Exception) {
-                    DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
+                }
+
+                if (pendingBatch.size >= 50) {
+                    flushBatch()
+                }
+                
+                // throttle slightly to keep CPU cool
+                kotlinx.coroutines.delay(20)
+                
+                withContext(Dispatchers.Main) {
+                    onProgress(idx + 1, total)
                 }
             }
-            
-            // throttle slightly to keep CPU cool
-            kotlinx.coroutines.delay(50)
-            
-            withContext(Dispatchers.Main) {
-                onProgress(idx + 1, total)
-            }
+        } finally {
+            flushBatch()
         }
     }
 
