@@ -51,6 +51,13 @@ class MediaOperationInteractor(
     private val _manageStoragePermissionRequest = MutableStateFlow<Intent?>(null)
     val manageStoragePermissionRequest = _manageStoragePermissionRequest.asStateFlow()
 
+    private val _hasAllFilesAccess = MutableStateFlow(hasAllFilesAccess(application))
+    val hasAllFilesAccess = _hasAllFilesAccess.asStateFlow()
+
+    fun updateAllFilesAccess() {
+        _hasAllFilesAccess.value = hasAllFilesAccess(application)
+    }
+
     private val _pendingDelete = MutableStateFlow<List<MediaItem>?>(null)
     val pendingDelete: StateFlow<List<MediaItem>?> = _pendingDelete.asStateFlow()
 
@@ -263,10 +270,18 @@ class MediaOperationInteractor(
 
     // ─── Delete Operations ───
 
-    fun startDeletingWithPermissionCheck(items: List<MediaItem>) {
+    fun startDeletingWithPermissionCheck(items: List<MediaItem>, forceSkipManageStorageCheck: Boolean = false) {
         val deviceItems = items.filter { it.status == MediaStatus.ON_DEVICE }
         val archivedItems = items.filter { it.status == MediaStatus.ARCHIVED_OTG }
         
+        if (deviceItems.isNotEmpty() && !hasAllFilesAccess(application)) {
+            val hasAsked = prefs.getBoolean("has_asked_manage_storage", false)
+            if (!hasAsked && !forceSkipManageStorageCheck) {
+                onShowManageStorageDialog(items)
+                return
+            }
+        }
+
         val uniqueFolders = deviceItems.map { getFolderToRequest(it.originalRelativePath) }
             .filter { it.isNotEmpty() }
             .toSet()
@@ -277,14 +292,6 @@ class MediaOperationInteractor(
             pendingDeleteTask = items
             missingFoldersQueue.clear()
             missingFoldersQueue.addAll(missingFolders)
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !MediaStore.canManageMedia(application)) {
-                val hasAsked = prefs.getBoolean("has_asked_manage_storage", false)
-                if (!hasAsked) {
-                    onShowManageStorageDialog(items)
-                    return
-                }
-            }
             requestNextFolderPermission()
         } else {
             deleteDeviceItems(deviceItems)
@@ -311,13 +318,31 @@ class MediaOperationInteractor(
         if (items.isEmpty()) return
         val remainingItems = mutableListOf<MediaItem>()
         var anyDeleted = false
+        val canManage = hasAllFilesAccess(application)
+
         for (item in items) {
-            val treeUri = findMatchingTreeUriForFile(application, item.originalRelativePath)
-            val doc = if (treeUri != null) {
-                findFileInTree(application, treeUri, item.originalRelativePath, item.displayName)
-            } else null
-            
-            if (doc != null && doc.exists() && doc.delete()) {
+            var deleted = false
+            if (canManage) {
+                try {
+                    val count = application.contentResolver.delete(item.uri, null, null)
+                    if (count > 0) {
+                        deleted = true
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (!deleted) {
+                val treeUri = findMatchingTreeUriForFile(application, item.originalRelativePath)
+                val doc = if (treeUri != null) {
+                    findFileInTree(application, treeUri, item.originalRelativePath, item.displayName)
+                } else null
+                
+                if (doc != null && doc.exists() && doc.delete()) {
+                    deleted = true
+                }
+            }
+
+            if (deleted) {
                 anyDeleted = true
                 val externalDir = android.os.Environment.getExternalStorageDirectory()
                 val relPath = item.originalRelativePath?.trim('/', '\\') ?: ""
@@ -388,6 +413,11 @@ class MediaOperationInteractor(
     fun hasAllFilesAccess(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaStore.canManageMedia(context)
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         } else {
             false
         }
@@ -420,19 +450,31 @@ class MediaOperationInteractor(
         return false
     }
 
+    private fun createManageMediaIntent(context: Context): Intent {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val intent = Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            if (intent.resolveActivity(context.packageManager) != null) {
+                return intent
+            }
+        }
+        return Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:${context.packageName}")
+        }
+    }
+
     fun dispatchManageStorageIntent(items: List<MediaItem>?) {
         prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
         pendingDeleteTask = items
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                val intent = Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
-                    data = Uri.parse("package:${application.packageName}")
-                }
-                _manageStoragePermissionRequest.value = intent
-                return
-            } catch (_: Exception) {}
+        _manageStoragePermissionRequest.value = createManageMediaIntent(application)
+    }
+
+    fun onManageStorageDialogDismissed(items: List<MediaItem>?) {
+        prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
+        if (items != null) {
+            startDeletingWithPermissionCheck(items, forceSkipManageStorageCheck = true)
         }
-        requestNextFolderPermission()
     }
 
     fun requestNextFolderPermission() {
@@ -481,6 +523,7 @@ class MediaOperationInteractor(
 
     fun onManageStorageResult() {
         _manageStoragePermissionRequest.value = null
+        updateAllFilesAccess()
         if (hasAllFilesAccess(application)) {
             missingFoldersQueue.clear()
             val task = pendingDeleteTask
@@ -491,8 +534,19 @@ class MediaOperationInteractor(
                 deleteDeviceItems(deviceItems)
                 archiveInteractor.deleteArchivedItems(archivedItems)
             }
+            val archTask = pendingArchiveTask
+            pendingArchiveTask = null
+            if (archTask != null) {
+                onArchiveTaskReady(archTask.first, archTask.second)
+            }
         } else {
-            requestNextFolderPermission()
+            val task = pendingDeleteTask
+            pendingDeleteTask = null
+            if (task != null) {
+                startDeletingWithPermissionCheck(task, forceSkipManageStorageCheck = true)
+            } else {
+                requestNextFolderPermission()
+            }
         }
     }
 

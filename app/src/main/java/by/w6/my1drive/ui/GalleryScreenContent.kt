@@ -221,6 +221,7 @@ fun GalleryScreenContent(
     val otgDirectoryDisplayName = uiState.otgDirectoryDisplayName
     val physicalArchiveSize = uiState.physicalArchiveSize
     val isLimitActive = viewModel.isLimitActive
+    val hasAllFilesAccess by viewModel.hasAllFilesAccess.collectAsState()
 
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
 
@@ -645,7 +646,7 @@ fun GalleryScreenContent(
                                 onSyncThumbnails = { viewModel.startThumbnailSync() },
                                 onCancelSyncThumbnails = { viewModel.cancelThumbnailSync() },
                                 isStorageLow = isStorageLow,
-                                hasAllFilesAccess = viewModel.hasAllFilesAccess(),
+                                hasAllFilesAccess = hasAllFilesAccess,
                                 onRequestManageStorage = { viewModel.proceedWithManageStorageRequest(null) },
                                 onPromoCode = { viewModel.showPromoCodeDialog() },
                                 hasPromoCodes = viewModel.hasPromoCodes,

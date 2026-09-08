@@ -173,7 +173,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun dismissDialog() { 
+        val currentDialog = _activeDialog.value
         _activeDialog.value = null
+        if (currentDialog is AppDialog.ManageStoragePermission) {
+            mediaOperationInteractor.onManageStorageDialogDismissed(currentDialog.itemsToWait)
+        }
         pendingItemsToDelete?.let { items ->
             mediaOperationInteractor.startDeletingWithPermissionCheck(items)
             pendingItemsToDelete = null
@@ -186,6 +190,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun triggerWriteProtectedRootDialog() { _activeDialog.value = AppDialog.WriteProtectedRoot }
     fun showNamingDialog(uri: Uri) { _activeDialog.value = AppDialog.Naming(uri) }
+
+    val hasAllFilesAccess: StateFlow<Boolean>
+        get() = mediaOperationInteractor.hasAllFilesAccess
 
     fun hasAllFilesAccess(): Boolean {
         return mediaOperationInteractor.hasAllFilesAccess(getApplication())
@@ -225,6 +232,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun onResume() {
         otgManager.resumePolling()
+        mediaOperationInteractor.updateAllFilesAccess()
     }
 
     // ─── Flows ───
