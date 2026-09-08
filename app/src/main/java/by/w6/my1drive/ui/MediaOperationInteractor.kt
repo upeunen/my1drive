@@ -275,28 +275,15 @@ class MediaOperationInteractor(
         val archivedItems = items.filter { it.status == MediaStatus.ARCHIVED_OTG }
         
         if (deviceItems.isNotEmpty() && !hasAllFilesAccess(application)) {
-            val hasAsked = prefs.getBoolean("has_asked_manage_storage", false)
+            val hasAsked = prefs.getBoolean("has_asked_manage_media_permission", false)
             if (!hasAsked && !forceSkipManageStorageCheck) {
                 onShowManageStorageDialog(items)
                 return
             }
         }
 
-        val uniqueFolders = deviceItems.map { getFolderToRequest(it.originalRelativePath) }
-            .filter { it.isNotEmpty() }
-            .toSet()
-            
-        val missingFolders = uniqueFolders.filter { !hasPermissionForFolder(application, it) }
-
-        if (missingFolders.isNotEmpty()) {
-            pendingDeleteTask = items
-            missingFoldersQueue.clear()
-            missingFoldersQueue.addAll(missingFolders)
-            requestNextFolderPermission()
-        } else {
-            deleteDeviceItems(deviceItems)
-            archiveInteractor.deleteArchivedItems(archivedItems)
-        }
+        deleteDeviceItems(deviceItems)
+        archiveInteractor.deleteArchivedItems(archivedItems)
     }
 
     fun confirmDelete() {
@@ -465,13 +452,13 @@ class MediaOperationInteractor(
     }
 
     fun dispatchManageStorageIntent(items: List<MediaItem>?) {
-        prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
+        prefs.edit().putBoolean("has_asked_manage_media_permission", true).apply()
         pendingDeleteTask = items
         _manageStoragePermissionRequest.value = createManageMediaIntent(application)
     }
 
     fun onManageStorageDialogDismissed(items: List<MediaItem>?) {
-        prefs.edit().putBoolean("has_asked_manage_storage", true).apply()
+        prefs.edit().putBoolean("has_asked_manage_media_permission", true).apply()
         if (items != null) {
             startDeletingWithPermissionCheck(items, forceSkipManageStorageCheck = true)
         }
@@ -544,8 +531,6 @@ class MediaOperationInteractor(
             pendingDeleteTask = null
             if (task != null) {
                 startDeletingWithPermissionCheck(task, forceSkipManageStorageCheck = true)
-            } else {
-                requestNextFolderPermission()
             }
         }
     }

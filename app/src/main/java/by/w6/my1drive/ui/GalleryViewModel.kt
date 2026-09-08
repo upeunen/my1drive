@@ -763,23 +763,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             pendingForPaywallVideos = 0
         }
 
-        val context = getApplication<Application>()
-        val uniqueFolders = selected.map { mediaOperationInteractor.getFolderToRequest(it.originalRelativePath) }
-            .filter { it.isNotEmpty() }
-            .toSet()
-
-        val missingFolders = uniqueFolders.filter { !mediaOperationInteractor.hasPermissionForFolder(context, it) }
-
-        if (missingFolders.isNotEmpty()) {
-            mediaOperationInteractor.pendingArchiveTask = selected to targetUri
-            mediaOperationInteractor.missingFoldersQueue.clear()
-            mediaOperationInteractor.missingFoldersQueue.addAll(missingFolders)
-            mediaOperationInteractor.requestNextFolderPermission()
-            selectionManager.clearSelection()
-        } else {
-            syncHelper.startArchiving(selected, targetUri)
-            selectionManager.clearSelection()
-        }
+        syncHelper.startArchiving(selected, targetUri)
+        selectionManager.clearSelection()
     }
 
     fun archiveSingleItem(item: MediaItem, targetUri: Uri) {
@@ -809,16 +794,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        val context = getApplication<Application>()
-        val folder = mediaOperationInteractor.getFolderToRequest(item.originalRelativePath)
-        if (folder.isNotEmpty() && !mediaOperationInteractor.hasPermissionForFolder(context, folder)) {
-            mediaOperationInteractor.pendingArchiveTask = listOf(item) to targetUri
-            mediaOperationInteractor.missingFoldersQueue.clear()
-            mediaOperationInteractor.missingFoldersQueue.add(folder)
-            mediaOperationInteractor.requestNextFolderPermission()
-        } else {
-            syncHelper.startArchiving(listOf(item), targetUri)
-        }
+        syncHelper.startArchiving(listOf(item), targetUri)
     }
     fun restoreSingleItem(item: MediaItem) {
         archiveInteractor.startRestoring(listOf(item), null)
