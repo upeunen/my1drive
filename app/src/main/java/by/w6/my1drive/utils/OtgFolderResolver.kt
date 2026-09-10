@@ -42,6 +42,17 @@ object OtgFolderResolver {
         return null
     }
 
+    fun wrapTreeDocument(context: Context, parent: DocumentFile?, uri: Uri): DocumentFile {
+        return try {
+            val constructor = Class.forName("androidx.documentfile.provider.TreeDocumentFile")
+                .getDeclaredConstructor(DocumentFile::class.java, Context::class.java, Uri::class.java)
+            constructor.isAccessible = true
+            constructor.newInstance(parent, context, uri) as DocumentFile
+        } catch (_: Exception) {
+            DocumentFile.fromSingleUri(context, uri) ?: DocumentFile.fromTreeUri(context, uri)!!
+        }
+    }
+
     /**
      * Fast child document finder using direct ContentResolver query.
      * Unlike DocumentFile.findFile(), this does NOT instantiate DocumentFile objects for all files,
@@ -79,7 +90,7 @@ object OtgFolderResolver {
                         val foundId = cursor.getString(idIdx)
                         val childUri = DocumentsContract.buildDocumentUriUsingTree(parentUri, foundId)
                         return if (isDir) {
-                            DocumentFile.fromTreeUri(context, childUri) ?: DocumentFile.fromSingleUri(context, childUri)
+                            wrapTreeDocument(context, parentDoc, childUri)
                         } else {
                             DocumentFile.fromSingleUri(context, childUri)
                         }
@@ -114,8 +125,8 @@ object OtgFolderResolver {
                     if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
                         val foundId = cursor.getString(idIdx)
                         val childUri = DocumentsContract.buildDocumentUriUsingTree(parentUri, foundId)
-                        val dir = DocumentFile.fromTreeUri(context, childUri) ?: DocumentFile.fromSingleUri(context, childUri)
-                        if (dir != null) results.add(dir)
+                        val dir = wrapTreeDocument(context, parentDoc, childUri)
+                        results.add(dir)
                     }
                 }
             }
@@ -399,9 +410,17 @@ object OtgFolderResolver {
                 return rootDoc
             }
 
+            val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+            val activeUuid = prefs.getString("active_archive_uuid", null)
             val volumeUuid = extractVolumeId(rootUri)
             val db = AppDatabase.getDatabase(context)
-            val archive = if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
+            val archive = if (!activeUuid.isNullOrEmpty()) {
+                db.archiveDao().getById(activeUuid)
+            } else if (volumeUuid != null) {
+                db.archiveDao().getById(volumeUuid)
+            } else {
+                null
+            }
 
             val targetRelPath = if (archive != null && archive.folderName.isNotEmpty()) {
                 archive.folderName
@@ -416,9 +435,19 @@ object OtgFolderResolver {
 
             // Direct check using buildDirectChildUri (NO root scanning)
             val directUri = buildDirectChildUri(rootUri, targetRelPath)
-            val directDoc = DocumentFile.fromTreeUri(context, directUri)
-            if (directDoc != null && directDoc.exists() && directDoc.isDirectory) {
+            val directDoc = wrapTreeDocument(context, rootDoc, directUri)
+            if (directDoc.exists() && directDoc.isDirectory) {
                 return directDoc
+            }
+
+            // Fallback: resolve path segments via fastFindChild
+            var currentDoc: DocumentFile? = rootDoc
+            val segments = targetRelPath.split("/").filter { it.isNotEmpty() }
+            for (segment in segments) {
+                currentDoc = fastFindChild(context, currentDoc ?: break, segment, isDirectoryOnly = true)
+            }
+            if (currentDoc != null && currentDoc.exists() && currentDoc.isDirectory) {
+                return currentDoc
             }
 
             // If not found yet and createIfNotExist, create folder under My1drive container

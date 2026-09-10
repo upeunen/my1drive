@@ -140,25 +140,55 @@ object OtgFolderScanner {
             }
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, docId)
             val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME
             )
+            val subdirsToCheck = mutableListOf<String>()
             context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
                 val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
                 val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
                 var checkedCount = 0
                 while (cursor.moveToNext()) {
                     val mime = if (mimeIdx >= 0) cursor.getString(mimeIdx) else null
                     val name = if (nameIdx >= 0) cursor.getString(nameIdx) else null
+                    val foundId = if (idIdx >= 0) cursor.getString(idIdx) else null
 
+                    if (name.equals("my1drive_db.json", ignoreCase = true)) {
+                        return true
+                    }
                     val isMedia = (mime != null && (mime.startsWith("image/") || mime.startsWith("video/"))) ||
                             (name != null && MEDIA_EXTENSIONS.contains(name.substringAfterLast('.', "").lowercase()))
                     if (isMedia) {
                         return true
                     }
+                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR && foundId != null && subdirsToCheck.size < 5) {
+                        val cleanName = name?.lowercase()?.trim() ?: ""
+                        if (!cleanName.startsWith(".") && cleanName !in BLACKLIST_NAMES) {
+                            subdirsToCheck.add(foundId)
+                        }
+                    }
                     checkedCount++
-                    if (checkedCount > 50) {
+                    if (checkedCount > 100) {
                         break
+                    }
+                }
+            }
+
+            for (subId in subdirsToCheck) {
+                val subChildrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, subId)
+                context.contentResolver.query(subChildrenUri, projection, null, null, null)?.use { cursor ->
+                    val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                    val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                    while (cursor.moveToNext()) {
+                        val mime = if (mimeIdx >= 0) cursor.getString(mimeIdx) else null
+                        val name = if (nameIdx >= 0) cursor.getString(nameIdx) else null
+                        val isMedia = (mime != null && (mime.startsWith("image/") || mime.startsWith("video/"))) ||
+                                (name != null && MEDIA_EXTENSIONS.contains(name.substringAfterLast('.', "").lowercase()))
+                        if (isMedia) {
+                            return true
+                        }
                     }
                 }
             }
@@ -187,29 +217,47 @@ object OtgFolderScanner {
 
         // 1. Create/update my1drive_db.json inside the folder
         try {
-            val folderDoc = DocumentFile.fromTreeUri(context, folder.uri) ?: DocumentFile.fromSingleUri(context, folder.uri)
-            if (folderDoc != null && folderDoc.exists()) {
-                var metaFile = folderDoc.findFile("my1drive_db.json")
-                if (metaFile == null || !metaFile.exists()) {
-                    metaFile = folderDoc.createFile("application/json", "my1drive_db.json")
-                }
-                if (metaFile != null) {
-                    val rootJson = JSONObject().apply {
-                        put("version", 2)
-                        put("archiveUuid", uuid)
-                        put("archiveName", archiveName)
-                        put("folderPath", relPath)
-                        put("dateCreated", now)
-                        put("files", org.json.JSONArray())
-                    }
-                    context.contentResolver.openOutputStream(metaFile.uri, "w")?.use { out ->
-                        out.bufferedWriter().use { it.write(rootJson.toString(2)) }
-                    }
-                }
+            val metaUri = OtgFolderResolver.buildDirectChildUri(rootUri, "$relPath/my1drive_db.json")
+            val metaExists = try {
+                context.contentResolver.openInputStream(metaUri)?.use { true } ?: false
+            } catch (_: Exception) { false }
+
+            val targetFileUri = if (!metaExists) {
+                DocumentsContract.createDocument(
+                    context.contentResolver,
+                    folder.uri,
+                    "application/json",
+                    "my1drive_db.json"
+                ) ?: metaUri
+            } else {
+                metaUri
+            }
+
+            val rootJson = JSONObject().apply {
+                put("version", 2)
+                put("archiveUuid", uuid)
+                put("archiveName", archiveName)
+                put("folderPath", relPath)
+                put("dateCreated", now)
+                put("files", org.json.JSONArray())
+            }
+            context.contentResolver.openOutputStream(targetFileUri, "w")?.use { out ->
+                out.bufferedWriter().use { it.write(rootJson.toString(2)) }
             }
         } catch (e: Exception) {
             DebugLogBuffer.log("OtgFolderScanner", "Failed to write my1drive_db.json: ${e.message}")
         }
+
+        // 1.1 Ensure .nomedia in folder
+        try {
+            val nomediaUri = OtgFolderResolver.buildDirectChildUri(rootUri, "$relPath/.nomedia")
+            val hasNomedia = try {
+                context.contentResolver.openInputStream(nomediaUri)?.use { true } ?: false
+            } catch (_: Exception) { false }
+            if (!hasNomedia) {
+                DocumentsContract.createDocument(context.contentResolver, folder.uri, "application/octet-stream", ".nomedia")
+            }
+        } catch (_: Exception) {}
 
         // 2. Update global index on OTG drive (My1drive/my1drive_index.json)
         try {

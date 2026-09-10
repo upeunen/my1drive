@@ -265,7 +265,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="phone_storage_free_fmt">Free %1$.1f GB of %2$.0f GB</string>
 
     <string name="warning_internal_storage">⚠️ Warning: Internal storage folder selected. It is recommended to choose a folder on a USB flash drive for backups.</string>
-    <string name="setting_multi_archive_title">Work with multiple archives (drives)</string>
+    <string name="setting_multi_archive_title">Work with multiple archives (drives) (beta)</string>
     <string name="setting_show_offline_files">Show files from disconnected drives in gallery</string>
     <string name="setting_connected_offline_drives">Connected and offline drives</string>
     <string name="dialog_delete_archive_title">Delete archive?</string>
@@ -478,7 +478,7 @@ Errors:
     <string name="settings_section_archives">Archives &amp; Drives</string>
     <string name="settings_section_general">General Settings</string>
     <string name="settings_section_advanced">Server &amp; Debug</string>
-    <string name="search_other_archives_title">Search for other archives on drive</string>
+    <string name="search_other_archives_title">Search for other archives on drive (beta)</string>
     <string name="search_other_archives_subtitle">Find existing My1drive archives on the connected drive</string>
     <string name="search_other_archives_connect_hint">Connect drive to search for archives</string>
     <string name="search_other_archives_scanning">Searching for archives...</string>

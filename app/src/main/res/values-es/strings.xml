@@ -265,7 +265,7 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="phone_storage_free_fmt">Libre %1$.1f GB de %2$.0f GB</string>
 
     <string name="warning_internal_storage">⚠️ Advertencia: Carpeta de almacenamiento interno seleccionada. Se recomienda elegir una carpeta en una memoria USB.</string>
-    <string name="setting_multi_archive_title">Trabajar con múltiples archivos (unidades)</string>
+    <string name="setting_multi_archive_title">Trabajar con múltiples archivos (unidades) (beta)</string>
     <string name="setting_show_offline_files">Mostrar archivos de unidades desconectadas en galería</string>
     <string name="setting_connected_offline_drives">Unidades conectadas y desconectadas</string>
     <string name="dialog_delete_archive_title">¿Eliminar archivo?</string>
@@ -478,7 +478,7 @@ Errores:
     <string name="settings_section_archives">Archivos y unidades</string>
     <string name="settings_section_general">Ajustes generales</string>
     <string name="settings_section_advanced">Servidor y depuración</string>
-    <string name="search_other_archives_title">Buscar otros archivos en la unidad</string>
+    <string name="search_other_archives_title">Buscar otros archivos en la unidad (beta)</string>
     <string name="search_other_archives_subtitle">Buscar archivos de My1drive existentes en la unidad</string>
     <string name="search_other_archives_connect_hint">Conecte la unidad para buscar archivos</string>
     <string name="search_other_archives_scanning">Buscando archivos...</string>

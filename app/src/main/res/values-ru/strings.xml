@@ -265,7 +265,7 @@
     <string name="phone_storage_free_fmt">Свободно %1$.1f ГБ из %2$.0f ГБ</string>
 
     <string name="warning_internal_storage">⚠️ Внимание: Выбрана папка во внутренней памяти телефона. Для резервного копирования рекомендуется выбрать папку на USB флешке.</string>
-    <string name="setting_multi_archive_title">Работа с несколькими архивами (дисками)</string>
+    <string name="setting_multi_archive_title">Работа с несколькими архивами (дисками) (бета)</string>
     <string name="setting_show_offline_files">Отображать файлы с отключенных накопителей в галерее</string>
     <string name="setting_connected_offline_drives">Подключенные и оффлайн-носители</string>
     <string name="dialog_delete_archive_title">Удалить архив?</string>
@@ -478,7 +478,7 @@
     <string name="settings_section_archives">Архивы и накопители</string>
     <string name="settings_section_general">Общие настройки</string>
     <string name="settings_section_advanced">Сервер и отладка</string>
-    <string name="search_other_archives_title">Поиск других архивов на диске</string>
+    <string name="search_other_archives_title">Поиск других архивов на диске (бета)</string>
     <string name="search_other_archives_subtitle">Поиск существующих архивов My1drive на накопителе</string>
     <string name="search_other_archives_connect_hint">Подключите накопитель для поиска архивов</string>
     <string name="search_other_archives_scanning">Поиск архивов...</string>
