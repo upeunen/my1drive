@@ -38,6 +38,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -120,7 +121,7 @@ fun OtgRequiredBanner() {
 }
 
 @Composable
-fun ConnectingUsbBanner(visible: Boolean) {
+fun ConnectingUsbBanner(visible: Boolean, isWakingUp: Boolean = false) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val iconAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -164,7 +165,7 @@ fun ConnectingUsbBanner(visible: Boolean) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = stringResource(R.string.connecting_usb_msg),
+                        text = if (isWakingUp) stringResource(R.string.waking_up_drive_msg) else stringResource(R.string.connecting_usb_msg),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -177,6 +178,83 @@ fun ConnectingUsbBanner(visible: Boolean) {
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.Transparent
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OtgPowerTipBanner(
+    modifier: Modifier = Modifier
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = androidx.compose.runtime.remember(context) { 
+        context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE) 
+    }
+    var isDismissed by androidx.compose.runtime.remember { 
+        androidx.compose.runtime.mutableStateOf(prefs.getBoolean("hdd_power_tip_dismissed", false)) 
+    }
+
+    AnimatedVisibility(
+        visible = !isDismissed,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+        modifier = modifier
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircleOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.hdd_power_tip_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.hdd_power_tip_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            isDismissed = true
+                            prefs.edit().putBoolean("hdd_power_tip_dismissed", true).apply()
+                        }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.btn_got_it),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

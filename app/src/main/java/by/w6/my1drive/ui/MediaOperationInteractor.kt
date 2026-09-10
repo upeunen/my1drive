@@ -331,23 +331,12 @@ class MediaOperationInteractor(
 
             if (deleted) {
                 anyDeleted = true
-                val externalDir = android.os.Environment.getExternalStorageDirectory()
-                val relPath = item.originalRelativePath?.trim('/', '\\') ?: ""
-                val fileOnDisk = if (relPath.isNotEmpty()) {
-                    java.io.File(externalDir, "$relPath/${item.displayName}")
-                } else {
-                    java.io.File(externalDir, item.displayName)
-                }
-                android.media.MediaScannerConnection.scanFile(
-                    application,
-                    arrayOf(fileOnDisk.absolutePath),
-                    arrayOf(item.mimeType)
-                ) { _, _ ->
-                    scope.launch { repository.refresh() }
-                }
             } else {
                 remainingItems.add(item)
             }
+        }
+        if (anyDeleted) {
+            scope.launch { repository.refresh() }
         }
         if (anyDeleted && remainingItems.isEmpty()) return
         if (remainingItems.isNotEmpty()) fallbackDeleteDeviceItems(remainingItems)

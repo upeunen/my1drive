@@ -21,7 +21,7 @@
     *   `MediaEntity`, `ArchiveEntity` — сущности БД (сохраняют пути, хэши, ID накопителя и ссылки на кэш миниатюр).
     *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Использует вложенный кэш пропорций кадра (`aspectRatioCache`) для исключения дискового I/O при трансформации потока, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
 *   **`ui` (Пользовательский интерфейс и Состояния)**:
-*   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `SettingsTab`.
+*   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `SettingsTab` (компоненты `SettingsDashboardTiles`, `FilesAndSyncSection`, `ArchivesSettingsSection`, `LanguageSettingsSection`, `AdvancedSettingsSection`).
 *   **`ui.layout` (Геометрия и мозаика)**:
     *   `BentoLayoutHelper`: Модульный алгоритм компоновки Apple Photos style с Lookahead-группировкой для бесшовного отображения 9:16 (вертикальных), 16:9 (пейзажных) и квадратных медиафайлов без паразитной обрезки.
     *   `BentoBlockView`: Компонент отрисовки блоков (`TallWithHero`, `TallWithFourSmall`, `TwoTallWithTwoSmall`, `ThreeTall`, `TwoTall`, `FourTall`, `HeroWithTwoSmall`, `DuetRow`, `TripletRow`, `PanoramaRow`, `TailRow`).
@@ -51,6 +51,7 @@
 ### 5. `utils` (Утилиты)
 *   `OtgArchiveUtil`: Работа с файловой системой внешнего накопителя через `DocumentFile` и `ContentResolver` (для обхода ограничений Android SAF).
 *   `OtgFolderResolver`: Резолв единой стандартной директории `/My1drive/` на флешке, создание подпапок устройств (`/My1drive/<ИмяУстройства>/`), авто-сканирование архивов и физическое переименование папок.
+*   `OtgFolderScanner`: Быстрое обнаружение папок с фото/видео на внешнем диске с регулируемой глубиной сканирования (по умолчанию 2 уровня), ранним выходом (`LIMIT 1`), записью индекса `my1drive_index.json` и маркера `my1drive_db.json`.
 *   `PreviewCacheManager`: Управление локальным кэшем миниатюр (генерация, хранение файлов `.webp` в `context.filesDir`, удаление кэша).
 *   `OtgThumbnailFetcher`: Coil Fetcher для генерации и кэширования миниатюр с OTG-накопителей по требованию.
 *   `MediaStoreThumbnailFetcher`: Аппаратный Coil Fetcher для ускоренной загрузки локальных миниатюр через системный `ContentResolver.loadThumbnail` (Android 10+).
@@ -63,4 +64,7 @@
 3. **Синхронизация при подключении**: При подключении внешнего накопителя `ArchiveSyncHelper` проверяет физическое наличие файлов на флешке. Если файл был удален (например, через ПК), приложение обнаруживает это и удаляет соответствующую запись из БД Room, а также локальный кэш миниатюры.
 4. **Архивация и дедупликация**: При копировании файла на OTG запускается `ArchiveService` (Foreground Service). Для дедупликации генерируется легковесный хэш в формате `${size}_${dateModified}`. Затем создается WebP-миниатюра, запись добавляется в `Room`, и сервис обновляет прогресс в Notification.
 5. **Отображение свойств**: При вызове свойств офлайн-файла (`DisconnectedOtgInfoDialog`) отображается оригинальный путь на накопителе (`otgPath`), а не путь к кэшу миниатюры. Обходных путей для ограничений SAF (Android 11+) пока не применяется (используется стандартный доступ через дерево).
-6. **Оптимизация SAF (Scoped Storage)**: Для обхода падения производительности `DocumentFile.listFiles()` на Android 11+ используется прямой запрос через `ContentResolver.query` (утилита `fastListFiles`), что позволяет мгновенно получать метаданные файлов без инстанцирования тяжелых объектов.
+6. **Оптимизация SAF и изоляция от ModernMediaScanner (Scoped Storage & Android 14/15)**: 
+   - Для обхода критического падения производительности `DocumentFile.listFiles()` на Android 11+ используется прямой запрос через `ContentResolver.query` (утилиты `fastListFiles`, `fastFindChild` и `buildDirectChildUri`), что полностью исключает инстанцирование тысяч объектов `DocumentFile`.
+   - Полностью исключены любые вызовы `MediaScannerConnection.scanFile()`: в Android 14/15 системный `ModernMediaScanner` канонизирует путь накопителя в `/mnt/media_rw/UUID`, ошибочно классифицирует OTG как том `internal` и запускает аварийный рекурсивный обход всех файлов (`Files.walkFileTree` с причиной `REASON_DEMAND`), перегружая механику диска и падая с `IllegalArgumentException`.
+   - Автоматически гарантируется наличие маркерного файла `.nomedia` в корне диска и в контейнере `My1drive/` при выдаче прав и подключении OTG, что блокирует паразитное системное сканирование внешнего тома.

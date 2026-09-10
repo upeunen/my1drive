@@ -121,8 +121,14 @@ class ArchiveService : Service() {
     }
 
     private fun buildNotification(text: String): android.app.Notification {
+        val targetName = ArchiveSyncHelper.getInstance(application).archiveState.value.targetArchiveName
+        val title = if (targetName.isNotBlank()) {
+            getString(by.w6.my1drive.R.string.service_archiving_title_target, targetName)
+        } else {
+            getString(by.w6.my1drive.R.string.service_archiving_title)
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(by.w6.my1drive.R.string.service_archiving_title))
+            .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher) // Update to a proper icon if available
             .setOngoing(true)

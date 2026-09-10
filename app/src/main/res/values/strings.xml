@@ -24,14 +24,14 @@
     
     <string name="empty_category">No media files in this category</string>
     <string name="selected_count">Selected: %1$d</string>
-    <string name="archive_on_otg">Archive to OTG</string>
+    <string name="archive_on_otg">Transfer to OTG</string>
     <string name="btn_ok">OK</string>
     <string name="btn_cancel">Cancel</string>
     <string name="btn_close">Close</string>
     <string name="error_title">Error</string>
     
-    <string name="archiving_title">Backing up to OTG…</string>
-    <string name="archiving_title_count">Backing up to OTG (%1$d of %2$d)…</string>
+    <string name="archiving_title">Transferring to OTG…</string>
+    <string name="archiving_title_count">Transferring to OTG (%1$d of %2$d)…</string>
     <string name="archiving_file">File: %1$s</string>
     
     <string name="otg_select_title">USB OTG Drive Selection</string>
@@ -162,7 +162,7 @@ The records remain in the database. Connect the correct drive to restore access.
     
     <string name="preview_delete">Delete</string>
     <string name="preview_will_be_deleted">Will be deleted on close ✓</string>
-    <string name="preview_archive">Archive</string>
+    <string name="preview_archive">Transfer</string>
     <string name="preview_restore">Restore</string>
     <string name="preview_share">Share</string>
     <string name="preview_hint_swipe">Swipe down to close</string>
@@ -200,9 +200,13 @@ The records remain in the database. Connect the correct drive to restore access.
     
     <string name="otg_required_msg">An external drive is required to work. Please connect it to the charging port via an OTG adapter.</string>
     <string name="connecting_usb_msg">Connecting USB drive...</string>
+    <string name="waking_up_drive_msg">Waking up drive and reading archive...</string>
+    <string name="hdd_power_tip_title">Power Recommendation for HDD</string>
+    <string name="hdd_power_tip_desc">For mechanical external hard drives (HDD), it is recommended to use an OTG adapter with external power to prevent disconnections due to high power draw.</string>
+    <string name="btn_got_it">Got it</string>
     <string name="step_preparing">Preparing...</string>
     <string name="step_verifying">Verifying integrity...</string>
-    <string name="step_copying">Copying to archive...</string>
+    <string name="step_copying">Transferring to drive...</string>
     <string name="step_restore_reading">Reading from archive...</string>
     <string name="step_restore_writing">Writing to device...</string>
     <string name="step_restore_writing_pct">Writing to device... (%1$s%%)</string>
@@ -213,7 +217,10 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="status_computing_hashes">Computing hashes...</string>
     <string name="status_searching_files">Searching for files...</string>
     <string name="status_in_queue"> (+%1$d in queue)</string>
-    <string name="title_archiving">Archiving</string>
+    <string name="title_archiving">Transfer</string>
+    <string name="title_archiving_target">Transferring to \"%1$s\"</string>
+    <string name="btn_archive_to_target">Transfer to \"%1$s\"</string>
+    <string name="service_archiving_title_target">Transferring to \"%1$s\"</string>
     <string name="title_restoring">Restoring</string>
     <string name="title_syncing">Synchronizing archive</string>
 
@@ -311,7 +318,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="RUSTORE_REMOTE_CONFIG_APP_ID">5189926e-01b0-4267-9204-8e5804fc7d45</string>
 
     
-    <string name="success_dialog_title">Archiving Complete!</string>
+    <string name="success_dialog_title">Transfer Complete!</string>
     <string name="success_dialog_freed_space">Freed: %1$s GB</string>
     <string name="success_dialog_free_space_now">Free now: %1$s GB</string>
     <string name="success_dialog_storage_usage">%1$s GB used of %2$s GB</string>
@@ -360,7 +367,7 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="dialog_change_folder_title">Change archive folder?</string>
     <string name="tab_with_date">With Date</string>
     <string name="action_ok">OK</string>
-    <string name="dialog_archive_error_title">Archiving Error</string>
+    <string name="dialog_archive_error_title">Transfer Error</string>
     <string name="action_copy_log">Copy Log</string>
     <string name="dialog_restore_error_title">Restore Error</string>
     <string name="dialog_change_folder_desc">Changing the archive folder may disrupt current synchronization. Are you sure you want to continue?</string>
@@ -375,10 +382,10 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="paywall_error">Purchase error: %1$s</string>
     <string name="paywall_close">Close</string>
 
-    <string name="dialog_manage_storage_title">1-Tap Archiving Without Extra Windows</string>
-    <string name="dialog_manage_storage_desc">To archive and move photos and videos from your phone in one tap without constant Android confirmation pop-ups, enable the permission on the next screen.</string>
+    <string name="dialog_manage_storage_title">1-Tap Transfer Without Extra Windows</string>
+    <string name="dialog_manage_storage_desc">To transfer and move photos and videos from your phone in one tap without constant Android confirmation pop-ups, enable the permission on the next screen.</string>
     <string name="dialog_manage_storage_btn">Open Settings</string>
-    <string name="settings_manage_storage_title">1-Tap Archiving &amp; Deletion</string>
+    <string name="settings_manage_storage_title">1-Tap Transfer &amp; Deletion</string>
     <string name="settings_manage_storage_desc">Allows moving and deleting photos and videos in one tap without system security pop-ups.</string>
     <string name="settings_manage_storage_btn">Configure</string>
 
@@ -398,13 +405,13 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="promo_code_card_title">Have a promo code?</string>
     <string name="promo_code_card_desc">Enter a promo code to get temporary access without limits.</string>
 
-<string name="preview_action_delete">Delete</string><string name="preview_action_archive">To Archive</string><string name="preview_action_restore">Restore</string><string name="preview_status_preparing">Preparing file...</string><string name="preview_share_thumbnail_title">Share thumbnail?</string><string name="preview_share_thumbnail_desc">Source drive is disconnected. You can send a low-resolution thumbnail (%1$s).</string><string name="preview_do_not_warn_again">I understand, do not warn again</string><string name="preview_btn_share">Share</string><string name="preview_btn_cancel">Cancel</string><string name="gallery_share_thumbnail_title">Share thumbnails?</string><string name="gallery_share_thumbnail_desc">Some selected files are on disconnected drives. Their low-resolution thumbnails will be sent.</string><string name="gallery_do_not_warn_again">I understand, do not warn again</string><string name="gallery_btn_share">Share</string><string name="gallery_btn_cancel">Cancel</string><string name="gallery_error_archiving_title">Archiving Error</string><string name="gallery_error_restoring_title">Restore Error</string><string name="gallery_btn_ok">OK</string><string name="gallery_btn_copy_log">Copy log</string><string name="gallery_action_select">SELECT</string><string name="gallery_filter_all">All</string><string name="gallery_filter_with_date">With date</string><string name="gallery_filter_in_folder">In folder</string><string name="gallery_filter_range">Range</string><string name="gallery_content_desc_deselect">Deselect</string><string name="topbar_content_desc_deselect">Deselect</string><string name="topbar_group">Group</string><string name="topbar_content_desc_share">Share</string><string name="topbar_send">Send</string><string name="topbar_content_desc_delete">Delete</string><string name="topbar_delete">Delete</string><string name="topbar_content_desc_reset_selection">Reset selection</string><string name="info_drive">Drive</string><string name="info_drive_uuid">Drive ID (UUID)</string><string name="info_exif_data">EXIF Data</string><string name="info_exif_missing">EXIF tags missing or file has no metadata</string><string name="info_exif_unavailable_offline">EXIF unavailable (OTG disconnected)</string><string name="info_hide_exif">Hide EXIF</string><string name="info_show_exif">Show EXIF</string><string name="info_btn_share">Share</string><string name="info_btn_copy">Copy</string><string name="usb_tab_tutorial">Tutorial</string><string name="usb_tab_tutorial_desc">Your heavy originals are here, while lightweight previews remain in the phone gallery</string><string name="usb_tab_got_it">Got it</string><string name="paywall_btn_retry">Retry</string><string name="paywall_btn_buy_pro">Buy PRO</string><string name="naming_dialog_title">Name this archive</string><string name="naming_dialog_desc">Enter a clear name for this drive (e.g., USB-C Drive, Archive 2026) to avoid confusion with other drives.</string><string name="naming_dialog_label">Archive name</string><string name="naming_dialog_max_chars">Maximum 30 characters</string><string name="naming_dialog_btn_create">Create</string><string name="naming_dialog_btn_cancel">Cancel</string><string name="guide_dialog_archive_not_found">Archive not found</string><string name="guide_dialog_desc">No existing archive found on the selected drive. Would you like to create a new archive right now?
+<string name="preview_action_delete">Delete</string><string name="preview_action_archive">Transfer</string><string name="preview_action_restore">Restore</string><string name="preview_status_preparing">Preparing file...</string><string name="preview_share_thumbnail_title">Share thumbnail?</string><string name="preview_share_thumbnail_desc">Source drive is disconnected. You can send a low-resolution thumbnail (%1$s).</string><string name="preview_do_not_warn_again">I understand, do not warn again</string><string name="preview_btn_share">Share</string><string name="preview_btn_cancel">Cancel</string><string name="gallery_share_thumbnail_title">Share thumbnails?</string><string name="gallery_share_thumbnail_desc">Some selected files are on disconnected drives. Their low-resolution thumbnails will be sent.</string><string name="gallery_do_not_warn_again">I understand, do not warn again</string><string name="gallery_btn_share">Share</string><string name="gallery_btn_cancel">Cancel</string><string name="gallery_error_archiving_title">Transfer Error</string><string name="gallery_error_restoring_title">Restore Error</string><string name="gallery_btn_ok">OK</string><string name="gallery_btn_copy_log">Copy log</string><string name="gallery_action_select">SELECT</string><string name="gallery_filter_all">All</string><string name="gallery_filter_with_date">With date</string><string name="gallery_filter_in_folder">In folder</string><string name="gallery_filter_range">Range</string><string name="gallery_content_desc_deselect">Deselect</string><string name="topbar_content_desc_deselect">Deselect</string><string name="topbar_group">Group</string><string name="topbar_content_desc_share">Share</string><string name="topbar_send">Send</string><string name="topbar_content_desc_delete">Delete</string><string name="topbar_delete">Delete</string><string name="topbar_content_desc_reset_selection">Reset selection</string><string name="info_drive">Drive</string><string name="info_drive_uuid">Drive ID (UUID)</string><string name="info_exif_data">EXIF Data</string><string name="info_exif_missing">EXIF tags missing or file has no metadata</string><string name="info_exif_unavailable_offline">EXIF unavailable (OTG disconnected)</string><string name="info_hide_exif">Hide EXIF</string><string name="info_show_exif">Show EXIF</string><string name="info_btn_share">Share</string><string name="info_btn_copy">Copy</string><string name="usb_tab_tutorial">Tutorial</string><string name="usb_tab_tutorial_desc">Your heavy originals are here, while lightweight previews remain in the phone gallery</string><string name="usb_tab_got_it">Got it</string><string name="paywall_btn_retry">Retry</string><string name="paywall_btn_buy_pro">Buy PRO</string><string name="naming_dialog_title">Name this archive</string><string name="naming_dialog_desc">Enter a clear name for this drive (e.g., USB-C Drive, Archive 2026) to avoid confusion with other drives.</string><string name="naming_dialog_label">Archive name</string><string name="naming_dialog_max_chars">Maximum 30 characters</string><string name="naming_dialog_btn_create">Create</string><string name="naming_dialog_btn_cancel">Cancel</string><string name="guide_dialog_archive_not_found">Archive not found</string><string name="guide_dialog_desc">No existing archive found on the selected drive. Would you like to create a new archive right now?
 
-To do this, simply come up with a name for the new archive.</string><string name="guide_dialog_btn_create">Create archive</string><string name="guide_dialog_btn_cancel">Cancel</string><string name="logs_dialog_title">Debug Logs</string><string name="logs_dialog_empty">Logs are empty</string><string name="logs_dialog_btn_copy">Copy</string><string name="logs_dialog_btn_clear">Clear</string><string name="logs_dialog_btn_close">Close</string><string name="logs_toast_copied">Logs copied to clipboard</string><string name="logs_toast_nothing_to_copy">Nothing to copy</string><string name="logs_toast_cleared">Logs cleared</string><string name="access_dialog_title">Access to folder %1$s</string><string name="access_dialog_desc">To archive files from this folder, please grant access to it.</string><string name="access_dialog_path">Path: %1$s</string><string name="access_dialog_btn_grant">Grant access</string><string name="restore_conflict_title">Restore path unavailable</string><string name="restore_conflict_desc">Could not access the target restore folder for file "%1$s".</string><string name="restore_conflict_instruction">Please specify where to restore the file:</string><string name="restore_conflict_apply_to_all">Apply to all subsequent files</string><string name="restore_conflict_btn_restore_in">Restore in %1$s</string><string name="restore_conflict_btn_choose_where">Choose where</string><string name="main_toast_choose_otg">Please select a folder on a removable drive (OTG), not in internal storage.</string><string name="main_toast_auto_created_folder">You didn\'t select a folder, so I created the folder %1$s for you to keep the drive organized</string><string name="main_toast_device_folder_selected">Device folder successfully selected!</string><string name="main_toast_folder_access_error">Folder access error: %1$s</string><string name="main_toast_waiting_mount">Waiting for drive to mount...</string><string name="service_sync_preparing">Preparing for synchronization...</string><string name="service_error">Error: %1$s</string><string name="service_copying_progress">Copying: %1$s / %2$s</string><string name="service_archiving_title">Archiving files</string><string name="service_sync_archive_title">Synchronizing archive</string><string name="usecase_first_archive_limited">The first archiving is limited to 20 files</string><string name="sync_helper_searching">Searching for files on OTG...</string><string name="sync_helper_access_failed">Failed to access OTG drive</string><string name="sync_helper_finished_no_files">Synchronization complete: no files.</string><string name="sync_helper_finished_stats">Synchronization complete.
+To do this, simply come up with a name for the new archive.</string><string name="guide_dialog_btn_create">Create archive</string><string name="guide_dialog_btn_cancel">Cancel</string><string name="logs_dialog_title">Debug Logs</string><string name="logs_dialog_empty">Logs are empty</string><string name="logs_dialog_btn_copy">Copy</string><string name="logs_dialog_btn_clear">Clear</string><string name="logs_dialog_btn_close">Close</string><string name="logs_toast_copied">Logs copied to clipboard</string><string name="logs_toast_nothing_to_copy">Nothing to copy</string><string name="logs_toast_cleared">Logs cleared</string><string name="access_dialog_title">Access to folder %1$s</string><string name="access_dialog_desc">To transfer files from this folder, please grant access to it.</string><string name="access_dialog_path">Path: %1$s</string><string name="access_dialog_btn_grant">Grant access</string><string name="restore_conflict_title">Restore path unavailable</string><string name="restore_conflict_desc">Could not access the target restore folder for file "%1$s".</string><string name="restore_conflict_instruction">Please specify where to restore the file:</string><string name="restore_conflict_apply_to_all">Apply to all subsequent files</string><string name="restore_conflict_btn_restore_in">Restore in %1$s</string><string name="restore_conflict_btn_choose_where">Choose where</string><string name="main_toast_choose_otg">Please select a folder on a removable drive (OTG), not in internal storage.</string><string name="main_toast_auto_created_folder">You didn\'t select a folder, so I created the folder %1$s for you to keep the drive organized</string><string name="main_toast_device_folder_selected">Device folder successfully selected!</string><string name="main_toast_folder_access_error">Folder access error: %1$s</string><string name="main_toast_waiting_mount">Waiting for drive to mount...</string><string name="service_sync_preparing">Preparing for synchronization...</string><string name="service_error">Error: %1$s</string><string name="service_copying_progress">Copying: %1$s / %2$s</string><string name="service_archiving_title">Transferring files</string><string name="service_sync_archive_title">Synchronizing archive</string><string name="usecase_first_archive_limited">The first transfer is limited to 20 files</string><string name="sync_helper_searching">Searching for files on OTG...</string><string name="sync_helper_access_failed">Failed to access OTG drive</string><string name="sync_helper_finished_no_files">Synchronization complete: no files.</string><string name="sync_helper_finished_stats">Synchronization complete.
 
 New files imported: %1$s
-Skipped/checked: %2$s</string><string name="sync_helper_error">Synchronization error: %1$s</string><string name="sync_helper_archiving_failed">Failed to archive %1$s file(s):
-</string><string name="sync_helper_archiving_error">Archiving error</string><string name="interactor_restore_success_with_errors">Restored: %1$s of %2$s.
+Skipped/checked: %2$s</string><string name="sync_helper_error">Synchronization error: %1$s</string><string name="sync_helper_archiving_failed">Failed to transfer %1$s file(s):
+</string><string name="sync_helper_archiving_error">Transfer error</string><string name="interactor_restore_success_with_errors">Restored: %1$s of %2$s.
 
 Errors:
 %3$s</string><string name="interactor_restore_success_partial">Restored: %1$s of %2$s.</string><string name="repository_unknown_drive">Unknown drive</string><string name="unknown_media_drive_title">Unknown drive</string><string name="unknown_media_drive_desc">Unknown drive connected. Create a new archive, or if the old one returns — you can synchronize it</string><string name="btn_create_new">Create new</string><string name="btn_choose">Choose</string><string name="btn_select_date_range">Select date range</string>
@@ -457,10 +464,33 @@ Errors:
     <string name="rename_archive_hint">New archive name</string>
     <string name="rename_archive_success">Archive renamed successfully</string>
     <string name="rename_archive_error">Failed to rename archive folder</string>
-    <string name="setting_copy_without_delete_title">Show \"Copy\" button</string>
-    <string name="setting_copy_without_delete_summary">Adds a second button in gallery to copy files to drive without deleting originals from phone</string>
+    <string name="setting_copy_without_delete_title">Copy mode (button in gallery)</string>
+    <string name="setting_copy_without_delete_summary">Adds a button in gallery to create backup copies on the drive while keeping originals on the phone</string>
     <string name="btn_copy_only">Copy</string>
     <string name="toast_copy_only_success">Copied %1$d files to drive (originals kept on phone)</string>
     <string name="pro_settings_title">Pro Settings</string>
     <string name="pro_settings_subtitle">VPS server, multi-archives, thumbnail sync, and debug logs</string>
+    <string name="tile_drive_title">Drive</string>
+    <string name="tile_cache_title">Thumbnail cache</string>
+    <string name="btn_change_folder">Change</string>
+    <string name="btn_select_folder">Select</string>
+    <string name="settings_section_files_sync">Sync &amp; Copy</string>
+    <string name="settings_section_archives">Archives &amp; Drives</string>
+    <string name="settings_section_general">General Settings</string>
+    <string name="settings_section_advanced">Server &amp; Debug</string>
+    <string name="search_other_archives_title">Search for other archives on drive</string>
+    <string name="search_other_archives_subtitle">Find existing My1drive archives on the connected drive</string>
+    <string name="search_other_archives_connect_hint">Connect drive to search for archives</string>
+    <string name="search_other_archives_scanning">Searching for archives...</string>
+    <string name="search_other_archives_found">Archives found: %1$d</string>
+    <string name="search_other_archives_not_found">No other archives found</string>
+    <string name="dialog_discovered_title">Photo folders on drive</string>
+    <string name="dialog_discovered_subtitle">Discovered directories with images and videos</string>
+    <string name="dialog_discovered_scanning">Scanning folders on the drive...</string>
+    <string name="dialog_discovered_empty">No photo folders found</string>
+    <string name="dialog_discovered_empty_hint">Try increasing the search depth</string>
+    <string name="dialog_discovered_btn_add">Add</string>
+    <string name="dialog_discovered_added">Added</string>
+    <string name="dialog_discovered_depth">Search depth: %1$d</string>
+    <string name="toast_archive_added">Archive \"%1$s\" added</string>
 </resources>

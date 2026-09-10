@@ -65,7 +65,7 @@ class OtgArchiveUtil(private val context: Context) {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, targetDirUri, createIfNotExist = true)
                 ?: throw Exception("otg_access_failed")
 
-            val existingFile = dir.findFile(item.displayName)
+            val existingFile = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, item.displayName)
             val isOverwriting = existingFile != null
 
             val targetFile = if (!isOverwriting) {
@@ -75,7 +75,7 @@ class OtgArchiveUtil(private val context: Context) {
                     ?: throw Exception("otg_create_failed")
             } else {
                 val tempFileName = ".${item.displayName}.tmp"
-                dir.findFile(tempFileName)?.let {
+                by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, tempFileName)?.let {
                     try { it.delete() } catch (_: Exception) {}
                 }
                 DebugLogBuffer.log(logTag, "Creating temp file $tempFileName on OTG for overwrite")
@@ -236,7 +236,7 @@ class OtgArchiveUtil(private val context: Context) {
                 DebugLogBuffer.log(logTag, "Restoring via SAF to chosen folder: $targetDirUri")
                 val dir = DocumentFile.fromTreeUri(context, targetDirUri)
                     ?: throw Exception("restore_target_access_failed")
-                val existing = dir.findFile(item.displayName)
+                val existing = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, item.displayName)
                 val file = if (existing != null) {
                     DebugLogBuffer.log(logTag, "File already exists in target folder, overwriting: ${existing.uri}")
                     existing

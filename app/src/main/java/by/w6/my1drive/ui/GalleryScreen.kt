@@ -80,6 +80,7 @@ fun GalleryScreen(
     val restoreState by viewModel.restoreState.collectAsStateWithLifecycle()
     val syncProgressState by viewModel.syncProgressState.collectAsStateWithLifecycle()
     val showCopyWithoutDelete by viewModel.showCopyWithoutDelete.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showRestorePicker = restoreRequest != null
     val mediaItems by viewModel.mediaItems.collectAsStateWithLifecycle()
     var actionBarHeightPx by remember { mutableStateOf(0f) }
@@ -262,6 +263,8 @@ fun GalleryScreen(
                             otgDirectoryUri = otgDirectoryUri,
                             isVpsEnabled = viewModel.isVpsEnabled(),
                             showCopyOption = showCopyWithoutDelete,
+                            targetArchiveName = uiState.activeArchiveName,
+                            targetArchiveColor = uiState.activeArchiveUuid?.let { archiveStripeColor(it) },
                             onArchive = { 
                                 val uri = otgDirectoryUri ?: if (viewModel.isVpsEnabled()) Uri.EMPTY else null
                                 uri?.let { viewModel.startArchiving(it) } 

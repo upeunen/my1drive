@@ -212,6 +212,11 @@ class OtgConnectionManager(
                     !syncHelper.archiveState.value.isArchiving &&
                     !syncHelper.isSilentSyncing
                 ) {
+                    _otgDirectoryUri.value?.let { connectedUri ->
+                        scope.launch(Dispatchers.IO) {
+                            OtgFolderResolver.ensureOtgNomediaMarker(application, connectedUri)
+                        }
+                    }
                     syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                     refreshCacheStats()
                 }
@@ -227,6 +232,10 @@ class OtgConnectionManager(
     fun onOtgUriSelected(uri: Uri) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")
         invokeShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
+
+        scope.launch(Dispatchers.IO) {
+            OtgFolderResolver.ensureOtgNomediaMarker(application, uri)
+        }
 
         scope.launch {
             var uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
@@ -859,9 +868,17 @@ class OtgConnectionManager(
         }
     }
 
+    private var isUpdatingArchiveSize = false
+
     fun updateArchiveSize() {
+        if (isUpdatingArchiveSize) return
+        isUpdatingArchiveSize = true
         scope.launch(Dispatchers.IO) {
-            _archiveSize.value = calculateArchiveSize()
+            try {
+                _archiveSize.value = calculateArchiveSize()
+            } finally {
+                isUpdatingArchiveSize = false
+            }
         }
     }
 

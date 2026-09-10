@@ -1,6 +1,10 @@
 package by.w6.my1drive.ui
 
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,10 +38,18 @@ fun GalleryScreenActionBar(
     otgDirectoryUri: Uri?,
     isVpsEnabled: Boolean = false,
     showCopyOption: Boolean = false,
+    targetArchiveName: String? = null,
+    targetArchiveColor: Color? = null,
     onArchive: () -> Unit,
     onCopyOnly: () -> Unit = {},
     onRestore: () -> Unit
 ) {
+    val archiveLabel = if (!targetArchiveName.isNullOrBlank()) {
+        stringResource(R.string.btn_archive_to_target, targetArchiveName)
+    } else {
+        stringResource(R.string.preview_archive)
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -64,9 +76,17 @@ fun GalleryScreenActionBar(
                         modifier = Modifier.weight(0.75f)
                     ) {
                         Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                        if (targetArchiveColor != null) {
+                            Spacer(Modifier.width(5.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(targetArchiveColor, CircleShape)
+                            )
+                        }
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.preview_archive),
+                            text = archiveLabel,
                             fontSize = 13.sp,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -105,9 +125,17 @@ fun GalleryScreenActionBar(
                         .padding(horizontal = 4.dp)
                 ) {
                     Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                    if (targetArchiveColor != null) {
+                        Spacer(Modifier.width(5.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(targetArchiveColor, CircleShape)
+                        )
+                    }
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = stringResource(R.string.preview_archive),
+                        text = archiveLabel,
                         fontSize = 13.sp,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

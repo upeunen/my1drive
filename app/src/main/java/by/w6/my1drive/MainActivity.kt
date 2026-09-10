@@ -123,7 +123,14 @@ class MainActivity : AppCompatActivity() {
                     if (documentFile != null && documentFile.exists()) {
                         val folderName = by.w6.my1drive.utils.OtgFolderResolver.getAutoCreatedFolderName(this)
                         try {
-                            val subDir = documentFile.findFile(folderName) ?: documentFile.createDirectory(folderName)
+                            val directSubUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(uri, folderName)
+                            val directSubDoc = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, directSubUri)
+                            val subDir = if (directSubDoc != null && directSubDoc.exists() && directSubDoc.isDirectory) {
+                                directSubDoc
+                            } else {
+                                by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(this, documentFile, folderName, isDirectoryOnly = true)
+                                    ?: documentFile.createDirectory(folderName)
+                            }
                             if (subDir != null) {
                                 autoCreatedFolderName = folderName
                             } else {
@@ -146,6 +153,9 @@ class MainActivity : AppCompatActivity() {
             val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                by.w6.my1drive.utils.OtgFolderResolver.ensureOtgNomediaMarker(this@MainActivity, uri)
+            }
             viewModel.setOtgDirectory(uri)
         
             if (autoCreatedFolderName != null) {

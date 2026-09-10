@@ -501,17 +501,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 otgManager.activeArchiveUuid,
-                _isOtgConnected,
-                _isScrolling
-            ) { uuid, connected, scrolling ->
-                Triple(uuid, connected, scrolling)
-            }.collect { (uuid, connected, scrolling) ->
+                _isOtgConnected
+            ) { uuid, connected ->
+                Pair(uuid, connected)
+            }.collect { (uuid, connected) ->
                 updateMissingThumbnailsCount()
-                if (connected && uuid != null && !scrolling) {
-                    startSilentThumbnailSync()
-                } else {
-                    thumbnailManager.cancelSilentThumbnailSync()
-                }
             }
         }
 
@@ -636,6 +630,73 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             db.mediaDao().deleteByArchiveUuid(uuid)
             withContext(Dispatchers.Main) {
                 repository.refresh()
+            }
+        }
+    }
+
+    fun searchArchivesOnCurrentDrive(onResult: (Int) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val rootUri: Uri? = otgManager.otgDirectoryUri.value
+            if (rootUri != null) {
+                val app: Application = getApplication()
+                val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(app, rootUri)
+                val count = if (recovered != null) 1 else 0
+                withContext(Dispatchers.Main) {
+                    repository.refresh()
+                    onResult(count)
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    onResult(0)
+                }
+            }
+        }
+    }
+
+    fun scanForMediaFolders(
+        maxDepth: Int = 2,
+        onResult: (List<by.w6.my1drive.utils.DiscoveredFolder>) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val rootUri: Uri? = otgManager.otgDirectoryUri.value
+            if (rootUri != null) {
+                val app: Application = getApplication()
+                val knownArchivesList = db.archiveDao().getAllSync()
+                val knownPaths = knownArchivesList.map { it.folderName }.toSet()
+                val discovered = by.w6.my1drive.utils.OtgFolderScanner.scanMediaFolders(
+                    context = app,
+                    rootUri = rootUri,
+                    knownFolderPaths = knownPaths,
+                    maxDepth = maxDepth
+                )
+                withContext(Dispatchers.Main) {
+                    onResult(discovered)
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    onResult(emptyList())
+                }
+            }
+        }
+    }
+
+    fun addDiscoveredFolderAsArchive(
+        folder: by.w6.my1drive.utils.DiscoveredFolder,
+        onComplete: (String) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val rootUri: Uri? = otgManager.otgDirectoryUri.value
+            if (rootUri != null) {
+                val app: Application = getApplication()
+                val entity = by.w6.my1drive.utils.OtgFolderScanner.registerDiscoveredFolderAsArchive(
+                    context = app,
+                    rootUri = rootUri,
+                    folder = folder
+                )
+                withContext(Dispatchers.Main) {
+                    repository.refresh()
+                    onComplete(entity.name)
+                }
             }
         }
     }
@@ -994,7 +1055,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val isChecking: Boolean,
         val displayName: String?,
         val archiveSize: Long,
-        val storageLow: Boolean
+        val storageLow: Boolean,
+        val activeArchiveName: String? = null
     )
 
     private data class SyncPart1(
@@ -1052,9 +1114,20 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         otgManager.isCheckingConnection,
         otgDirectoryDisplayName,
         otgManager.archiveSize,
-        isStorageLow
-    ) { activeArchiveUuid, isChecking, displayName, archiveSize, storageLow ->
-        OtgSubState(activeArchiveUuid, isChecking, displayName, archiveSize, storageLow)
+        combine(isStorageLow, knownArchives) { low, archives -> Pair(low, archives) }
+    ) { activeArchiveUuid, isChecking, displayName, archiveSize, (storageLow, archives) ->
+        val activeName = if (vpsManager.isVpsEnabled()) {
+            "VPS"
+        } else if (activeArchiveUuid != null) {
+            val archive = archives.find { it.uuid == activeArchiveUuid }
+            archive?.name?.takeIf { it.isNotBlank() }
+                ?: archive?.folderName?.takeIf { it.isNotBlank() }
+                ?: displayName
+                ?: "ID: ${activeArchiveUuid.take(6)}"
+        } else {
+            displayName
+        }
+        OtgSubState(activeArchiveUuid, isChecking, displayName, archiveSize, storageLow, activeName)
     }
 
     private val syncOpSubFlow = combine(
@@ -1117,6 +1190,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             mediaFilterMode = media.filterMode,
 
             activeArchiveUuid = otg.activeArchiveUuid,
+            activeArchiveName = otg.activeArchiveName,
             isCheckingConnection = otg.isChecking,
             otgDirectoryDisplayName = otg.displayName,
             physicalArchiveSize = otg.archiveSize,

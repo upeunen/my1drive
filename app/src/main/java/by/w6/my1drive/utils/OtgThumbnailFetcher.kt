@@ -13,6 +13,8 @@ import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.request.Options
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okio.Path.Companion.toOkioPath
 import java.io.File
@@ -61,6 +63,11 @@ class OtgThumbnailFetcher(
         ): Fetcher = OtgThumbnailFetcher(data, options.context, previewDir, onCached)
     }
 
+    companion object {
+        // Serializes OTG reads to prevent disk head thrashing on mechanical hard drives
+        private val otgReadSemaphore = Semaphore(1)
+    }
+
     override suspend fun fetch(): FetchResult = withContext(Dispatchers.IO) {
         // 1. Check existing cache path (old thumbnails dir or previously cached)
         if (data.existingCachePath != null) {
@@ -82,8 +89,24 @@ class OtgThumbnailFetcher(
         }
 
         val uri = Uri.parse(data.otgUri)
-        val bitmap = generateThumbnail(uri)
-            ?: throw java.io.IOException("Failed to generate thumbnail from OTG for ${data.hash}")
+
+        // Read sequentially through semaphore to protect mechanical HDD from concurrent seeks
+        val bitmap: Bitmap? = otgReadSemaphore.withPermit {
+            // Double check if another coroutine already cached it while waiting for the semaphore
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                null
+            } else {
+                generateThumbnail(uri)
+            }
+        }
+
+        if (cacheFile.exists() && cacheFile.length() > 0) {
+            return@withContext sourceResult(cacheFile)
+        }
+
+        if (bitmap == null) {
+            throw java.io.IOException("Failed to generate thumbnail from OTG for ${data.hash}")
+        }
 
         // Save to cache
         previewDir.mkdirs()
@@ -121,16 +144,36 @@ class OtgThumbnailFetcher(
                 retriever.release()
             }
         } else {
-            // Two-pass decode: first get dimensions, then sub-sample
-            val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                BitmapFactory.decodeStream(input, null, boundsOpts)
-            }
+            try {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    val fd = pfd.fileDescriptor
+                    val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFileDescriptor(fd, null, boundsOpts)
 
-            val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 512)
-            val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                BitmapFactory.decodeStream(input, null, decodeOpts)
+                    val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 512)
+                    val decodeOpts = BitmapFactory.Options().apply {
+                        inSampleSize = sampleSize
+                        inPreferredConfig = Bitmap.Config.RGB_565
+                    }
+                    BitmapFactory.decodeFileDescriptor(fd, null, decodeOpts)
+                } ?: run {
+                    // Fallback to stream if openFileDescriptor fails
+                    val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        BitmapFactory.decodeStream(input, null, boundsOpts)
+                    }
+
+                    val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 512)
+                    val decodeOpts = BitmapFactory.Options().apply {
+                        inSampleSize = sampleSize
+                        inPreferredConfig = Bitmap.Config.RGB_565
+                    }
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        BitmapFactory.decodeStream(input, null, decodeOpts)
+                    }
+                }
+            } catch (e: Exception) {
+                null
             }
         }
     }

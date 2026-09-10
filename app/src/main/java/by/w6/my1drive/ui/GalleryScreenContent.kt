@@ -151,6 +151,7 @@ import by.w6.my1drive.ui.components.DateRangePickerDialog
 import by.w6.my1drive.ui.components.LimitDecreasedBanner
 import androidx.compose.runtime.LaunchedEffect
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreenContent(
     modifier: Modifier,
@@ -380,7 +381,12 @@ fun GalleryScreenContent(
         archiveState.isArchiving -> {
             val total = archiveState.totalFiles
             val current = archiveState.currentFileIndex
-            if (total > 0) "${stringResource(R.string.title_archiving)} $current/$total" else stringResource(R.string.title_archiving)
+            val baseTitle = if (archiveState.targetArchiveName.isNotBlank()) {
+                stringResource(R.string.title_archiving_target, archiveState.targetArchiveName)
+            } else {
+                stringResource(R.string.title_archiving)
+            }
+            if (total > 0) "$baseTitle $current/$total" else baseTitle
         }
         syncProgressState.isSyncing -> {
             val total = syncProgressState.totalFiles
@@ -451,7 +457,10 @@ fun GalleryScreenContent(
                 )
             }
 
-            ConnectingUsbBanner(visible = isCheckingConnection || isSilentSyncing)
+            ConnectingUsbBanner(
+                visible = isCheckingConnection || isSilentSyncing,
+                isWakingUp = isOtgConnected && (isSilentSyncing || isCheckingConnection)
+            )
 
             // Stationary Separator Indicator Bar directly below TopBar
             if (currentScreenRoute == "photos") {
@@ -468,13 +477,21 @@ fun GalleryScreenContent(
                     physicalArchiveSize = physicalArchiveSize,
                     isArchiving = archiveState.isArchiving
                 )
+                if (isOtgConnected) {
+                    by.w6.my1drive.ui.components.OtgPowerTipBanner()
+                }
             }
 
             // Progress panel for archiving, restoring, and thumbnail syncing
             if (archiveState.isArchiving) {
                 val queue = if (archiveState.pendingQueueSize > 0) stringResource(R.string.status_in_queue, archiveState.pendingQueueSize) else ""
+                val progressTitle = if (archiveState.targetArchiveName.isNotBlank()) {
+                    stringResource(R.string.title_archiving_target, archiveState.targetArchiveName)
+                } else {
+                    stringResource(R.string.title_archiving)
+                }
                 ProgressPanel(
-                    title = stringResource(R.string.title_archiving),
+                    title = progressTitle,
                     fileName = archiveState.currentFileName,
                     currentIndex = archiveState.currentFileIndex,
                     totalFiles = archiveState.totalFiles,
@@ -619,6 +636,20 @@ fun GalleryScreenContent(
                             val missingThumbnailsCount = uiState.missingThumbnailsCount
                             val isStorageLow = uiState.isStorageLow
 
+                            var showDiscoveredArchivesSheet by remember { mutableStateOf(false) }
+                            var isScanningDiscovered by remember { mutableStateOf(false) }
+                            var discoveredFolders by remember { mutableStateOf<List<by.w6.my1drive.utils.DiscoveredFolder>>(emptyList()) }
+                            var addedFolderPaths by remember { mutableStateOf<Set<String>>(emptySet()) }
+                            var scanDepth by remember { mutableStateOf(2) }
+
+                            fun runFolderScan(depth: Int) {
+                                isScanningDiscovered = true
+                                viewModel.scanForMediaFolders(maxDepth = depth) { list ->
+                                    discoveredFolders = list
+                                    isScanningDiscovered = false
+                                }
+                            }
+
                             LaunchedEffect(Unit) {
                                 viewModel.updateMissingThumbnailsCount()
                             }
@@ -672,8 +703,36 @@ fun GalleryScreenContent(
                                     viewModel.notifyLocaleChanged()
                                 },
                                 showCopyWithoutDelete = viewModel.showCopyWithoutDelete.collectAsStateWithLifecycle().value,
-                                onToggleCopyWithoutDelete = { viewModel.setShowCopyWithoutDelete(it) }
+                                onToggleCopyWithoutDelete = { viewModel.setShowCopyWithoutDelete(it) },
+                                onSearchOtherArchives = {
+                                    showDiscoveredArchivesSheet = true
+                                    runFolderScan(scanDepth)
+                                }
                             )
+
+                            if (showDiscoveredArchivesSheet) {
+                                by.w6.my1drive.ui.settings.DiscoveredArchivesBottomSheet(
+                                    isScanning = isScanningDiscovered,
+                                    discoveredFolders = discoveredFolders,
+                                    addedFolderPaths = addedFolderPaths,
+                                    currentDepth = scanDepth,
+                                    onDepthChanged = { newDepth ->
+                                        scanDepth = newDepth
+                                        runFolderScan(newDepth)
+                                    },
+                                    onAddFolder = { folder ->
+                                        viewModel.addDiscoveredFolderAsArchive(folder) { name ->
+                                            addedFolderPaths = addedFolderPaths + folder.relativePath
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                context.getString(R.string.toast_archive_added, name),
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    },
+                                    onDismiss = { showDiscoveredArchivesSheet = false }
+                                )
+                            }
                     }
                 }
             }
@@ -731,6 +790,7 @@ fun GalleryScreenContent(
                 isOtgConnected = isOtgConnected,
                 otgDirectoryUri = otgDirectoryUri,
                 activeArchiveUuid = activeArchiveUuid,
+                activeArchiveName = uiState.activeArchiveName,
                 selectedIds = selectedIds,
                 onToggleSelection = onToggleSelection,
                 onClose = {

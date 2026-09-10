@@ -1,10 +1,6 @@
 package by.w6.my1drive.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -16,13 +12,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import by.w6.my1drive.R
 import by.w6.my1drive.data.local.ArchiveEntity
+import by.w6.my1drive.ui.settings.*
 import by.w6.my1drive.utils.VpsConnectionManager
-import by.w6.my1drive.ui.settings.LanguageSettingsSection
-import by.w6.my1drive.ui.settings.ManageStorageCard
-import by.w6.my1drive.ui.settings.OtgSettingsSection
-import by.w6.my1drive.ui.settings.ProSettingsSection
-import by.w6.my1drive.ui.settings.PromoCodeCard
-import by.w6.my1drive.ui.settings.SettingsDashboardHeader
 
 @Composable
 fun SettingsTab(
@@ -55,7 +46,8 @@ fun SettingsTab(
     onCleanOrphans: () -> Unit = {},
     onLanguageChanged: () -> Unit = {},
     showCopyWithoutDelete: Boolean = false,
-    onToggleCopyWithoutDelete: (Boolean) -> Unit = {}
+    onToggleCopyWithoutDelete: (Boolean) -> Unit = {},
+    onSearchOtherArchives: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -71,14 +63,14 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
-        // 1. Top Gradient Summary Dashboard Widget
-        SettingsDashboardHeader(
+        // 1. Top 2 Dashboard Tiles: Drive & Cache
+        SettingsDashboardTiles(
             isOtgConnected = isOtgConnected,
             otgDirectoryDisplayName = otgDirectoryDisplayName,
             isLocalFolder = isLocalFolder,
+            onSelectOtgDirectory = onSelectOtgDirectory,
             cacheFilesCount = cacheFilesCount,
             cacheSize = cacheSize,
-            isStorageLow = isStorageLow,
             onClearCache = onClearCache
         )
 
@@ -90,62 +82,54 @@ fun SettingsTab(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
-        // 2. OTG/USB Storage Section & Multi-Archive settings & Thumbnail sync
-        OtgSettingsSection(
-            isOtgConnected = isOtgConnected,
-            otgDirectoryDisplayName = otgDirectoryDisplayName,
-            isLocalFolder = isLocalFolder,
-            onSelectOtgDirectory = onSelectOtgDirectory,
-            knownArchives = knownArchives,
-            onDeleteArchive = onDeleteArchive,
-            activeArchiveUuid = activeArchiveUuid,
-            onRefresh = onRefresh,
-            isSyncingThumbnails = isSyncingThumbnails,
-            syncThumbnailsProgress = syncThumbnailsProgress,
-            missingThumbnailsCount = missingThumbnailsCount,
-            onSyncThumbnails = onSyncThumbnails,
-            onCancelSyncThumbnails = onCancelSyncThumbnails
-        )
-
-        // 3. Promo Code Card (if available in Remote Config)
-        if (hasPromoCodes) {
-            Spacer(Modifier.height(16.dp))
-            PromoCodeCard(onPromoCode = onPromoCode)
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // 4. Language Settings Card
-        LanguageSettingsSection(
-            onLanguageChanged = onLanguageChanged
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        // 5. Pro Settings Accordion (Collapsible card containing Copy without delete, Cache, Multi-archives, VPS, Debug logs)
-        ProSettingsSection(
+        // 2. Files & Sync Section
+        FilesAndSyncSection(
             showCopyWithoutDelete = showCopyWithoutDelete,
             onToggleCopyWithoutDelete = onToggleCopyWithoutDelete,
-            cacheFilesCount = cacheFilesCount,
-            cacheSize = cacheSize,
-            onClearCache = onClearCache,
             missingThumbnailsCount = missingThumbnailsCount,
             isSyncingThumbnails = isSyncingThumbnails,
             syncThumbnailsProgress = syncThumbnailsProgress,
             onSyncThumbnails = onSyncThumbnails,
             onCancelSyncThumbnails = onCancelSyncThumbnails,
+            isOtgConnected = isOtgConnected
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // 3. Archives & Storage Section
+        ArchivesSettingsSection(
             knownArchives = knownArchives,
             onDeleteArchive = onDeleteArchive,
             activeArchiveUuid = activeArchiveUuid,
             isOtgConnected = isOtgConnected,
             onRefresh = onRefresh,
+            onSearchOtherArchives = onSearchOtherArchives
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // 4. Promo Code Card (if available)
+        if (hasPromoCodes) {
+            PromoCodeCard(onPromoCode = onPromoCode)
+            Spacer(Modifier.height(20.dp))
+        }
+
+        // 5. General / Language Settings Section
+        LanguageSettingsSection(
+            onLanguageChanged = onLanguageChanged
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // 6. Advanced (VPS, Maintenance, Logs) Collapsible Section
+        AdvancedSettingsSection(
             vpsManager = vpsManager,
             onShowDebugLogs = onShowDebugLogs,
             onCleanOrphans = onCleanOrphans
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(24.dp))
     }
 }

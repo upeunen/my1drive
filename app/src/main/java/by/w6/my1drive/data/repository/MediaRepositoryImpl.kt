@@ -191,8 +191,16 @@ class MediaRepositoryImpl(
             val contentResolver = context.contentResolver
 
             val collections = listOf(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI to true,
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI to false
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                } else {
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                }) to true,
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                } else {
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                }) to false
             )
 
             for ((collection, isImage) in collections) {

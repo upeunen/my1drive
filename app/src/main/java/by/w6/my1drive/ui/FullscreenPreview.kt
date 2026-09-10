@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateCentroidSize
@@ -130,6 +131,7 @@ fun FullscreenPreview(
     isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
     activeArchiveUuid: String? = null,
+    activeArchiveName: String? = null,
     selectedIds: Set<String> = emptySet(),
     onToggleSelection: (String) -> Unit = {},
     onClose: () -> Unit,
@@ -493,9 +495,23 @@ fun FullscreenPreview(
                                     ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
+                                    val archiveLabel = if (!activeArchiveName.isNullOrBlank()) {
+                                        stringResource(R.string.btn_archive_to_target, activeArchiveName)
+                                    } else {
+                                        stringResource(R.string.preview_action_archive)
+                                    }
+                                    val targetColor = activeArchiveUuid?.let { archiveStripeColor(it) }
                                     Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    if (targetColor != null) {
+                                        Spacer(Modifier.width(5.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(targetColor, CircleShape)
+                                        )
+                                    }
                                     Spacer(Modifier.width(6.dp))
-                                    Text(stringResource(R.string.preview_action_archive), fontSize = 13.sp, maxLines = 1, softWrap = false)
+                                    Text(archiveLabel, fontSize = 13.sp, maxLines = 1, softWrap = false)
                                 }
                             } else {
                                 Button(
@@ -587,7 +603,23 @@ fun FullscreenPreview(
                                             contentColor = Color.White
                                         )
                                     ) {
-                                        Text(stringResource(R.string.preview_archive), fontSize = 13.sp)
+                                        val archiveLabel = if (!activeArchiveName.isNullOrBlank()) {
+                                            stringResource(R.string.btn_archive_to_target, activeArchiveName)
+                                        } else {
+                                            stringResource(R.string.preview_archive)
+                                        }
+                                        val targetColor = activeArchiveUuid?.let { archiveStripeColor(it) }
+                                        Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        if (targetColor != null) {
+                                            Spacer(Modifier.width(5.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(targetColor, CircleShape)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(archiveLabel, fontSize = 13.sp)
                                     }
                                 } else {
                                     Button(

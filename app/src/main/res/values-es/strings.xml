@@ -24,14 +24,14 @@
     
     <string name="empty_category">No hay archivos multimedia en esta categoría</string>
     <string name="selected_count">Seleccionado: %1$d</string>
-    <string name="archive_on_otg">Archivar en OTG</string>
+    <string name="archive_on_otg">Transferir a OTG</string>
     <string name="btn_ok">OK</string>
     <string name="btn_cancel">Cancelar</string>
     <string name="btn_close">Cerrar</string>
     <string name="error_title">Error</string>
     
-    <string name="archiving_title">Haciendo copia en OTG…</string>
-    <string name="archiving_title_count">Haciendo copia en OTG (%1$d de %2$d)…</string>
+    <string name="archiving_title">Transfiriendo a OTG…</string>
+    <string name="archiving_title_count">Transfiriendo a OTG (%1$d de %2$d)…</string>
     <string name="archiving_file">Archivo: %1$s</string>
     
     <string name="otg_select_title">Selección de Unidad USB OTG</string>
@@ -162,7 +162,7 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     
     <string name="preview_delete">Eliminar</string>
     <string name="preview_will_be_deleted">Se eliminará al cerrar ✓</string>
-    <string name="preview_archive">Archivar</string>
+    <string name="preview_archive">Transferir</string>
     <string name="preview_restore">Restaurar</string>
     <string name="preview_share">Compartir</string>
     <string name="preview_hint_swipe">Deslizar hacia abajo para cerrar</string>
@@ -200,9 +200,13 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     
     <string name="otg_required_msg">Se requiere una unidad externa para funcionar. Por favor conéctela al puerto de carga mediante un adaptador OTG.</string>
     <string name="connecting_usb_msg">Conectando unidad USB...</string>
+    <string name="waking_up_drive_msg">Reactivando unidad y leyendo archivo...</string>
+    <string name="hdd_power_tip_title">Consejo de alimentación para HDD</string>
+    <string name="hdd_power_tip_desc">Para discos duros mecánicos externos (HDD), se recomienda utilizar un adaptador OTG con alimentación externa para evitar desconexiones por falta de energía.</string>
+    <string name="btn_got_it">Entendido</string>
     <string name="step_preparing">Preparando...</string>
     <string name="step_verifying">Verificando integridad...</string>
-    <string name="step_copying">Copiando al archivo...</string>
+    <string name="step_copying">Transfiriendo a la unidad...</string>
     <string name="step_restore_reading">Leyendo desde el archivo...</string>
     <string name="step_restore_writing">Escribiendo en el dispositivo...</string>
     <string name="step_restore_writing_pct">Escribiendo en el dispositivo... (%1$s%%)</string>
@@ -213,7 +217,10 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="status_computing_hashes">Calculando hashes...</string>
     <string name="status_searching_files">Buscando archivos...</string>
     <string name="status_in_queue"> (+%1$d en cola)</string>
-    <string name="title_archiving">Archivando</string>
+    <string name="title_archiving">Transferencia</string>
+    <string name="title_archiving_target">Transfiriendo a \"%1$s\"</string>
+    <string name="btn_archive_to_target">Transferir a \"%1$s\"</string>
+    <string name="service_archiving_title_target">Transfiriendo a \"%1$s\"</string>
     <string name="title_restoring">Restaurando</string>
     <string name="title_syncing">Sincronizando archivo</string>
 
@@ -311,7 +318,7 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="RUSTORE_REMOTE_CONFIG_APP_ID">5189926e-01b0-4267-9204-8e5804fc7d45</string>
 
     
-    <string name="success_dialog_title">¡Archivado Completo!</string>
+    <string name="success_dialog_title">¡Transferencia Completa!</string>
     <string name="success_dialog_freed_space">Liberado: %1$s GB</string>
     <string name="success_dialog_free_space_now">Libre ahora: %1$s GB</string>
     <string name="success_dialog_storage_usage">%1$s GB usado de %2$s GB</string>
@@ -360,7 +367,7 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="dialog_change_folder_title">¿Cambiar carpeta del archivo?</string>
     <string name="tab_with_date">Con Fecha</string>
     <string name="action_ok">OK</string>
-    <string name="dialog_archive_error_title">Error de Archivado</string>
+    <string name="dialog_archive_error_title">Error de Transferencia</string>
     <string name="action_copy_log">Copiar Registro</string>
     <string name="dialog_restore_error_title">Error de Restauración</string>
     <string name="dialog_change_folder_desc">Cambiar la carpeta del archivo puede interrumpir la sincronización actual. ¿Está seguro?</string>
@@ -375,15 +382,15 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="paywall_error">Error de compra: %1$s</string>
     <string name="paywall_close">Cerrar</string>
 
-    <string name="dialog_manage_storage_title">Archivado en 1 Toque Sin Ventanas Extras</string>
-    <string name="dialog_manage_storage_desc">Para archivar y eliminar fotos y vídeos de tu teléfono en un solo toque sin constantes ventanas emergentes de Android, activa el permiso en la siguiente pantalla.</string>
+    <string name="dialog_manage_storage_title">Transferencia en 1 Toque Sin Ventanas Extras</string>
+    <string name="dialog_manage_storage_desc">Para transferir y eliminar fotos y vídeos de tu teléfono en un solo toque sin constantes ventanas emergentes de Android, activa el permiso en la siguiente pantalla.</string>
     <string name="dialog_manage_storage_btn">Ir a Ajustes</string>
-    <string name="settings_manage_storage_title">Archivado y Eliminación en 1 Toque</string>
-    <string name="settings_manage_storage_desc">Permite mover y eliminar fotos y vídeos en un solo toque sin ventanas emergentes de seguridad del sistema.</string>
+    <string name="settings_manage_storage_title">Transferencia y Eliminación en 1 Toque</string>
+    <string name="settings_manage_storage_desc">Permite transferir y eliminar fotos y vídeos en un solo toque sin ventanas emergentes de seguridad del sistema.</string>
     <string name="settings_manage_storage_btn">Configurar</string>
 
     <string name="local_folder_dialog_title">Permitir que My1Drive acceda a los archivos</string>
-    <string name="local_folder_dialog_desc">La aplicación necesita acceso a sus fotos y vídeos para moverlos al archivo sin preguntas adicionales. Toque "Permitir" en la siguiente pantalla.</string>
+    <string name="local_folder_dialog_desc">La aplicación necesita acceso a sus fotos y vídeos para transferirlos al archivo sin preguntas adicionales. Toque "Permitir" en la siguiente pantalla.</string>
     <string name="local_folder_dialog_confirm">Permitir</string>
     <string name="local_folder_dialog_dismiss">Omitir</string>
     <string name="local_folder_dialog_full_access">Conceder a la aplicación acceso a sus fotos y vídeos</string>
@@ -398,13 +405,13 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="promo_code_card_title">¿Tiene un código promocional?</string>
     <string name="promo_code_card_desc">Introduzca un código promocional para obtener acceso temporal sin límites.</string>
 
-<string name="preview_action_delete">Eliminar</string><string name="preview_action_archive">Al Archivo</string><string name="preview_action_restore">Restaurar</string><string name="preview_status_preparing">Preparando archivo...</string><string name="preview_share_thumbnail_title">¿Compartir miniatura?</string><string name="preview_share_thumbnail_desc">La unidad de origen está desconectada. Puede enviar una miniatura de baja resolución (%1$s).</string><string name="preview_do_not_warn_again">Entiendo, no advertir de nuevo</string><string name="preview_btn_share">Compartir</string><string name="preview_btn_cancel">Cancelar</string><string name="gallery_share_thumbnail_title">¿Compartir miniaturas?</string><string name="gallery_share_thumbnail_desc">Algunos archivos seleccionados están en unidades desconectadas. Se enviarán sus miniaturas de baja resolución.</string><string name="gallery_do_not_warn_again">Entiendo, no advertir de nuevo</string><string name="gallery_btn_share">Compartir</string><string name="gallery_btn_cancel">Cancelar</string><string name="gallery_error_archiving_title">Error de Archivado</string><string name="gallery_error_restoring_title">Error de Restauración</string><string name="gallery_btn_ok">OK</string><string name="gallery_btn_copy_log">Copiar registro</string><string name="gallery_action_select">SELECCIONAR</string><string name="gallery_filter_all">Todo</string><string name="gallery_filter_with_date">Con fecha</string><string name="gallery_filter_in_folder">En la carpeta</string><string name="gallery_filter_range">Rango</string><string name="gallery_content_desc_deselect">Deseleccionar</string><string name="topbar_content_desc_deselect">Deseleccionar</string><string name="topbar_group">Grupo</string><string name="topbar_content_desc_share">Compartir</string><string name="topbar_send">Enviar</string><string name="topbar_content_desc_delete">Eliminar</string><string name="topbar_delete">Eliminar</string><string name="topbar_content_desc_reset_selection">Restablecer selección</string><string name="info_drive">Unidad</string><string name="info_drive_uuid">ID de Unidad (UUID)</string><string name="info_exif_data">Datos EXIF</string><string name="info_exif_missing">Faltan etiquetas EXIF o el archivo no tiene metadatos</string><string name="info_exif_unavailable_offline">EXIF no disponible (OTG desconectado)</string><string name="info_hide_exif">Ocultar EXIF</string><string name="info_show_exif">Mostrar EXIF</string><string name="info_btn_share">Compartir</string><string name="info_btn_copy">Copiar</string><string name="usb_tab_tutorial">Tutorial</string><string name="usb_tab_tutorial_desc">Sus originales pesados están aquí, mientras que las vistas previas ligeras permanecen en la galería del teléfono</string><string name="usb_tab_got_it">Entendido</string><string name="paywall_btn_retry">Reintentar</string><string name="paywall_btn_buy_pro">Comprar PRO</string><string name="naming_dialog_title">Nombre este archivo</string><string name="naming_dialog_desc">Introduzca un nombre claro para esta unidad (ej. Unidad USB-C, Archivo 2026) para evitar confusiones.</string><string name="naming_dialog_label">Nombre del archivo</string><string name="naming_dialog_max_chars">Máximo 30 caracteres</string><string name="naming_dialog_btn_create">Crear</string><string name="naming_dialog_btn_cancel">Cancelar</string><string name="guide_dialog_archive_not_found">Archivo no encontrado</string><string name="guide_dialog_desc">No se encontró ningún archivo existente en la unidad seleccionada. ¿Desea crear un nuevo archivo ahora?
+<string name="preview_action_delete">Eliminar</string><string name="preview_action_archive">Transferir</string><string name="preview_action_restore">Restaurar</string><string name="preview_status_preparing">Preparando archivo...</string><string name="preview_share_thumbnail_title">¿Compartir miniatura?</string><string name="preview_share_thumbnail_desc">La unidad de origen está desconectada. Puede enviar una miniatura de baja resolución (%1$s).</string><string name="preview_do_not_warn_again">Entiendo, no advertir de nuevo</string><string name="preview_btn_share">Compartir</string><string name="preview_btn_cancel">Cancelar</string><string name="gallery_share_thumbnail_title">¿Compartir miniaturas?</string><string name="gallery_share_thumbnail_desc">Algunos archivos seleccionados están en unidades desconectadas. Se enviarán sus miniaturas de baja resolución.</string><string name="gallery_do_not_warn_again">Entiendo, no advertir de nuevo</string><string name="gallery_btn_share">Compartir</string><string name="gallery_btn_cancel">Cancelar</string><string name="gallery_error_archiving_title">Error de Transferencia</string><string name="gallery_error_restoring_title">Error de Restauración</string><string name="gallery_btn_ok">OK</string><string name="gallery_btn_copy_log">Copiar registro</string><string name="gallery_action_select">SELECCIONAR</string><string name="gallery_filter_all">Todo</string><string name="gallery_filter_with_date">Con fecha</string><string name="gallery_filter_in_folder">En la carpeta</string><string name="gallery_filter_range">Rango</string><string name="gallery_content_desc_deselect">Deseleccionar</string><string name="topbar_content_desc_deselect">Deseleccionar</string><string name="topbar_group">Grupo</string><string name="topbar_content_desc_share">Compartir</string><string name="topbar_send">Enviar</string><string name="topbar_content_desc_delete">Eliminar</string><string name="topbar_delete">Eliminar</string><string name="topbar_content_desc_reset_selection">Restablecer selección</string><string name="info_drive">Unidad</string><string name="info_drive_uuid">ID de Unidad (UUID)</string><string name="info_exif_data">Datos EXIF</string><string name="info_exif_missing">Faltan etiquetas EXIF o el archivo no tiene metadatos</string><string name="info_exif_unavailable_offline">EXIF no disponible (OTG desconectado)</string><string name="info_hide_exif">Ocultar EXIF</string><string name="info_show_exif">Mostrar EXIF</string><string name="info_btn_share">Compartir</string><string name="info_btn_copy">Copiar</string><string name="usb_tab_tutorial">Tutorial</string><string name="usb_tab_tutorial_desc">Sus originales pesados están aquí, mientras que las vistas previas ligeras permanecen en la galería del teléfono</string><string name="usb_tab_got_it">Entendido</string><string name="paywall_btn_retry">Reintentar</string><string name="paywall_btn_buy_pro">Comprar PRO</string><string name="naming_dialog_title">Nombre este archivo</string><string name="naming_dialog_desc">Introduzca un nombre claro para esta unidad (ej. Unidad USB-C, Archivo 2026) para evitar confusiones.</string><string name="naming_dialog_label">Nombre del archivo</string><string name="naming_dialog_max_chars">Máximo 30 caracteres</string><string name="naming_dialog_btn_create">Crear</string><string name="naming_dialog_btn_cancel">Cancelar</string><string name="guide_dialog_archive_not_found">Archivo no encontrado</string><string name="guide_dialog_desc">No se encontró ningún archivo existente en la unidad seleccionada. ¿Desea crear un nuevo archivo ahora?
 
-Simplemente invente un nombre para el nuevo archivo.</string><string name="guide_dialog_btn_create">Crear archivo</string><string name="guide_dialog_btn_cancel">Cancelar</string><string name="logs_dialog_title">Registros de depuración</string><string name="logs_dialog_empty">Los registros están vacíos</string><string name="logs_dialog_btn_copy">Copiar</string><string name="logs_dialog_btn_clear">Limpiar</string><string name="logs_dialog_btn_close">Cerrar</string><string name="logs_toast_copied">Registros copiados al portapapeles</string><string name="logs_toast_nothing_to_copy">Nada que copiar</string><string name="logs_toast_cleared">Registros limpiados</string><string name="access_dialog_title">Acceso a la carpeta %1$s</string><string name="access_dialog_desc">Para archivar archivos de esta carpeta, concédele acceso.</string><string name="access_dialog_path">Ruta: %1$s</string><string name="access_dialog_btn_grant">Conceder acceso</string><string name="restore_conflict_title">Ruta de restauración no disponible</string><string name="restore_conflict_desc">No se pudo acceder a la carpeta de restauración de destino para el archivo "%1$s".</string><string name="restore_conflict_instruction">Especifique dónde restaurar el archivo:</string><string name="restore_conflict_apply_to_all">Aplicar a todos los archivos siguientes</string><string name="restore_conflict_btn_restore_in">Restaurar en %1$s</string><string name="restore_conflict_btn_choose_where">Elegir dónde</string><string name="main_toast_choose_otg">Por favor, seleccione una carpeta en una unidad extraíble (OTG), no en el almacenamiento interno.</string><string name="main_toast_auto_created_folder">No seleccionó una carpeta, así que creé la carpeta %1$s para mantener la unidad organizada</string><string name="main_toast_device_folder_selected">¡Carpeta del dispositivo seleccionada con éxito!</string><string name="main_toast_folder_access_error">Error de acceso a la carpeta: %1$s</string><string name="main_toast_waiting_mount">Esperando a que se monte la unidad...</string><string name="service_sync_preparing">Preparando la sincronización...</string><string name="service_error">Error: %1$s</string><string name="service_copying_progress">Copiando: %1$s / %2$s</string><string name="service_archiving_title">Archivando archivos</string><string name="service_sync_archive_title">Sincronizando archivo</string><string name="usecase_first_archive_limited">El primer archivado está limitado a 20 archivos</string><string name="sync_helper_searching">Buscando archivos en OTG...</string><string name="sync_helper_access_failed">Error al acceder a la unidad OTG</string><string name="sync_helper_finished_no_files">Sincronización completa: sin archivos.</string><string name="sync_helper_finished_stats">Sincronización completa.
+Simplemente invente un nombre para el nuevo archivo.</string><string name="guide_dialog_btn_create">Crear archivo</string><string name="guide_dialog_btn_cancel">Cancelar</string><string name="logs_dialog_title">Registros de depuración</string><string name="logs_dialog_empty">Los registros están vacíos</string><string name="logs_dialog_btn_copy">Copiar</string><string name="logs_dialog_btn_clear">Limpiar</string><string name="logs_dialog_btn_close">Cerrar</string><string name="logs_toast_copied">Registros copiados al portapapeles</string><string name="logs_toast_nothing_to_copy">Nada que copiar</string><string name="logs_toast_cleared">Registros limpiados</string><string name="access_dialog_title">Acceso a la carpeta %1$s</string><string name="access_dialog_desc">Para transferir archivos de esta carpeta, concédele acceso.</string><string name="access_dialog_path">Ruta: %1$s</string><string name="access_dialog_btn_grant">Conceder acceso</string><string name="restore_conflict_title">Ruta de restauración no disponible</string><string name="restore_conflict_desc">No se pudo acceder a la carpeta de restauración de destino para el archivo "%1$s".</string><string name="restore_conflict_instruction">Especifique dónde restaurar el archivo:</string><string name="restore_conflict_apply_to_all">Aplicar a todos los archivos siguientes</string><string name="restore_conflict_btn_restore_in">Restaurar en %1$s</string><string name="restore_conflict_btn_choose_where">Elegir dónde</string><string name="main_toast_choose_otg">Por favor, seleccione una carpeta en una unidad extraíble (OTG), no en el almacenamiento interno.</string><string name="main_toast_auto_created_folder">No seleccionó una carpeta, así que creé la carpeta %1$s para mantener la unidad organizada</string><string name="main_toast_device_folder_selected">¡Carpeta del dispositivo seleccionada con éxito!</string><string name="main_toast_folder_access_error">Error de acceso a la carpeta: %1$s</string><string name="main_toast_waiting_mount">Esperando a que se monte la unidad...</string><string name="service_sync_preparing">Preparando la sincronización...</string><string name="service_error">Error: %1$s</string><string name="service_copying_progress">Copiando: %1$s / %2$s</string><string name="service_archiving_title">Transfiriendo archivos</string><string name="service_sync_archive_title">Sincronizando archivo</string><string name="usecase_first_archive_limited">La primera transferencia está limitada a 20 archivos</string><string name="sync_helper_searching">Buscando archivos en OTG...</string><string name="sync_helper_access_failed">Error al acceder a la unidad OTG</string><string name="sync_helper_finished_no_files">Sincronización completa: sin archivos.</string><string name="sync_helper_finished_stats">Sincronización completa.
 
 Nuevos archivos importados: %1$s
-Omitidos/comprobados: %2$s</string><string name="sync_helper_error">Error de sincronización: %1$s</string><string name="sync_helper_archiving_failed">Error al archivar %1$s archivo(s):
-</string><string name="sync_helper_archiving_error">Error de archivado</string><string name="interactor_restore_success_with_errors">Restaurados: %1$s de %2$s.
+Omitidos/comprobados: %2$s</string><string name="sync_helper_error">Error de sincronización: %1$s</string><string name="sync_helper_archiving_failed">Error al transferir %1$s archivo(s):
+</string><string name="sync_helper_archiving_error">Error de transferencia</string><string name="interactor_restore_success_with_errors">Restaurados: %1$s de %2$s.
 
 Errores:
 %3$s</string><string name="interactor_restore_success_partial">Restaurados: %1$s de %2$s.</string><string name="repository_unknown_drive">Unidad desconocida</string><string name="unknown_media_drive_title">Unidad desconocida</string><string name="unknown_media_drive_desc">Unidad desconocida conectada. Cree un nuevo archivo o sincronice el antiguo si vuelve</string><string name="btn_create_new">Crear nuevo</string><string name="btn_choose">Elegir</string><string name="btn_select_date_range">Seleccionar rango de fechas</string>
@@ -452,4 +459,38 @@ Errores:
     <string name="filter_photos">Fotos</string>
     <string name="filter_videos">Videos</string>
     <string name="cd_scroll_to_top">Ir arriba</string>
+    <string name="action_rename_archive">Renombrar archivo</string>
+    <string name="rename_archive_title">Renombrar archivo</string>
+    <string name="rename_archive_hint">Nuevo nombre del archivo</string>
+    <string name="rename_archive_success">Archivo renombrado con éxito</string>
+    <string name="rename_archive_error">Error al renombrar carpeta del archivo</string>
+    <string name="setting_copy_without_delete_title">Modo copia (botón en galería)</string>
+    <string name="setting_copy_without_delete_summary">Agrega un botón en galería para respaldar en la unidad manteniendo los originales en el teléfono</string>
+    <string name="btn_copy_only">Copiar</string>
+    <string name="toast_copy_only_success">Se copiaron %1$d archivos a la unidad (originales guardados en el teléfono)</string>
+    <string name="pro_settings_title">Ajustes Pro</string>
+    <string name="pro_settings_subtitle">Servidor VPS, multi-archivos, miniaturas y registros</string>
+    <string name="tile_drive_title">Unidad</string>
+    <string name="tile_cache_title">Caché de miniaturas</string>
+    <string name="btn_change_folder">Cambiar</string>
+    <string name="btn_select_folder">Seleccionar</string>
+    <string name="settings_section_files_sync">Sincronización y copia</string>
+    <string name="settings_section_archives">Archivos y unidades</string>
+    <string name="settings_section_general">Ajustes generales</string>
+    <string name="settings_section_advanced">Servidor y depuración</string>
+    <string name="search_other_archives_title">Buscar otros archivos en la unidad</string>
+    <string name="search_other_archives_subtitle">Buscar archivos de My1drive existentes en la unidad</string>
+    <string name="search_other_archives_connect_hint">Conecte la unidad para buscar archivos</string>
+    <string name="search_other_archives_scanning">Buscando archivos...</string>
+    <string name="search_other_archives_found">Archivos encontrados: %1$d</string>
+    <string name="search_other_archives_not_found">No se encontraron otros archivos</string>
+    <string name="dialog_discovered_title">Carpetas de fotos en la unidad</string>
+    <string name="dialog_discovered_subtitle">Directorios detectados con imágenes y videos</string>
+    <string name="dialog_discovered_scanning">Escaneando carpetas en la unidad...</string>
+    <string name="dialog_discovered_empty">No se encontraron carpetas de fotos</string>
+    <string name="dialog_discovered_empty_hint">Pruebe a aumentar la profundidad de búsqueda</string>
+    <string name="dialog_discovered_btn_add">Añadir</string>
+    <string name="dialog_discovered_added">Añadido</string>
+    <string name="dialog_discovered_depth">Profundidad de búsqueda: %1$d</string>
+    <string name="toast_archive_added">Archivo «%1$s» añadido</string>
 </resources>

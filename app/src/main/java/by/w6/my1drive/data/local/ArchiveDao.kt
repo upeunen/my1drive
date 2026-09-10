@@ -11,6 +11,9 @@ interface ArchiveDao {
     @Query("SELECT * FROM archives ORDER BY lastConnected DESC")
     fun getAllFlow(): Flow<List<ArchiveEntity>>
 
+    @Query("SELECT * FROM archives ORDER BY lastConnected DESC")
+    fun getAllSync(): List<ArchiveEntity>
+
     @Query("SELECT * FROM archives WHERE uuid = :uuid")
     fun getById(uuid: String): ArchiveEntity?
 

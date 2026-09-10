@@ -684,8 +684,22 @@ class ArchiveSyncHelper private constructor(
         operationMutex.withLock {
             val logTag = "ArchiveManager"
             DebugLogBuffer.log(logTag, "Start performArchiving for ${items.size} items. Target: $targetUri")
+            val targetArchiveName = if (vpsManager.isVpsEnabled()) {
+                "VPS"
+            } else {
+                val activeUuid = prefs.getString("active_archive_uuid", null)
+                val archive = if (activeUuid != null) withContext(Dispatchers.IO) { db.archiveDao().getById(activeUuid) } else null
+                archive?.name?.takeIf { it.isNotBlank() }
+                    ?: archive?.folderName?.takeIf { it.isNotBlank() }
+                    ?: by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, targetUri, createIfNotExist = false)?.name
+                    ?: androidx.documentfile.provider.DocumentFile.fromTreeUri(application, targetUri)?.name
+                    ?: activeUuid?.take(6)?.let { "ID: $it" }
+                    ?: ""
+            }
             _archiveState.value = ArchiveState(
-                isArchiving = true, totalFiles = items.size,
+                isArchiving = true,
+                targetArchiveName = targetArchiveName,
+                totalFiles = items.size,
                 pendingQueueSize = archiveQueue.size
             )
             val copied = mutableListOf<ArchivedInfo>()

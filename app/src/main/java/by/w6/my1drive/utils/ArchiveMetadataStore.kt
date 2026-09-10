@@ -95,9 +95,22 @@ class ArchiveMetadataStore(private val context: Context) {
     suspend fun readMetadata(otgUri: Uri): List<JsonEntry> = withContext(Dispatchers.IO) {
         try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext emptyList()
-            val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: return@withContext emptyList()
-
-            val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@withContext emptyList()
+            var fileStream: java.io.InputStream? = null
+            for (metaName in listOf(METADATA_FILE_NAME, LEGACY_METADATA_FILE_NAME)) {
+                val metaUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, metaName)
+                try {
+                    fileStream = context.contentResolver.openInputStream(metaUri)
+                    if (fileStream != null) break
+                } catch (_: Exception) {}
+            }
+            if (fileStream == null) {
+                val fastFile = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, METADATA_FILE_NAME)
+                    ?: by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, LEGACY_METADATA_FILE_NAME)
+                if (fastFile != null) {
+                    fileStream = context.contentResolver.openInputStream(fastFile.uri)
+                }
+            }
+            val inputStream = fileStream ?: return@withContext emptyList()
             val entries = mutableListOf<JsonEntry>()
             try {
                 android.util.JsonReader(inputStream.bufferedReader()).use { reader ->
@@ -161,14 +174,30 @@ class ArchiveMetadataStore(private val context: Context) {
         try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = true) ?: return@withContext
 
-            val file = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json") ?: dir.createFile("application/json", "my1drive_db.json") ?: return@withContext
+            var targetFileUri: Uri? = null
+            for (metaName in listOf(METADATA_FILE_NAME, LEGACY_METADATA_FILE_NAME)) {
+                val metaUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, metaName)
+                try {
+                    val exists = context.contentResolver.openInputStream(metaUri)?.use { true } ?: false
+                    if (exists) {
+                        targetFileUri = metaUri
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+            if (targetFileUri == null) {
+                val fastFile = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, METADATA_FILE_NAME)
+                    ?: by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, LEGACY_METADATA_FILE_NAME)
+                targetFileUri = fastFile?.uri ?: dir.createFile("application/json", METADATA_FILE_NAME)?.uri
+            }
+            val fileUri = targetFileUri ?: return@withContext
 
             val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
             val db = by.w6.my1drive.data.local.AppDatabase.getDatabase(context)
             val archive = db.archiveDao().getById(uuid)
             val archiveName = archive?.name ?: context.getString(by.w6.my1drive.R.string.archive_metadata_default_name)
 
-            context.contentResolver.openOutputStream(file.uri, "w")?.use { output ->
+            context.contentResolver.openOutputStream(fileUri, "w")?.use { output ->
                 android.util.JsonWriter(output.bufferedWriter()).use { writer ->
                     writer.setIndent("  ")
                     writer.beginObject()
@@ -254,7 +283,16 @@ class ArchiveMetadataStore(private val context: Context) {
     suspend fun metadataExists(otgUri: Uri): Boolean = withContext(Dispatchers.IO) {
         try {
             val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext false
-            dir.findFile("my1drive_db.json") != null || dir.findFile(".my1drive_db.json") != null
+            for (metaName in listOf(METADATA_FILE_NAME, LEGACY_METADATA_FILE_NAME)) {
+                val metaUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, metaName)
+                val exists = try {
+                    context.contentResolver.openInputStream(metaUri)?.use { true } ?: false
+                } catch (_: Exception) { false }
+                if (exists) return@withContext true
+            }
+            val fastFile = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, METADATA_FILE_NAME)
+                ?: by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, LEGACY_METADATA_FILE_NAME)
+            fastFile != null
         } catch (_: Exception) { false }
     }
 }

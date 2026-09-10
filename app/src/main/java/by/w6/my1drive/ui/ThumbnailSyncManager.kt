@@ -42,10 +42,6 @@ class ThumbnailSyncManager(
                     }
                 } else {
                     updateMissingThumbnailsCount()
-                    if (missingThumbnailsCount.value > 0 && isOtgConnectedFlow.value) {
-                        DebugLogBuffer.log("ThumbnailSyncManager", "Archiving complete: starting silent thumbnail sync for ${missingThumbnailsCount.value} missing items")
-                        startSilentThumbnailSync()
-                    }
                 }
             }
         }

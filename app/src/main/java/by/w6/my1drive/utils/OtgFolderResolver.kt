@@ -43,17 +43,126 @@ object OtgFolderResolver {
     }
 
     /**
+     * Fast child document finder using direct ContentResolver query.
+     * Unlike DocumentFile.findFile(), this does NOT instantiate DocumentFile objects for all files,
+     * completely avoiding ANRs on drives with thousands of files.
+     */
+    fun fastFindChild(
+        context: Context,
+        parentDoc: DocumentFile,
+        childName: String,
+        isDirectoryOnly: Boolean = false
+    ): DocumentFile? {
+        try {
+            val parentUri = parentDoc.uri
+            val docId = try {
+                DocumentsContract.getDocumentId(parentUri)
+            } catch (_: Exception) {
+                DocumentsContract.getTreeDocumentId(parentUri)
+            }
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(parentUri, docId)
+            val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE
+            )
+            context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(nameIdx) ?: continue
+                    if (name.equals(childName, ignoreCase = true)) {
+                        val mime = cursor.getString(mimeIdx) ?: ""
+                        val isDir = mime == DocumentsContract.Document.MIME_TYPE_DIR
+                        if (isDirectoryOnly && !isDir) continue
+                        val foundId = cursor.getString(idIdx)
+                        val childUri = DocumentsContract.buildDocumentUriUsingTree(parentUri, foundId)
+                        return if (isDir) {
+                            DocumentFile.fromTreeUri(context, childUri) ?: DocumentFile.fromSingleUri(context, childUri)
+                        } else {
+                            DocumentFile.fromSingleUri(context, childUri)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgFolderResolver", "fastFindChild error for $childName: ${e.message}")
+        }
+        return null
+    }
+
+    fun fastListDirectSubdirs(context: Context, parentDoc: DocumentFile): List<DocumentFile> {
+        val results = mutableListOf<DocumentFile>()
+        try {
+            val parentUri = parentDoc.uri
+            val docId = try {
+                DocumentsContract.getDocumentId(parentUri)
+            } catch (_: Exception) {
+                DocumentsContract.getTreeDocumentId(parentUri)
+            }
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(parentUri, docId)
+            val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_MIME_TYPE
+            )
+            context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                while (cursor.moveToNext()) {
+                    val mime = cursor.getString(mimeIdx) ?: ""
+                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        val foundId = cursor.getString(idIdx)
+                        val childUri = DocumentsContract.buildDocumentUriUsingTree(parentUri, foundId)
+                        val dir = DocumentFile.fromTreeUri(context, childUri) ?: DocumentFile.fromSingleUri(context, childUri)
+                        if (dir != null) results.add(dir)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgFolderResolver", "fastListDirectSubdirs error: ${e.message}")
+        }
+        return results
+    }
+
+    /**
+     * Конструирует прямой Document URI внутри дерева SAF без обращения к ContentResolver.query.
+     * Не выполняет I/O операций на диске.
+     */
+    fun buildDirectChildUri(rootUri: Uri, relativePath: String): Uri {
+        val treeDocId = try {
+            DocumentsContract.getTreeDocumentId(rootUri)
+        } catch (_: Exception) {
+            ""
+        }
+        val cleanRelPath = relativePath.trim('/', '\\')
+        val childDocId = if (cleanRelPath.isEmpty()) {
+            treeDocId
+        } else if (treeDocId.endsWith(":")) {
+            "$treeDocId$cleanRelPath"
+        } else {
+            "$treeDocId/$cleanRelPath"
+        }
+        return DocumentsContract.buildDocumentUriUsingTree(rootUri, childDocId)
+    }
+
+    /**
      * Updates or creates the global index file (My1drive/my1drive_index.json) at root of drive
      * so any phone can instantly discover archives regardless of custom nested folder paths.
      */
     fun updateGlobalIndex(context: Context, rootUri: Uri, uuid: String, archiveName: String, relativePath: String) {
         try {
             val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return
-            var container = rootDoc.findFile(MAIN_CONTAINER_NAME)
-            if (container == null || !container.isDirectory) {
+            val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
+            var container = DocumentFile.fromTreeUri(context, containerUri) ?: DocumentFile.fromSingleUri(context, containerUri)
+            if (container == null || !container.exists()) {
                 container = rootDoc.createDirectory(MAIN_CONTAINER_NAME) ?: return
             }
-            val indexFile = container.findFile(GLOBAL_INDEX_FILE_NAME) ?: container.createFile("application/json", GLOBAL_INDEX_FILE_NAME) ?: return
+            val indexUri = buildDirectChildUri(rootUri, "$MAIN_CONTAINER_NAME/$GLOBAL_INDEX_FILE_NAME")
+            var indexFile = DocumentFile.fromSingleUri(context, indexUri)
+            if (indexFile == null || !indexFile.exists()) {
+                indexFile = container.createFile("application/json", GLOBAL_INDEX_FILE_NAME) ?: return
+            }
             
             val jsonString = context.contentResolver.openInputStream(indexFile.uri)?.use { it.bufferedReader().readText() } ?: "{}"
             val rootObj = try { org.json.JSONObject(jsonString) } catch (_: Exception) { org.json.JSONObject() }
@@ -84,8 +193,9 @@ object OtgFolderResolver {
             rootObj.put("version", 1)
             rootObj.put("archives", updatedArray)
             
+            val jsonContent = rootObj.toString(2)
             context.contentResolver.openOutputStream(indexFile.uri, "w")?.use { out ->
-                out.bufferedWriter().use { it.write(rootObj.toString(2)) }
+                out.bufferedWriter().use { it.write(jsonContent) }
             }
             DebugLogBuffer.log("OtgFolderResolver", "Global index updated for archive $archiveName at $relativePath")
         } catch (e: Exception) {
@@ -125,6 +235,8 @@ object OtgFolderResolver {
         return name.replace(Regex("[/\\\\:*?\"<>|]"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
+            .take(30)
+            .trim()
     }
 
     /**
@@ -139,111 +251,122 @@ object OtgFolderResolver {
             val store = ArchiveMetadataStore(context)
             val db = AppDatabase.getDatabase(context)
 
-            // 1. Try reading global index file first (My1drive/my1drive_index.json)
-            val containerDoc = rootDoc.findFile(MAIN_CONTAINER_NAME)
-            if (containerDoc != null && containerDoc.isDirectory) {
-                val indexFile = containerDoc.findFile(GLOBAL_INDEX_FILE_NAME)
-                if (indexFile != null && indexFile.exists()) {
+            // 1. Try reading global index file first (My1drive/my1drive_index.json) directly without root scanning
+            val indexUri = buildDirectChildUri(rootUri, "$MAIN_CONTAINER_NAME/$GLOBAL_INDEX_FILE_NAME")
+            val jsonStr = try {
+                context.contentResolver.openInputStream(indexUri)?.use { it.bufferedReader().readText() }
+            } catch (_: Exception) {
+                null
+            }
+
+            if (!jsonStr.isNullOrEmpty()) {
+                try {
+                    val rootObj = org.json.JSONObject(jsonStr)
+                    val archivesArr = rootObj.optJSONArray("archives")
+                    if (archivesArr != null) {
+                        var firstEntity: by.w6.my1drive.data.local.ArchiveEntity? = null
+                        for (i in 0 until archivesArr.length()) {
+                            val item = archivesArr.optJSONObject(i) ?: continue
+                            val uuid = item.optString("uuid")
+                            val name = item.optString("name")
+                            val relPath = item.optString("path")
+                            if (uuid.isNotEmpty() && relPath.isNotEmpty()) {
+                                val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                                    uuid = uuid,
+                                    name = name.ifEmpty { "Archive" },
+                                    folderName = relPath,
+                                    dateCreated = System.currentTimeMillis(),
+                                    lastConnected = System.currentTimeMillis()
+                                )
+                                val existing = db.archiveDao().getById(uuid)
+                                if (existing == null) {
+                                    db.archiveDao().insert(entity)
+                                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
+                                    DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from global index: name=$name, uuid=$uuid, path=$relPath")
+                                    if (firstEntity == null) firstEntity = entity
+                                } else {
+                                    if (firstEntity == null) firstEntity = existing
+                                }
+                            }
+                        }
+                        if (firstEntity != null) {
+                            return firstEntity
+                        }
+                    }
+                } catch (ex: Exception) {
+                    DebugLogBuffer.log("OtgFolderResolver", "Error reading global index: ${ex.localizedMessage}")
+                }
+            }
+
+            // 2. If My1drive container exists, check only its subdirectories (no root scanning)
+            val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
+            val containerDoc = DocumentFile.fromTreeUri(context, containerUri)
+            if (containerDoc != null && containerDoc.exists() && containerDoc.isDirectory) {
+                val my1driveSubDirs = fastListDirectSubdirs(context, containerDoc)
+                var firstEntity: by.w6.my1drive.data.local.ArchiveEntity? = null
+                for (dir in my1driveSubDirs) {
+                    val metadataFile = fastFindChild(context, dir, "my1drive_db.json") ?: fastFindChild(context, dir, ".my1drive_db.json")
+                    if (metadataFile != null && metadataFile.exists()) {
+                        val identity = store.readArchiveIdentity(metadataFile)
+                        if (identity != null) {
+                            val (uuid, name) = identity
+                            val relativeFolderName = "$MAIN_CONTAINER_NAME/${dir.name}"
+                            val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                                uuid = uuid,
+                                name = name,
+                                folderName = relativeFolderName,
+                                dateCreated = System.currentTimeMillis(),
+                                lastConnected = System.currentTimeMillis()
+                            )
+                            val existing = db.archiveDao().getById(uuid)
+                            updateGlobalIndex(context, rootUri, uuid, name, relativeFolderName)
+                            if (existing == null) {
+                                db.archiveDao().insert(entity)
+                                db.mediaDao().migrateLegacyArchiveUuid(uuid)
+                                DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from My1drive subdir $relativeFolderName: name=$name, uuid=$uuid")
+                                if (firstEntity == null) firstEntity = entity
+                            } else {
+                                if (firstEntity == null) firstEntity = existing
+                            }
+                        }
+                    }
+                }
+                if (firstEntity != null) {
+                    return firstEntity
+                }
+            } else {
+                // 3. Fallback: check direct metadata file at root without listing directories
+                for (metaName in listOf("my1drive_db.json", ".my1drive_db.json")) {
+                    val rootMetaUri = buildDirectChildUri(rootUri, metaName)
                     try {
-                        val jsonStr = context.contentResolver.openInputStream(indexFile.uri)?.use { it.bufferedReader().readText() }
-                        if (!jsonStr.isNullOrEmpty()) {
-                            val rootObj = org.json.JSONObject(jsonStr)
-                            val archivesArr = rootObj.optJSONArray("archives")
-                            if (archivesArr != null) {
-                                for (i in 0 until archivesArr.length()) {
-                                    val item = archivesArr.optJSONObject(i) ?: continue
-                                    val uuid = item.optString("uuid")
-                                    val name = item.optString("name")
-                                    val relPath = item.optString("path")
-                                    if (uuid.isNotEmpty() && relPath.isNotEmpty()) {
-                                        val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                                            uuid = uuid,
-                                            name = name.ifEmpty { "Archive" },
-                                            folderName = relPath,
-                                            dateCreated = System.currentTimeMillis(),
-                                            lastConnected = System.currentTimeMillis()
-                                        )
-                                        val existing = db.archiveDao().getById(uuid)
-                                        if (existing == null) {
-                                            db.archiveDao().insert(entity)
-                                            db.mediaDao().migrateLegacyArchiveUuid(uuid)
-                                            DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from global index: name=$name, uuid=$uuid, path=$relPath")
-                                            return entity
-                                        } else {
-                                            return existing
-                                        }
+                        val hasFile = context.contentResolver.openInputStream(rootMetaUri)?.use { true } ?: false
+                        if (hasFile) {
+                            val directDoc = DocumentFile.fromSingleUri(context, rootMetaUri)
+                            if (directDoc != null && directDoc.exists()) {
+                                val identity = store.readArchiveIdentity(directDoc)
+                                if (identity != null) {
+                                    val (uuid, name) = identity
+                                    val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                                        uuid = uuid,
+                                        name = name,
+                                        folderName = "",
+                                        dateCreated = System.currentTimeMillis(),
+                                        lastConnected = System.currentTimeMillis()
+                                    )
+                                    val existing = db.archiveDao().getById(uuid)
+                                    updateGlobalIndex(context, rootUri, uuid, name, "")
+                                    if (existing == null) {
+                                        db.archiveDao().insert(entity)
+                                        db.mediaDao().migrateLegacyArchiveUuid(uuid)
+                                        DebugLogBuffer.log("OtgFolderResolver", "Recovered legacy archive from root: name=$name, uuid=$uuid")
+                                        return entity
+                                    } else {
+                                        return existing
                                     }
                                 }
                             }
                         }
-                    } catch (ex: Exception) {
-                        DebugLogBuffer.log("OtgFolderResolver", "Error reading global index: ${ex.localizedMessage}")
-                    }
-                }
-            }
-
-            // 2. Fallback: Check My1drive container folder subdirs
-            val dirsToScan = mutableListOf<DocumentFile>()
-            if (containerDoc != null && containerDoc.isDirectory) {
-                containerDoc.listFiles().filter { it.isDirectory }.forEach { dirsToScan.add(it) }
-            }
-            
-            // Fallback scan: first-level subdirectories of root (e.g. Arhiv-* or root itself)
-            rootDoc.listFiles().filter { it.isDirectory && it.name != MAIN_CONTAINER_NAME }.forEach { dirsToScan.add(it) }
-
-            // Also check root folder itself
-            val rootMetadataFile = rootDoc.findFile("my1drive_db.json") ?: rootDoc.findFile(".my1drive_db.json")
-            if (rootMetadataFile != null && rootMetadataFile.exists()) {
-                val identity = store.readArchiveIdentity(rootMetadataFile)
-                if (identity != null) {
-                    val (uuid, name) = identity
-                    val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                        uuid = uuid,
-                        name = name,
-                        folderName = "",
-                        dateCreated = System.currentTimeMillis(),
-                        lastConnected = System.currentTimeMillis()
-                    )
-                    val existing = db.archiveDao().getById(uuid)
-                    if (existing == null) {
-                        db.archiveDao().insert(entity)
-                        db.mediaDao().migrateLegacyArchiveUuid(uuid)
-                        DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from root: name=$name, uuid=$uuid")
-                        return entity
-                    } else {
-                        return existing
-                    }
-                }
-            }
-
-            for (dir in dirsToScan) {
-                val metadataFile = dir.findFile("my1drive_db.json") ?: dir.findFile(".my1drive_db.json")
-                if (metadataFile != null && metadataFile.exists()) {
-                    val identity = store.readArchiveIdentity(metadataFile)
-                    if (identity != null) {
-                        val (uuid, name) = identity
-                        val relativeFolderName = if (dir.parentFile?.name == MAIN_CONTAINER_NAME) {
-                            "$MAIN_CONTAINER_NAME/${dir.name}"
-                        } else {
-                            dir.name ?: ""
-                        }
-                        val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                            uuid = uuid,
-                            name = name,
-                            folderName = relativeFolderName,
-                            dateCreated = System.currentTimeMillis(),
-                            lastConnected = System.currentTimeMillis()
-                        )
-                        val existing = db.archiveDao().getById(uuid)
-                        if (existing == null) {
-                            db.archiveDao().insert(entity)
-                            db.mediaDao().migrateLegacyArchiveUuid(uuid)
-                            DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from subfolder $relativeFolderName: name=$name, uuid=$uuid")
-                            return entity
-                        } else {
-                            return existing
-                        }
-                    }
+                    } catch (_: Exception) {}
                 }
             }
         } catch (e: Exception) {
@@ -274,40 +397,48 @@ object OtgFolderResolver {
                 return rootDoc
             }
 
-            // Obtain or create the main container directory: /My1drive/
-            var containerDir = rootDoc.findFile(MAIN_CONTAINER_NAME)
-            if (containerDir == null && createIfNotExist) {
-                containerDir = rootDoc.createDirectory(MAIN_CONTAINER_NAME)
-            }
-            val targetParent = containerDir ?: rootDoc
-
             val volumeUuid = extractVolumeId(rootUri)
             val db = AppDatabase.getDatabase(context)
             val archive = if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
 
-            var subFolderName = if (archive != null && archive.folderName.isNotEmpty()) {
-                archive.folderName.substringAfterLast("/")
+            val targetRelPath = if (archive != null && archive.folderName.isNotEmpty()) {
+                archive.folderName
             } else {
-                getAutoCreatedFolderName(context)
+                val subFolderName = getAutoCreatedFolderName(context)
+                "$MAIN_CONTAINER_NAME/$subFolderName"
             }
 
-            var subDir = targetParent.findFile(subFolderName)
-            if (subDir != null && subDir.isDirectory) {
-                return subDir
+            if (targetRelPath.isEmpty()) {
+                return rootDoc
             }
 
+            // Direct check using buildDirectChildUri (NO root scanning)
+            val directUri = buildDirectChildUri(rootUri, targetRelPath)
+            val directDoc = DocumentFile.fromTreeUri(context, directUri)
+            if (directDoc != null && directDoc.exists() && directDoc.isDirectory) {
+                return directDoc
+            }
+
+            // If not found yet and createIfNotExist, create folder under My1drive container
             if (createIfNotExist) {
-                subDir = targetParent.createDirectory(subFolderName)
-                if (subDir != null) {
-                    val fullPath = "$MAIN_CONTAINER_NAME/$subFolderName"
+                val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
+                var containerDoc = DocumentFile.fromTreeUri(context, containerUri)
+                if (containerDoc == null || !containerDoc.exists()) {
+                    containerDoc = rootDoc.createDirectory(MAIN_CONTAINER_NAME)
+                }
+                val parentDoc = containerDoc ?: rootDoc
+                val folderNameOnly = targetRelPath.substringAfterLast('/')
+                val newDir = parentDoc.createDirectory(folderNameOnly)
+                if (newDir != null) {
+                    val fullPath = if (parentDoc == rootDoc) folderNameOnly else "$MAIN_CONTAINER_NAME/$folderNameOnly"
                     if (archive != null) {
                         db.archiveDao().insert(archive.copy(folderName = fullPath))
                         updateGlobalIndex(context, rootUri, archive.uuid, archive.name, fullPath)
                     } else if (volumeUuid != null) {
-                        updateGlobalIndex(context, rootUri, volumeUuid, subFolderName, fullPath)
+                        updateGlobalIndex(context, rootUri, volumeUuid, folderNameOnly, fullPath)
                     }
+                    return newDir
                 }
-                return subDir
             }
 
             return null
@@ -351,6 +482,77 @@ object OtgFolderResolver {
         }
         return false
     }
+
+    /**
+     * Programmatically ensures a .nomedia marker exists at the root of the OTG storage volume
+     * and in the /My1drive container directory.
+     * This prevents Android 14/15 ModernMediaScanner from misclassifying OTG drives as internal
+     * and running recursive Files.walkFileTree (REASON_DEMAND) across tens of thousands of files.
+     */
+    fun ensureOtgNomediaMarker(context: Context, rootUri: Uri) {
+        try {
+            // 1. Check & create in root of OTG drive
+            val rootNomediaUri = buildDirectChildUri(rootUri, ".nomedia")
+            val rootExists = try {
+                context.contentResolver.openInputStream(rootNomediaUri)?.use { true } ?: false
+            } catch (_: Exception) {
+                false
+            }
+
+            if (!rootExists) {
+                val rootDoc = DocumentFile.fromTreeUri(context, rootUri)
+                if (rootDoc != null && rootDoc.exists() && rootDoc.canWrite()) {
+                    try {
+                        val created = rootDoc.createFile("application/octet-stream", ".nomedia")
+                        DebugLogBuffer.log("OtgFolderResolver", "Created .nomedia at root of OTG drive: ${created?.uri}")
+                    } catch (e: Exception) {
+                        DebugLogBuffer.log("OtgFolderResolver", "Failed to create .nomedia at root: ${e.localizedMessage}")
+                    }
+                }
+            }
+
+            // 2. Check & create in My1drive container directory (if exists)
+            val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
+            val containerDoc = DocumentFile.fromTreeUri(context, containerUri)
+            if (containerDoc != null && containerDoc.exists() && containerDoc.canWrite()) {
+                val containerNomediaUri = buildDirectChildUri(containerUri, ".nomedia")
+                val containerExists = try {
+                    context.contentResolver.openInputStream(containerNomediaUri)?.use { true } ?: false
+                } catch (_: Exception) {
+                    false
+                }
+                if (!containerExists) {
+                    try {
+                        val created = containerDoc.createFile("application/octet-stream", ".nomedia")
+                        DebugLogBuffer.log("OtgFolderResolver", "Created .nomedia in My1drive container: ${created?.uri}")
+                    } catch (e: Exception) {
+                        DebugLogBuffer.log("OtgFolderResolver", "Failed to create .nomedia in container: ${e.localizedMessage}")
+                    }
+                }
+            }
+
+            // 3. Fallback to direct java.io.File if accessible via Linux mount
+            val volumeId = extractVolumeId(rootUri)
+            if (volumeId != null) {
+                listOf(
+                    java.io.File("/storage/$volumeId/.nomedia"),
+                    java.io.File("/mnt/media_rw/$volumeId/.nomedia"),
+                    java.io.File("/storage/$volumeId/$MAIN_CONTAINER_NAME/.nomedia"),
+                    java.io.File("/mnt/media_rw/$volumeId/$MAIN_CONTAINER_NAME/.nomedia")
+                ).forEach { f ->
+                    try {
+                        if (!f.exists()) {
+                            f.parentFile?.mkdirs()
+                            f.createNewFile()
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgFolderResolver", "ensureOtgNomediaMarker error: ${e.localizedMessage}")
+        }
+    }
 }
+
 
 
