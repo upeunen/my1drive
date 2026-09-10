@@ -153,6 +153,11 @@ object OtgFolderResolver {
     fun updateGlobalIndex(context: Context, rootUri: Uri, uuid: String, archiveName: String, relativePath: String) {
         try {
             val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return
+            val treeDocId = try { DocumentsContract.getTreeDocumentId(rootUri) } catch (_: Exception) { "" }
+            val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
+            if (pathSegment.isNotEmpty() && !pathSegment.equals(MAIN_CONTAINER_NAME, ignoreCase = true)) {
+                return // subfolder tree URI cannot access drive root/My1drive index
+            }
             val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
             var container = DocumentFile.fromTreeUri(context, containerUri) ?: DocumentFile.fromSingleUri(context, containerUri)
             if (container == null || !container.exists()) {
@@ -281,7 +286,6 @@ object OtgFolderResolver {
                                 val existing = db.archiveDao().getById(uuid)
                                 if (existing == null) {
                                     db.archiveDao().insert(entity)
-                                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
                                     DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from global index: name=$name, uuid=$uuid, path=$relPath")
                                     if (firstEntity == null) firstEntity = entity
                                 } else {
@@ -322,7 +326,6 @@ object OtgFolderResolver {
                             updateGlobalIndex(context, rootUri, uuid, name, relativeFolderName)
                             if (existing == null) {
                                 db.archiveDao().insert(entity)
-                                db.mediaDao().migrateLegacyArchiveUuid(uuid)
                                 DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from My1drive subdir $relativeFolderName: name=$name, uuid=$uuid")
                                 if (firstEntity == null) firstEntity = entity
                             } else {
@@ -357,7 +360,6 @@ object OtgFolderResolver {
                                     updateGlobalIndex(context, rootUri, uuid, name, "")
                                     if (existing == null) {
                                         db.archiveDao().insert(entity)
-                                        db.mediaDao().migrateLegacyArchiveUuid(uuid)
                                         DebugLogBuffer.log("OtgFolderResolver", "Recovered legacy archive from root: name=$name, uuid=$uuid")
                                         return entity
                                     } else {
@@ -437,6 +439,9 @@ object OtgFolderResolver {
                     } else if (volumeUuid != null) {
                         updateGlobalIndex(context, rootUri, volumeUuid, folderNameOnly, fullPath)
                     }
+                    try {
+                        newDir.createFile("application/octet-stream", ".nomedia")
+                    } catch (_: Exception) {}
                     return newDir
                 }
             }
@@ -511,22 +516,26 @@ object OtgFolderResolver {
                 }
             }
 
-            // 2. Check & create in My1drive container directory (if exists)
-            val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
-            val containerDoc = DocumentFile.fromTreeUri(context, containerUri)
-            if (containerDoc != null && containerDoc.exists() && containerDoc.canWrite()) {
-                val containerNomediaUri = buildDirectChildUri(containerUri, ".nomedia")
-                val containerExists = try {
-                    context.contentResolver.openInputStream(containerNomediaUri)?.use { true } ?: false
-                } catch (_: Exception) {
-                    false
-                }
-                if (!containerExists) {
-                    try {
-                        val created = containerDoc.createFile("application/octet-stream", ".nomedia")
-                        DebugLogBuffer.log("OtgFolderResolver", "Created .nomedia in My1drive container: ${created?.uri}")
-                    } catch (e: Exception) {
-                        DebugLogBuffer.log("OtgFolderResolver", "Failed to create .nomedia in container: ${e.localizedMessage}")
+            // 2. Check & create in My1drive container directory (if rootUri is volume root)
+            val treeDocId = try { DocumentsContract.getTreeDocumentId(rootUri) } catch (_: Exception) { "" }
+            val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
+            if (pathSegment.isEmpty()) {
+                val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
+                val containerDoc = DocumentFile.fromTreeUri(context, containerUri)
+                if (containerDoc != null && containerDoc.exists() && containerDoc.canWrite()) {
+                    val containerNomediaUri = buildDirectChildUri(containerUri, ".nomedia")
+                    val containerExists = try {
+                        context.contentResolver.openInputStream(containerNomediaUri)?.use { true } ?: false
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (!containerExists) {
+                        try {
+                            val created = containerDoc.createFile("application/octet-stream", ".nomedia")
+                            DebugLogBuffer.log("OtgFolderResolver", "Created .nomedia in My1drive container: ${created?.uri}")
+                        } catch (e: Exception) {
+                            DebugLogBuffer.log("OtgFolderResolver", "Failed to create .nomedia in container: ${e.localizedMessage}")
+                        }
                     }
                 }
             }

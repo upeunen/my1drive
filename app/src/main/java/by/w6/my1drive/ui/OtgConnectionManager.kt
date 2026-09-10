@@ -263,7 +263,6 @@ class OtgConnectionManager(
                         lastConnected = System.currentTimeMillis(),
                         folderName = newFolderName
                     ))
-                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
                 }
                 
                 _activeArchiveUuid.value = uuid
@@ -309,7 +308,6 @@ class OtgConnectionManager(
                         lastConnected = System.currentTimeMillis()
                     )
                 )
-                db.mediaDao().migrateLegacyArchiveUuid(uuid)
             }
 
             // 2. Resolve/Create the physical directory on the drive (which will now use the folderName from the DB!)
@@ -580,7 +578,6 @@ class OtgConnectionManager(
                         prefs.edit().putString("active_archive_uuid", uuid).apply()
                     }
                     db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
-                    db.mediaDao().migrateLegacyArchiveUuid(uuid)
                     driveErrorCount = 0
                     invokeShowUnknownDriveDialog(false)
                     unknownDriveDialogHandled = false
@@ -649,7 +646,6 @@ class OtgConnectionManager(
             db.archiveDao().getById(cUuid)?.let {
                 db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
             }
-            db.mediaDao().migrateLegacyArchiveUuid(cUuid)
 
             driveErrorCount = 0
             invokeShowUnknownDriveDialog(false)
@@ -746,7 +742,6 @@ class OtgConnectionManager(
                             prefs.edit().putString("active_archive_uuid", uuid).apply()
                         }
                         db.archiveDao().insert(currentKnownArchive.copy(lastConnected = System.currentTimeMillis()))
-                        db.mediaDao().migrateLegacyArchiveUuid(uuid)
 
                         driveErrorCount = 0
                         invokeShowUnknownDriveDialog(false)
