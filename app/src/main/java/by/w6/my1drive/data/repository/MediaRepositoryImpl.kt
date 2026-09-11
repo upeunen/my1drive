@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -79,7 +80,11 @@ class MediaRepositoryImpl(
     }
 
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
-        val archivedFlow = mediaDao.getAllFlow()
+        val archivedFlow = mediaDao.getCountFlow()
+            .map {
+                mediaDao.getAllInChunksSync(chunkSize = 800)
+            }
+            .flowOn(Dispatchers.IO)
         val archivesFlow = by.w6.my1drive.data.local.AppDatabase.getDatabase(context).archiveDao().getAllFlow()
         val prefsFlow = getPrefsFlow()
 

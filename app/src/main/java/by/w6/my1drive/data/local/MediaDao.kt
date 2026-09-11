@@ -12,6 +12,46 @@ interface MediaDao {
     @Query("SELECT * FROM media_archive ORDER BY dateModified DESC")
     fun getAllFlow(): Flow<List<MediaEntity>>
 
+    @Query("SELECT * FROM media_archive ORDER BY dateModified DESC LIMIT :limit OFFSET :offset")
+    fun getChunkSync(limit: Int, offset: Int): List<MediaEntity>
+
+    @Query("SELECT * FROM media_archive WHERE archiveUuid = :archiveUuid ORDER BY dateModified DESC LIMIT :limit OFFSET :offset")
+    fun getChunkByArchiveUuidSync(archiveUuid: String, limit: Int, offset: Int): List<MediaEntity>
+
+    @Query("SELECT COUNT(*) FROM media_archive")
+    fun getCountFlow(): Flow<Int>
+
+    /**
+     * Safely reads all archived entities in small chunks (800 rows per query)
+     * to avoid Android SQLite 2MB CursorWindow overflow on large libraries (1400+ items).
+     */
+    fun getAllInChunksSync(chunkSize: Int = 800): List<MediaEntity> {
+        val result = ArrayList<MediaEntity>()
+        var offset = 0
+        while (true) {
+            val chunk = getChunkSync(limit = chunkSize, offset = offset)
+            result.addAll(chunk)
+            if (chunk.size < chunkSize) break
+            offset += chunkSize
+        }
+        return result
+    }
+
+    /**
+     * Safely reads archived entities for a specific archive in chunks.
+     */
+    fun getByArchiveUuidInChunksSync(archiveUuid: String, chunkSize: Int = 800): List<MediaEntity> {
+        val result = ArrayList<MediaEntity>()
+        var offset = 0
+        while (true) {
+            val chunk = getChunkByArchiveUuidSync(archiveUuid = archiveUuid, limit = chunkSize, offset = offset)
+            result.addAll(chunk)
+            if (chunk.size < chunkSize) break
+            offset += chunkSize
+        }
+        return result
+    }
+
     @Query("UPDATE media_archive SET archiveUuid = :newUuid WHERE archiveUuid = '' OR archiveUuid IS NULL")
     fun migrateLegacyArchiveUuid(newUuid: String)
 
@@ -47,14 +87,13 @@ interface MediaDao {
     @Query("UPDATE media_archive SET thumbnailPath = :thumbnailPath, lastAccessed = :timestamp WHERE id = :id")
     fun updateThumbnailPath(id: String, thumbnailPath: String, timestamp: Long)
 
-    /** Get items sorted by lastAccessed ASC (oldest first) вЂ” used for LRU eviction */
+    /** Get items sorted by lastAccessed ASC (oldest first) — used for LRU eviction */
     @Query("SELECT * FROM media_archive WHERE thumbnailPath IS NOT NULL ORDER BY lastAccessed ASC LIMIT :limit")
     fun getOldestByLastAccessed(limit: Int): List<MediaEntity>
 
     /** Clear thumbnailPath for items whose preview cache was evicted */
     @Query("UPDATE media_archive SET thumbnailPath = NULL WHERE id = :id")
     fun clearThumbnailPath(id: String)
-
 
     /** Count items with cached previews */
     @Query("SELECT COUNT(*) FROM media_archive WHERE thumbnailPath IS NOT NULL")
@@ -74,6 +113,3 @@ interface MediaDao {
     @Query("SELECT COUNT(*) FROM media_archive WHERE archiveUuid = :archiveUuid AND (thumbnailPath IS NULL OR thumbnailPath = '') AND otgUri != '' AND otgUri IS NOT NULL")
     fun getWithoutPreviewCount(archiveUuid: String): Int
 }
-
-
-
