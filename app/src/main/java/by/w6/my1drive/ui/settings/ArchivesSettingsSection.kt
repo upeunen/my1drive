@@ -28,7 +28,6 @@ fun ArchivesSettingsSection(
     activeArchiveUuid: String?,
     isOtgConnected: Boolean,
     onRefresh: () -> Unit,
-    onSearchOtherArchives: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -218,51 +217,6 @@ fun ArchivesSettingsSection(
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-
-                // Search other archives on drive
-                Spacer(Modifier.height(14.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                Spacer(Modifier.height(10.dp))
-
-                Surface(
-                    onClick = { if (isOtgConnected) onSearchOtherArchives() },
-                    enabled = isOtgConnected,
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.Transparent,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ManageSearch,
-                            contentDescription = null,
-                            tint = if (isOtgConnected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.search_other_archives_title),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isOtgConnected) MaterialTheme.colorScheme.onSurface
-                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = if (isOtgConnected) stringResource(R.string.search_other_archives_subtitle)
-                                else stringResource(R.string.search_other_archives_connect_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
                         }
                     }
                 }

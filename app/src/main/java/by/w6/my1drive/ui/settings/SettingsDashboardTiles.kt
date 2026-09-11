@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Smartphone
@@ -28,6 +29,7 @@ fun SettingsDashboardTiles(
     otgDirectoryDisplayName: String?,
     isLocalFolder: Boolean,
     onSelectOtgDirectory: () -> Unit,
+    onSearchOtherArchives: () -> Unit = {},
     cacheFilesCount: Int,
     cacheSize: Long,
     onClearCache: () -> Unit,
@@ -82,14 +84,16 @@ fun SettingsDashboardTiles(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Tile 1: Drive
         Card(
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 160.dp),
+                .fillMaxHeight(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
@@ -98,6 +102,7 @@ fun SettingsDashboardTiles(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .padding(14.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -159,21 +164,50 @@ fun SettingsDashboardTiles(
 
                 Spacer(Modifier.height(14.dp))
 
-                FilledTonalButton(
-                    onClick = onSelectOtgDirectory,
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 44.dp)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = if (otgDirectoryDisplayName != null) stringResource(R.string.btn_change_folder)
-                        else stringResource(R.string.btn_select_folder),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
+                    FilledTonalButton(
+                        onClick = onSelectOtgDirectory,
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 40.dp)
+                    ) {
+                        Text(
+                            text = if (otgDirectoryDisplayName != null) stringResource(R.string.btn_change_folder)
+                            else stringResource(R.string.btn_select_folder),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onSearchOtherArchives,
+                        enabled = isOtgConnected,
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ManageSearch,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.btn_search_archives),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -182,7 +216,7 @@ fun SettingsDashboardTiles(
         Card(
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 160.dp),
+                .fillMaxHeight(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
@@ -191,6 +225,7 @@ fun SettingsDashboardTiles(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .padding(14.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {

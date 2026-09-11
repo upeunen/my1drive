@@ -238,6 +238,14 @@ class OtgConnectionManager(
         }
     }
 
+    /** Searches archives on the currently connected drive, behaving identically to drive connection. */
+    fun searchArchivesOnCurrentDrive() {
+        val targetUri = _otgDirectoryUri.value ?: getConnectedOtgUri()
+        if (targetUri != null) {
+            onOtgUriSelected(targetUri)
+        }
+    }
+
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")

@@ -67,6 +67,7 @@ fun SettingsTab(
             otgDirectoryDisplayName = otgDirectoryDisplayName,
             isLocalFolder = isLocalFolder,
             onSelectOtgDirectory = onSelectOtgDirectory,
+            onSearchOtherArchives = onSearchOtherArchives,
             cacheFilesCount = cacheFilesCount,
             cacheSize = cacheSize,
             onClearCache = onClearCache
@@ -101,8 +102,7 @@ fun SettingsTab(
             onDeleteArchive = onDeleteArchive,
             activeArchiveUuid = activeArchiveUuid,
             isOtgConnected = isOtgConnected,
-            onRefresh = onRefresh,
-            onSearchOtherArchives = onSearchOtherArchives
+            onRefresh = onRefresh
         )
 
         Spacer(Modifier.height(20.dp))

@@ -37,6 +37,7 @@ fun ArchiveNamingDialog(
                     value = text,
                     onValueChange = { if (it.length <= 35) text = it },
                     label = { Text(stringResource(R.string.naming_dialog_label)) },
+                    placeholder = { Text(stringResource(R.string.naming_dialog_placeholder)) },
                     singleLine = true,
                     isError = isError,
                     supportingText = {

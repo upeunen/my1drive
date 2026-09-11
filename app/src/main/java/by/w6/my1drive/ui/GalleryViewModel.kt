@@ -744,6 +744,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         otgManager.onEject()
     }
 
+    fun searchArchivesOnCurrentDrive() {
+        otgManager.searchArchivesOnCurrentDrive()
+    }
+
     fun renameActiveArchive(newName: String, onResult: (Boolean) -> Unit = {}) {
         archiveInteractor.renameActiveArchive(newName, onResult)
     }

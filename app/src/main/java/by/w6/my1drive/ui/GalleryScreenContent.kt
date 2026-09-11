@@ -644,20 +644,6 @@ fun GalleryScreenContent(
                             val missingThumbnailsCount = uiState.missingThumbnailsCount
                             val isStorageLow = uiState.isStorageLow
 
-                            var showDiscoveredArchivesSheet by remember { mutableStateOf(false) }
-                            var isScanningDiscovered by remember { mutableStateOf(false) }
-                            var discoveredFolders by remember { mutableStateOf<List<by.w6.my1drive.utils.DiscoveredFolder>>(emptyList()) }
-                            var addedFolderPaths by remember { mutableStateOf<Set<String>>(emptySet()) }
-                            var scanDepth by remember { mutableStateOf(2) }
-
-                            fun runFolderScan(depth: Int) {
-                                isScanningDiscovered = true
-                                viewModel.scanForMediaFolders(maxDepth = depth) { list ->
-                                    discoveredFolders = list
-                                    isScanningDiscovered = false
-                                }
-                            }
-
                             LaunchedEffect(Unit) {
                                 viewModel.updateMissingThumbnailsCount()
                             }
@@ -711,34 +697,9 @@ fun GalleryScreenContent(
                                     viewModel.notifyLocaleChanged()
                                 },
                                 onSearchOtherArchives = {
-                                    showDiscoveredArchivesSheet = true
-                                    runFolderScan(scanDepth)
+                                    viewModel.searchArchivesOnCurrentDrive()
                                 }
                             )
-
-                            if (showDiscoveredArchivesSheet) {
-                                by.w6.my1drive.ui.settings.DiscoveredArchivesBottomSheet(
-                                    isScanning = isScanningDiscovered,
-                                    discoveredFolders = discoveredFolders,
-                                    addedFolderPaths = addedFolderPaths,
-                                    currentDepth = scanDepth,
-                                    onDepthChanged = { newDepth ->
-                                        scanDepth = newDepth
-                                        runFolderScan(newDepth)
-                                    },
-                                    onAddFolder = { folder ->
-                                        viewModel.addDiscoveredFolderAsArchive(folder) { name ->
-                                            addedFolderPaths = addedFolderPaths + folder.relativePath
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                context.getString(R.string.toast_archive_added, name),
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    },
-                                    onDismiss = { showDiscoveredArchivesSheet = false }
-                                )
-                            }
                     }
                 }
             }
