@@ -464,12 +464,10 @@
     <string name="rename_archive_hint">Новое имя архива</string>
     <string name="rename_archive_success">Архив успешно переименован</string>
     <string name="rename_archive_error">Не удалось переименовать папку архива</string>
-    <string name="setting_copy_without_delete_title">Режим копирования (кнопка в галерее)</string>
-    <string name="setting_copy_without_delete_summary">Добавляет кнопку в галерею для создания резервных копий на накопителе с сохранением оригиналов на телефоне</string>
     <string name="btn_copy_only">Копировать</string>
     <string name="toast_copy_only_success">Скопировано %1$d файлов на флешку (оригиналы сохранены на телефоне)</string>
     <string name="pro_settings_title">Настройки Профи</string>
-    <string name="pro_settings_subtitle">VPS-сервер, мульти-архивы, логи и доп. кнопки</string>
+    <string name="pro_settings_subtitle">VPS-сервер, обслуживание и логи отладки</string>
     <string name="tile_drive_title">Накопитель</string>
     <string name="tile_cache_title">Кэш эскизов</string>
     <string name="btn_change_folder">Сменить</string>

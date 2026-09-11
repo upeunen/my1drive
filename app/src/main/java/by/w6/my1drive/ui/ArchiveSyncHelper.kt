@@ -296,9 +296,13 @@ class ArchiveSyncHelper private constructor(
                                 break
                             }
                             val existing = db.mediaDao().getById(entry.hash)
+                            val fallbackUri = if (dir != null) {
+                                by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, entry.displayName).toString()
+                            } else ""
+
                             if (existing == null) {
                                 val key = (entry.displayName.lowercase()) to entry.size
-                                val otgFileUri = physicalUrisMap[key] ?: ""
+                                val otgFileUri = physicalUrisMap[key] ?: fallbackUri
 
                                 batchToInsert.add(MediaEntity(
                                     id = entry.hash,
@@ -317,7 +321,7 @@ class ArchiveSyncHelper private constructor(
                                 roomModified = true
                             } else {
                                 val key = (entry.displayName.lowercase()) to entry.size
-                                val resolvedUri = physicalUrisMap[key] ?: existing.otgUri ?: ""
+                                val resolvedUri = physicalUrisMap[key] ?: existing.otgUri?.ifEmpty { null } ?: fallbackUri
 
                                 if (existing.displayName != entry.displayName || 
                                     existing.size != entry.size || 
@@ -914,6 +918,9 @@ class ArchiveSyncHelper private constructor(
     suspend fun syncAllThumbnails(
         activeUuid: String,
         isCancelled: () -> Boolean,
+        isPaused: () -> Boolean = { false },
+        throttleMs: Long = 350L,
+        batchSize: Int = 25,
         onProgress: (current: Int, total: Int) -> Unit
     ) = withContext(Dispatchers.IO) {
         val missingItems = db.mediaDao().getWithoutPreview(activeUuid, limit = 50_000)
@@ -923,6 +930,7 @@ class ArchiveSyncHelper private constructor(
         val pDir = previewCache.previewDir
         val pendingBatch = mutableListOf<MediaEntity>()
         val pendingEvents = mutableListOf<Pair<String, String>>()
+        var lastFlushTime = System.currentTimeMillis()
 
         fun flushBatch() {
             if (pendingBatch.isNotEmpty()) {
@@ -930,52 +938,89 @@ class ArchiveSyncHelper private constructor(
                 pendingEvents.forEach { previewCachedEvent.tryEmit(it) }
                 pendingBatch.clear()
                 pendingEvents.clear()
+                lastFlushTime = System.currentTimeMillis()
             }
         }
 
         try {
             for ((idx, entity) in missingItems.withIndex()) {
                 if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
-                    DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery)")
+                    DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery/cancelled)")
                     break
                 }
+
+                // Respect pause (e.g. while user is actively scrolling the gallery)
+                while (isPaused()) {
+                    if (isCancelled()) break
+                    delay(250)
+                }
+                if (isCancelled()) break
+
                 val uriStr = entity.otgUri ?: ""
                 if (uriStr.isEmpty()) continue
 
                 val cacheFile = previewCache.cacheFileFor(entity.id)
 
                 if (cacheFile.exists() && cacheFile.length() > 0) {
-                    // Already cached
-                    val updated = entity.copy(thumbnailPath = cacheFile.absolutePath)
+                    // Already cached locally, ensure it is also saved to OTG previews if missing
+                    try {
+                        val uri = Uri.parse(uriStr)
+                        by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
+                    } catch (_: Exception) {}
+
+                    val updated = entity.copy(thumbnailPath = cacheFile.absolutePath, lastAccessed = System.currentTimeMillis())
                     pendingBatch.add(updated)
                     pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
                 } else {
+                    val uri = Uri.parse(uriStr)
+                    var loaded = false
+
+                    // 1. Fast-path: Check if small preview already exists in .previews on OTG
                     try {
-                        val uri = Uri.parse(uriStr)
-                        val bitmap = generateThumbnailHelper(uri, entity.mimeType)
-                        if (bitmap != null) {
-                            pDir.mkdirs()
-                            cacheFile.outputStream().buffered().use { out ->
-                                val scaled = scaleBitmapHelper(bitmap, 256)
-                                scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
-                                if (scaled !== bitmap) scaled.recycle()
-                            }
-                            bitmap.recycle()
-                            val updated = entity.copy(thumbnailPath = cacheFile.absolutePath)
+                        pDir.mkdirs()
+                        if (by.w6.my1drive.utils.OtgFolderResolver.tryCopyPreviewFromOtg(application, uri, entity.id, cacheFile)) {
+                            val updated = entity.copy(thumbnailPath = cacheFile.absolutePath, lastAccessed = System.currentTimeMillis())
                             pendingBatch.add(updated)
                             pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
+                            loaded = true
                         }
                     } catch (e: Exception) {
-                        DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
+                        DebugLogBuffer.log("ArchiveSyncHelper", "Failed fast copy from OTG: ${e.message}")
+                    }
+
+                    // 2. Slow-path: Decode original file, scale, and save to BOTH local cache and OTG .previews
+                    if (!loaded) {
+                        try {
+                            val bitmap = generateThumbnailHelper(uri, entity.mimeType)
+                            if (bitmap != null) {
+                                pDir.mkdirs()
+                                cacheFile.outputStream().buffered().use { out ->
+                                    val scaled = scaleBitmapHelper(bitmap, 256)
+                                    scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                                    if (scaled !== bitmap) scaled.recycle()
+                                }
+                                bitmap.recycle()
+
+                                // Save to OTG drive .previews as well
+                                by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
+
+                                val updated = entity.copy(thumbnailPath = cacheFile.absolutePath, lastAccessed = System.currentTimeMillis())
+                                pendingBatch.add(updated)
+                                pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
+                            }
+                        } catch (e: Exception) {
+                            DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
+                        }
                     }
                 }
 
-                if (pendingBatch.size >= 50) {
+                val now = System.currentTimeMillis()
+                if (pendingBatch.size >= batchSize || (now - lastFlushTime >= 15_000L && pendingBatch.isNotEmpty())) {
                     flushBatch()
                 }
                 
-                // throttle slightly to keep CPU cool
-                kotlinx.coroutines.delay(20)
+                // throttle to keep CPU and bus completely cool
+                delay(throttleMs)
                 
                 withContext(Dispatchers.Main) {
                     onProgress(idx + 1, total)

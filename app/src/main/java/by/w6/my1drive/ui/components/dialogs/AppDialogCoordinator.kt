@@ -247,5 +247,23 @@ fun AppDialogCoordinator(
                 }
             )
         }
+
+        is AppDialog.SelectArchive -> {
+            SelectArchiveDialog(
+                archives = activeDialog.archives,
+                uri = activeDialog.uri,
+                onSelectArchive = { archive ->
+                    viewModel.selectArchive(archive, activeDialog.uri)
+                },
+                onCreateNewArchive = { uri ->
+                    viewModel.dismissDialog()
+                    viewModel.showNamingDialog(uri)
+                },
+                onDeepSearch = { knownPaths ->
+                    viewModel.searchDeeperForArchives(activeDialog.uri, knownPaths)
+                },
+                onDismiss = { viewModel.dismissDialog() }
+            )
+        }
     }
 }

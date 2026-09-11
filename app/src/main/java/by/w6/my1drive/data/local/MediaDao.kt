@@ -43,6 +43,10 @@ interface MediaDao {
     @Query("UPDATE media_archive SET lastAccessed = :timestamp WHERE id = :id")
     fun updateLastAccessed(id: String, timestamp: Long)
 
+    /** Update thumbnailPath and LRU timestamp for an archived item */
+    @Query("UPDATE media_archive SET thumbnailPath = :thumbnailPath, lastAccessed = :timestamp WHERE id = :id")
+    fun updateThumbnailPath(id: String, thumbnailPath: String, timestamp: Long)
+
     /** Get items sorted by lastAccessed ASC (oldest first) вЂ” used for LRU eviction */
     @Query("SELECT * FROM media_archive WHERE thumbnailPath IS NOT NULL ORDER BY lastAccessed ASC LIMIT :limit")
     fun getOldestByLastAccessed(limit: Int): List<MediaEntity>

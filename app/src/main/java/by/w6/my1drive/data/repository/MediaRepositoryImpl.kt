@@ -31,9 +31,23 @@ class MediaRepositoryImpl(
     private val _localItemsCache = kotlinx.coroutines.flow.MutableStateFlow<List<MediaItem>>(emptyList())
     private val aspectRatioCache = ConcurrentHashMap<String, Float>()
     
+    private val mediaContentObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
+            refresh()
+        }
+    }
+
     init {
         GlobalScope.launch(Dispatchers.IO) {
             _localItemsCache.value = queryLocalMediaStore()
+        }
+        try {
+            val cr = context.contentResolver
+            cr.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, mediaContentObserver)
+            cr.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, mediaContentObserver)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -120,12 +134,7 @@ class MediaRepositoryImpl(
                 )
             }
 
-            val archivedKeys = filteredEntities.map { it.displayName to it.size }.toSet()
-            val filteredLocalList = localList.filterNot { localItem ->
-                archivedKeys.contains(localItem.displayName to localItem.size)
-            }
-
-            (filteredLocalList + archivedItems).sortedByDescending { it.dateModified }
+            (localList + archivedItems).sortedByDescending { it.dateModified }
         }.flowOn(Dispatchers.IO).distinctUntilChanged()
     }
 

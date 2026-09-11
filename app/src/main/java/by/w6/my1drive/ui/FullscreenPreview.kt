@@ -216,7 +216,7 @@ fun FullscreenPreview(
     }
 
     val isItemConnected = currentItem.status == MediaStatus.ON_DEVICE ||
-        (isOtgConnected && currentItem.archiveUuid == activeArchiveUuid && !currentItem.otgUri.isNullOrEmpty())
+        (isOtgConnected && !currentItem.otgUri.isNullOrEmpty())
 
     val isShareEnabled = isItemConnected || !currentItem.thumbnailPath.isNullOrEmpty()
 
@@ -304,7 +304,7 @@ fun FullscreenPreview(
                     PagerPage(
                         item = item,
                         imageLoader = imageLoader,
-                        isOtgConnected = if (item.status == MediaStatus.ARCHIVED_OTG) (isOtgConnected && item.archiveUuid == activeArchiveUuid) else isOtgConnected,
+                        isOtgConnected = isOtgConnected,
                         isActive = (pagerState.currentPage == page),
                         isSelected = selectedIds.contains(item.id),
                         showOverlays = showOverlays,
@@ -822,7 +822,7 @@ private fun ImagePage(
         ),
         label = "selectionScale"
     )
-    val isOfflineOtg = item.status == MediaStatus.ARCHIVED_OTG && (!isOtgConnected || item.otgUri == null)
+    val isOfflineOtg = item.status == MediaStatus.ARCHIVED_OTG && (!isOtgConnected || item.otgUri.isNullOrEmpty())
     val imageUri = if (item.status == MediaStatus.ARCHIVED_OTG) {
         if (!isOfflineOtg) {
             Uri.parse(item.otgUri)
@@ -1064,6 +1064,7 @@ private fun ImagePage(
                 ),
             contentAlignment = Alignment.Center
         ) {
+            val hasLocalPreview = item.thumbnailPath != null && File(item.thumbnailPath).exists()
             if (!isOfflineOtg) {
                 val context = LocalContext.current
                 val fullResRequest = remember(imageUri) {
@@ -1079,9 +1080,14 @@ private fun ImagePage(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
-            }
-
-            if (isOfflineOtg) {
+            } else if (hasLocalPreview) {
+                AsyncImage(
+                    model = File(item.thumbnailPath!!),
+                    contentDescription = item.displayName,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
                 androidx.compose.foundation.layout.Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -1135,7 +1141,8 @@ private fun VideoPage(
         ),
         label = "selectionScale"
     )
-    val isOffline = item.status == MediaStatus.ARCHIVED_OTG && (!isOtgConnected || item.otgUri == null)
+    val isOffline = item.status == MediaStatus.ARCHIVED_OTG && (!isOtgConnected || item.otgUri.isNullOrEmpty())
+    val hasVideoPreview = item.thumbnailPath != null && File(item.thumbnailPath).exists()
     if (isOffline) {
         Box(
             modifier = Modifier
@@ -1143,17 +1150,25 @@ private fun VideoPage(
                 .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
+            if (hasVideoPreview) {
+                AsyncImage(
+                    model = File(item.thumbnailPath!!),
+                    contentDescription = item.displayName,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f }
+                )
+            }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     imageVector = Icons.Default.Usb,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.3f),
+                    tint = Color.White.copy(alpha = 0.8f),
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.drive_known_disconnected),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )

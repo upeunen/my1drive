@@ -36,9 +36,7 @@ private fun BentoItemRenderer(
     val isSelected = selectedIds.contains(item.id)
     val isArchiving = archivingItemIds.contains(item.id)
     val isCopied = copiedItemIds.contains(item.id)
-    val connected = if (item.status == MediaStatus.ARCHIVED_OTG) {
-        isOtgConnected && item.archiveUuid == activeArchiveUuid
-    } else isOtgConnected
+    val connected = isOtgConnected
 
     GooglePhotosGridItem(
         item = item,

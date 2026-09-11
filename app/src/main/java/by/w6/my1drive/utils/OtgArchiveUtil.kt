@@ -66,21 +66,13 @@ class OtgArchiveUtil(private val context: Context) {
                 ?: throw Exception("otg_access_failed")
 
             val existingFile = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, item.displayName)
-            val isOverwriting = existingFile != null
-
-            val targetFile = if (!isOverwriting) {
+            val targetFile = if (existingFile != null) {
+                DebugLogBuffer.log(logTag, "File ${item.displayName} exists on OTG, preparing for overwrite: ${existingFile.uri}")
+                existingFile
+            } else {
                 DebugLogBuffer.log(logTag, "Creating target file directly as ${item.displayName} on OTG")
                 dir.createFile(item.mimeType, item.displayName)
                     ?: dir.createFile("application/octet-stream", item.displayName)
-                    ?: throw Exception("otg_create_failed")
-            } else {
-                val tempFileName = ".${item.displayName}.tmp"
-                by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(context, dir, tempFileName)?.let {
-                    try { it.delete() } catch (_: Exception) {}
-                }
-                DebugLogBuffer.log(logTag, "Creating temp file $tempFileName on OTG for overwrite")
-                dir.createFile(item.mimeType, tempFileName)
-                    ?: dir.createFile("application/octet-stream", tempFileName)
                     ?: throw Exception("otg_create_failed")
             }
             
@@ -104,7 +96,7 @@ class OtgArchiveUtil(private val context: Context) {
             }
 
             java.io.BufferedInputStream(rawInput, bufferSize).use { inputStream ->
-                context.contentResolver.openFileDescriptor(destUri, "w")?.use { pfd ->
+                context.contentResolver.openFileDescriptor(destUri, "wt")?.use { pfd ->
                     java.io.BufferedOutputStream(java.io.FileOutputStream(pfd.fileDescriptor), bufferSize).use { output ->
                         var lastEmittedStep = -1
                         var bytesRead = inputStream.read(buffer)
@@ -128,6 +120,13 @@ class OtgArchiveUtil(private val context: Context) {
                         }
                         output.flush()
                     }
+                    try {
+                        DebugLogBuffer.log(logTag, "Syncing OTG destination file descriptor to disk...")
+                        pfd.fileDescriptor.sync()
+                        DebugLogBuffer.log(logTag, "OTG sync completed successfully")
+                    } catch (syncEx: Exception) {
+                        DebugLogBuffer.log(logTag, "Failed to sync OTG file descriptor: ${syncEx.localizedMessage}")
+                    }
                 } ?: throw Exception("otg_write_failed")
             }
 
@@ -135,40 +134,80 @@ class OtgArchiveUtil(private val context: Context) {
 
             DebugLogBuffer.log(logTag, "Copy finished. Expected size: ${item.size}, Copied: $totalBytesCopied. Hash: $srcHash")
 
-            // Verify by actual bytes copied, not by DocumentFile.length() (which may lie)
-            if (totalBytesCopied != item.size) {
-                DebugLogBuffer.log(logTag, "Size mismatch: expected ${item.size}, copied $totalBytesCopied. Skipped.")
+            // Verify copied bytes count
+            if (item.size > 0 && totalBytesCopied != item.size) {
+                DebugLogBuffer.log(logTag, "Size mismatch during copy: expected ${item.size}, copied $totalBytesCopied")
+                try { createdFile.delete() } catch (_: Exception) {}
                 emit(CopyVerifyResult.Skipped(item,
                     "SIZE MISMATCH: expected ${item.size} bytes, copied $totalBytesCopied bytes"))
                 return@flow
             }
 
-            var finalUri = destUri
-            if (isOverwriting) {
-                existingFile?.let {
-                    DebugLogBuffer.log(logTag, "Deleting old file ${item.displayName} before rename")
-                    try { it.delete() } catch (_: Exception) {}
+            // Set physical file modification date on OTG filesystem
+            setFilesystemLastModified(destUri, item.dateModified)
+
+            // Verify actual written file on OTG storage
+            val writtenSize = try {
+                context.contentResolver.openFileDescriptor(destUri, "r")?.use { it.statSize } ?: createdFile.length()
+            } catch (_: Exception) {
+                createdFile.length()
+            }
+            if (item.size > 0 && writtenSize != item.size) {
+                DebugLogBuffer.log(logTag, "Verification failed on disk: expected ${item.size}, found on disk: $writtenSize")
+                try { createdFile.delete() } catch (_: Exception) {}
+                emit(CopyVerifyResult.Error(item.displayName, "File verification failed: corrupted on storage (expected ${item.size}, got $writtenSize)"))
+                return@flow
+            }
+
+            // Verify file is readable from storage
+            val isReadable = try {
+                context.contentResolver.openInputStream(destUri)?.use { verifyIn ->
+                    val testBuf = ByteArray(8192)
+                    val count = verifyIn.read(testBuf)
+                    count > 0 || item.size == 0L
+                } ?: false
+            } catch (verifyEx: Exception) {
+                DebugLogBuffer.log(logTag, "Verification read stream error: ${verifyEx.localizedMessage}")
+                false
+            }
+            if (!isReadable) {
+                DebugLogBuffer.log(logTag, "Verification read failed: written file cannot be read from OTG")
+                try { createdFile.delete() } catch (_: Exception) {}
+                emit(CopyVerifyResult.Error(item.displayName, "File verification failed: cannot read written file from storage"))
+                return@flow
+            }
+
+            // For images: verify header decoding
+            if (item.mimeType.startsWith("image/")) {
+                val isValidImage = try {
+                    context.contentResolver.openInputStream(destUri)?.use { imgIn ->
+                        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        BitmapFactory.decodeStream(imgIn, null, opts)
+                        opts.outWidth > 0 && opts.outHeight > 0
+                    } ?: false
+                } catch (_: Exception) {
+                    false
                 }
-                try {
-                    val renamedUri = DocumentsContract.renameDocument(context.contentResolver, targetFile.uri, item.displayName)
-                    if (renamedUri != null) {
-                        finalUri = renamedUri
-                        DebugLogBuffer.log(logTag, "Atomically renamed temp file to final name ${item.displayName}: $finalUri")
-                    }
-                } catch (renameEx: Exception) {
-                    DebugLogBuffer.log(logTag, "Failed to rename temp file: ${renameEx.localizedMessage}")
+                if (!isValidImage) {
+                    DebugLogBuffer.log(logTag, "Image container verification failed for ${item.displayName}")
+                    try { createdFile.delete() } catch (_: Exception) {}
+                    emit(CopyVerifyResult.Error(item.displayName, "File verification failed: image container corrupted"))
+                    return@flow
                 }
             }
 
-            // Check if preview is already precached locally, without doing bitmap decode work during copy stream
-            val previewDir = java.io.File(context.filesDir, "my1drive_previews")
-            val existingCacheFile = java.io.File(previewDir, "$srcHash.my1d")
-            val precachedPath = if (existingCacheFile.exists() && existingCacheFile.length() > 0) {
-                existingCacheFile.absolutePath
-            } else null
+            val finalUri = destUri
+
+            // Precache preview locally and save to OTG drive
+            val precachedPath = try {
+                precacheThumbnail(item, srcHash, dir)
+            } catch (ex: Exception) {
+                DebugLogBuffer.log(logTag, "Failed to precache thumbnail: ${ex.message}")
+                null
+            }
 
             success = true
-            DebugLogBuffer.log(logTag, "Successfully archived ${item.displayName}")
+            DebugLogBuffer.log(logTag, "Successfully archived and verified ${item.displayName}")
             emit(CopyVerifyResult.Success(item, srcHash, finalUri.toString(), thumbnailPath = precachedPath))
         } catch (e: Exception) {
             DebugLogBuffer.log(logTag, "Error copying ${item.displayName}: ${e.javaClass.name} - ${e.localizedMessage}")
@@ -540,7 +579,7 @@ class OtgArchiveUtil(private val context: Context) {
         return null
     }
 
-    fun precacheThumbnail(item: MediaItem, hash: String): String? {
+    fun precacheThumbnail(item: MediaItem, hash: String, otgArchiveDir: DocumentFile? = null): String? {
         val previewDir = File(context.filesDir, "my1drive_previews")
         if (!previewDir.exists()) {
             previewDir.mkdirs()
@@ -550,8 +589,11 @@ class OtgArchiveUtil(private val context: Context) {
         }
         val cacheFile = File(previewDir, "$hash.my1d")
         
-        // If already cached, just return the path
+        // If already cached locally, ensure it is also saved to OTG previews if available
         if (cacheFile.exists() && cacheFile.length() > 0) {
+            if (otgArchiveDir != null) {
+                writePreviewToOtg(otgArchiveDir, hash, cacheFile)
+            }
             return cacheFile.absolutePath
         }
 
@@ -589,12 +631,36 @@ class OtgArchiveUtil(private val context: Context) {
                 if (scaled !== bitmap) scaled.recycle()
             }
             bitmap.recycle()
+
+            if (otgArchiveDir != null && cacheFile.exists() && cacheFile.length() > 0) {
+                writePreviewToOtg(otgArchiveDir, hash, cacheFile)
+            }
+
             return cacheFile.absolutePath
         } catch (e: Exception) {
             cacheFile.delete()
             bitmap.recycle()
             DebugLogBuffer.log("OtgArchiveUtil", "Failed to write precached thumbnail: ${e.localizedMessage}")
             return null
+        }
+    }
+
+    private fun writePreviewToOtg(archiveDir: DocumentFile, hash: String, sourceLocalFile: File) {
+        try {
+            val previewsDir = OtgFolderResolver.getOrCreatePreviewsDir(context, archiveDir) ?: return
+            val existingDoc = OtgFolderResolver.findPreviewDocument(context, previewsDir, hash)
+            if (existingDoc != null && existingDoc.exists() && existingDoc.length() > 0) {
+                return
+            }
+            val targetDoc = existingDoc ?: previewsDir.createFile("image/webp", "$hash.my1d") ?: return
+            context.contentResolver.openOutputStream(targetDoc.uri, "w")?.use { out ->
+                sourceLocalFile.inputStream().buffered().use { input ->
+                    input.copyTo(out)
+                }
+            }
+            DebugLogBuffer.log("OtgArchiveUtil", "Saved preview to OTG disk: $hash.my1d")
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgArchiveUtil", "Failed to write preview to OTG: ${e.localizedMessage}")
         }
     }
 

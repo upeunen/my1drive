@@ -588,7 +588,7 @@ fun GalleryScreenContent(
                             actionBarHeightPx = actionBarHeightPx,
                             onItemClick = { item ->
                                 val currentActiveUuid = viewModel.otgManager.activeArchiveUuid.value
-                                val isItemActive = isOtgConnected && item.archiveUuid == currentActiveUuid
+                                val isItemActive = isOtgConnected && (item.archiveUuid == currentActiveUuid || item.archiveUuid.isNullOrEmpty())
                                 if (selectedIds.isNotEmpty()) {
                                     if (isItemActive || item.hasCachedPreview) {
                                         viewModel.toggleSelection(item.id)
@@ -596,29 +596,37 @@ fun GalleryScreenContent(
                                         showDisconnectedOtgItemInfo = item
                                     }
                                 } else {
-                                    if (isItemActive) {
-                                        val grouped = viewModel.archivedGroupedItems.value
-                                        val allMediaItems = grouped.mapNotNull { (it as? GalleryItem.Media)?.item }
-                                        val filteredItems = allMediaItems.filter { m -> 
-                                            m.status != by.w6.my1drive.domain.model.MediaStatus.ARCHIVED_OTG || (isOtgConnected && m.archiveUuid == currentActiveUuid)
-                                        }
-                                        val index = filteredItems.indexOfFirst { it.id == item.id }
-                                        if (index >= 0) {
+                                    val allMediaItems = viewModel.uiState.value.archiveYearGroups.flatMap { yg ->
+                                        yg.months.flatMap { mg -> mg.items }
+                                    }.ifEmpty {
+                                        viewModel.archivedGroupedItems.value.mapNotNull { (it as? GalleryItem.Media)?.item }
+                                    }
+                                    val index = allMediaItems.indexOfFirst { it.id == item.id }
+                                    if (index >= 0) {
+                                        if (isOtgConnected || item.hasCachedPreview) {
                                             onSetActivePreview(FullscreenState(
-                                                items = filteredItems,
+                                                items = allMediaItems,
                                                 initialIndex = index,
                                                 sourceTab = SourceTab.ARCHIVE
                                             ))
+                                        } else {
+                                            showDisconnectedOtgItemInfo = item
                                         }
                                     } else {
-                                        showDisconnectedOtgItemInfo = item
+                                        if (isOtgConnected || item.hasCachedPreview) {
+                                            onSetActivePreview(FullscreenState(
+                                                items = listOf(item),
+                                                initialIndex = 0,
+                                                sourceTab = SourceTab.ARCHIVE
+                                            ))
+                                        } else {
+                                            showDisconnectedOtgItemInfo = item
+                                        }
                                     }
                                 }
                             },
                             onItemLongClick = { item ->
-                                val currentActiveUuid = viewModel.otgManager.activeArchiveUuid.value
-                                val isItemActive = isOtgConnected && item.archiveUuid == currentActiveUuid
-                                if (isItemActive || item.hasCachedPreview) {
+                                if (isOtgConnected || item.hasCachedPreview) {
                                     viewModel.toggleSelection(item.id)
                                 } else {
                                     Toast.makeText(context, context.getString(R.string.toast_connect_otg), Toast.LENGTH_SHORT).show()
@@ -702,8 +710,6 @@ fun GalleryScreenContent(
                                 onLanguageChanged = {
                                     viewModel.notifyLocaleChanged()
                                 },
-                                showCopyWithoutDelete = viewModel.showCopyWithoutDelete.collectAsStateWithLifecycle().value,
-                                onToggleCopyWithoutDelete = { viewModel.setShowCopyWithoutDelete(it) },
                                 onSearchOtherArchives = {
                                     showDiscoveredArchivesSheet = true
                                     runFolderScan(scanDepth)

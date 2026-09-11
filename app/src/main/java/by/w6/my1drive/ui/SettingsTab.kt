@@ -45,8 +45,6 @@ fun SettingsTab(
     hasPromoCodes: Boolean = false,
     onCleanOrphans: () -> Unit = {},
     onLanguageChanged: () -> Unit = {},
-    showCopyWithoutDelete: Boolean = false,
-    onToggleCopyWithoutDelete: (Boolean) -> Unit = {},
     onSearchOtherArchives: () -> Unit = {}
 ) {
     Column(
@@ -84,19 +82,18 @@ fun SettingsTab(
 
         Spacer(Modifier.height(20.dp))
 
-        // 2. Files & Sync Section
-        FilesAndSyncSection(
-            showCopyWithoutDelete = showCopyWithoutDelete,
-            onToggleCopyWithoutDelete = onToggleCopyWithoutDelete,
-            missingThumbnailsCount = missingThumbnailsCount,
-            isSyncingThumbnails = isSyncingThumbnails,
-            syncThumbnailsProgress = syncThumbnailsProgress,
-            onSyncThumbnails = onSyncThumbnails,
-            onCancelSyncThumbnails = onCancelSyncThumbnails,
-            isOtgConnected = isOtgConnected
-        )
-
-        Spacer(Modifier.height(20.dp))
+        // 2. Thumbnail Sync Section (if missing thumbnails exist or syncing)
+        if (missingThumbnailsCount > 0 || isSyncingThumbnails) {
+            FilesAndSyncSection(
+                missingThumbnailsCount = missingThumbnailsCount,
+                isSyncingThumbnails = isSyncingThumbnails,
+                syncThumbnailsProgress = syncThumbnailsProgress,
+                onSyncThumbnails = onSyncThumbnails,
+                onCancelSyncThumbnails = onCancelSyncThumbnails,
+                isOtgConnected = isOtgConnected
+            )
+            Spacer(Modifier.height(20.dp))
+        }
 
         // 3. Archives & Storage Section
         ArchivesSettingsSection(

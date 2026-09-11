@@ -464,12 +464,10 @@ Errors:
     <string name="rename_archive_hint">New archive name</string>
     <string name="rename_archive_success">Archive renamed successfully</string>
     <string name="rename_archive_error">Failed to rename archive folder</string>
-    <string name="setting_copy_without_delete_title">Copy mode (button in gallery)</string>
-    <string name="setting_copy_without_delete_summary">Adds a button in gallery to create backup copies on the drive while keeping originals on the phone</string>
     <string name="btn_copy_only">Copy</string>
     <string name="toast_copy_only_success">Copied %1$d files to drive (originals kept on phone)</string>
     <string name="pro_settings_title">Pro Settings</string>
-    <string name="pro_settings_subtitle">VPS server, multi-archives, thumbnail sync, and debug logs</string>
+    <string name="pro_settings_subtitle">VPS server, maintenance, and debug logs</string>
     <string name="tile_drive_title">Drive</string>
     <string name="tile_cache_title">Thumbnail cache</string>
     <string name="btn_change_folder">Change</string>
@@ -493,4 +491,12 @@ Errors:
     <string name="dialog_discovered_added">Added</string>
     <string name="dialog_discovered_depth">Search depth: %1$d</string>
     <string name="toast_archive_added">Archive \"%1$s\" added</string>
+    <string name="select_archive_dialog_title">Выберите архив</string>
+    <string name="select_archive_dialog_subtitle">На накопителе обнаружено несколько архивов. Выберите нужный:</string>
+    <string name="select_archive_btn_create_new">+ Создать новый архив для этого устройства</string>
+    <string name="select_archive_fallback_name">Архив %1$s</string>
+    <string name="select_archive_btn_deep_search">Искать глубже на диске</string>
+    <string name="select_archive_deep_searching">Сканирование диска...</string>
+    <string name="select_archive_no_new_found">Дополнительных архивов не обнаружено</string>
+    <string name="main_toast_drive_not_mounted">Съемный накопитель еще не готов или не смонтирован. Пожалуйста, подождите или переподключите его.</string>
 </resources>

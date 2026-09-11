@@ -59,7 +59,6 @@ private const val PREF_MISSING_FILES_DISMISSED = "missing_files_dismissed"
 private const val PREF_MISSING_FILES_HASH = "missing_files_hash"
 private const val PREF_LOCAL_FOLDER_SKIP_COUNT = "local_folder_skip_count"
 private const val PREF_LAST_REQUESTED_FOLDER = "last_requested_folder_path"
-private const val PREF_SHOW_COPY_WITHOUT_DELETE = "show_copy_without_delete"
 private const val ARCHIVE_SIZE_LIMIT = 128L * 1024 * 1024 // 128 MB
 
 enum class ArchiveSortMode {
@@ -168,7 +167,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
             onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else if (_activeDialog.value is AppDialog.LocalFolder) _activeDialog.value = null },
             onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null },
-            onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null }
+            onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null },
+            onShowSelectArchiveDialog = { archives, uri -> _activeDialog.value = AppDialog.SelectArchive(archives, uri) }
+        )
+    }
+
+    fun selectArchive(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
+        _activeDialog.value = null
+        otgManager.selectArchiveFromDiscovery(archive, uri)
+    }
+
+    suspend fun searchDeeperForArchives(rootUri: Uri, knownPaths: Set<String>): List<by.w6.my1drive.data.local.ArchiveEntity> = withContext(Dispatchers.IO) {
+        by.w6.my1drive.utils.OtgFolderScanner.scanRootForJsonArchives(
+            context = getApplication(),
+            rootUri = rootUri,
+            knownPaths = knownPaths,
+            maxDepth = 2
         )
     }
 
@@ -338,13 +352,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _askRestorePath = MutableStateFlow(prefs.getBoolean(PREF_ASK_RESTORE_PATH, false))
     val askRestorePath = _askRestorePath.asStateFlow()
-
-    private val _showCopyWithoutDelete = MutableStateFlow(prefs.getBoolean(PREF_SHOW_COPY_WITHOUT_DELETE, false))
-    val showCopyWithoutDelete: StateFlow<Boolean> = _showCopyWithoutDelete.asStateFlow()
-    fun setShowCopyWithoutDelete(enabled: Boolean) {
-        _showCopyWithoutDelete.value = enabled
-        prefs.edit().putBoolean(PREF_SHOW_COPY_WITHOUT_DELETE, enabled).apply()
-    }
 
     private var isCopyOnlyOperation = false
     fun startCopyingOnly(targetUri: Uri) {
@@ -546,7 +553,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun onPreviewCached(hash: String, path: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            db.mediaDao().updateLastAccessed(hash, System.currentTimeMillis())
+            db.mediaDao().updateThumbnailPath(hash, path, System.currentTimeMillis())
             refreshCacheStatsThrottled()
         }
     }

@@ -464,12 +464,10 @@ Errores:
     <string name="rename_archive_hint">Nuevo nombre del archivo</string>
     <string name="rename_archive_success">Archivo renombrado con éxito</string>
     <string name="rename_archive_error">Error al renombrar carpeta del archivo</string>
-    <string name="setting_copy_without_delete_title">Modo copia (botón en galería)</string>
-    <string name="setting_copy_without_delete_summary">Agrega un botón en galería para respaldar en la unidad manteniendo los originales en el teléfono</string>
     <string name="btn_copy_only">Copiar</string>
     <string name="toast_copy_only_success">Se copiaron %1$d archivos a la unidad (originales guardados en el teléfono)</string>
     <string name="pro_settings_title">Ajustes Pro</string>
-    <string name="pro_settings_subtitle">Servidor VPS, multi-archivos, miniaturas y registros</string>
+    <string name="pro_settings_subtitle">Servidor VPS, mantenimiento y registros</string>
     <string name="tile_drive_title">Unidad</string>
     <string name="tile_cache_title">Caché de miniaturas</string>
     <string name="btn_change_folder">Cambiar</string>

@@ -37,7 +37,6 @@ fun GalleryScreenActionBar(
     isOtgConnected: Boolean,
     otgDirectoryUri: Uri?,
     isVpsEnabled: Boolean = false,
-    showCopyOption: Boolean = false,
     targetArchiveName: String? = null,
     targetArchiveColor: Color? = null,
     onArchive: () -> Unit,
@@ -59,70 +58,20 @@ fun GalleryScreenActionBar(
     ) {
         if (!isArchiveTab) {
             val enabled = (isOtgConnected && otgDirectoryUri != null) || isVpsEnabled
-            if (showCopyOption) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FilledTonalButton(
-                        onClick = onArchive,
-                        enabled = enabled,
-                        shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier.weight(0.75f)
-                    ) {
-                        Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
-                        if (targetArchiveColor != null) {
-                            Spacer(Modifier.width(5.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(targetArchiveColor, CircleShape)
-                            )
-                        }
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = archiveLabel,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = onCopyOnly,
-                        enabled = enabled,
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.weight(0.25f)
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.btn_copy_only), modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.btn_copy_only),
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            softWrap = false
-                        )
-                    }
-                }
-            } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 FilledTonalButton(
                     onClick = onArchive,
                     enabled = enabled,
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
+                    modifier = Modifier.weight(0.75f)
                 ) {
                     Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
                     if (targetArchiveColor != null) {
@@ -137,6 +86,23 @@ fun GalleryScreenActionBar(
                     Text(
                         text = archiveLabel,
                         fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onCopyOnly,
+                    enabled = enabled,
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.weight(0.25f)
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.btn_copy_only), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.btn_copy_only),
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         softWrap = false

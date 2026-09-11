@@ -79,7 +79,6 @@ fun GalleryScreen(
     val archiveState by viewModel.archiveState.collectAsStateWithLifecycle()
     val restoreState by viewModel.restoreState.collectAsStateWithLifecycle()
     val syncProgressState by viewModel.syncProgressState.collectAsStateWithLifecycle()
-    val showCopyWithoutDelete by viewModel.showCopyWithoutDelete.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showRestorePicker = restoreRequest != null
     val mediaItems by viewModel.mediaItems.collectAsStateWithLifecycle()
@@ -262,7 +261,6 @@ fun GalleryScreen(
                             isOtgConnected = isOtgConnected,
                             otgDirectoryUri = otgDirectoryUri,
                             isVpsEnabled = viewModel.isVpsEnabled(),
-                            showCopyOption = showCopyWithoutDelete,
                             targetArchiveName = uiState.activeArchiveName,
                             targetArchiveColor = uiState.activeArchiveUuid?.let { archiveStripeColor(it) },
                             onArchive = { 

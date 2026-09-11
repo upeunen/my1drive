@@ -265,5 +265,5 @@ class GalleryDisplayManager(
                 monthGroup.items.map { GalleryItem.Media(it) }
             }
         }
-    }.stateIn(scope, SharingStarted.Lazily, emptyList())
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 }

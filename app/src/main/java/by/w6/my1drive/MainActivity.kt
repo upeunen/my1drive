@@ -274,65 +274,75 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-        private fun selectOtgFolder() {
+    private fun hasRemovableStorage(context: Context): Boolean {
+        val sm = context.getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager ?: return false
+        return try {
+            @Suppress("DEPRECATION")
+            sm.storageVolumes.any { !it.isPrimary }
+        } catch (_: Exception) { false }
+    }
+
+    private fun selectOtgFolder() {
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: start")
-        val isPhysConnected = viewModel.otgManager.physicalConnected.value
+        val isPhysConnected = viewModel.otgManager.physicalConnected.value ||
+                viewModel.otgManager.isUsbStoragePhysicallyConnected() ||
+                hasRemovableStorage(this)
         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: isPhysConnected=$isPhysConnected")
 
         // 1. Try manual URI resolution pointing to the root of the removable drive first
         val otgRoot = otgStorageRootUri(this)
-        
         if (otgRoot != null && isRemovableStorageUri(otgRoot)) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using manual otgRoot: $otgRoot")
             try {
                 otgFolderLauncher.launch(otgRoot)
                 return
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed with otgRoot: ${e.message}")
+            }
         }
 
         // 2. If root is null but physically connected, wait for mount
-        if (otgRoot == null && isPhysConnected) {
+        if (isPhysConnected) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root null but phys connected, waiting for mount...")
             lifecycleScope.launch {
                 val progressToast = Toast.makeText(this@MainActivity, getString(R.string.main_toast_waiting_mount), Toast.LENGTH_SHORT)
                 progressToast.show()
                 var resolvedRoot: Uri? = null
                 val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < 4000L) { // wait up to 4 seconds
-                    delay(500)
+                while (System.currentTimeMillis() - startTime < 6000L) { // wait up to 6 seconds
+                    delay(400)
                     resolvedRoot = otgStorageRootUri(this@MainActivity)
-                    if (resolvedRoot != null) {
+                    if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) {
                         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root resolved after delay: $resolvedRoot")
                         break
                     }
                 }
                 progressToast.cancel()
-                val finalUri = if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) resolvedRoot else null
-                try {
-                    otgFolderLauncher.launch(finalUri)
-                } catch (_: Exception) {
-                    try { otgFolderLauncher.launch(null) } catch (_: Exception) {}
+                if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) {
+                    try {
+                        otgFolderLauncher.launch(resolvedRoot)
+                    } catch (e: Exception) {
+                        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed with resolvedRoot: ${e.message}")
+                    }
+                } else {
+                    // КРИТИЧЕСКИ ВАЖНО: НИКОГДА НЕ ВЫЗЫВАТЬ launch(null)!
+                    // Иначе SAF откроется во внутренней памяти телефона (primary:).
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.main_toast_drive_not_mounted),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
             return
         }
 
-        // 3. Fallback to saved currentOtgUri only if drive is not physically connected or root resolution failed
-        val isUnknownDrive = viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.UNKNOWN_DRIVE_CONNECTED || viewModel.otgManager.status.value == by.w6.my1drive.ui.DriveStatus.NO_URI_CONFIGURED
-        val currentOtgUri = if (isUnknownDrive) null else viewModel.otgDirectoryUri.value
-        if (currentOtgUri != null) {
-            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: using saved currentOtgUri: $currentOtgUri")
-            try {
-                otgFolderLauncher.launch(currentOtgUri)
-                return
-            } catch (_: Exception) {}
-        }
-
-        try {
-            otgFolderLauncher.launch(null)
-        } catch (_: Exception) {
-            try { otgFolderLauncher.launch(null) } catch (_: Exception) {}
-        }
+        // 3. Drive is not connected or not ready
+        Toast.makeText(
+            this,
+            getString(R.string.main_toast_drive_not_mounted),
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun otgStorageRootUri(context: Context): Uri? {

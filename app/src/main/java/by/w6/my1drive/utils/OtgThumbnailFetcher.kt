@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.DocumentsContract
 import coil.ImageLoader
 import coil.decode.DataSource
 import coil.decode.ImageSource
@@ -90,6 +91,12 @@ class OtgThumbnailFetcher(
 
         val uri = Uri.parse(data.otgUri)
 
+        // 3a. Fast-path: Check if the small preview file already exists on the OTG drive
+        if (tryCopyFromOtgPreviews(uri, data.hash, cacheFile)) {
+            onCached(data.hash, cacheFile.absolutePath)
+            return@withContext sourceResult(cacheFile)
+        }
+
         // Read sequentially through semaphore to protect mechanical HDD from concurrent seeks
         val bitmap: Bitmap? = otgReadSemaphore.withPermit {
             // Double check if another coroutine already cached it while waiting for the semaphore
@@ -128,6 +135,10 @@ class OtgThumbnailFetcher(
             throw java.io.IOException("Cache file empty after write for ${data.hash}")
         }
 
+        try {
+            OtgFolderResolver.trySavePreviewToOtg(context, uri, data.hash, cacheFile)
+        } catch (_: Exception) {}
+
         onCached(data.hash, cacheFile.absolutePath)
         return@withContext sourceResult(cacheFile)
     }
@@ -136,19 +147,31 @@ class OtgThumbnailFetcher(
         return if (data.mimeType.startsWith("video")) {
             val retriever = MediaMetadataRetriever()
             try {
-                retriever.setDataSource(context, uri)
-                retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                val pfd = try { context.contentResolver.openFileDescriptor(uri, "r") } catch (_: Exception) { null }
+                if (pfd != null) {
+                    pfd.use {
+                        retriever.setDataSource(it.fileDescriptor)
+                        retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    }
+                } else {
+                    retriever.setDataSource(context, uri)
+                    retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                }
             } catch (e: Exception) {
                 null
             } finally {
-                retriever.release()
+                try { retriever.release() } catch (_: Exception) {}
             }
         } else {
             try {
-                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                val pfdBitmap = context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                     val fd = pfd.fileDescriptor
                     val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeFileDescriptor(fd, null, boundsOpts)
+
+                    try {
+                        android.system.Os.lseek(fd, 0, android.system.OsConstants.SEEK_SET)
+                    } catch (_: Exception) {}
 
                     val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 512)
                     val decodeOpts = BitmapFactory.Options().apply {
@@ -156,7 +179,9 @@ class OtgThumbnailFetcher(
                         inPreferredConfig = Bitmap.Config.RGB_565
                     }
                     BitmapFactory.decodeFileDescriptor(fd, null, decodeOpts)
-                } ?: run {
+                }
+
+                pfdBitmap ?: run {
                     // Fallback to stream if openFileDescriptor fails
                     val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     context.contentResolver.openInputStream(uri)?.use { input ->
@@ -201,4 +226,9 @@ class OtgThumbnailFetcher(
         mimeType = "image/webp",
         dataSource = DataSource.DISK
     )
+
+    private fun tryCopyFromOtgPreviews(uri: Uri, hash: String, cacheFile: File): Boolean {
+        previewDir.mkdirs()
+        return OtgFolderResolver.tryCopyPreviewFromOtg(context, uri, hash, cacheFile)
+    }
 }

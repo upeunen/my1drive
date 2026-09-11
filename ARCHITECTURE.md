@@ -19,9 +19,9 @@
 *   **`data.local`**: Room Database (`AppDatabase`).
     *   `MediaDao`, `ArchiveDao` — интерфейсы для доступа к данным.
     *   `MediaEntity`, `ArchiveEntity` — сущности БД (сохраняют пути, хэши, ID накопителя и ссылки на кэш миниатюр).
-    *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Использует вложенный кэш пропорций кадра (`aspectRatioCache`) для исключения дискового I/O при трансформации потока, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
+    *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Поддерживает автоматическое обновление локального кэша через `ContentObserver` на MediaStore Images/Videos, использует вложенный кэш пропорций кадра (`aspectRatioCache`) для исключения дискового I/O при трансформации потока, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
 *   **`ui` (Пользовательский интерфейс и Состояния)**:
-*   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `SettingsTab` (компоненты `SettingsDashboardTiles`, `FilesAndSyncSection`, `ArchivesSettingsSection`, `LanguageSettingsSection`, `AdvancedSettingsSection`).
+*   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `SelectArchiveDialog` (диалог выбора архива при обнаружении нескольких архивов на внешнем диске), `SettingsTab` (компоненты `SettingsDashboardTiles`, `FilesAndSyncSection`, `ArchivesSettingsSection`, `LanguageSettingsSection`, `AdvancedSettingsSection`).
 *   **`ui.layout` (Геометрия и мозаика)**:
     *   `BentoLayoutHelper`: Модульный алгоритм компоновки Apple Photos style с Lookahead-группировкой для бесшовного отображения 9:16 (вертикальных), 16:9 (пейзажных) и квадратных медиафайлов без паразитной обрезки.
     *   `BentoBlockView`: Компонент отрисовки блоков (`TallWithHero`, `TallWithFourSmall`, `TwoTallWithTwoSmall`, `ThreeTall`, `TwoTall`, `FourTall`, `HeroWithTwoSmall`, `DuetRow`, `TripletRow`, `PanoramaRow`, `TailRow`).
@@ -29,13 +29,13 @@
 *   **Состояние (MVI Pattern)**: `GalleryUiState` — единый неизменяемый (immutable) data-класс, хранящий всё состояние экрана (списки файлов, режимы сортировки, статусы синхронизации и диалоги).
 *   **`GalleryViewModel`**: Главный координатор состояний. Собирает данные от различных менеджеров (через `collect` / `combine`) и атомарно обновляет единый `StateFlow<GalleryUiState>`, предоставляя UI единственный источник правды (Single Source of Truth).
 *   **Отдельные менеджеры (Декомпозиция)**:
-    *   `OtgConnectionManager`: Управляет подключением SAF, разрешениями, поллингом (проверкой физического подключения OTG) и диалогами монтирования.
+    *   `OtgConnectionManager`: Управляет подключением SAF, разрешениями, поллингом (проверкой физического подключения OTG), трехуровневым автопоиском архивов и диалогами монтирования/выбора архивов.
     *   `ArchiveInteractor`: Отвечает за ручные операции с архивом, инициированные пользователем (запуск архивации, восстановление файлов, разрешение конфликтов).
     *   `ArchiveSyncHelper`: Синглтон (`getInstance`), выполняющий фоновую работу (проверка наличия файлов при подключении флешки, фоновая генерация кэшированных миниатюр с пакетным сохранением в БД через `insertAll`, отслеживание прогресса синхронизации через `StateFlow` / `SharedFlow`).
     *   `ArchiveService`: **Foreground Service**, обеспечивающий надежную работу процесса архивации даже при сворачивании приложения. Получает команды через `Intent` и уведомляет пользователя о прогрессе копирования (отображает Notification), опираясь на стейты `ArchiveSyncHelper`.
     *   `SelectionManager`: Инкапсулирует логику выбора элементов в галерее (одиночный выбор, выделение всех, отмена).
-    *   **`GalleryDisplayManager`**: Отвечает за логику сортировки (`deviceSortMode`, `archiveSortMode`), быструю однопроходную группировку элементов архива по годам и месяцам на корутинах `Dispatchers.Default` (без тяжелогласных `Calendar.getInstance()`), мемоизацию расчета Bento-блоков (`bentoCache`) и формирование потоков `archiveYearGroups` и `archivedGroupedItems`.
-    *   `ThumbnailSyncManager`: Управляет корутинами и состояниями ручной и тихой (фоновой) синхронизации локальных миниатюр.
+    *   **`GalleryDisplayManager`**: Отвечает за логику сортировки (`deviceSortMode`, `archiveSortMode`), быструю однопроходную группировку элементов архива по годам и месяцам на корутинах `Dispatchers.Default` (без тяжелогласных `Calendar.getInstance()`), мемоизацию расчета Bento-блоков (`bentoCache`) и формирование горячих потоков `archiveYearGroups` и `archivedGroupedItems` (`SharingStarted.Eagerly`).
+    *   `ThumbnailSyncManager`: Управляет корутинами и состояниями ручной и бережной фоновой («тихой») синхронизации миниатюр. Автоматически запускает щадящий воркер (шаг 350 мс, мягкая пауза при скролле пользователя, батчевая запись в Room) при подключении OTG и обнаружении файлов без превью.
     *   `MediaOperationInteractor`: Управляет файловыми операциями (шаринг, удаление с устройства, создание папок). Обеспечивает асинхронную подготовку файлов (параллельное копирование в кэш через `async`/`awaitAll`) без блокировки UI, работу с системным разрешением `MANAGE_MEDIA` (управление медиафайлами для быстрого удаления в 1 тап без всплывающих окон) и откат на стандартный MediaStore delete request без устаревших SAF-окон для памяти устройства.
 
 ### 4. `billing` & `init` (Изоляция сборок / Product Flavors)
@@ -49,11 +49,11 @@
     *   В `googleplay`: используется Google Play Billing (`GooglePlayBillingManager` с Play Billing Library 8.0.0) и автономные/Google Play стабы (`GooglePlayRemoteConfigManager`). Зависимости RuStore полностью отсутствуют в сборке `googleplay`.
 
 ### 5. `utils` (Утилиты)
-*   `OtgArchiveUtil`: Работа с файловой системой внешнего накопителя через `DocumentFile` и `ContentResolver` (для обхода ограничений Android SAF).
-*   `OtgFolderResolver`: Резолв единой стандартной директории `/My1drive/` на флешке, создание подпапок устройств (`/My1drive/<ИмяУстройства>/`), авто-сканирование архивов, самоисцеление относительных путей (Self-Healing) с сохранением префикса контейнера и физическое переименование папок.
-*   `OtgFolderScanner`: Быстрое обнаружение папок с фото/видео на внешнем диске с регулируемой глубиной сканирования (по умолчанию 2 уровня), ранним выходом (`LIMIT 1`), записью индекса `my1drive_index.json` и маркера `my1drive_db.json`.
-*   `PreviewCacheManager`: Управление локальным кэшем миниатюр (генерация, хранение файлов `.webp` в `context.filesDir`, удаление кэша).
-*   `OtgThumbnailFetcher`: Coil Fetcher для генерации и кэширования миниатюр с OTG-накопителей по требованию.
+*   `OtgArchiveUtil`: Работа с файловой системой внешнего накопителя через `DocumentFile` и `ContentResolver`. Обеспечивает безопасную запись на OTG с принудительным `fsync` системных дескрипторов, сквозной верификацией размера и заголовков файлов (декодирование контейнера). Создает превью «на лету» в момент архивации, сохраняя миниатюру одновременно в локальный кэш и в `.previews/` на съемном носителе.
+*   `OtgFolderResolver`: Резолв единой стандартной директории `/My1drive/` на флешке, создание подпапок устройств (`/My1drive/<ИмяУстройства>/`), управление подкаталогом `.previews/` архива, трехуровневое авто-сканирование архивов (Level 1: `my1drive_index.json`, Level 2: `My1drive/*`, Level 3: фоновый обход корня на глубину 2), самоисцеление относительных путей (Self-Healing) с сохранением префикса контейнера и физическое переименование папок.
+*   `OtgFolderScanner`: Быстрое обнаружение папок с фото/видео на внешнем диске с регулируемой глубиной сканирования (по умолчанию 2 уровня), ранним выходом (`LIMIT 1`), записью индекса `my1drive_index.json`, маркера `my1drive_db.json`, и фоновый поиск off-container архивов по сигнатуре базы данных (`scanRootForJsonArchives`).
+*   `PreviewCacheManager`: Управление локальным кэшем миниатюр (хранение файлов `.my1d` в `context.filesDir/my1drive_previews`, LRU-очистка, миграция).
+*   `OtgThumbnailFetcher`: Coil Fetcher для двухуровневой загрузки миниатюр: сначала проверяет локальный кэш, затем быстрый перенос готового превью из `.previews/` на OTG-диске (без декодирования оригинала), и только при отсутствии — надежное декодирование оригинала (с поддержкой `lseek` для SAF дескрипторов и аппаратного декодера видео) с автосохранением в `.previews` накопителя.
 *   `MediaStoreThumbnailFetcher`: Аппаратный Coil Fetcher для ускоренной загрузки локальных миниатюр через системный `ContentResolver.loadThumbnail` (Android 10+).
 *   `ArchiveMetadataStore`: Сохранение метаданных архива в видимый JSON-файл (`my1drive_db.json`) на самом накопителе.
 *   `MediaShareHelper`: Утилита для отправки (Share) и копирования файлов и метаданных. При шаринге офлайн-файла берется локальная миниатюра.

@@ -45,6 +45,24 @@ class ThumbnailSyncManager(
                 }
             }
         }
+
+        scope.launch {
+            kotlinx.coroutines.flow.combine(isOtgConnectedFlow, activeArchiveUuidFlow) { isConnected, uuid ->
+                Pair(isConnected, uuid)
+            }.collect { (isConnected, uuid) ->
+                if (isConnected && !uuid.isNullOrEmpty() && !syncHelper.archiveState.value.isArchiving) {
+                    updateMissingThumbnailsCount()
+                    // Allow 3 seconds after connection so initial mount/scan completes smoothly
+                    kotlinx.coroutines.delay(3000)
+                    if (isOtgConnectedFlow.value && !syncHelper.archiveState.value.isArchiving) {
+                        startSilentThumbnailSync()
+                    }
+                } else if (!isConnected) {
+                    cancelSilentThumbnailSync()
+                    cancelThumbnailSync()
+                }
+            }
+        }
     }
 
     fun updateMissingThumbnailsCount() {
@@ -71,7 +89,10 @@ class ThumbnailSyncManager(
             try {
                 syncHelper.syncAllThumbnails(
                     activeUuid = activeUuid,
-                    isCancelled = { job?.isActive == false || syncHelper.archiveState.value.isArchiving },
+                    isCancelled = { job?.isActive == false || !isOtgConnectedFlow.value || syncHelper.archiveState.value.isArchiving },
+                    isPaused = { isScrollingFlow.value },
+                    throttleMs = 40L,
+                    batchSize = 25,
                     onProgress = { current, total ->
                         _syncThumbnailsProgress.value = Pair(current, total)
                     }
@@ -94,14 +115,19 @@ class ThumbnailSyncManager(
             DebugLogBuffer.log("ThumbnailSyncManager", "startSilentThumbnailSync skipped: archiving is currently active")
             return
         }
+        if (silentThumbnailSyncJob?.isActive == true) {
+            return
+        }
         val activeUuid = activeArchiveUuidFlow.value ?: return
-        silentThumbnailSyncJob?.cancel()
         silentThumbnailSyncJob = scope.launch {
             val job = coroutineContext[Job]
             try {
                 syncHelper.syncAllThumbnails(
                     activeUuid = activeUuid,
-                    isCancelled = { job?.isActive == false || !isOtgConnectedFlow.value || isScrollingFlow.value || syncHelper.archiveState.value.isArchiving },
+                    isCancelled = { job?.isActive == false || !isOtgConnectedFlow.value || syncHelper.archiveState.value.isArchiving },
+                    isPaused = { isScrollingFlow.value },
+                    throttleMs = 350L,
+                    batchSize = 25,
                     onProgress = { _, _ -> }
                 )
             } catch (e: Exception) {

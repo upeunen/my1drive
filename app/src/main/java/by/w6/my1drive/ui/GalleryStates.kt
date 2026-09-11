@@ -24,6 +24,7 @@ sealed class AppDialog {
     object PromoCode : AppDialog()
     data class PromoSuccess(val days: Int, val customMessage: String?) : AppDialog()
     data class Announcement(val id: String, val title: String, val message: String) : AppDialog()
+    data class SelectArchive(val archives: List<by.w6.my1drive.data.local.ArchiveEntity>, val uri: Uri) : AppDialog()
 }
 
 data class SyncState(
