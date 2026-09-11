@@ -34,11 +34,11 @@ import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,12 +50,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -66,6 +66,21 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import by.w6.my1drive.R
 import kotlinx.coroutines.launch
+
+// Elegant rich purple theme palette
+private val PurpleBackgroundGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFF21103C),
+        Color(0xFF16092A),
+        Color(0xFF0D041A)
+    )
+)
+private val PurpleCardBackground = Color(0xFF281548)
+private val PurpleCardBorder = Color(0xFF7E57C2).copy(alpha = 0.35f)
+private val PurpleButtonColor = Color(0xFF7E57C2)
+private val PurpleAccentText = Color(0xFFE1D5F5)
+private val PurpleSecondaryText = Color(0xFFB39DDB)
+private val PurpleIconBox = Color(0xFF3B1E6B)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -92,7 +107,7 @@ fun SetupWizardScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(PurpleBackgroundGradient)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -110,9 +125,9 @@ fun SetupWizardScreen(
                 repeat(2) { iteration ->
                     val isSelected = pagerState.currentPage == iteration
                     val color = if (isSelected)
-                        MaterialTheme.colorScheme.primary
+                        Color(0xFFCE93D8)
                     else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                        Color(0xFF4A2C76)
                     val width = if (isSelected) 28.dp else 10.dp
                     Box(
                         modifier = Modifier
@@ -198,13 +213,13 @@ private fun WizardStep1Welcome(
             modifier = Modifier
                 .size(96.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(PurpleIconBox),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Usb,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = Color(0xFFCE93D8),
                 modifier = Modifier.size(52.dp)
             )
         }
@@ -215,6 +230,7 @@ private fun WizardStep1Welcome(
             text = stringResource(R.string.welcome_title),
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.headlineMedium,
+            color = Color.White,
             textAlign = TextAlign.Center
         )
 
@@ -223,7 +239,7 @@ private fun WizardStep1Welcome(
         Text(
             text = stringResource(R.string.welcome_msg),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = PurpleAccentText,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 8.dp)
         )
@@ -239,11 +255,11 @@ private fun WizardStep1Welcome(
             }
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                    containerColor = Color(0xFF331B58)
                 ),
                 border = BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                    Color(0xFFAB47BC).copy(alpha = 0.4f)
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -251,7 +267,7 @@ private fun WizardStep1Welcome(
                 Text(
                     text = trialText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = Color(0xFFF3E5F5),
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
@@ -271,6 +287,10 @@ private fun WizardStep1Welcome(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PurpleButtonColor,
+                contentColor = Color.White
+            ),
             shape = RoundedCornerShape(14.dp)
         ) {
             Text(
@@ -318,8 +338,9 @@ private fun WizardStepPermissionsAndOtg(
                     .height(210.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = Color(0xFF190B2E)
                 ),
+                border = BorderStroke(1.dp, Color(0xFF673AB7).copy(alpha = 0.3f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 VideoGuidePlayer(rawResourceId = currentVideoRes)
@@ -332,12 +353,12 @@ private fun WizardStepPermissionsAndOtg(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = PurpleCardBackground
             ),
             border = BorderStroke(
                 1.dp,
-                if (hasStoragePermission) Color(0xFF2E7D32).copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.outlineVariant
+                if (hasStoragePermission) Color(0xFF4CAF50).copy(alpha = 0.6f)
+                else PurpleCardBorder
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
@@ -346,14 +367,15 @@ private fun WizardStepPermissionsAndOtg(
                     Icon(
                         imageVector = if (hasStoragePermission) Icons.Default.CheckCircle else Icons.Default.Settings,
                         contentDescription = null,
-                        tint = if (hasStoragePermission) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
+                        tint = if (hasStoragePermission) Color(0xFF81C784) else Color(0xFFCE93D8),
                         modifier = Modifier.size(26.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = stringResource(R.string.wizard_step_settings_title),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 }
 
@@ -363,7 +385,7 @@ private fun WizardStepPermissionsAndOtg(
                     Text(
                         text = stringResource(R.string.local_folder_dialog_desc),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = PurpleAccentText
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     Button(
@@ -371,6 +393,10 @@ private fun WizardStepPermissionsAndOtg(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PurpleButtonColor,
+                            contentColor = Color.White
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
@@ -384,7 +410,7 @@ private fun WizardStepPermissionsAndOtg(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                                color = Color(0xFF2E7D32).copy(alpha = 0.25f),
                                 shape = RoundedCornerShape(10.dp)
                             )
                             .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -393,7 +419,7 @@ private fun WizardStepPermissionsAndOtg(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = Color(0xFF2E7D32),
+                            tint = Color(0xFF81C784),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -401,7 +427,7 @@ private fun WizardStepPermissionsAndOtg(
                             text = stringResource(R.string.wizard_access_granted),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2E7D32)
+                            color = Color(0xFF81C784)
                         )
                     }
                 }
@@ -415,12 +441,12 @@ private fun WizardStepPermissionsAndOtg(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .alpha(if (isStep2Enabled) 1f else 0.55f),
+                .alpha(if (isStep2Enabled) 1f else 0.5f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = PurpleCardBackground
             ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            border = BorderStroke(1.dp, PurpleCardBorder),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -428,14 +454,15 @@ private fun WizardStepPermissionsAndOtg(
                     Icon(
                         imageVector = Icons.Default.Usb,
                         contentDescription = null,
-                        tint = if (isStep2Enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        tint = if (isStep2Enabled) Color(0xFFCE93D8) else PurpleSecondaryText.copy(alpha = 0.5f),
                         modifier = Modifier.size(26.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = stringResource(R.string.wizard_step_otg_title),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 }
 
@@ -444,7 +471,7 @@ private fun WizardStepPermissionsAndOtg(
                 Text(
                     text = stringResource(R.string.wizard_msg_otg),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = PurpleAccentText
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -455,6 +482,12 @@ private fun WizardStepPermissionsAndOtg(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PurpleButtonColor,
+                        contentColor = Color.White,
+                        disabledContainerColor = PurpleButtonColor.copy(alpha = 0.35f),
+                        disabledContentColor = Color.White.copy(alpha = 0.4f)
+                    ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
@@ -469,7 +502,7 @@ private fun WizardStepPermissionsAndOtg(
                     Text(
                         text = stringResource(R.string.welcome_msg_drive_not_detected),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = Color(0xFFEF9A9A),
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()

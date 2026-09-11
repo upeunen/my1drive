@@ -269,8 +269,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         return mediaOperationInteractor.hasAllFilesAccess(getApplication())
     }
 
-    fun proceedWithManageStorageRequest(items: List<MediaItem>?) {
-        _activeDialog.value = null
+    fun proceedWithManageStorageRequest(items: List<MediaItem>?, keepActiveDialog: Boolean = false) {
+        if (!keepActiveDialog) {
+            _activeDialog.value = null
+        }
         mediaOperationInteractor.dispatchManageStorageIntent(items)
     }
 

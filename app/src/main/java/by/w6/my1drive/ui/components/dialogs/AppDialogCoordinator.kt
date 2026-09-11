@@ -60,7 +60,7 @@ fun AppDialogCoordinator(
                     onSelectOtgDirectory()
                 },
                 onRequestFullAccess = {
-                    viewModel.proceedWithManageStorageRequest(null)
+                    viewModel.proceedWithManageStorageRequest(null, keepActiveDialog = true)
                 },
                 onFinish = { viewModel.completeSetupWizard() }
             )
@@ -118,7 +118,7 @@ fun AppDialogCoordinator(
                     onSelectOtgDirectory()
                 },
                 onRequestFullAccess = {
-                    viewModel.proceedWithManageStorageRequest(null)
+                    viewModel.proceedWithManageStorageRequest(null, keepActiveDialog = true)
                 },
                 onFinish = { viewModel.dismissDialog() }
             )
