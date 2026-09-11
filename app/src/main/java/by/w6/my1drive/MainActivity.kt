@@ -121,19 +121,11 @@ class MainActivity : AppCompatActivity() {
                 if (pathSegment.isEmpty()) {
                     val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri)
                     if (documentFile != null && documentFile.exists()) {
-                        val folderName = by.w6.my1drive.utils.OtgFolderResolver.getAutoCreatedFolderName(this)
+                        val containerName = by.w6.my1drive.utils.OtgFolderResolver.MAIN_CONTAINER_NAME
                         try {
-                            val directSubUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(uri, folderName)
-                            val directSubDoc = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, directSubUri)
-                            val subDir = if (directSubDoc != null && directSubDoc.exists() && directSubDoc.isDirectory) {
-                                directSubDoc
-                            } else {
-                                by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(this, documentFile, folderName, isDirectoryOnly = true)
-                                    ?: documentFile.createDirectory(folderName)
-                            }
-                            if (subDir != null) {
-                                autoCreatedFolderName = folderName
-                            } else {
+                            val containerDir = by.w6.my1drive.utils.OtgFolderResolver.fastFindChild(this, documentFile, containerName, isDirectoryOnly = true)
+                                ?: documentFile.createDirectory(containerName)
+                            if (containerDir == null) {
                                 viewModel.triggerWriteProtectedRootDialog()
                                 return
                             }

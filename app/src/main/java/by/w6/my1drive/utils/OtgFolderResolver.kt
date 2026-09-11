@@ -315,7 +315,10 @@ object OtgFolderResolver {
 
             // 2. If My1drive container exists, check only its subdirectories (no root scanning)
             val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
-            val containerDoc = DocumentFile.fromTreeUri(context, containerUri)
+            var containerDoc: DocumentFile? = wrapTreeDocument(context, rootDoc, containerUri)
+            if (containerDoc == null || !containerDoc.exists() || !containerDoc.isDirectory) {
+                containerDoc = fastFindChild(context, rootDoc, MAIN_CONTAINER_NAME, isDirectoryOnly = true)
+            }
             if (containerDoc != null && containerDoc.exists() && containerDoc.isDirectory) {
                 val my1driveSubDirs = fastListDirectSubdirs(context, containerDoc)
                 var firstEntity: by.w6.my1drive.data.local.ArchiveEntity? = null
@@ -395,16 +398,9 @@ object OtgFolderResolver {
     fun getArchiveDir(context: Context, rootUri: Uri, createIfNotExist: Boolean = true): DocumentFile? {
         try {
             val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return null
-            if (!rootDoc.exists() || !rootDoc.canRead()) {
-                return null
-            }
-            
-            // Check if the selected URI is already a specific subfolder.
-            val treeDocId = try {
-                DocumentsContract.getTreeDocumentId(rootUri)
-            } catch (e: Exception) {
-                ""
-            }
+            if (!rootDoc.exists()) return null
+
+            val treeDocId = try { DocumentsContract.getTreeDocumentId(rootUri) } catch (_: Exception) { "" }
             val pathSegment = treeDocId.substringAfter(":", "").trim('/', '\\')
             if (pathSegment.isNotEmpty() && !pathSegment.equals(MAIN_CONTAINER_NAME, ignoreCase = true)) {
                 return rootDoc
@@ -450,12 +446,54 @@ object OtgFolderResolver {
                 return currentDoc
             }
 
+            // Self-healing fallback 1: If path didn't start with My1drive/, check My1drive/$targetRelPath
+            if (!targetRelPath.startsWith("$MAIN_CONTAINER_NAME/")) {
+                val candidatePath = "$MAIN_CONTAINER_NAME/$targetRelPath"
+                val candidateUri = buildDirectChildUri(rootUri, candidatePath)
+                val candidateDoc = wrapTreeDocument(context, rootDoc, candidateUri)
+                val foundDir = if (candidateDoc.exists() && candidateDoc.isDirectory) {
+                    candidateDoc
+                } else {
+                    var cDoc: DocumentFile? = rootDoc
+                    for (seg in candidatePath.split("/").filter { it.isNotEmpty() }) {
+                        cDoc = fastFindChild(context, cDoc ?: break, seg, isDirectoryOnly = true)
+                    }
+                    if (cDoc != null && cDoc.exists() && cDoc.isDirectory) cDoc else null
+                }
+                if (foundDir != null) {
+                    if (archive != null) {
+                        db.archiveDao().insert(archive.copy(folderName = candidatePath))
+                        updateGlobalIndex(context, rootUri, archive.uuid, archive.name, candidatePath)
+                    }
+                    return foundDir
+                }
+            } else {
+                // Self-healing fallback 2: If path started with My1drive/ but legacy folder is directly at root
+                val folderNameOnly = targetRelPath.substringAfterLast('/')
+                val rootCandidateUri = buildDirectChildUri(rootUri, folderNameOnly)
+                val rootCandidateDoc = wrapTreeDocument(context, rootDoc, rootCandidateUri)
+                val foundDir = if (rootCandidateDoc.exists() && rootCandidateDoc.isDirectory) {
+                    rootCandidateDoc
+                } else {
+                    val cDoc = fastFindChild(context, rootDoc, folderNameOnly, isDirectoryOnly = true)
+                    if (cDoc != null && cDoc.exists() && cDoc.isDirectory) cDoc else null
+                }
+                if (foundDir != null) {
+                    if (archive != null) {
+                        db.archiveDao().insert(archive.copy(folderName = folderNameOnly))
+                        updateGlobalIndex(context, rootUri, archive.uuid, archive.name, folderNameOnly)
+                    }
+                    return foundDir
+                }
+            }
+
             // If not found yet and createIfNotExist, create folder under My1drive container
             if (createIfNotExist) {
                 val containerUri = buildDirectChildUri(rootUri, MAIN_CONTAINER_NAME)
-                var containerDoc = DocumentFile.fromTreeUri(context, containerUri)
-                if (containerDoc == null || !containerDoc.exists()) {
-                    containerDoc = rootDoc.createDirectory(MAIN_CONTAINER_NAME)
+                var containerDoc: DocumentFile? = wrapTreeDocument(context, rootDoc, containerUri)
+                if (containerDoc == null || !containerDoc.exists() || !containerDoc.isDirectory) {
+                    containerDoc = fastFindChild(context, rootDoc, MAIN_CONTAINER_NAME, isDirectoryOnly = true)
+                        ?: rootDoc.createDirectory(MAIN_CONTAINER_NAME)
                 }
                 val parentDoc = containerDoc ?: rootDoc
                 val folderNameOnly = targetRelPath.substringAfterLast('/')

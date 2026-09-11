@@ -258,7 +258,14 @@ class OtgConnectionManager(
             
             if (knownArchive != null && dir != null && dir.exists()) {
                 withContext(Dispatchers.IO) {
-                    val newFolderName = dir.name ?: knownArchive.folderName
+                    val folderNameOnly = dir.name ?: knownArchive.folderName.substringAfterLast('/')
+                    val newFolderName = if (knownArchive.folderName.contains('/')) {
+                        "${knownArchive.folderName.substringBeforeLast('/')}/$folderNameOnly"
+                    } else if (knownArchive.folderName.isNotEmpty()) {
+                        "${OtgFolderResolver.MAIN_CONTAINER_NAME}/$folderNameOnly"
+                    } else {
+                        "${OtgFolderResolver.MAIN_CONTAINER_NAME}/$folderNameOnly"
+                    }
                     db.archiveDao().insert(knownArchive.copy(
                         lastConnected = System.currentTimeMillis(),
                         folderName = newFolderName
@@ -295,7 +302,7 @@ class OtgConnectionManager(
         _isCheckingConnection.value = true
         scope.launch {
             val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
-            val folderName = "Arhiv-$name"
+            val folderName = "${OtgFolderResolver.MAIN_CONTAINER_NAME}/Arhiv-$name"
 
             withContext(Dispatchers.IO) {
                 // 1. Insert/register the ArchiveEntity in Room first
