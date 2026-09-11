@@ -725,6 +725,7 @@ class OtgConnectionManager(
                 docFile != null && docFile.exists() && docFile.canRead()
             } catch (_: Exception) { false }
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
+            if (isReadable) {
                 val activeUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
                 val knownArchive = if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
                     db.archiveDao().getById(activeUuid)
