@@ -192,6 +192,23 @@
     <string name="wizard_step_settings_title">1. Доступ к медиафайлам</string>
     <string name="wizard_step_otg_title">2. Доступ к съемному диску (SAF)</string>
     <string name="wizard_access_granted">Доступ предоставлен</string>
+    <string name="wizard_step_archive_title">3. Настройка архива</string>
+    <string name="wizard_archive_scanning">Поиск существующих архивов на накопителе…</string>
+    <string name="wizard_archive_found_title">Найдены архивы на накопителе</string>
+    <string name="wizard_archive_not_found_title">Архивов My1Drive на накопителе не найдено</string>
+    <string name="wizard_archive_create_title">Создать новый архив</string>
+    <string name="wizard_archive_create_desc">Назовите этот архив (например: Черная флешка, Синий диск), чтобы легко отличать его от других.</string>
+    <string name="wizard_archive_name_placeholder">например: Черная флешка</string>
+    <string name="wizard_btn_create_archive">Создать архив</string>
+    <string name="wizard_btn_import_photo_folder">📁 Подключить существующую папку с фото на диске</string>
+    <string name="wizard_folders_found_title">Найденные папки с фото на диске</string>
+    <string name="wizard_folders_scanning">Поиск папок с фото на накопителе…</string>
+    <string name="wizard_btn_connect_folder">Подключить</string>
+    <string name="wizard_btn_back_to_create">← Назад к созданию архива</string>
+    <string name="wizard_btn_proceed_to_archive">Перейти к настройке архива →</string>
+    <string name="wizard_btn_skip">Пропустить настройку диска</string>
+    <string name="otg_mount_dialog_title">Подготовка накопителя</string>
+    <string name="otg_mount_dialog_msg">Ожидание готовности накопителя… Пожалуйста, подождите.</string>
     
     <string name="wizard_trial_active">Поздравляем! Вам доступна пробная версия на %1$d дн.</string>
     <string name="wizard_free_limits">Поздравляем! Вам доступна бесплатная версия на %1$d фото и %2$d видео.</string>
@@ -204,9 +221,6 @@
     <string name="otg_required_msg">Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер</string>
     <string name="connecting_usb_msg">Подключение USB-накопителя...</string>
     <string name="waking_up_drive_msg">Пробуждение диска и считывание архива...</string>
-    <string name="hdd_power_tip_title">Совет по питанию жесткого диска</string>
-    <string name="hdd_power_tip_desc">Для внешних механических жестких дисков (HDD) рекомендуется использовать OTG-разветвитель с дополнительным питанием от зарядки, чтобы диску хватало энергии.</string>
-    <string name="btn_got_it">Понятно</string>
     <string name="step_preparing">Подготовка...</string>
     <string name="step_verifying">Проверка целостности...</string>
     <string name="step_copying">Копирование на накопитель...</string>

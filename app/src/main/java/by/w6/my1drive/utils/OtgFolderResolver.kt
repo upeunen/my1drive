@@ -220,6 +220,37 @@ object OtgFolderResolver {
         }
     }
 
+    fun removeFromGlobalIndex(context: Context, rootUri: Uri, uuid: String) {
+        try {
+            val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return
+            val container = fastFindChild(context, rootDoc, MAIN_CONTAINER_NAME, isDirectoryOnly = true) ?: return
+            val indexFile = fastFindChild(context, container, GLOBAL_INDEX_FILE_NAME) ?: return
+            if (!indexFile.exists()) return
+
+            val jsonString = context.contentResolver.openInputStream(indexFile.uri)?.use { it.bufferedReader().readText() } ?: return
+            val rootObj = try { org.json.JSONObject(jsonString) } catch (_: Exception) { return }
+            val archivesArray = rootObj.optJSONArray("archives") ?: return
+
+            val updatedArray = org.json.JSONArray()
+            for (i in 0 until archivesArray.length()) {
+                val item = archivesArray.optJSONObject(i) ?: continue
+                if (item.optString("uuid") != uuid) {
+                    updatedArray.put(item)
+                }
+            }
+            rootObj.put("version", 1)
+            rootObj.put("archives", updatedArray)
+
+            val jsonContent = rootObj.toString(2)
+            context.contentResolver.openOutputStream(indexFile.uri, "w")?.use { out ->
+                out.bufferedWriter().use { it.write(jsonContent) }
+            }
+            DebugLogBuffer.log("OtgFolderResolver", "Removed archive $uuid from global index")
+        } catch (e: Exception) {
+            DebugLogBuffer.log("OtgFolderResolver", "Failed to remove from global index: ${e.localizedMessage}")
+        }
+    }
+
     /**
      * Generates a clean, human-readable device subfolder name.
      * Uses device_name setting if available, otherwise Build.MODEL or Manufacturer + Model.
@@ -298,13 +329,7 @@ object OtgFolderResolver {
                                     lastConnected = System.currentTimeMillis()
                                 )
                                 val existing = db.archiveDao().getById(uuid)
-                                val finalEntity = if (existing == null) {
-                                    db.archiveDao().insert(entity)
-                                    DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from global index: name=$name, uuid=$uuid, path=$relPath")
-                                    entity
-                                } else {
-                                    existing
-                                }
+                                val finalEntity = existing ?: entity
                                 if (seenUuids.add(uuid)) {
                                     recovered.add(finalEntity)
                                 }
@@ -340,19 +365,7 @@ object OtgFolderResolver {
                             )
                             val existing = db.archiveDao().getById(uuid)
                             updateGlobalIndex(context, rootUri, uuid, name, relativeFolderName)
-                            val finalEntity = if (existing == null) {
-                                db.archiveDao().insert(entity)
-                                DebugLogBuffer.log("OtgFolderResolver", "Recovered archive from My1drive subdir $relativeFolderName: name=$name, uuid=$uuid")
-                                entity
-                            } else {
-                                if (existing.folderName != relativeFolderName) {
-                                    val updated = existing.copy(folderName = relativeFolderName)
-                                    db.archiveDao().insert(updated)
-                                    updated
-                                } else {
-                                    existing
-                                }
-                            }
+                            val finalEntity = existing ?: entity
                             if (seenUuids.add(uuid)) {
                                 recovered.add(finalEntity)
                             }
@@ -380,13 +393,7 @@ object OtgFolderResolver {
                                     )
                                     val existing = db.archiveDao().getById(uuid)
                                     updateGlobalIndex(context, rootUri, uuid, name, "")
-                                    val finalEntity = if (existing == null) {
-                                        db.archiveDao().insert(entity)
-                                        DebugLogBuffer.log("OtgFolderResolver", "Recovered legacy archive from root: name=$name, uuid=$uuid")
-                                        entity
-                                    } else {
-                                        existing
-                                    }
+                                    val finalEntity = existing ?: entity
                                     if (seenUuids.add(uuid)) {
                                         recovered.add(finalEntity)
                                     }

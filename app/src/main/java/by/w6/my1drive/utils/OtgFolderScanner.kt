@@ -326,17 +326,7 @@ object OtgFolderScanner {
                         )
                         val existing = db.archiveDao().getById(uuid)
                         OtgFolderResolver.updateGlobalIndex(context, rootUri, uuid, name, relPath1)
-                        val finalEntity = if (existing == null) {
-                            db.archiveDao().insert(entity)
-                            DebugLogBuffer.log("OtgFolderScanner", "Discovered JSON archive at $relPath1: $name ($uuid)")
-                            entity
-                        } else {
-                            if (existing.folderName != relPath1) {
-                                val updated = existing.copy(folderName = relPath1)
-                                db.archiveDao().insert(updated)
-                                updated
-                            } else existing
-                        }
+                        val finalEntity = existing ?: entity
                         discovered.add(finalEntity)
                         continue // Prune branch: don't scan deeper
                     }
@@ -367,17 +357,7 @@ object OtgFolderScanner {
                                 )
                                 val existing2 = db.archiveDao().getById(uuid2)
                                 OtgFolderResolver.updateGlobalIndex(context, rootUri, uuid2, name2, relPath2)
-                                val finalEntity2 = if (existing2 == null) {
-                                    db.archiveDao().insert(entity2)
-                                    DebugLogBuffer.log("OtgFolderScanner", "Discovered JSON archive at $relPath2: $name2 ($uuid2)")
-                                    entity2
-                                } else {
-                                    if (existing2.folderName != relPath2) {
-                                        val updated2 = existing2.copy(folderName = relPath2)
-                                        db.archiveDao().insert(updated2)
-                                        updated2
-                                    } else existing2
-                                }
+                                val finalEntity2 = existing2 ?: entity2
                                 discovered.add(finalEntity2)
                             }
                         }

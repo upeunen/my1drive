@@ -33,6 +33,12 @@ import by.w6.my1drive.ui.screens.PaywallScreen
 // import by.w6.my1drive.ui.UnreadableOtgDialog
 import by.w6.my1drive.ui.WriteProtectedRootDialog
 
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+
 @Composable
 fun AppDialogCoordinator(
     activeDialog: AppDialog?,
@@ -42,6 +48,51 @@ fun AppDialogCoordinator(
     onSelectDeviceDirectory: () -> Unit,
     onNavigateToTab: (String) -> Unit
 ) {
+    val isWaitingOtgMount by viewModel.isWaitingOtgMount.collectAsStateWithLifecycle()
+    if (isWaitingOtgMount) {
+        Dialog(
+            onDismissRequest = { /* Modal: cannot dismiss while preparing drive */ },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false
+            )
+        ) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Column {
+                        Text(
+                            text = stringResource(id = R.string.otg_mount_dialog_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(id = R.string.otg_mount_dialog_msg),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (activeDialog == null) return
 
     when (activeDialog) {
@@ -49,18 +100,37 @@ fun AppDialogCoordinator(
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val isPhysConnected by viewModel.isPhysConnected.collectAsStateWithLifecycle()
             val hasStoragePermission by viewModel.hasAllFilesAccess.collectAsStateWithLifecycle()
+            val otgUri by viewModel.otgManager.otgDirectoryUri.collectAsStateWithLifecycle()
             by.w6.my1drive.ui.SetupWizardScreen(
                 initialStep = activeDialog.initialStep,
                 uiState = uiState,
                 isPhysConnected = isPhysConnected,
                 hasStoragePermission = hasStoragePermission,
+                otgUri = otgUri,
                 onDismiss = { viewModel.completeSetupWizard() },
+                onSkip = { viewModel.completeSetupWizard() },
                 onStartOtgRegistration = {
-                    viewModel.completeSetupWizard()
                     onSelectOtgDirectory()
                 },
                 onRequestFullAccess = {
                     viewModel.proceedWithManageStorageRequest(null, keepActiveDialog = true)
+                },
+                onScanArchives = { uri -> viewModel.findArchivesOnDrive(uri) },
+                onSelectExistingArchive = { archive, uri ->
+                    viewModel.selectArchive(archive, uri)
+                    viewModel.completeSetupWizard()
+                },
+                onCreateNewArchive = { name, uri ->
+                    viewModel.otgManager.saveOtgArchive(uri, name)
+                    viewModel.completeSetupWizard()
+                },
+                onScanMediaFolders = { onFound ->
+                    viewModel.scanForMediaFolders(maxDepth = 2, onResult = onFound)
+                },
+                onAddDiscoveredFolder = { folder ->
+                    viewModel.addDiscoveredFolderAsArchive(folder) {
+                        viewModel.completeSetupWizard()
+                    }
                 },
                 onFinish = { viewModel.completeSetupWizard() }
             )

@@ -192,6 +192,23 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="wizard_step_settings_title">1. Media files access</string>
     <string name="wizard_step_otg_title">2. Removable drive access (SAF)</string>
     <string name="wizard_access_granted">Access granted</string>
+    <string name="wizard_step_archive_title">3. Archive Setup</string>
+    <string name="wizard_archive_scanning">Scanning drive for existing archives…</string>
+    <string name="wizard_archive_found_title">Archives found on drive</string>
+    <string name="wizard_archive_not_found_title">No My1Drive archives found on drive</string>
+    <string name="wizard_archive_create_title">Create new archive</string>
+    <string name="wizard_archive_create_desc">Name this archive (e.g. Black flash drive, External SSD) so you can easily identify it.</string>
+    <string name="wizard_archive_name_placeholder">e.g. Black Flash Drive</string>
+    <string name="wizard_btn_create_archive">Create archive</string>
+    <string name="wizard_btn_import_photo_folder">📁 Connect existing photo folder on drive</string>
+    <string name="wizard_folders_found_title">Photo folders found on drive</string>
+    <string name="wizard_folders_scanning">Scanning drive for photo folders…</string>
+    <string name="wizard_btn_connect_folder">Connect</string>
+    <string name="wizard_btn_back_to_create">Back to creating new archive</string>
+    <string name="wizard_btn_proceed_to_archive">Go to archive setup →</string>
+    <string name="wizard_btn_skip">Skip drive setup</string>
+    <string name="otg_mount_dialog_title">Preparing Drive</string>
+    <string name="otg_mount_dialog_msg">Waiting for removable drive to mount… Please wait.</string>
     
     <string name="wizard_trial_active">Congratulations! You have a trial version available for %1$d days.</string>
     <string name="wizard_free_limits">Congratulations! You have a free version available for %1$d photos and %2$d videos.</string>
@@ -204,9 +221,6 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="otg_required_msg">An external drive is required to work. Please connect it to the charging port via an OTG adapter.</string>
     <string name="connecting_usb_msg">Connecting USB drive...</string>
     <string name="waking_up_drive_msg">Waking up drive and reading archive...</string>
-    <string name="hdd_power_tip_title">Power Recommendation for HDD</string>
-    <string name="hdd_power_tip_desc">For mechanical external hard drives (HDD), it is recommended to use an OTG adapter with external power to prevent disconnections due to high power draw.</string>
-    <string name="btn_got_it">Got it</string>
     <string name="step_preparing">Preparing...</string>
     <string name="step_verifying">Verifying integrity...</string>
     <string name="step_copying">Transferring to drive...</string>

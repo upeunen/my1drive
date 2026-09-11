@@ -305,19 +305,21 @@ class MainActivity : AppCompatActivity() {
         if (isPhysConnected) {
             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root null but phys connected, waiting for mount...")
             lifecycleScope.launch {
-                val progressToast = Toast.makeText(this@MainActivity, getString(R.string.main_toast_waiting_mount), Toast.LENGTH_SHORT)
-                progressToast.show()
+                viewModel.setWaitingOtgMount(true)
                 var resolvedRoot: Uri? = null
                 val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < 6000L) { // wait up to 6 seconds
-                    delay(400)
-                    resolvedRoot = otgStorageRootUri(this@MainActivity)
-                    if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) {
-                        by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root resolved after delay: $resolvedRoot")
-                        break
+                try {
+                    while (System.currentTimeMillis() - startTime < 8000L) { // wait up to 8 seconds
+                        delay(400)
+                        resolvedRoot = otgStorageRootUri(this@MainActivity)
+                        if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) {
+                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root resolved after delay: $resolvedRoot")
+                            break
+                        }
                     }
+                } finally {
+                    viewModel.setWaitingOtgMount(false)
                 }
-                progressToast.cancel()
                 if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) {
                     try {
                         otgFolderLauncher.launch(resolvedRoot)

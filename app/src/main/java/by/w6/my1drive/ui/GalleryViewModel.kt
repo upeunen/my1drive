@@ -126,6 +126,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private val _isWaitingOtgMount = MutableStateFlow(false)
+    val isWaitingOtgMount: StateFlow<Boolean> = _isWaitingOtgMount.asStateFlow()
+
+    fun setWaitingOtgMount(waiting: Boolean) {
+        _isWaitingOtgMount.value = waiting
+    }
+
     fun showCreateArchiveGuideDialog(uri: Uri) { _activeDialog.value = AppDialog.CreateArchiveGuide(uri) }
     
     fun showPaywall(missingPhotos: Int = 0, missingVideos: Int = 0) { _activeDialog.value = AppDialog.Paywall(missingPhotos, missingVideos) }
@@ -213,20 +220,44 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else if (_activeDialog.value is AppDialog.UnreadableOtg) _activeDialog.value = null },
             onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
             onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else if (_activeDialog.value is AppDialog.LocalFolder) _activeDialog.value = null },
-            onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null },
-            onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null },
-            onShowSelectArchiveDialog = { archives, uri -> _activeDialog.value = AppDialog.SelectArchive(archives, uri) },
+            onShowNamingDialog = { v -> 
+                if (isSetupWizardCompleted()) {
+                    if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null
+                }
+            },
+            onShowCreateArchiveGuideDialog = { v -> 
+                if (isSetupWizardCompleted()) {
+                    if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null
+                }
+            },
+            onShowSelectArchiveDialog = { archives, uri -> 
+                if (isSetupWizardCompleted()) {
+                    _activeDialog.value = AppDialog.SelectArchive(archives, uri) 
+                }
+            },
             onRequestSelectOtgFolder = { triggerSelectOtgFolder() },
             onArchiveActivated = {
                 if (!isSetupWizardCompleted()) {
                     if (!hasAllFilesAccess()) {
-                        _activeDialog.value = AppDialog.SetupWizard(2)
-                    } else {
+                        _activeDialog.value = AppDialog.SetupWizard(1)
+                    } else if (_activeDialog.value !is AppDialog.SetupWizard) {
                         completeSetupWizard()
                     }
                 }
             }
         )
+    }
+
+    suspend fun findArchivesOnDrive(uri: Uri): List<by.w6.my1drive.data.local.ArchiveEntity> = withContext(Dispatchers.IO) {
+        val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(getApplication(), uri)
+        val volumeId = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
+        val allDb = db.archiveDao().getAllSync()
+        val dbArchives = if (volumeId != null) {
+            allDb.filter { it.uuid == volumeId || it.folderName.isNotEmpty() }
+        } else allDb
+        (allRecovered + dbArchives)
+            .distinctBy { it.uuid }
+            .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
     }
 
     fun selectArchive(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
@@ -694,6 +725,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val wasActive = (uuid == otgManager.activeArchiveUuid.value)
             db.archiveDao().delete(uuid)
             db.mediaDao().deleteByArchiveUuid(uuid)
+
+            otgManager.markArchiveUnlinked(uuid)
+
+            otgManager.otgDirectoryUri.value?.let { rootUri ->
+                by.w6.my1drive.utils.OtgFolderResolver.removeFromGlobalIndex(getApplication(), rootUri, uuid)
+            }
 
             if (archiveFilterUuid.value == uuid) {
                 setArchiveFilterUuid(null)

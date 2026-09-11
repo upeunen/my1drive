@@ -506,9 +506,6 @@ fun GalleryScreenContent(
                     physicalArchiveSize = physicalArchiveSize,
                     isArchiving = archiveState.isArchiving
                 )
-                if (isOtgConnected) {
-                    by.w6.my1drive.ui.components.OtgPowerTipBanner()
-                }
             }
 
             // Progress panel for archiving, restoring, and thumbnail syncing

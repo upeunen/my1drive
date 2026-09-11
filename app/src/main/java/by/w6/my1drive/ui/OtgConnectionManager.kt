@@ -116,8 +116,27 @@ class OtgConnectionManager(
     }
 
     fun setActiveArchiveUuid(uuid: String) {
+        unmarkArchiveUnlinked(uuid)
         _activeArchiveUuid.value = uuid
         prefs.edit().putString("active_archive_uuid", uuid).apply()
+    }
+
+    fun markArchiveUnlinked(uuid: String) {
+        val current = prefs.getStringSet("unlinked_archive_uuids", emptySet())?.toMutableSet() ?: mutableSetOf()
+        current.add(uuid)
+        prefs.edit().putStringSet("unlinked_archive_uuids", current).apply()
+    }
+
+    fun unmarkArchiveUnlinked(uuid: String) {
+        val current = prefs.getStringSet("unlinked_archive_uuids", emptySet())?.toMutableSet() ?: return
+        if (current.remove(uuid)) {
+            prefs.edit().putStringSet("unlinked_archive_uuids", current).apply()
+        }
+    }
+
+    fun isArchiveUnlinked(uuid: String): Boolean {
+        val set = prefs.getStringSet("unlinked_archive_uuids", emptySet()) ?: emptySet()
+        return set.contains(uuid)
     }
 
     // ─── Internal state ───
@@ -283,6 +302,12 @@ class OtgConnectionManager(
 
             val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
             val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
+
+            val isWizardCompleted = prefs.getBoolean("setup_wizard_completed", false)
+            if (!isWizardCompleted) {
+                // When in Setup Wizard, Step 3 of the wizard handles archive discovery, selection and creation natively
+                return@launch
+            }
 
             if (isManualSearch) {
                 if (combinedArchives.size > 1) {
@@ -700,45 +725,32 @@ class OtgConnectionManager(
                 docFile != null && docFile.exists() && docFile.canRead()
             } catch (_: Exception) { false }
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
-            if (isReadable) {
                 val activeUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
-                val knownArchive = if (!activeUuid.isNullOrEmpty()) {
+                val knownArchive = if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
                     db.archiveDao().getById(activeUuid)
                 } else {
                     val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
-                    if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
+                    if (volumeUuid != null && !isArchiveUnlinked(volumeUuid)) db.archiveDao().getById(volumeUuid) else null
                 }
                 val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
                 
-                if (knownArchive != null && dir != null && dir.exists()) {
+                if (knownArchive != null && !isArchiveUnlinked(knownArchive.uuid) && dir != null && dir.exists()) {
                     connectedUri = uri
                     connectedUuid = knownArchive.uuid
                     connectedName = knownArchive.name
                     break
                 }
                 
-                // If not in Room (e.g. app reinstalled), try JSON recovery across all archives
-                val allOnDrive = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, uri)
-                val matchingRecovered = if (!activeUuid.isNullOrEmpty()) {
-                    allOnDrive.find { it.uuid == activeUuid }
-                } else null
-
-                if (matchingRecovered != null) {
-                    connectedUri = uri
-                    connectedUuid = matchingRecovered.uuid
-                    connectedName = matchingRecovered.name
-                    break
-                } else if (allOnDrive.size == 1) {
-                    val single = allOnDrive.first()
-                    connectedUri = uri
-                    connectedUuid = single.uuid
-                    connectedName = single.name
-                    break
-                } else if (allOnDrive.size > 1) {
-                    // Не перетираем сохраненный архив случайным: открываем выбор архива
-                    _otgDirectoryUri.value = uri
-                    onShowSelectArchiveDialog(allOnDrive, uri)
-                    return DriveStatus.KNOWN_DRIVE_CONNECTED
+                // If not in Room (e.g. app reinstalled), only match if activeUuid is specifically saved and not unlinked
+                if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
+                    val allOnDrive = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, uri)
+                    val matchingRecovered = allOnDrive.find { it.uuid == activeUuid && !isArchiveUnlinked(it.uuid) }
+                    if (matchingRecovered != null) {
+                        connectedUri = uri
+                        connectedUuid = matchingRecovered.uuid
+                        connectedName = matchingRecovered.name
+                        break
+                    }
                 }
             }
         }
@@ -833,23 +845,21 @@ class OtgConnectionManager(
             val docFile = DocumentFile.fromTreeUri(application, savedUri)
             if (docFile != null && docFile.exists() && docFile.canRead()) {
                 val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
-                val fallbackUuid = savedActiveUuid ?: by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri) ?: savedUri.toString().hashCode().toString()
-                var knownArchive = db.archiveDao().getById(fallbackUuid)
+                val fallbackUuid = savedActiveUuid ?: by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri)
+                var knownArchive = if (fallbackUuid != null && !isArchiveUnlinked(fallbackUuid)) {
+                    db.archiveDao().getById(fallbackUuid)
+                } else null
                 var uuid = fallbackUuid
                 
-                if (knownArchive == null) {
+                if (knownArchive == null && !savedActiveUuid.isNullOrEmpty() && !isArchiveUnlinked(savedActiveUuid)) {
                     val uriStr = savedUri.toString()
                     if (!scannedUris.contains(uriStr)) {
                         scannedUris.add(uriStr)
                         val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri)
-                        val matching = allRecovered.find { it.uuid == fallbackUuid }
-                        val recovered = matching ?: if (allRecovered.size == 1) allRecovered.first() else null
-                        if (recovered != null) {
-                            knownArchive = recovered
-                            uuid = recovered.uuid
-                        } else if (allRecovered.size > 1) {
-                            onShowSelectArchiveDialog(allRecovered, savedUri)
-                            return DriveStatus.KNOWN_DRIVE_CONNECTED
+                        val matching = allRecovered.find { it.uuid == savedActiveUuid && !isArchiveUnlinked(it.uuid) }
+                        if (matching != null) {
+                            knownArchive = matching
+                            uuid = matching.uuid
                         }
                     }
                 }

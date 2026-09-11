@@ -192,6 +192,23 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="wizard_step_settings_title">1. Acceso a archivos multimedia</string>
     <string name="wizard_step_otg_title">2. Acceso a disco extraíble (SAF)</string>
     <string name="wizard_access_granted">Acceso concedido</string>
+    <string name="wizard_step_archive_title">3. Configuración del archivo</string>
+    <string name="wizard_archive_scanning">Buscando archivos existentes en la unidad…</string>
+    <string name="wizard_archive_found_title">Archivos encontrados en la unidad</string>
+    <string name="wizard_archive_not_found_title">No se encontraron archivos My1Drive en la unidad</string>
+    <string name="wizard_archive_create_title">Crear nuevo archivo</string>
+    <string name="wizard_archive_create_desc">Nombre este archivo (ej: Memoria negra, Disco azul) para identificarlo fácilmente.</string>
+    <string name="wizard_archive_name_placeholder">ej: Memoria negra</string>
+    <string name="wizard_btn_create_archive">Crear archivo</string>
+    <string name="wizard_btn_import_photo_folder">📁 Conectar carpeta de fotos existente en la unidad</string>
+    <string name="wizard_folders_found_title">Carpetas de fotos encontradas en la unidad</string>
+    <string name="wizard_folders_scanning">Buscando carpetas de fotos en la unidad…</string>
+    <string name="wizard_btn_connect_folder">Conectar</string>
+    <string name="wizard_btn_back_to_create">Volver a crear nuevo archivo</string>
+    <string name="wizard_btn_proceed_to_archive">Ir a configuración del archivo →</string>
+    <string name="wizard_btn_skip">Omitir configuración de la unidad</string>
+    <string name="otg_mount_dialog_title">Preparando la unidad</string>
+    <string name="otg_mount_dialog_msg">Esperando a que se monte la unidad… Por favor, espere.</string>
     
     <string name="wizard_trial_active">¡Felicidades! Tiene una versión de prueba disponible por %1$d días.</string>
     <string name="wizard_free_limits">¡Felicidades! Tiene una versión gratuita disponible para %1$d fotos y %2$d vídeos.</string>
@@ -204,9 +221,6 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="otg_required_msg">Se requiere una unidad externa para funcionar. Por favor conéctela al puerto de carga mediante un adaptador OTG.</string>
     <string name="connecting_usb_msg">Conectando unidad USB...</string>
     <string name="waking_up_drive_msg">Reactivando unidad y leyendo archivo...</string>
-    <string name="hdd_power_tip_title">Consejo de alimentación para HDD</string>
-    <string name="hdd_power_tip_desc">Para discos duros mecánicos externos (HDD), se recomienda utilizar un adaptador OTG con alimentación externa para evitar desconexiones por falta de energía.</string>
-    <string name="btn_got_it">Entendido</string>
     <string name="step_preparing">Preparando...</string>
     <string name="step_verifying">Verificando integridad...</string>
     <string name="step_copying">Transfiriendo a la unidad...</string>
