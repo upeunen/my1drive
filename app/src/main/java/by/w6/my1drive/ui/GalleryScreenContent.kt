@@ -771,9 +771,13 @@ fun GalleryScreenContent(
         }
 
         if (showOtgGuideDialog) {
+            val isPhysConnected by viewModel.isPhysConnected.collectAsStateWithLifecycle()
+            val hasStoragePermission = viewModel.hasAllFilesAccess()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = 1,
                 uiState = uiState,
+                isPhysConnected = isPhysConnected,
+                hasStoragePermission = hasStoragePermission,
                 onDismiss = { onSetShowOtgGuide(false) },
                 onStartOtgRegistration = {
                     onSetShowOtgGuide(false)

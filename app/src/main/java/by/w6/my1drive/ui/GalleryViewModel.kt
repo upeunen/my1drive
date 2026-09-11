@@ -92,7 +92,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _activeDialog = kotlinx.coroutines.flow.MutableStateFlow<AppDialog?>(
-        if (!prefs.getBoolean(PREF_HAS_SEEN_USB_TOOLTIP, false)) AppDialog.UsbTooltip else null
+        if (!prefs.getBoolean("setup_wizard_completed", false)) {
+            AppDialog.SetupWizard(0)
+        } else if (!prefs.getBoolean(PREF_HAS_SEEN_USB_TOOLTIP, false)) {
+            AppDialog.UsbTooltip
+        } else null
     )
     val activeDialog = _activeDialog.asStateFlow()
 
@@ -172,6 +176,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _showDiscoveredArchivesSheet.value = false
     }
 
+    val isPhysConnected: StateFlow<Boolean>
+        get() = otgManager.physicalConnected
+
+    fun isSetupWizardCompleted(): Boolean = prefs.getBoolean("setup_wizard_completed", false)
+
+    fun completeSetupWizard() {
+        prefs.edit().putBoolean("setup_wizard_completed", true).apply()
+        if (_activeDialog.value is AppDialog.SetupWizard) {
+            _activeDialog.value = null
+        }
+    }
+
+    fun showSetupWizard(step: Int = 0) {
+        _activeDialog.value = AppDialog.SetupWizard(step)
+    }
+
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
             application = application,
@@ -183,7 +203,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
-            onShowFirstLaunchDialog = { v -> if (v) _activeDialog.value = AppDialog.SetupWizard(0) else if (_activeDialog.value is AppDialog.SetupWizard) _activeDialog.value = null },
+            onShowFirstLaunchDialog = { v -> 
+                if (!isSetupWizardCompleted()) {
+                    if (v) _activeDialog.value = AppDialog.SetupWizard(0) 
+                    else if (_activeDialog.value is AppDialog.SetupWizard) _activeDialog.value = null 
+                }
+            },
             onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else if (_activeDialog.value is AppDialog.UnknownDrive) _activeDialog.value = null },
             onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else if (_activeDialog.value is AppDialog.UnreadableOtg) _activeDialog.value = null },
             onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
@@ -191,7 +216,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null },
             onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null },
             onShowSelectArchiveDialog = { archives, uri -> _activeDialog.value = AppDialog.SelectArchive(archives, uri) },
-            onRequestSelectOtgFolder = { triggerSelectOtgFolder() }
+            onRequestSelectOtgFolder = { triggerSelectOtgFolder() },
+            onArchiveActivated = {
+                if (!isSetupWizardCompleted()) {
+                    if (!hasAllFilesAccess()) {
+                        _activeDialog.value = AppDialog.SetupWizard(2)
+                    } else {
+                        completeSetupWizard()
+                    }
+                }
+            }
         )
     }
 
@@ -741,9 +775,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)
-        if (_activeDialog.value is AppDialog.SetupWizard) {
-            _activeDialog.value = null
-        }
     }
 
     fun ejectOtg() {

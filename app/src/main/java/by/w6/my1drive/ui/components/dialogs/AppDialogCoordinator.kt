@@ -47,18 +47,22 @@ fun AppDialogCoordinator(
     when (activeDialog) {
         is AppDialog.SetupWizard -> {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val isPhysConnected by viewModel.isPhysConnected.collectAsStateWithLifecycle()
+            val hasStoragePermission = viewModel.hasAllFilesAccess()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = activeDialog.initialStep,
                 uiState = uiState,
-                onDismiss = { viewModel.dismissDialog() },
+                isPhysConnected = isPhysConnected,
+                hasStoragePermission = hasStoragePermission,
+                onDismiss = { viewModel.completeSetupWizard() },
                 onStartOtgRegistration = {
                     onSelectOtgDirectory()
                 },
                 onRequestFullAccess = {
-                    viewModel.dismissDialog()
+                    viewModel.completeSetupWizard()
                     viewModel.proceedWithManageStorageRequest(null)
                 },
-                onFinish = { viewModel.dismissDialog() }
+                onFinish = { viewModel.completeSetupWizard() }
             )
         }
         is AppDialog.FirstLaunch -> {}
@@ -101,9 +105,13 @@ fun AppDialogCoordinator(
         }
         is AppDialog.LocalFolder -> {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val isPhysConnected by viewModel.isPhysConnected.collectAsStateWithLifecycle()
+            val hasStoragePermission = viewModel.hasAllFilesAccess()
             by.w6.my1drive.ui.SetupWizardDialog(
                 initialStep = 2,
                 uiState = uiState,
+                isPhysConnected = isPhysConnected,
+                hasStoragePermission = hasStoragePermission,
                 onDismiss = { viewModel.dismissDialog() },
                 onStartOtgRegistration = {
                     onSelectOtgDirectory()

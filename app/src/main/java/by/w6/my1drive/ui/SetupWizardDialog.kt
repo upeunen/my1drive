@@ -61,6 +61,8 @@ import kotlinx.coroutines.launch
 fun SetupWizardDialog(
     initialStep: Int = 0,
     uiState: GalleryUiState,
+    isPhysConnected: Boolean = false,
+    hasStoragePermission: Boolean = false,
     onDismiss: () -> Unit,
     onStartOtgRegistration: () -> Unit,
     onRequestFullAccess: () -> Unit,
@@ -69,8 +71,8 @@ fun SetupWizardDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    val needsStoragePermission = false
-    val pageCount = 2
+    val needsStoragePermission = !hasStoragePermission
+    val pageCount = if (needsStoragePermission) 3 else 2
     val pagerState = rememberPagerState(initialPage = initialStep.coerceIn(0, pageCount - 1), pageCount = { pageCount })
 
     Dialog(
@@ -147,9 +149,10 @@ fun SetupWizardDialog(
                         }
                     }
                     1 -> {
-                        Column {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Button(
                                 onClick = onStartOtgRegistration,
+                                enabled = isPhysConnected,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -158,6 +161,16 @@ fun SetupWizardDialog(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                            if (!isPhysConnected) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = stringResource(R.string.welcome_msg_drive_not_detected),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
@@ -181,19 +194,31 @@ fun SetupWizardDialog(
                         }
                     }
                     2 -> {
-                        Button(
-                            onClick = onRequestFullAccess,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.local_folder_dialog_full_access),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Button(
+                                onClick = onRequestFullAccess,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.local_folder_dialog_full_access),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            TextButton(
+                                onClick = onFinish,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.local_folder_dialog_dismiss),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
                 }

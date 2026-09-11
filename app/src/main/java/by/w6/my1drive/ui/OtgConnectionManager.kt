@@ -47,7 +47,8 @@ class OtgConnectionManager(
     private val onShowNamingDialog: (Uri?) -> Unit = {},
     private val onShowCreateArchiveGuideDialog: (Uri) -> Unit = {},
     private val onShowSelectArchiveDialog: (List<by.w6.my1drive.data.local.ArchiveEntity>, Uri) -> Unit = { _, _ -> },
-    private val onRequestSelectOtgFolder: () -> Unit = {}
+    private val onRequestSelectOtgFolder: () -> Unit = {},
+    private val onArchiveActivated: () -> Unit = {}
 ) {
     private var lastFirstLaunchState: Boolean? = null
     private fun invokeShowFirstLaunchDialog(show: Boolean) {
@@ -388,6 +389,9 @@ class OtgConnectionManager(
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
             }
+            withContext(Dispatchers.Main) {
+                onArchiveActivated()
+            }
         }
     }
 
@@ -448,6 +452,9 @@ class OtgConnectionManager(
                 refreshCacheStats()
             }
             _isCheckingConnection.value = false
+            withContext(Dispatchers.Main) {
+                onArchiveActivated()
+            }
         }
     }
 
