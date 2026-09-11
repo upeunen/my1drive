@@ -94,18 +94,28 @@ class MediaRepositoryImpl(
                 archivedEntities.filter { it.archiveUuid == activeUuid }
             }
 
+            val previewDir = File(context.filesDir, "my1drive_previews")
             val archivedItems = filteredEntities.map { entity ->
+                val fallbackFile = File(previewDir, "${entity.id}.my1d")
+                val resolvedThumbPath = if (!entity.thumbnailPath.isNullOrEmpty() && File(entity.thumbnailPath).exists()) {
+                    entity.thumbnailPath
+                } else if (fallbackFile.exists() && fallbackFile.length() > 0) {
+                    // Самоисцеление: превью есть на диске, обновляем путь в БД
+                    mediaDao.updateThumbnailPath(entity.id, fallbackFile.absolutePath, System.currentTimeMillis())
+                    fallbackFile.absolutePath
+                } else null
+
                 var effectiveRatio = if (entity.width > 0 && entity.height > 0) {
                     entity.width.toFloat() / entity.height.toFloat()
                 } else {
                     aspectRatioCache[entity.id] ?: 0f
                 }
 
-                if (effectiveRatio <= 0f && entity.thumbnailPath != null) {
-                    val previewFile = File(entity.thumbnailPath)
+                if (effectiveRatio <= 0f && resolvedThumbPath != null) {
+                    val previewFile = File(resolvedThumbPath)
                     if (previewFile.exists()) {
                         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        BitmapFactory.decodeFile(entity.thumbnailPath, opts)
+                        BitmapFactory.decodeFile(resolvedThumbPath, opts)
                         if (opts.outWidth > 0 && opts.outHeight > 0) {
                             effectiveRatio = opts.outWidth.toFloat() / opts.outHeight.toFloat()
                             aspectRatioCache[entity.id] = effectiveRatio
@@ -116,7 +126,7 @@ class MediaRepositoryImpl(
                 MediaItem(
                     id = "archived_${entity.id}",
                     displayName = entity.displayName,
-                    uri = entity.thumbnailPath?.let { Uri.fromFile(File(it)) } ?: Uri.EMPTY,
+                    uri = resolvedThumbPath?.let { Uri.fromFile(File(it)) } ?: Uri.EMPTY,
                     mimeType = entity.mimeType,
                     size = entity.size,
                     dateModified = entity.dateModified,
@@ -124,7 +134,7 @@ class MediaRepositoryImpl(
                     duration = entity.duration,
                     hash = entity.id,
                     otgUri = entity.otgUri,
-                    thumbnailPath = entity.thumbnailPath,
+                    thumbnailPath = resolvedThumbPath,
                     originalRelativePath = entity.originalRelativePath,
                     dateArchived = entity.dateArchived,
                     dateAdded = null,

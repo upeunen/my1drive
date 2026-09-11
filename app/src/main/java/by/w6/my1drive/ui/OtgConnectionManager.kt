@@ -96,8 +96,7 @@ class OtgConnectionManager(
 
     private val _isCheckingConnection = MutableStateFlow(false)
     val isCheckingConnection: StateFlow<Boolean> = _isCheckingConnection.asStateFlow()
-    private val _showEjectSuccessDialog = MutableStateFlow(false)
-    val showEjectSuccessDialog: StateFlow<Boolean> = _showEjectSuccessDialog.asStateFlow()
+
 
     /** true — идёт процесс безопасного извлечения (fsync, flush). UI показывает спиннер. */
     private val _isEjecting = MutableStateFlow(false)
@@ -173,7 +172,6 @@ class OtgConnectionManager(
                     lastUnreadableOtgState = null
                     if (isEjectedButStillPluggedIn) {
                         isEjectedButStillPluggedIn = false
-                        _showEjectSuccessDialog.value = false
                     }
                 }
 
@@ -478,13 +476,15 @@ class OtgConnectionManager(
                 _status.value = DriveStatus.KNOWN_DRIVE_DISCONNECTED
                 _archiveSize.value = 0L
                 _isEjecting.value = false
-                _showEjectSuccessDialog.value = true
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        application,
+                        application.getString(by.w6.my1drive.R.string.eject_success_toast),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
-    }
-
-    fun dismissEjectSuccessDialog() {
-        _showEjectSuccessDialog.value = false
     }
 
     fun retryConnection() {
@@ -507,7 +507,6 @@ class OtgConnectionManager(
                 lastUnreadableOtgState = null
                 if (isEjectedButStillPluggedIn) {
                     isEjectedButStillPluggedIn = false
-                    _showEjectSuccessDialog.value = false
                 }
             }
 
@@ -687,13 +686,28 @@ class OtgConnectionManager(
                     break
                 }
                 
-                // If not in Room (e.g. app reinstalled), try JSON recovery (highly robust but slower)
-                val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(application, uri)
-                if (recovered != null) {
+                // If not in Room (e.g. app reinstalled), try JSON recovery across all archives
+                val allOnDrive = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, uri)
+                val matchingRecovered = if (!activeUuid.isNullOrEmpty()) {
+                    allOnDrive.find { it.uuid == activeUuid }
+                } else null
+
+                if (matchingRecovered != null) {
                     connectedUri = uri
-                    connectedUuid = recovered.uuid
-                    connectedName = recovered.name
+                    connectedUuid = matchingRecovered.uuid
+                    connectedName = matchingRecovered.name
                     break
+                } else if (allOnDrive.size == 1) {
+                    val single = allOnDrive.first()
+                    connectedUri = uri
+                    connectedUuid = single.uuid
+                    connectedName = single.name
+                    break
+                } else if (allOnDrive.size > 1) {
+                    // Не перетираем сохраненный архив случайным: открываем выбор архива
+                    _otgDirectoryUri.value = uri
+                    onShowSelectArchiveDialog(allOnDrive, uri)
+                    return DriveStatus.KNOWN_DRIVE_CONNECTED
                 }
             }
         }
@@ -787,7 +801,8 @@ class OtgConnectionManager(
         return try {
             val docFile = DocumentFile.fromTreeUri(application, savedUri)
             if (docFile != null && docFile.exists() && docFile.canRead()) {
-                val fallbackUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri) ?: savedUri.toString().hashCode().toString()
+                val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
+                val fallbackUuid = savedActiveUuid ?: by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri) ?: savedUri.toString().hashCode().toString()
                 var knownArchive = db.archiveDao().getById(fallbackUuid)
                 var uuid = fallbackUuid
                 
@@ -795,10 +810,15 @@ class OtgConnectionManager(
                     val uriStr = savedUri.toString()
                     if (!scannedUris.contains(uriStr)) {
                         scannedUris.add(uriStr)
-                        val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(application, savedUri)
+                        val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri)
+                        val matching = allRecovered.find { it.uuid == fallbackUuid }
+                        val recovered = matching ?: if (allRecovered.size == 1) allRecovered.first() else null
                         if (recovered != null) {
                             knownArchive = recovered
                             uuid = recovered.uuid
+                        } else if (allRecovered.size > 1) {
+                            onShowSelectArchiveDialog(allRecovered, savedUri)
+                            return DriveStatus.KNOWN_DRIVE_CONNECTED
                         }
                     }
                 }

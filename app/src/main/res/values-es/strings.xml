@@ -56,7 +56,7 @@
     <string name="grant_permission_btn">Conceder Permisos</string>
     <string name="otg_folder_selected_toast">¡Carpeta OTG seleccionada con éxito!</string>
     <string name="otg_folder_error_toast">Error al acceder a la carpeta: %1$s</string>
-    <string name="eject_success_toast">Unidad OTG expulsada con éxito. Ahora puede desconectar físicamente el dispositivo.</string>
+    <string name="eject_success_toast">Todos los procesos detenidos, puede desconectar</string>
     
     
     <string name="progress_preparing">Preparando…</string>
@@ -335,8 +335,7 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="action_cancel">Cancelar</string>
     <string name="ejecting_in_progress_title">Expulsión segura…</string>
     <string name="ejecting_in_progress_desc">Deteniendo operaciones en segundo plano y guardando datos…</string>
-    <string name="dialog_eject_success_title">Unidad lista para desconectar</string>
-    <string name="action_open_system_storage">Detener en Android</string>
+
     <string name="free_version_limits">Versión gratuita. Disponible: %1$d/%2$d fotos, %3$d/%4$d vídeos</string>
     <string name="trial_active_days">Prueba gratuita: %1$d días restantes</string>
     <string name="topbar_chip_trial">⏳ %1$d d.</string>

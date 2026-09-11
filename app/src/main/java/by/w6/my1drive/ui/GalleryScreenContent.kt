@@ -225,7 +225,6 @@ fun GalleryScreenContent(
     val isLimitActive = viewModel.isLimitActive
     val hasAllFilesAccess by viewModel.hasAllFilesAccess.collectAsState()
     val isEjecting by viewModel.isEjecting.collectAsState()
-    val showEjectSuccessDialog by viewModel.showEjectSuccessDialog.collectAsState()
 
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
 
@@ -320,35 +319,7 @@ fun GalleryScreenContent(
         )
     }
 
-    if (showEjectSuccessDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissEjectSuccessDialog() },
-            title = {
-                Text(
-                    text = stringResource(R.string.dialog_eject_success_title),
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(stringResource(R.string.eject_success_toast))
-            },
-            confirmButton = {
-                Button(onClick = { viewModel.dismissEjectSuccessDialog() }) {
-                    Text(stringResource(R.string.dialog_got_it), maxLines = 1, softWrap = false)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    viewModel.dismissEjectSuccessDialog()
-                    try {
-                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS))
-                    } catch (_: Exception) {}
-                }) {
-                    Text(stringResource(R.string.action_open_system_storage), maxLines = 1, softWrap = false)
-                }
-            }
-        )
-    }
+
 
     if (showChangeFolderConfirmDialog) {
         AlertDialog(

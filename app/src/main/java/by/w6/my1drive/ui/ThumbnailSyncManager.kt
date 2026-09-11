@@ -126,7 +126,7 @@ class ThumbnailSyncManager(
                     activeUuid = activeUuid,
                     isCancelled = { job?.isActive == false || !isOtgConnectedFlow.value || syncHelper.archiveState.value.isArchiving },
                     isPaused = { isScrollingFlow.value },
-                    throttleMs = 350L,
+                    throttleMs = 150L,
                     batchSize = 25,
                     onProgress = { _, _ -> }
                 )

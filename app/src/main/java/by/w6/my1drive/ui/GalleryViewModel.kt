@@ -324,7 +324,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val syncState: StateFlow<by.w6.my1drive.utils.UiText?> = syncHelper.syncState
     val syncProgressState: StateFlow<SyncProgressState> = syncHelper.syncProgressState
 
-    val showEjectSuccessDialog: StateFlow<Boolean> = otgManager.showEjectSuccessDialog
     val isEjecting: StateFlow<Boolean> = otgManager.isEjecting
 
     /**
@@ -758,10 +757,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             thumbnailManager.stopAllThumbnailSync()
             archiveInteractor.stopAllOperations()
         }
-    }
-
-    fun dismissEjectSuccessDialog() {
-        otgManager.dismissEjectSuccessDialog()
     }
 
     fun searchArchivesOnCurrentDrive() {

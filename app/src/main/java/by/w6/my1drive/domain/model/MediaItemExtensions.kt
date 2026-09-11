@@ -18,12 +18,6 @@ fun MediaItem.getOriginalFullPath(): String {
  */
 fun MediaItem.getThumbnailModel(isOtgConnected: Boolean): Any {
     if (status == MediaStatus.ARCHIVED_OTG && hash != null) {
-        if (!isOtgConnected && hasCachedPreview && thumbnailPath != null) {
-            val cacheFile = File(thumbnailPath!!)
-            if (cacheFile.exists()) {
-                return cacheFile
-            }
-        }
         return OtgThumbnailRequest(
             otgUri = otgUri ?: "",
             hash = hash,

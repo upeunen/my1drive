@@ -75,20 +75,18 @@ class ArchiveSyncHelper private constructor(
             val name: String,
             val length: Long,
             val mimeType: String,
-            val lastModified: Long
+            val lastModified: Long,
+            val relativePath: String = ""
         )
         
         fun fastListFiles(context: android.content.Context, dirUri: android.net.Uri, isCancelled: () -> Boolean = { false }): List<FastDocumentFile> {
             val results = mutableListOf<FastDocumentFile>()
             try {
-                val docId = try {
+                val rootDocId = try {
                     android.provider.DocumentsContract.getDocumentId(dirUri)
                 } catch (e: Exception) {
                     android.provider.DocumentsContract.getTreeDocumentId(dirUri)
                 }
-                val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
-                    dirUri, docId
-                )
                 val projection = arrayOf(
                     android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                     android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -96,29 +94,60 @@ class ArchiveSyncHelper private constructor(
                     android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE,
                     android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED
                 )
-                context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
-                    val idIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                    val nameIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                    val sizeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
-                    val mimeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
-                    val modIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
 
-                    while (cursor.moveToNext()) {
-                        if (isCancelled()) break
-                        val docId = cursor.getString(idIdx)
-                        val mime = cursor.getString(mimeIdx) ?: ""
-                        if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) continue
-                        val name = cursor.getString(nameIdx) ?: continue
-                        
-                        if (name.startsWith(".") || name.endsWith(".tmp") ||
-                            name == ".my1drive_uuid" || name == ".my1drive_uuid.txt" || 
-                            name == ".my1drive_db.json" || name == "my1drive_db.json") continue
-                        
-                        val docUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(dirUri, docId)
-                        val size = cursor.getLong(sizeIdx)
-                        val modified = cursor.getLong(modIdx)
-                        
-                        results.add(FastDocumentFile(docUri, name, size, mime, modified))
+                val queue = java.util.ArrayDeque<Pair<String, String>>()
+                queue.add(rootDocId to "")
+
+                while (queue.isNotEmpty()) {
+                    if (isCancelled()) break
+                    val (currentDocId, relPrefix) = queue.poll() ?: break
+
+                    val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                        dirUri, currentDocId
+                    )
+
+                    context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                        val idIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                        val nameIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                        val sizeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
+                        val mimeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
+                        val modIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+
+                        while (cursor.moveToNext()) {
+                            if (isCancelled()) break
+                            val docId = cursor.getString(idIdx) ?: continue
+                            val mime = cursor.getString(mimeIdx) ?: ""
+                            val name = cursor.getString(nameIdx) ?: continue
+
+                            if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
+                                // Игнорируем только системные корзины и служебную папку превью My1drive
+                                if (name.equals(".previews", ignoreCase = true) ||
+                                    name.equals("\$RECYCLE.BIN", ignoreCase = true) ||
+                                    name.equals("System Volume Information", ignoreCase = true) ||
+                                    name.equals("LOST.DIR", ignoreCase = true)
+                                ) {
+                                    continue
+                                }
+                                // Папки с .nomedia обязательно сканируем
+                                queue.add(docId to "$relPrefix$name/")
+                                continue
+                            }
+
+                            // Для файлов: не добавляем в медиатеку маркер .nomedia и служебные файлы
+                            if (name.endsWith(".tmp") ||
+                                name.equals(".nomedia", ignoreCase = true) ||
+                                name == ".my1drive_uuid" || name == ".my1drive_uuid.txt" || 
+                                name == ".my1drive_db.json" || name == "my1drive_db.json"
+                            ) {
+                                continue
+                            }
+
+                            val docUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(dirUri, docId)
+                            val size = cursor.getLong(sizeIdx)
+                            val modified = cursor.getLong(modIdx)
+
+                            results.add(FastDocumentFile(docUri, name, size, mime, modified, "$relPrefix$name"))
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -192,32 +221,36 @@ class ArchiveSyncHelper private constructor(
         isCancellationRequested = true
         isSilentSyncing = false
 
-        // 1. Отменяем архивацию и очищаем очередь
-        archiveQueue.clear()
-        val archiveJobToWait = activeArchiveJob
-        archiveJobToWait?.cancel()
+        try {
+            // 1. Отменяем архивацию и очищаем очередь
+            archiveQueue.clear()
+            val archiveJobToWait = activeArchiveJob
+            archiveJobToWait?.cancel()
 
-        // 2. Отменяем синхронизацию
-        val syncJobToWait = activeSyncJob
-        syncJobToWait?.cancel()
+            // 2. Отменяем синхронизацию
+            val syncJobToWait = activeSyncJob
+            syncJobToWait?.cancel()
 
-        // 3. Дожидаемся фактического завершения корутин (до 4 секунд)
-        withTimeoutOrNull(4000L) {
-            archiveJobToWait?.join()
-            syncJobToWait?.join()
+            // 3. Дожидаемся фактического завершения корутин (до 4 секунд)
+            withTimeoutOrNull(4000L) {
+                archiveJobToWait?.join()
+                syncJobToWait?.join()
+            }
+
+            activeArchiveJob = null
+            activeSyncJob = null
+            isArchiveJobRunning = false
+
+            // 4. Сбрасываем стейты
+            _syncProgressState.value = SyncProgressState(isSyncing = false)
+            _copiedItemIds.value = emptySet()
+            _archivingItemIds.value = emptySet()
+            _archiveState.value = ArchiveState(isArchiving = false)
+
+            by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "stopAllOperations: all jobs stopped and joined")
+        } finally {
+            isCancellationRequested = false
         }
-
-        activeArchiveJob = null
-        activeSyncJob = null
-        isArchiveJobRunning = false
-
-        // 4. Сбрасываем стейты
-        _syncProgressState.value = SyncProgressState(isSyncing = false)
-        _copiedItemIds.value = emptySet()
-        _archivingItemIds.value = emptySet()
-        _archiveState.value = ArchiveState(isArchiving = false)
-
-        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "stopAllOperations: all jobs stopped and joined")
     }
 
     /**
@@ -297,7 +330,8 @@ class ArchiveSyncHelper private constructor(
 
                                 if (hash !in knownHashes) {
                                     val mime = file.mimeType
-                                    val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
+                                    val relSubfolder = file.relativePath.substringBeforeLast('/', "")
+                                    val defaultPath = if (relSubfolder.isNotEmpty()) "$relSubfolder/" else if (mime.startsWith("video/")) "Movies/" else "Pictures/"
                                     val newEntry = JsonEntry(
                                         hash = hash,
                                         displayName = name,
@@ -315,6 +349,25 @@ class ArchiveSyncHelper private constructor(
                                 }
                             }
 
+                            // Диск — источник истины: если файл физически удален с диска, удаляем из метаданных
+                            if (physicalFiles.isNotEmpty()) {
+                                val physicalKeys = physicalFiles.map { it.name.lowercase() to it.length }.toSet()
+                                val jsonIter = validJsonEntries.iterator()
+                                var prunedCount = 0
+                                while (jsonIter.hasNext()) {
+                                    val entry = jsonIter.next()
+                                    val key = entry.displayName.lowercase() to entry.size
+                                    if (key !in physicalKeys) {
+                                        jsonIter.remove()
+                                        prunedCount++
+                                        DebugLogBuffer.log(logTag, "Pruning file missing from disk from metadata: ${entry.displayName}")
+                                    }
+                                }
+                                if (prunedCount > 0) {
+                                    jsonChanged = true
+                                    DebugLogBuffer.log(logTag, "Pruned $prunedCount files missing from disk from metadata JSON")
+                                }
+                            }
 
                             if (jsonChanged) {
                                 metadataStore.writeMetadata(uri, validJsonEntries)
@@ -343,6 +396,9 @@ class ArchiveSyncHelper private constructor(
                                 by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, entry.displayName).toString()
                             } else ""
 
+                            val localPreview = previewCache.cacheFileFor(entry.hash)
+                            val resolvedThumb = if (localPreview.exists() && localPreview.length() > 0) localPreview.absolutePath else null
+
                             if (existing == null) {
                                 val key = (entry.displayName.lowercase()) to entry.size
                                 val otgFileUri = physicalUrisMap[key] ?: fallbackUri
@@ -354,7 +410,7 @@ class ArchiveSyncHelper private constructor(
                                     size = entry.size,
                                     dateModified = entry.dateModified,
                                     otgUri = otgFileUri,
-                                    thumbnailPath = null,
+                                    thumbnailPath = resolvedThumb,
                                     duration = entry.duration,
                                     originalRelativePath = entry.originalRelativePath,
                                     dateArchived = entry.dateArchived,
@@ -365,12 +421,16 @@ class ArchiveSyncHelper private constructor(
                             } else {
                                 val key = (entry.displayName.lowercase()) to entry.size
                                 val resolvedUri = physicalUrisMap[key] ?: existing.otgUri?.ifEmpty { null } ?: fallbackUri
+                                val actualThumb = if (!existing.thumbnailPath.isNullOrEmpty() && java.io.File(existing.thumbnailPath).exists()) {
+                                    existing.thumbnailPath
+                                } else resolvedThumb
 
                                 if (existing.displayName != entry.displayName || 
                                     existing.size != entry.size || 
                                     existing.dateModified != entry.dateModified ||
                                     existing.otgUri != resolvedUri ||
-                                    existing.archiveUuid != activeUuid
+                                    existing.archiveUuid != activeUuid ||
+                                    existing.thumbnailPath != actualThumb
                                 ) {
                                     batchToInsert.add(existing.copy(
                                         displayName = entry.displayName,
@@ -378,6 +438,7 @@ class ArchiveSyncHelper private constructor(
                                         size = entry.size,
                                         dateModified = entry.dateModified,
                                         otgUri = resolvedUri,
+                                        thumbnailPath = actualThumb,
                                         duration = entry.duration,
                                         originalRelativePath = entry.originalRelativePath,
                                         dateArchived = entry.dateArchived,

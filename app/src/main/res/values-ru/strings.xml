@@ -56,7 +56,7 @@
     <string name="grant_permission_btn">Предоставить разрешения</string>
     <string name="otg_folder_selected_toast">OTG папка успешно выбрана!</string>
     <string name="otg_folder_error_toast">Ошибка доступа к папке: %1$s</string>
-    <string name="eject_success_toast">OTG накопитель безопасно извлечен в приложении. Теперь вы можете физически отключить устройство.</string>
+    <string name="eject_success_toast">Все процессы остановлены, можете извлекать</string>
     
     
     <string name="progress_preparing">Подготовка…</string>
@@ -335,8 +335,7 @@
     <string name="action_cancel">Отмена</string>
     <string name="ejecting_in_progress_title">Безопасное извлечение…</string>
     <string name="ejecting_in_progress_desc">Остановка фоновых операций и запись данных на диск…</string>
-    <string name="dialog_eject_success_title">Диск готов к отключению</string>
-    <string name="action_open_system_storage">Остановить в Android</string>
+
     <string name="free_version_limits">Бесплатная версия. Доступно: %1$d/%2$d фото, %3$d/%4$d видео</string>
     <string name="trial_active_days">Бесплатный триал: осталось %1$d дн.</string>
     <string name="topbar_chip_trial">⏳ %1$d дн.</string>

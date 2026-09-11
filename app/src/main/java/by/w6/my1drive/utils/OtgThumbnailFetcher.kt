@@ -74,6 +74,7 @@ class OtgThumbnailFetcher(
         if (data.existingCachePath != null) {
             val existing = File(data.existingCachePath)
             if (existing.exists() && existing.length() > 0) {
+                onCached(data.hash, existing.absolutePath)
                 return@withContext sourceResult(existing)
             }
         }
@@ -81,6 +82,7 @@ class OtgThumbnailFetcher(
         // 2. Check standard new cache location (uses .my1d extension to hide from other apps)
         val cacheFile = File(previewDir, "${data.hash}.my1d")
         if (cacheFile.exists() && cacheFile.length() > 0) {
+            onCached(data.hash, cacheFile.absolutePath)
             return@withContext sourceResult(cacheFile)
         }
 
@@ -108,6 +110,7 @@ class OtgThumbnailFetcher(
         }
 
         if (cacheFile.exists() && cacheFile.length() > 0) {
+            onCached(data.hash, cacheFile.absolutePath)
             return@withContext sourceResult(cacheFile)
         }
 
