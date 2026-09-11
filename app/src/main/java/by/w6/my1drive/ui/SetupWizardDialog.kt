@@ -1,10 +1,12 @@
 package by.w6.my1drive.ui
 
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,41 +14,50 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FolderSpecial
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -58,6 +69,95 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+fun SetupWizardScreen(
+    initialStep: Int = 0,
+    uiState: GalleryUiState,
+    isPhysConnected: Boolean = false,
+    hasStoragePermission: Boolean = false,
+    onDismiss: () -> Unit,
+    onStartOtgRegistration: () -> Unit,
+    onRequestFullAccess: () -> Unit,
+    onFinish: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val startPage = if (initialStep >= 1) 1 else 0
+    val pagerState = rememberPagerState(initialPage = startPage, pageCount = { 2 })
+
+    BackHandler(enabled = pagerState.currentPage > 0) {
+        scope.launch {
+            pagerState.animateScrollToPage(0)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Step Indicators at top
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(2) { iteration ->
+                    val isSelected = pagerState.currentPage == iteration
+                    val color = if (isSelected)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                    val width = if (isSelected) 28.dp else 10.dp
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .height(8.dp)
+                            .width(width)
+                    )
+                }
+            }
+
+            // Pager content
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) { page ->
+                when (page) {
+                    0 -> WizardStep1Welcome(
+                        uiState = uiState,
+                        onStartClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
+                        }
+                    )
+                    1 -> WizardStepPermissionsAndOtg(
+                        isPhysConnected = isPhysConnected,
+                        hasStoragePermission = hasStoragePermission,
+                        onRequestFullAccess = onRequestFullAccess,
+                        onStartOtgRegistration = onStartOtgRegistration
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Backward compatible alias for SetupWizardScreen
+ */
+@Composable
 fun SetupWizardDialog(
     initialStep: Int = 0,
     uiState: GalleryUiState,
@@ -68,188 +168,67 @@ fun SetupWizardDialog(
     onRequestFullAccess: () -> Unit,
     onFinish: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    
-    val needsStoragePermission = !hasStoragePermission
-    val pageCount = if (needsStoragePermission) 3 else 2
-    val pagerState = rememberPagerState(initialPage = initialStep.coerceIn(0, pageCount - 1), pageCount = { pageCount })
-
-    Dialog(
-        onDismissRequest = { /* No dismiss by back button or clicking outside during wizard */ },
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                HorizontalPager(
-                    state = pagerState,
-                    userScrollEnabled = false, // Disable swipe to force using buttons
-                    modifier = Modifier.fillMaxWidth()
-                ) { page ->
-                    when (page) {
-                        0 -> WizardStep1Welcome(uiState)
-                        1 -> WizardStep2Otg()
-                        2 -> WizardStep3Storage()
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Pager indicators
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    repeat(pageCount) { iteration ->
-                        val isSelected = pagerState.currentPage == iteration
-                        val color = if (isSelected) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                        val width = if (isSelected) 24.dp else 8.dp
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 3.dp)
-                                .clip(CircleShape)
-                                .background(color)
-                                .height(8.dp)
-                                .width(width)
-                        )
-                    }
-                }
-
-                // Buttons for current step
-                when (pagerState.currentPage) {
-                    0 -> {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    pagerState.animateScrollToPage(1)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.welcome_btn_start),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-                        }
-                    }
-                    1 -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Button(
-                                onClick = onStartOtgRegistration,
-                                enabled = isPhysConnected,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.wizard_btn_register_otg),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-                            if (!isPhysConnected) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = stringResource(R.string.welcome_msg_drive_not_detected),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            TextButton(
-                                onClick = {
-                                    if (needsStoragePermission) {
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(2)
-                                        }
-                                    } else {
-                                        onFinish()
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.local_folder_dialog_dismiss),
-                                    style = MaterialTheme.typography.bodyMedium
-                                ) // "Пропустить"
-                            }
-                        }
-                    }
-                    2 -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Button(
-                                onClick = onRequestFullAccess,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.local_folder_dialog_full_access),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            TextButton(
-                                onClick = onFinish,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.local_folder_dialog_dismiss),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    SetupWizardScreen(
+        initialStep = initialStep,
+        uiState = uiState,
+        isPhysConnected = isPhysConnected,
+        hasStoragePermission = hasStoragePermission,
+        onDismiss = onDismiss,
+        onStartOtgRegistration = onStartOtgRegistration,
+        onRequestFullAccess = onRequestFullAccess,
+        onFinish = onFinish
+    )
 }
 
 @Composable
-private fun WizardStep1Welcome(uiState: GalleryUiState) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
+private fun WizardStep1Welcome(
+    uiState: GalleryUiState,
+    onStartClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
                 imageVector = Icons.Default.Usb,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.welcome_title),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge
+                modifier = Modifier.size(52.dp)
             )
         }
-        
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = stringResource(R.string.welcome_title),
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
             text = stringResource(R.string.welcome_msg),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
+
+        Spacer(modifier = Modifier.height(28.dp))
 
         // Show Trial/Limits info
         if (!uiState.isPremiumUnlocked) {
@@ -260,122 +239,247 @@ private fun WizardStep1Welcome(uiState: GalleryUiState) {
             }
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
                 ),
-                border = androidx.compose.foundation.BorderStroke(
+                border = BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = trialText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     fontWeight = FontWeight.Medium,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp)
+                        .padding(16.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(32.dp))
+        } else {
+            Spacer(modifier = Modifier.height(32.dp))
         }
+
+        Spacer(modifier = Modifier.weight(1f, fill = false))
+
+        Button(
+            onClick = onStartClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.welcome_btn_start),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun WizardStep2Otg() {
+private fun WizardStepPermissionsAndOtg(
+    isPhysConnected: Boolean,
+    hasStoragePermission: Boolean,
+    onRequestFullAccess: () -> Unit,
+    onStartOtgRegistration: () -> Unit
+) {
     val context = LocalContext.current
-    val rawResourceId = remember(context) {
-        context.resources.getIdentifier("otg_guide", "raw", context.packageName)
-    }
-    
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
-            Icon(
-                imageVector = Icons.Default.Usb,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.wizard_title_otg),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge
-            )
+
+    // Dynamic video switching based on whether storage permission has been granted
+    val currentVideoRes = remember(context, hasStoragePermission) {
+        if (!hasStoragePermission) {
+            val id = context.resources.getIdentifier("manage_media_guide", "raw", context.packageName)
+            if (id == 0) context.resources.getIdentifier("instr", "raw", context.packageName) else id
+        } else {
+            context.resources.getIdentifier("otg_guide", "raw", context.packageName)
         }
-        
-        Text(
-            text = stringResource(R.string.wizard_msg_otg),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        
-        if (rawResourceId != 0) {
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Video guide at top
+        if (currentVideoRes != 0) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp),
-                shape = RoundedCornerShape(12.dp),
+                    .height(210.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                VideoGuidePlayer(rawResourceId = rawResourceId)
+                VideoGuidePlayer(rawResourceId = currentVideoRes)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Sequential Step 1: Media Files Permission
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = BorderStroke(
+                1.dp,
+                if (hasStoragePermission) Color(0xFF2E7D32).copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.outlineVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (hasStoragePermission) Icons.Default.CheckCircle else Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = if (hasStoragePermission) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.wizard_step_settings_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (!hasStoragePermission) {
+                    Text(
+                        text = stringResource(R.string.local_folder_dialog_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = onRequestFullAccess,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.local_folder_dialog_full_access),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.wizard_access_granted),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+                }
             }
         }
-    }
-}
 
-@Composable
-private fun WizardStep3Storage() {
-    val context = LocalContext.current
-    val rawResourceId = remember(context) {
-        val id = context.resources.getIdentifier("manage_media_guide", "raw", context.packageName)
-        if (id == 0) {
-            context.resources.getIdentifier("instr", "raw", context.packageName)
-        } else id
-    }
+        Spacer(modifier = Modifier.height(16.dp))
 
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
-            Icon(
-                imageVector = Icons.Default.FolderSpecial,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.local_folder_dialog_title),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
-        
-        Text(
-            text = stringResource(R.string.local_folder_dialog_desc),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Sequential Step 2: Removable Drive SAF Access & Archive Discovery
+        val isStep2Enabled = hasStoragePermission
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (isStep2Enabled) 1f else 0.55f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Usb,
+                        contentDescription = null,
+                        tint = if (isStep2Enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.wizard_step_otg_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-        if (rawResourceId != 0) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = stringResource(R.string.wizard_msg_otg),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            ) {
-                VideoGuidePlayer(rawResourceId = rawResourceId)
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Button(
+                    onClick = onStartOtgRegistration,
+                    enabled = isStep2Enabled && isPhysConnected,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.wizard_btn_register_otg),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (!isPhysConnected && isStep2Enabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.welcome_msg_drive_not_detected),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                    )
+                }
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -386,8 +490,7 @@ fun VideoGuidePlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
-    // Create ExoPlayer and loop it
+
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ALL
@@ -396,12 +499,17 @@ fun VideoGuidePlayer(
         }
     }
 
-    DisposableEffect(rawResourceId) {
-        val rawUri = Uri.parse("android.resource://${context.packageName}/$rawResourceId")
-        val mediaItem = MediaItem.fromUri(rawUri)
-        exoPlayer.setMediaItem(mediaItem)
-        exoPlayer.prepare()
-        
+    LaunchedEffect(rawResourceId) {
+        if (rawResourceId != 0) {
+            val rawUri = Uri.parse("android.resource://${context.packageName}/$rawResourceId")
+            val mediaItem = MediaItem.fromUri(rawUri)
+            exoPlayer.setMediaItem(mediaItem)
+            exoPlayer.prepare()
+            exoPlayer.play()
+        }
+    }
+
+    DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
         }
@@ -411,7 +519,7 @@ fun VideoGuidePlayer(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exoPlayer
-                useController = false // Hide progress bar, play/pause buttons
+                useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
             }
         },

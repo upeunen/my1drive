@@ -189,6 +189,9 @@
     <string name="wizard_title_otg">Подключение накопителя</string>
     <string name="wizard_msg_otg">Для полноценной работы приложения вам понадобится OTG адаптер и накопитель (флешка или переносной диск). Выберите его для поиска существующих архивов или создания нового.</string>
     <string name="wizard_btn_register_otg">Выбрать накопитель и найти архивы</string>
+    <string name="wizard_step_settings_title">1. Доступ к медиафайлам</string>
+    <string name="wizard_step_otg_title">2. Доступ к съемному диску (SAF)</string>
+    <string name="wizard_access_granted">Доступ предоставлен</string>
     
     <string name="wizard_trial_active">Поздравляем! Вам доступна пробная версия на %1$d дн.</string>
     <string name="wizard_free_limits">Поздравляем! Вам доступна бесплатная версия на %1$d фото и %2$d видео.</string>

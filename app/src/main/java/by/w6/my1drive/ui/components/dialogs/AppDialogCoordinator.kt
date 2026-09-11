@@ -48,18 +48,18 @@ fun AppDialogCoordinator(
         is AppDialog.SetupWizard -> {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val isPhysConnected by viewModel.isPhysConnected.collectAsStateWithLifecycle()
-            val hasStoragePermission = viewModel.hasAllFilesAccess()
-            by.w6.my1drive.ui.SetupWizardDialog(
+            val hasStoragePermission by viewModel.hasAllFilesAccess.collectAsStateWithLifecycle()
+            by.w6.my1drive.ui.SetupWizardScreen(
                 initialStep = activeDialog.initialStep,
                 uiState = uiState,
                 isPhysConnected = isPhysConnected,
                 hasStoragePermission = hasStoragePermission,
                 onDismiss = { viewModel.completeSetupWizard() },
                 onStartOtgRegistration = {
+                    viewModel.completeSetupWizard()
                     onSelectOtgDirectory()
                 },
                 onRequestFullAccess = {
-                    viewModel.completeSetupWizard()
                     viewModel.proceedWithManageStorageRequest(null)
                 },
                 onFinish = { viewModel.completeSetupWizard() }
@@ -106,18 +106,18 @@ fun AppDialogCoordinator(
         is AppDialog.LocalFolder -> {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val isPhysConnected by viewModel.isPhysConnected.collectAsStateWithLifecycle()
-            val hasStoragePermission = viewModel.hasAllFilesAccess()
-            by.w6.my1drive.ui.SetupWizardDialog(
-                initialStep = 2,
+            val hasStoragePermission by viewModel.hasAllFilesAccess.collectAsStateWithLifecycle()
+            by.w6.my1drive.ui.SetupWizardScreen(
+                initialStep = 1,
                 uiState = uiState,
                 isPhysConnected = isPhysConnected,
                 hasStoragePermission = hasStoragePermission,
                 onDismiss = { viewModel.dismissDialog() },
                 onStartOtgRegistration = {
+                    viewModel.dismissDialog()
                     onSelectOtgDirectory()
                 },
                 onRequestFullAccess = {
-                    viewModel.dismissDialog()
                     viewModel.proceedWithManageStorageRequest(null)
                 },
                 onFinish = { viewModel.dismissDialog() }

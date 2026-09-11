@@ -188,9 +188,12 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     
     <string name="wizard_title_otg">Conexión de la Unidad</string>
     <string name="wizard_msg_otg">Para utilizar completamente la aplicación, necesitará un adaptador OTG y una unidad (memoria flash o disco portátil). Selecciónelo para buscar archivos existentes o crear uno nuevo.</string>
-    <string name="wizard_btn_register_otg">Seleccionar unidad y buscar archivos</string>
+    <string name="wizard_btn_register_otg">Seleccionar disco y buscar archivos</string>
+    <string name="wizard_step_settings_title">1. Acceso a archivos multimedia</string>
+    <string name="wizard_step_otg_title">2. Acceso a disco extraíble (SAF)</string>
+    <string name="wizard_access_granted">Acceso concedido</string>
     
-    <string name="wizard_trial_active">¡Felicidades! Tiene una versión de prueba disponible durante %1$d días.</string>
+    <string name="wizard_trial_active">¡Felicidades! Tiene una versión de prueba disponible por %1$d días.</string>
     <string name="wizard_free_limits">¡Felicidades! Tiene una versión gratuita disponible para %1$d fotos y %2$d vídeos.</string>
 
     
