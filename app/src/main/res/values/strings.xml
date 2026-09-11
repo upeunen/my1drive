@@ -187,8 +187,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="welcome_btn_close">Close</string>
     
     <string name="wizard_title_otg">Drive Connection</string>
-    <string name="wizard_msg_otg">To fully use the app, you will need an OTG adapter and a drive (flash drive or portable disk). Let\'s register it.</string>
-    <string name="wizard_btn_register_otg">Select drive folder</string>
+    <string name="wizard_msg_otg">To fully use the app, you will need an OTG adapter and a drive (flash drive or portable disk). Select it to search for existing archives or create a new one.</string>
+    <string name="wizard_btn_register_otg">Select drive and find archives</string>
     
     <string name="wizard_trial_active">Congratulations! You have a trial version available for %1$d days.</string>
     <string name="wizard_free_limits">Congratulations! You have a free version available for %1$d photos and %2$d videos.</string>

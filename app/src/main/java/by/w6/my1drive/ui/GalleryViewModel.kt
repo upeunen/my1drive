@@ -150,6 +150,28 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     
     val billingManager = by.w6.my1drive.billing.BillingManagerProvider.getBillingManager(application)
 
+    private val _requestSelectOtgFolderEvent = MutableStateFlow<Long?>(null)
+    val requestSelectOtgFolderEvent: StateFlow<Long?> = _requestSelectOtgFolderEvent.asStateFlow()
+
+    fun triggerSelectOtgFolder() {
+        _requestSelectOtgFolderEvent.value = System.currentTimeMillis()
+    }
+
+    fun clearSelectOtgFolderRequest() {
+        _requestSelectOtgFolderEvent.value = null
+    }
+
+    private val _showDiscoveredArchivesSheet = MutableStateFlow(false)
+    val showDiscoveredArchivesSheet: StateFlow<Boolean> = _showDiscoveredArchivesSheet.asStateFlow()
+
+    fun openDiscoveredArchivesSheet() {
+        _showDiscoveredArchivesSheet.value = true
+    }
+
+    fun closeDiscoveredArchivesSheet() {
+        _showDiscoveredArchivesSheet.value = false
+    }
+
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
             application = application,
@@ -168,7 +190,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else if (_activeDialog.value is AppDialog.LocalFolder) _activeDialog.value = null },
             onShowNamingDialog = { v -> if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null },
             onShowCreateArchiveGuideDialog = { v -> if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null },
-            onShowSelectArchiveDialog = { archives, uri -> _activeDialog.value = AppDialog.SelectArchive(archives, uri) }
+            onShowSelectArchiveDialog = { archives, uri -> _activeDialog.value = AppDialog.SelectArchive(archives, uri) },
+            onRequestSelectOtgFolder = { triggerSelectOtgFolder() }
         )
     }
 
@@ -656,25 +679,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun searchArchivesOnCurrentDrive(onResult: (Int) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val rootUri: Uri? = otgManager.otgDirectoryUri.value
-            if (rootUri != null) {
-                val app: Application = getApplication()
-                val recovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverArchive(app, rootUri)
-                val count = if (recovered != null) 1 else 0
-                withContext(Dispatchers.Main) {
-                    repository.refresh()
-                    onResult(count)
-                }
-            } else {
-                withContext(Dispatchers.Main) {
-                    onResult(0)
-                }
-            }
-        }
-    }
-
     fun scanForMediaFolders(
         maxDepth: Int = 2,
         onResult: (List<by.w6.my1drive.utils.DiscoveredFolder>) -> Unit
@@ -738,17 +742,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)
         val context = getApplication<Application>()
+        if (_activeDialog.value is AppDialog.SetupWizard) {
+            _activeDialog.value = null
+        }
         if (!mediaOperationInteractor.hasPermissionForFolder(context, "DCIM")) {
             _pendingDeviceFolderToRequest.value = "DCIM"
-            if (_activeDialog.value is AppDialog.SetupWizard) {
-                _activeDialog.value = AppDialog.SetupWizard(2)
-            } else {
-                otgManager.showLocalFolderPrompt()
-            }
-        } else {
-            if (_activeDialog.value is AppDialog.SetupWizard) {
-                _activeDialog.value = null
-            }
+            otgManager.showLocalFolderPrompt()
         }
     }
 

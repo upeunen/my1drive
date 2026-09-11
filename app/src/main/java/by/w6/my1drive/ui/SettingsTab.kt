@@ -20,6 +20,7 @@ fun SettingsTab(
     onSelectOtgDirectory: () -> Unit = {},
     onClearCache: () -> Unit,
     isOtgConnected: Boolean = false,
+    isPhysConnected: Boolean = false,
     otgDirectoryDisplayName: String? = null,
     cacheSize: Long = 0L,
     cacheFilesCount: Int = 0,
@@ -64,6 +65,7 @@ fun SettingsTab(
         // 1. Top 2 Dashboard Tiles: Drive & Cache
         SettingsDashboardTiles(
             isOtgConnected = isOtgConnected,
+            isPhysConnected = isPhysConnected,
             otgDirectoryDisplayName = otgDirectoryDisplayName,
             isLocalFolder = isLocalFolder,
             onSelectOtgDirectory = onSelectOtgDirectory,

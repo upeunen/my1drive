@@ -682,6 +682,7 @@ fun GalleryScreenContent(
                             val syncThumbnailsProgress by viewModel.syncThumbnailsProgress.collectAsStateWithLifecycle()
                             val missingThumbnailsCount = uiState.missingThumbnailsCount
                             val isStorageLow = uiState.isStorageLow
+                            val isPhysConnected by viewModel.otgManager.physicalConnected.collectAsStateWithLifecycle()
 
                             LaunchedEffect(Unit) {
                                 viewModel.updateMissingThumbnailsCount()
@@ -691,6 +692,7 @@ fun GalleryScreenContent(
                                 onSelectOtgDirectory = { showChangeFolderConfirmDialog = true },
                                 onClearCache = { viewModel.clearPreviewCache() },
                                 isOtgConnected = isOtgConnected,
+                                isPhysConnected = isPhysConnected,
                                 otgDirectoryDisplayName = otgDirectoryDisplayName,
                                 cacheSize = previewCacheManager.getCacheSize(),
                                 cacheFilesCount = previewCacheManager.getCacheFileCount(),
@@ -782,6 +784,48 @@ fun GalleryScreenContent(
                     viewModel.proceedWithManageStorageRequest(null)
                 },
                 onFinish = { onSetShowOtgGuide(false) }
+            )
+        }
+
+        val showDiscoveredArchivesSheet by viewModel.showDiscoveredArchivesSheet.collectAsStateWithLifecycle()
+        if (showDiscoveredArchivesSheet) {
+            var isScanningDiscovered by remember { mutableStateOf(false) }
+            var discoveredFolders by remember { mutableStateOf<List<by.w6.my1drive.utils.DiscoveredFolder>>(emptyList()) }
+            var addedFolderPaths by remember { mutableStateOf<Set<String>>(emptySet()) }
+            var scanDepth by remember { mutableStateOf(2) }
+
+            fun runFolderScan(depth: Int) {
+                isScanningDiscovered = true
+                viewModel.scanForMediaFolders(maxDepth = depth) { list ->
+                    discoveredFolders = list
+                    isScanningDiscovered = false
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                runFolderScan(scanDepth)
+            }
+
+            by.w6.my1drive.ui.settings.DiscoveredArchivesBottomSheet(
+                isScanning = isScanningDiscovered,
+                discoveredFolders = discoveredFolders,
+                addedFolderPaths = addedFolderPaths,
+                currentDepth = scanDepth,
+                onDepthChanged = { newDepth ->
+                    scanDepth = newDepth
+                    runFolderScan(newDepth)
+                },
+                onAddFolder = { folder ->
+                    viewModel.addDiscoveredFolderAsArchive(folder) { name ->
+                        addedFolderPaths = addedFolderPaths + folder.relativePath
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.toast_archive_added, name),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onDismiss = { viewModel.closeDiscoveredArchivesSheet() }
             )
         }
 

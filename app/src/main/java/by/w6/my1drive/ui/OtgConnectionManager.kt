@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.hardware.usb.UsbManager
+import android.widget.Toast
+import by.w6.my1drive.R
 import androidx.documentfile.provider.DocumentFile
 import by.w6.my1drive.data.local.ArchiveEntity
 import by.w6.my1drive.utils.OtgFolderResolver
@@ -44,7 +46,8 @@ class OtgConnectionManager(
     private val onShowLocalFolderDialog: (Boolean) -> Unit = {},
     private val onShowNamingDialog: (Uri?) -> Unit = {},
     private val onShowCreateArchiveGuideDialog: (Uri) -> Unit = {},
-    private val onShowSelectArchiveDialog: (List<by.w6.my1drive.data.local.ArchiveEntity>, Uri) -> Unit = { _, _ -> }
+    private val onShowSelectArchiveDialog: (List<by.w6.my1drive.data.local.ArchiveEntity>, Uri) -> Unit = { _, _ -> },
+    private val onRequestSelectOtgFolder: () -> Unit = {}
 ) {
     private var lastFirstLaunchState: Boolean? = null
     private fun invokeShowFirstLaunchDialog(show: Boolean) {
@@ -245,15 +248,15 @@ class OtgConnectionManager(
     fun searchArchivesOnCurrentDrive() {
         val targetUri = _otgDirectoryUri.value ?: getConnectedOtgUri()
         if (targetUri != null) {
-            onOtgUriSelected(targetUri)
+            onOtgUriSelected(targetUri, isManualSearch = true)
         } else if (_physicalConnected.value) {
-            invokeShowFirstLaunchDialog(true)
+            onRequestSelectOtgFolder()
         }
     }
 
     /** Called from ViewModel when user selects a folder via SAF. */
-    fun onOtgUriSelected(uri: Uri) {
-        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}")
+    fun onOtgUriSelected(uri: Uri, isManualSearch: Boolean = false) {
+        by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}, isManualSearch=$isManualSearch")
         invokeShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
 
         scope.launch(Dispatchers.IO) {
@@ -280,14 +283,35 @@ class OtgConnectionManager(
             val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
             val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
 
-            if (previousArchive != null) {
-                selectArchiveFromDiscovery(previousArchive, uri)
-            } else if (combinedArchives.size > 1) {
-                onShowSelectArchiveDialog(combinedArchives, uri)
-            } else if (combinedArchives.size == 1) {
-                selectArchiveFromDiscovery(combinedArchives.first(), uri)
+            if (isManualSearch) {
+                if (combinedArchives.size > 1) {
+                    onShowSelectArchiveDialog(combinedArchives, uri)
+                } else if (combinedArchives.size == 1) {
+                    val archive = combinedArchives.first()
+                    if (archive.uuid == savedActiveUuid) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                application,
+                                application.getString(R.string.search_other_archives_not_found),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        selectArchiveFromDiscovery(archive, uri)
+                    }
+                } else {
+                    onShowCreateArchiveGuideDialog(uri)
+                }
             } else {
-                onShowCreateArchiveGuideDialog(uri)
+                if (previousArchive != null) {
+                    selectArchiveFromDiscovery(previousArchive, uri)
+                } else if (combinedArchives.size > 1) {
+                    onShowSelectArchiveDialog(combinedArchives, uri)
+                } else if (combinedArchives.size == 1) {
+                    selectArchiveFromDiscovery(combinedArchives.first(), uri)
+                } else {
+                    onShowCreateArchiveGuideDialog(uri)
+                }
             }
 
             // Фоновое сканирование корня на глубину 2 (Уровень 3) для архивов вне My1drive

@@ -584,6 +584,14 @@ bm.handleIntent(intent)
                     }
                 }
 
+                val requestSelectOtgFolder by viewModel.requestSelectOtgFolderEvent.collectAsState()
+                LaunchedEffect(requestSelectOtgFolder) {
+                    if (requestSelectOtgFolder != null) {
+                        viewModel.clearSelectOtgFolderRequest()
+                        selectOtgFolder()
+                    }
+                }
+
                 if (hasPermissions || hasPartialAccess) {
                     GalleryScreen(
                         onSelectOtgDirectory = {

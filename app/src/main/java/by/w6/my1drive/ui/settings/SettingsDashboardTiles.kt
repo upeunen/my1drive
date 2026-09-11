@@ -28,6 +28,7 @@ fun SettingsDashboardTiles(
     isOtgConnected: Boolean,
     otgDirectoryDisplayName: String?,
     isLocalFolder: Boolean,
+    isPhysConnected: Boolean = false,
     onSelectOtgDirectory: () -> Unit,
     onSearchOtherArchives: () -> Unit = {},
     cacheFilesCount: Int,
@@ -187,7 +188,7 @@ fun SettingsDashboardTiles(
 
                     OutlinedButton(
                         onClick = onSearchOtherArchives,
-                        enabled = isOtgConnected,
+                        enabled = isOtgConnected || isPhysConnected,
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         modifier = Modifier

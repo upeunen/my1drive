@@ -131,6 +131,10 @@ fun AppDialogCoordinator(
                     viewModel.dismissDialog()
                     viewModel.showNamingDialog(activeDialog.uri)
                 },
+                onScanMediaFolders = {
+                    viewModel.dismissDialog()
+                    viewModel.openDiscoveredArchivesSheet()
+                },
                 onDismiss = { viewModel.dismissDialog() }
             )
         }
