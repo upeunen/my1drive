@@ -24,6 +24,7 @@ data class PendingDeleteRequest(
 
 data class ArchiveState(
     val isArchiving: Boolean = false,
+    val isCopy: Boolean = false,
     val targetArchiveName: String = "",
     val currentFileName: String = "",
     val currentStep: String = "",
@@ -37,6 +38,7 @@ data class ArchiveState(
 
 data class RestoreState(
     val isRestoring: Boolean = false,
+    val isCopy: Boolean = false,
     val currentFileName: String = "",
     val currentStep: String = "",
     val progressFraction: Float = 0f,

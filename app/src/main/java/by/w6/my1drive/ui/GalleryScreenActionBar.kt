@@ -110,27 +110,49 @@ fun GalleryScreenActionBar(
                 }
             }
         } else {
-            FilledTonalButton(
-                onClick = onRestore,
-                enabled = isOtgConnected && otgDirectoryUri != null,
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
+            val enabled = isOtgConnected && otgDirectoryUri != null
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.preview_restore),
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    softWrap = false
-                )
+                FilledTonalButton(
+                    onClick = onRestore,
+                    enabled = enabled,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    modifier = Modifier.weight(0.75f)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.preview_restore),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onCopyOnly,
+                    enabled = enabled,
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.weight(0.25f)
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.btn_copy_only), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.btn_copy_only),
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
+                }
             }
         }
     }

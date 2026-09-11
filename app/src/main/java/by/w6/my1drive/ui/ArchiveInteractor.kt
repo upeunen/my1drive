@@ -10,9 +10,11 @@ import by.w6.my1drive.utils.DebugLogBuffer
 import by.w6.my1drive.utils.OtgArchiveUtil
 import by.w6.my1drive.utils.RestoreResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ArchiveInteractor(
     private val application: Application,
@@ -39,16 +41,30 @@ class ArchiveInteractor(
         restoringJob?.cancel()
     }
 
-    fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?) {
+    suspend fun stopAllOperations() {
+        isRestoreCancellationRequested = true
+        val jobToWait = restoringJob
+        jobToWait?.cancel()
+        kotlinx.coroutines.withTimeoutOrNull(2000L) {
+            jobToWait?.join()
+        }
+        restoringJob = null
+        restoringItemIds.value = emptySet()
+        if (restoreState.value.isRestoring) {
+            restoreState.value = restoreState.value.copy(isRestoring = false)
+        }
+    }
+
+    fun startRestoring(items: List<MediaItem>, targetDirUri: Uri?, isCopyOnly: Boolean = false) {
         restoringItemIds.value = items.map { it.id }.toSet()
         isRestoreCancellationRequested = false
         restoringJob = scope.launch {
             val logTag = "RestoreManager"
             try {
-                DebugLogBuffer.log(logTag, "Start startRestoring for ${items.size} items, targetDirUri=$targetDirUri")
+                DebugLogBuffer.log(logTag, "Start startRestoring for ${items.size} items, targetDirUri=$targetDirUri, isCopyOnly=$isCopyOnly")
                 var successCount = 0; val errors = mutableListOf<String>()
                 val otgUri = otgManager.otgDirectoryUri.value
-                restoreState.value = RestoreState(isRestoring = true, totalFiles = items.size)
+                restoreState.value = RestoreState(isRestoring = true, isCopy = isCopyOnly, totalFiles = items.size)
                 var globalApplyToAll = false
                 var globalFallbackUri: Uri? = null
 
@@ -71,6 +87,7 @@ class ArchiveInteractor(
                     DebugLogBuffer.log(logTag, "Batch pre-flight failed: $errorMsg")
                     restoreState.value = RestoreState(
                         isRestoring = false,
+                        isCopy = isCopyOnly,
                         successCount = 0,
                         error = by.w6.my1drive.utils.UiText.DynamicString(errorMsg)
                     )
@@ -98,28 +115,32 @@ class ArchiveInteractor(
                             is RestoreResult.Success -> {
                                 successCount++
                                 onItemDeselected(result.item.id)
-                                DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
-                                try {
-                                    // 1. Remove from JSON metadata on OTG drive (source of truth)
-                                    if (otgUri != null && result.item.hash != null) {
-                                        metadataStore.removeEntry(otgUri, result.item.hash)
-                                        DebugLogBuffer.log(logTag, "Removed metadata entry from JSON for ${result.item.displayName}")
-                                    }
-                                    // 2. Delete physical file from OTG drive
-                                    result.item.otgUri?.let { fileUri ->
-                                        try {
-                                            val otgFile = DocumentFile.fromSingleUri(application, Uri.parse(fileUri))
-                                            val deleted = otgFile?.delete() ?: false
-                                            DebugLogBuffer.log(logTag, "Deleted physical file from OTG: ${result.item.displayName}, success=$deleted")
-                                        } catch (ex: Exception) {
-                                            DebugLogBuffer.log(logTag, "Failed to delete physical file on OTG for ${result.item.displayName}: ${ex.localizedMessage}")
+                                if (!isCopyOnly) {
+                                    DebugLogBuffer.log(logTag, "Item restored successfully: ${result.item.displayName}. Starting cleanup on OTG...")
+                                    try {
+                                        // 1. Remove from JSON metadata on OTG drive (source of truth)
+                                        if (otgUri != null && result.item.hash != null) {
+                                            metadataStore.removeEntry(otgUri, result.item.hash)
+                                            DebugLogBuffer.log(logTag, "Removed metadata entry from JSON for ${result.item.displayName}")
                                         }
+                                        // 2. Delete physical file from OTG drive
+                                        result.item.otgUri?.let { fileUri ->
+                                            try {
+                                                val otgFile = DocumentFile.fromSingleUri(application, Uri.parse(fileUri))
+                                                val deleted = otgFile?.delete() ?: false
+                                                DebugLogBuffer.log(logTag, "Deleted physical file from OTG: ${result.item.displayName}, success=$deleted")
+                                            } catch (ex: Exception) {
+                                                DebugLogBuffer.log(logTag, "Failed to delete physical file on OTG for ${result.item.displayName}: ${ex.localizedMessage}")
+                                            }
+                                        }
+                                        // 3. Remove from Room (local cache)
+                                        repository.deleteArchivedItem(result.item)
+                                        DebugLogBuffer.log(logTag, "Deleted item from local Room DB: ${result.item.displayName}")
+                                    } catch (e: Exception) {
+                                        DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
                                     }
-                                    // 3. Remove from Room (local cache)
-                                    repository.deleteArchivedItem(result.item)
-                                    DebugLogBuffer.log(logTag, "Deleted item from local Room DB: ${result.item.displayName}")
-                                } catch (e: Exception) {
-                                    DebugLogBuffer.log(logTag, "Error in OTG cleanup after restore for ${result.item.displayName}: ${e.localizedMessage}")
+                                } else {
+                                    DebugLogBuffer.log(logTag, "Item copied to device successfully (kept on OTG): ${result.item.displayName}")
                                 }
                             }
                               is RestoreResult.Error -> {
@@ -177,14 +198,25 @@ class ArchiveInteractor(
                     restoringItemIds.value = restoringItemIds.value - item.id
                 } // end for
                 repository.refresh()
+                if (isCopyOnly && successCount > 0 && errors.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(
+                            application,
+                            application.getString(by.w6.my1drive.R.string.toast_copy_from_archive_success, successCount),
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
                 val finalError = when {
                     errors.isNotEmpty() -> by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.interactor_restore_success_with_errors, successCount.toString(), items.size.toString(), errors.joinToString("\n"))
                     successCount < items.size -> by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.interactor_restore_success_partial, successCount.toString(), items.size.toString())
                     else -> null
                 }
                 DebugLogBuffer.log(logTag, "Restoration complete. Succeeded: $successCount, Failed: ${errors.size}. Final error: $finalError")
-                restoreState.value = RestoreState(isRestoring = false, successCount = successCount, error = finalError)
-                otgManager.updateArchiveSize()
+                restoreState.value = RestoreState(isRestoring = false, isCopy = isCopyOnly, successCount = successCount, error = finalError)
+                if (!isCopyOnly) {
+                    otgManager.updateArchiveSize()
+                }
             } finally {
                 restoringItemIds.value = emptySet()
                 if (restoreState.value.isRestoring) {

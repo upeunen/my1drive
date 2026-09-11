@@ -219,6 +219,8 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="status_in_queue"> (+%1$d en cola)</string>
     <string name="title_archiving">Transferencia</string>
     <string name="title_archiving_target">Transfiriendo a \"%1$s\"</string>
+    <string name="title_copying">Copia</string>
+    <string name="title_copying_target">Copiando a \"%1$s\"</string>
     <string name="btn_archive_to_target">Transferir a \"%1$s\"</string>
     <string name="service_archiving_title_target">Transfiriendo a \"%1$s\"</string>
     <string name="title_restoring">Restaurando</string>
@@ -331,6 +333,10 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     <string name="dialog_eject_message">¿Está seguro de que desea expulsar la unidad de forma segura?</string>
     <string name="action_eject">Expulsar</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="ejecting_in_progress_title">Expulsión segura…</string>
+    <string name="ejecting_in_progress_desc">Deteniendo operaciones en segundo plano y guardando datos…</string>
+    <string name="dialog_eject_success_title">Unidad lista para desconectar</string>
+    <string name="action_open_system_storage">Detener en Android</string>
     <string name="free_version_limits">Versión gratuita. Disponible: %1$d/%2$d fotos, %3$d/%4$d vídeos</string>
     <string name="trial_active_days">Prueba gratuita: %1$d días restantes</string>
     <string name="topbar_chip_trial">⏳ %1$d d.</string>
@@ -492,4 +498,13 @@ Errores:
     <string name="dialog_discovered_added">Añadido</string>
     <string name="dialog_discovered_depth">Profundidad de búsqueda: %1$d</string>
     <string name="toast_archive_added">Archivo «%1$s» añadido</string>
+    <string name="select_archive_dialog_title">Seleccionar archivo</string>
+    <string name="select_archive_dialog_subtitle">Se detectaron varios archivos en la unidad. Seleccione uno:</string>
+    <string name="select_archive_btn_create_new">+ Crear nuevo archivo para este dispositivo</string>
+    <string name="select_archive_fallback_name">Archivo %1$s</string>
+    <string name="select_archive_btn_deep_search">Buscar más profundo en la unidad</string>
+    <string name="select_archive_deep_searching">Escaneando unidad...</string>
+    <string name="select_archive_no_new_found">No se encontraron archivos adicionales</string>
+    <string name="main_toast_drive_not_mounted">La unidad extraíble aún no está lista o montada. Por favor espere o vuelva a conectarla.</string>
+    <string name="toast_copy_from_archive_success">Se copiaron %1$d archivos al teléfono (originales guardados en el archivo)</string>
 </resources>

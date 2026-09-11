@@ -279,7 +279,12 @@ class OtgConnectionManager(
                 .distinctBy { it.uuid }
                 .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
 
-            if (combinedArchives.size > 1) {
+            val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
+            val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
+
+            if (previousArchive != null) {
+                selectArchiveFromDiscovery(previousArchive, uri)
+            } else if (combinedArchives.size > 1) {
                 onShowSelectArchiveDialog(combinedArchives, uri)
             } else if (combinedArchives.size == 1) {
                 selectArchiveFromDiscovery(combinedArchives.first(), uri)
@@ -456,44 +461,25 @@ class OtgConnectionManager(
     }
 
     /** Called when user explicitly ejects / removes the drive reference. */
-    fun onEject() {
+    fun onEject(onCancelActiveTasks: (suspend () -> Unit)? = null) {
         if (_isEjecting.value) return // защита от двойного нажатия
         _isEjecting.value = true
 
         scope.launch {
-            // Шаг 1: отменяем все активные операции (синхронизация, архивирование)
-            syncHelper.cancelOperations()
-
-            // Шаг 2: даём время на завершение активных write-буферов в ФС (500 мс достаточно для flush)
-            delay(500)
-
-            // Шаг 3: fsync через ContentResolver — принудительно сбрасываем кеш ФС на диск
-            val otgUri = _otgDirectoryUri.value
-            if (otgUri != null) {
-                withContext(Dispatchers.IO) {
-                    try {
-                        application.contentResolver.openFileDescriptor(otgUri, "r")?.use { pfd ->
-                            pfd.fileDescriptor.sync()
-                            by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "fsync completed on OTG root")
-                        }
-                    } catch (e: Exception) {
-                        // Не критично — readonly директория может не поддерживать sync
-                        by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "fsync skipped: ${e.localizedMessage}")
-                    }
-
-                    // (не удаляем saved URI — он нужен при повторном подключении)
-                    // Убрано снятие разрешений (releasePersistableUriPermission),
-                    // так как Android требует их сохранять для автоматического
-                    // монтирования при повторном подключении флешки.
-                }
+            try {
+                onCancelActiveTasks?.invoke()
+                syncHelper.stopAllOperations()
+                delay(300)
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "All OTG operations fully stopped and flushed")
+            } catch (e: Exception) {
+                by.w6.my1drive.utils.DebugLogBuffer.log("OtgEject", "Error during eject sequence: ${e.localizedMessage}")
+            } finally {
+                isEjectedButStillPluggedIn = true
+                _status.value = DriveStatus.KNOWN_DRIVE_DISCONNECTED
+                _archiveSize.value = 0L
+                _isEjecting.value = false
+                _showEjectSuccessDialog.value = true
             }
-
-            // Шаг 5: обновляем UI-состояние
-            isEjectedButStillPluggedIn = true
-            _status.value = DriveStatus.KNOWN_DRIVE_DISCONNECTED
-            _archiveSize.value = 0L
-            _isEjecting.value = false
-            _showEjectSuccessDialog.value = true
         }
     }
 

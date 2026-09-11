@@ -135,6 +135,7 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Sync
 
 import by.w6.my1drive.ui.components.UnknownDriveBanner
@@ -223,6 +224,8 @@ fun GalleryScreenContent(
     val physicalArchiveSize = uiState.physicalArchiveSize
     val isLimitActive = viewModel.isLimitActive
     val hasAllFilesAccess by viewModel.hasAllFilesAccess.collectAsState()
+    val isEjecting by viewModel.isEjecting.collectAsState()
+    val showEjectSuccessDialog by viewModel.showEjectSuccessDialog.collectAsState()
 
     var showChangeFolderConfirmDialog by remember { mutableStateOf(false) }
 
@@ -287,6 +290,61 @@ fun GalleryScreenContent(
             dismissButton = {
                 TextButton(onClick = { showEjectConfirmDialog = false }) {
                     Text(stringResource(R.string.action_cancel), maxLines = 1, softWrap = false)
+                }
+            }
+        )
+    }
+
+    if (isEjecting) {
+        AlertDialog(
+            onDismissRequest = { /* Не закрывать во время остановки процессов */ },
+            title = {
+                Text(
+                    text = stringResource(R.string.ejecting_in_progress_title),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(stringResource(R.string.ejecting_in_progress_desc))
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showEjectSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissEjectSuccessDialog() },
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_eject_success_title),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(stringResource(R.string.eject_success_toast))
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.dismissEjectSuccessDialog() }) {
+                    Text(stringResource(R.string.dialog_got_it), maxLines = 1, softWrap = false)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    viewModel.dismissEjectSuccessDialog()
+                    try {
+                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS))
+                    } catch (_: Exception) {}
+                }) {
+                    Text(stringResource(R.string.action_open_system_storage), maxLines = 1, softWrap = false)
                 }
             }
         )
@@ -485,10 +543,19 @@ fun GalleryScreenContent(
             // Progress panel for archiving, restoring, and thumbnail syncing
             if (archiveState.isArchiving) {
                 val queue = if (archiveState.pendingQueueSize > 0) stringResource(R.string.status_in_queue, archiveState.pendingQueueSize) else ""
-                val progressTitle = if (archiveState.targetArchiveName.isNotBlank()) {
-                    stringResource(R.string.title_archiving_target, archiveState.targetArchiveName)
+                val isCopy = archiveState.isCopy
+                val progressTitle = if (isCopy) {
+                    if (archiveState.targetArchiveName.isNotBlank()) {
+                        stringResource(R.string.title_copying_target, archiveState.targetArchiveName)
+                    } else {
+                        stringResource(R.string.title_copying)
+                    }
                 } else {
-                    stringResource(R.string.title_archiving)
+                    if (archiveState.targetArchiveName.isNotBlank()) {
+                        stringResource(R.string.title_archiving_target, archiveState.targetArchiveName)
+                    } else {
+                        stringResource(R.string.title_archiving)
+                    }
                 }
                 ProgressPanel(
                     title = progressTitle,
@@ -497,18 +564,19 @@ fun GalleryScreenContent(
                     totalFiles = archiveState.totalFiles,
                     progressFraction = archiveState.progressFraction,
                     extraInfo = queue,
-                    icon = Icons.Default.CloudUpload,
+                    icon = if (isCopy) Icons.Default.ContentCopy else Icons.Default.CloudUpload,
                     statusText = mapStepToText(archiveState.currentStep),
                     onCancel = { viewModel.cancelArchiving() }
                 )
             } else if (restoreState.isRestoring) {
+                val isCopy = restoreState.isCopy
                 ProgressPanel(
-                    title = stringResource(R.string.title_restoring),
+                    title = if (isCopy) stringResource(R.string.title_copying) else stringResource(R.string.title_restoring),
                     fileName = restoreState.currentFileName,
                     currentIndex = restoreState.currentFileIndex,
                     totalFiles = restoreState.totalFiles,
                     progressFraction = restoreState.progressFraction,
-                    icon = Icons.Default.CloudDownload,
+                    icon = if (isCopy) Icons.Default.ContentCopy else Icons.Default.CloudDownload,
                     statusText = mapStepToText(restoreState.currentStep),
                     onCancel = { viewModel.cancelRestoring() }
                 )

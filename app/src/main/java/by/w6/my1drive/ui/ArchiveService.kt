@@ -121,11 +121,21 @@ class ArchiveService : Service() {
     }
 
     private fun buildNotification(text: String): android.app.Notification {
-        val targetName = ArchiveSyncHelper.getInstance(application).archiveState.value.targetArchiveName
-        val title = if (targetName.isNotBlank()) {
-            getString(by.w6.my1drive.R.string.service_archiving_title_target, targetName)
+        val state = ArchiveSyncHelper.getInstance(application).archiveState.value
+        val targetName = state.targetArchiveName
+        val isCopy = state.isCopy
+        val title = if (isCopy) {
+            if (targetName.isNotBlank()) {
+                getString(by.w6.my1drive.R.string.title_copying_target, targetName)
+            } else {
+                getString(by.w6.my1drive.R.string.title_copying)
+            }
         } else {
-            getString(by.w6.my1drive.R.string.service_archiving_title)
+            if (targetName.isNotBlank()) {
+                getString(by.w6.my1drive.R.string.service_archiving_title_target, targetName)
+            } else {
+                getString(by.w6.my1drive.R.string.service_archiving_title)
+            }
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)

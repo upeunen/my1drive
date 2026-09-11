@@ -27,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
@@ -165,16 +166,58 @@ class ArchiveSyncHelper private constructor(
     private var activeSyncJob: Job? = null
 
     /**
-     * Отменяет текущую синхронизацию (например, при извлечении диска).
+     * Отменяет текущую синхронизацию и архивирование без ожидания.
      */
     fun cancelOperations() {
+        isCancellationRequested = true
+        isSilentSyncing = false
+        archiveQueue.clear()
+        activeArchiveJob?.cancel()
+        activeArchiveJob = null
+        isArchiveJobRunning = false
         activeSyncJob?.cancel()
         activeSyncJob = null
 
-        isSilentSyncing = false
         _syncProgressState.value = SyncProgressState(isSyncing = false)
+        _archivingItemIds.value = emptySet()
+        _archiveState.value = ArchiveState(isArchiving = false)
+        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "cancelOperations: sync and archive jobs cancelled")
+    }
+
+    /**
+     * Гарантированно отменяет и ожидает фактического завершения всех фоновых операций с OTG (синхронизация и архивирование).
+     */
+    suspend fun stopAllOperations() {
+        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "stopAllOperations: stopping sync and archiving jobs...")
         isCancellationRequested = true
-        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "cancelOperations: sync, archive and preview jobs cancelled")
+        isSilentSyncing = false
+
+        // 1. Отменяем архивацию и очищаем очередь
+        archiveQueue.clear()
+        val archiveJobToWait = activeArchiveJob
+        archiveJobToWait?.cancel()
+
+        // 2. Отменяем синхронизацию
+        val syncJobToWait = activeSyncJob
+        syncJobToWait?.cancel()
+
+        // 3. Дожидаемся фактического завершения корутин (до 4 секунд)
+        withTimeoutOrNull(4000L) {
+            archiveJobToWait?.join()
+            syncJobToWait?.join()
+        }
+
+        activeArchiveJob = null
+        activeSyncJob = null
+        isArchiveJobRunning = false
+
+        // 4. Сбрасываем стейты
+        _syncProgressState.value = SyncProgressState(isSyncing = false)
+        _copiedItemIds.value = emptySet()
+        _archivingItemIds.value = emptySet()
+        _archiveState.value = ArchiveState(isArchiving = false)
+
+        by.w6.my1drive.utils.DebugLogBuffer.log("ArchiveSyncHelper", "stopAllOperations: all jobs stopped and joined")
     }
 
     /**
@@ -642,7 +685,8 @@ class ArchiveSyncHelper private constructor(
 
     // ─── Archive queue ───
 
-    private val archiveQueue = mutableListOf<Pair<List<MediaItem>, Uri>>()
+    data class ArchiveTask(val items: List<MediaItem>, val targetUri: Uri, val isCopy: Boolean = false)
+    private val archiveQueue = mutableListOf<ArchiveTask>()
     private var isArchiveJobRunning = false
     private var isCancellationRequested = false
 
@@ -655,12 +699,12 @@ class ArchiveSyncHelper private constructor(
     }
 
     /** Add items to archive queue. If nothing is running, starts immediately. */
-    fun startArchiving(items: List<MediaItem>, targetUri: Uri) {
-        DebugLogBuffer.log("ArchiveSyncHelper", "startArchiving: items=${items.size}, targetUri=$targetUri, isArchiveJobRunning=$isArchiveJobRunning")
+    fun startArchiving(items: List<MediaItem>, targetUri: Uri, isCopy: Boolean = false) {
+        DebugLogBuffer.log("ArchiveSyncHelper", "startArchiving: items=${items.size}, targetUri=$targetUri, isCopy=$isCopy, isArchiveJobRunning=$isArchiveJobRunning")
         if (items.isEmpty()) return
         isCancellationRequested = false
         _archivingItemIds.value = _archivingItemIds.value + items.map { it.id }
-        archiveQueue.add(items to targetUri)
+        archiveQueue.add(ArchiveTask(items, targetUri, isCopy))
         _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
         if (!isArchiveJobRunning) {
             isArchiveJobRunning = true
@@ -671,9 +715,9 @@ class ArchiveSyncHelper private constructor(
     private suspend fun processArchiveQueue() {
         try {
             while (archiveQueue.isNotEmpty() && !isCancellationRequested) {
-                val (items, targetUri) = archiveQueue.removeAt(0)
+                val task = archiveQueue.removeAt(0)
                 _archiveState.value = _archiveState.value.copy(pendingQueueSize = archiveQueue.size)
-                performArchiving(items, targetUri)
+                performArchiving(task.items, task.targetUri, task.isCopy)
             }
         } finally {
             isArchiveJobRunning = false
@@ -683,11 +727,11 @@ class ArchiveSyncHelper private constructor(
         }
     }
 
-    private suspend fun performArchiving(items: List<MediaItem>, targetUri: Uri) {
+    private suspend fun performArchiving(items: List<MediaItem>, targetUri: Uri, isCopy: Boolean = false) {
         if (items.isEmpty()) return
         operationMutex.withLock {
             val logTag = "ArchiveManager"
-            DebugLogBuffer.log(logTag, "Start performArchiving for ${items.size} items. Target: $targetUri")
+            DebugLogBuffer.log(logTag, "Start performArchiving for ${items.size} items. Target: $targetUri, isCopy: $isCopy")
             val targetArchiveName = if (vpsManager.isVpsEnabled()) {
                 "VPS"
             } else {
@@ -702,6 +746,7 @@ class ArchiveSyncHelper private constructor(
             }
             _archiveState.value = ArchiveState(
                 isArchiving = true,
+                isCopy = isCopy,
                 targetArchiveName = targetArchiveName,
                 totalFiles = items.size,
                 pendingQueueSize = archiveQueue.size
@@ -773,13 +818,15 @@ class ArchiveSyncHelper private constructor(
             DebugLogBuffer.log(logTag, "Archiving queue round finished. Copied: ${copied.size}, Skipped: ${skipped.size}, Failed: ${errors.size}")
 
             if (copied.isNotEmpty()) {
-                processArchivedResults(copied, targetUri, errorSummary)
+                processArchivedResults(copied, targetUri, errorSummary, isCopy)
                 // Уведомить ViewModel об успешно заархивированных файлах
                 archiveSuccessEvent.tryEmit(copied.map { it.item })
             } else {
                 val combinedError = if (errorSummary != null) by.w6.my1drive.utils.UiText.DynamicString(errorSummary) else by.w6.my1drive.utils.UiText.StringResource(by.w6.my1drive.R.string.sync_helper_archiving_error)
                 _archiveState.value = ArchiveState(
-                    isArchiving = false, error = combinedError,
+                    isArchiving = false,
+                    isCopy = isCopy,
+                    error = combinedError,
                     skippedFiles = skippedFiles,
                     pendingQueueSize = archiveQueue.size
                 )
@@ -793,7 +840,7 @@ class ArchiveSyncHelper private constructor(
      * 1. Add entry to JSON metadata on the OTG drive (source of truth)
      * 2. Insert into Room (local cache)
      */
-    private suspend fun processArchivedResults(list: List<ArchivedInfo>, otgUri: Uri, errorMsg: String? = null) {
+    private suspend fun processArchivedResults(list: List<ArchivedInfo>, otgUri: Uri, errorMsg: String? = null, isCopy: Boolean = false) {
         val logTag = "ArchiveManager"
         try {
             DebugLogBuffer.log(logTag, "Processing archived results in database: writing metadata for ${list.size} items")
@@ -840,7 +887,8 @@ class ArchiveSyncHelper private constructor(
             DebugLogBuffer.log(logTag, "Batch inserted ${entitiesToInsert.size} items to Room database")
 
             _archiveState.value = ArchiveState(
-                isArchiving = false, 
+                isArchiving = false,
+                isCopy = isCopy,
                 error = errorMsg?.let { by.w6.my1drive.utils.UiText.DynamicString(it) },
                 pendingQueueSize = archiveQueue.size
             )

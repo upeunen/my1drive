@@ -268,8 +268,12 @@ fun GalleryScreen(
                                 uri?.let { viewModel.startArchiving(it) } 
                             },
                             onCopyOnly = {
-                                val uri = otgDirectoryUri ?: if (viewModel.isVpsEnabled()) Uri.EMPTY else null
-                                uri?.let { viewModel.startCopyingOnly(it) }
+                                if (currentScreenRoute == "archive") {
+                                    viewModel.requestCopyFromArchive()
+                                } else {
+                                    val uri = otgDirectoryUri ?: if (viewModel.isVpsEnabled()) Uri.EMPTY else null
+                                    uri?.let { viewModel.startCopyingOnly(it) }
+                                }
                             },
                             onRestore = { viewModel.requestRestore() }
                         )

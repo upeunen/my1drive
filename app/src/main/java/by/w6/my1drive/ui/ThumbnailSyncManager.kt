@@ -143,6 +143,25 @@ class ThumbnailSyncManager(
         silentThumbnailSyncJob?.cancel()
     }
 
+    suspend fun stopAllThumbnailSync() {
+        DebugLogBuffer.log("ThumbnailSyncManager", "stopAllThumbnailSync: stopping all thumbnail sync jobs...")
+        val manualJob = thumbnailSyncJob
+        val silentJob = silentThumbnailSyncJob
+        manualJob?.cancel()
+        silentJob?.cancel()
+
+        kotlinx.coroutines.withTimeoutOrNull(2000L) {
+            manualJob?.join()
+            silentJob?.join()
+        }
+
+        thumbnailSyncJob = null
+        silentThumbnailSyncJob = null
+        _isSyncingThumbnails.value = false
+        _syncThumbnailsProgress.value = Pair(0, 0)
+        DebugLogBuffer.log("ThumbnailSyncManager", "stopAllThumbnailSync: all thumbnail sync stopped")
+    }
+
     fun resetProgress() {
         _syncThumbnailsProgress.value = Pair(0, 0)
     }

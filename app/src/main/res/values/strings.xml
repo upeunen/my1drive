@@ -219,6 +219,8 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="status_in_queue"> (+%1$d in queue)</string>
     <string name="title_archiving">Transfer</string>
     <string name="title_archiving_target">Transferring to \"%1$s\"</string>
+    <string name="title_copying">Copying</string>
+    <string name="title_copying_target">Copying to \"%1$s\"</string>
     <string name="btn_archive_to_target">Transfer to \"%1$s\"</string>
     <string name="service_archiving_title_target">Transferring to \"%1$s\"</string>
     <string name="title_restoring">Restoring</string>
@@ -331,6 +333,10 @@ The records remain in the database. Connect the correct drive to restore access.
     <string name="dialog_eject_message">Are you sure you want to safely eject the drive?</string>
     <string name="action_eject">Eject</string>
     <string name="action_cancel">Cancel</string>
+    <string name="ejecting_in_progress_title">Safely ejecting…</string>
+    <string name="ejecting_in_progress_desc">Stopping background operations and writing data to drive…</string>
+    <string name="dialog_eject_success_title">Drive ready to disconnect</string>
+    <string name="action_open_system_storage">Stop in Android</string>
     <string name="free_version_limits">Free version. Available: %1$d/%2$d photos, %3$d/%4$d videos</string>
     <string name="trial_active_days">Free trial: %1$d days left</string>
     <string name="topbar_chip_trial">⏳ %1$d d.</string>
@@ -500,4 +506,5 @@ Errors:
     <string name="select_archive_deep_searching">Сканирование диска...</string>
     <string name="select_archive_no_new_found">Дополнительных архивов не обнаружено</string>
     <string name="main_toast_drive_not_mounted">Съемный накопитель еще не готов или не смонтирован. Пожалуйста, подождите или переподключите его.</string>
+    <string name="toast_copy_from_archive_success">Copied %1$d files to phone (originals kept in archive)</string>
 </resources>

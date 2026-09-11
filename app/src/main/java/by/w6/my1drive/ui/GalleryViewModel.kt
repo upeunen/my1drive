@@ -356,7 +356,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private var isCopyOnlyOperation = false
     fun startCopyingOnly(targetUri: Uri) {
         isCopyOnlyOperation = true
-        startArchiving(targetUri)
+        startArchiving(targetUri, isCopy = true)
     }
 
     private val _restoreRequest = MutableStateFlow<RestoreRequest?>(null)
@@ -754,10 +754,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun ejectOtg() {
-        // Остановить синхронизацию миниатюр перед извлечением
-        cancelThumbnailSync()
-        thumbnailManager.resetProgress()
-        otgManager.onEject()
+        otgManager.onEject {
+            thumbnailManager.stopAllThumbnailSync()
+            archiveInteractor.stopAllOperations()
+        }
+    }
+
+    fun dismissEjectSuccessDialog() {
+        otgManager.dismissEjectSuccessDialog()
     }
 
     fun searchArchivesOnCurrentDrive() {
@@ -791,9 +795,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissAutoSyncAddedCount() { syncHelper.dismissAutoSyncAddedCount() }
     fun syncArchive() { syncHelper.syncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissSync() { syncHelper.dismissSync() }
-    fun startArchiving(targetUri: Uri) {
+    fun startArchiving(targetUri: Uri, isCopy: Boolean = false) {
         var selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
-        DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${selectionManager.selectedIds.value.size}, matchedSelected=${selected.size}")
+        DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${selectionManager.selectedIds.value.size}, matchedSelected=${selected.size}, isCopy=$isCopy")
         if (selected.isEmpty()) {
             DebugLogBuffer.log("GalleryViewModel", "startArchiving: selected list is empty, aborting.")
             return
@@ -851,7 +855,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             pendingForPaywallVideos = 0
         }
 
-        syncHelper.startArchiving(selected, targetUri)
+        syncHelper.startArchiving(selected, targetUri, isCopy = isCopy)
         selectionManager.clearSelection()
     }
 
@@ -988,15 +992,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     /** Unified device delete: works on all API levels, bypasses system prompt on API 30+ if deviceDirectoryUri is set */
 
-    // ─── Restore ───
+    // ─── Restore & Copy from Archive ───
 
     fun setAskRestorePath(value: Boolean) { _askRestorePath.value = value; prefs.edit().putBoolean(PREF_ASK_RESTORE_PATH, value).apply() }
 
-    fun requestRestore() {
+    fun requestRestore(isCopyOnly: Boolean = false) {
         val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value && it.status == MediaStatus.ARCHIVED_OTG }
         if (selected.isEmpty()) return
-        archiveInteractor.startRestoring(selected, null)
+        archiveInteractor.startRestoring(selected, null, isCopyOnly = isCopyOnly)
         selectionManager.clearSelection()
+    }
+
+    fun requestCopyFromArchive() {
+        requestRestore(isCopyOnly = true)
     }
 
     fun restoreToOriginalPath() { pendingRestoreItems.toList().let { pendingRestoreItems = emptyList(); _restoreRequest.value = null; archiveInteractor.startRestoring(it, null); selectionManager.clearSelection() } }
