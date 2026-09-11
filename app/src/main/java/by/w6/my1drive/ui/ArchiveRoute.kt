@@ -98,9 +98,9 @@ fun ArchiveRoute(
         }
     }
 
-    // При открытии вкладки «Архив», если архивов нет или активный архив не выбран — запускаем стандартную процедуру поиска
+    // При открытии вкладки «Архив», если диск подключен, но архив не выбран — запускаем поиск
     LaunchedEffect(Unit) {
-        if (knownArchives.isEmpty() || activeArchiveUuid == null) {
+        if (isOtgConnected && (knownArchives.isEmpty() || activeArchiveUuid == null)) {
             viewModel.searchArchivesOnCurrentDrive()
         }
     }

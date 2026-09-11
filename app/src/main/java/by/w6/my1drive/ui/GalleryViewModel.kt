@@ -741,13 +741,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun setOtgDirectory(uri: Uri) {
         otgManager.onOtgUriSelected(uri)
-        val context = getApplication<Application>()
         if (_activeDialog.value is AppDialog.SetupWizard) {
             _activeDialog.value = null
-        }
-        if (!mediaOperationInteractor.hasPermissionForFolder(context, "DCIM")) {
-            _pendingDeviceFolderToRequest.value = "DCIM"
-            otgManager.showLocalFolderPrompt()
         }
     }
 
