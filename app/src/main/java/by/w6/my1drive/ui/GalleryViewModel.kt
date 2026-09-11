@@ -633,8 +633,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     if (file.exists()) file.delete()
                 }
             }
+            val wasActive = (uuid == otgManager.activeArchiveUuid.value)
             db.archiveDao().delete(uuid)
             db.mediaDao().deleteByArchiveUuid(uuid)
+
+            if (archiveFilterUuid.value == uuid) {
+                setArchiveFilterUuid(null)
+            }
+
+            if (wasActive) {
+                val remaining = db.archiveDao().getAllSync()
+                if (remaining.isNotEmpty()) {
+                    val nextArchive = remaining.maxByOrNull { it.lastConnected } ?: remaining.first()
+                    otgManager.setActiveArchiveUuid(nextArchive.uuid)
+                } else {
+                    otgManager.resetActiveArchiveUuid()
+                }
+            }
+
             withContext(Dispatchers.Main) {
                 repository.refresh()
             }

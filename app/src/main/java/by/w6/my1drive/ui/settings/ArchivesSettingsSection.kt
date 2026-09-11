@@ -204,17 +204,18 @@ fun ArchivesSettingsSection(
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
                                     }
-                                } else {
-                                    IconButton(
-                                        onClick = { archiveToDelete = archive }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = stringResource(R.string.content_desc_delete_archive),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                                    Spacer(Modifier.width(4.dp))
+                                }
+
+                                IconButton(
+                                    onClick = { archiveToDelete = archive }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.content_desc_delete_archive),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
                         }

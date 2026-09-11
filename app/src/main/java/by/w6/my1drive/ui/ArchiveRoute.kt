@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SdStorage
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material3.*
@@ -94,6 +95,13 @@ fun ArchiveRoute(
     LaunchedEffect(isOtgConnected, activeArchiveUuid) {
         if (isOtgConnected && activeArchiveUuid != null) {
             viewModel.setArchiveFilterUuid(activeArchiveUuid)
+        }
+    }
+
+    // При открытии вкладки «Архив», если архивов нет или активный архив не выбран — запускаем стандартную процедуру поиска
+    LaunchedEffect(Unit) {
+        if (knownArchives.isEmpty() || activeArchiveUuid == null) {
+            viewModel.searchArchivesOnCurrentDrive()
         }
     }
 
@@ -340,6 +348,21 @@ fun ArchiveRoute(
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.Gray
                         )
+                        if (knownArchives.isEmpty() || activeArchiveUuid == null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.searchArchivesOnCurrentDrive() },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = stringResource(R.string.btn_search_archives))
+                            }
+                        }
                     }
                 }
             } else {

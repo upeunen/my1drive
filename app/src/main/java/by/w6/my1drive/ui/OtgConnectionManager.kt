@@ -112,6 +112,11 @@ class OtgConnectionManager(
         prefs.edit().remove("active_archive_uuid").apply()
     }
 
+    fun setActiveArchiveUuid(uuid: String) {
+        _activeArchiveUuid.value = uuid
+        prefs.edit().putString("active_archive_uuid", uuid).apply()
+    }
+
     // ─── Internal state ───
 
     private var driveErrorCount = 0
@@ -243,6 +248,8 @@ class OtgConnectionManager(
         val targetUri = _otgDirectoryUri.value ?: getConnectedOtgUri()
         if (targetUri != null) {
             onOtgUriSelected(targetUri)
+        } else if (_physicalConnected.value) {
+            invokeShowFirstLaunchDialog(true)
         }
     }
 
