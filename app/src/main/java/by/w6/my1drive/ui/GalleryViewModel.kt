@@ -221,17 +221,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
             onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else if (_activeDialog.value is AppDialog.LocalFolder) _activeDialog.value = null },
             onShowNamingDialog = { v -> 
-                if (isSetupWizardCompleted()) {
+                if (_activeDialog.value !is AppDialog.SetupWizard) {
                     if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null
                 }
             },
             onShowCreateArchiveGuideDialog = { v -> 
-                if (isSetupWizardCompleted()) {
+                if (_activeDialog.value !is AppDialog.SetupWizard) {
                     if (v != null) _activeDialog.value = AppDialog.CreateArchiveGuide(v) else if (_activeDialog.value is AppDialog.CreateArchiveGuide) _activeDialog.value = null
                 }
             },
             onShowSelectArchiveDialog = { archives, uri -> 
-                if (isSetupWizardCompleted()) {
+                if (_activeDialog.value !is AppDialog.SetupWizard) {
                     _activeDialog.value = AppDialog.SelectArchive(archives, uri) 
                 }
             },

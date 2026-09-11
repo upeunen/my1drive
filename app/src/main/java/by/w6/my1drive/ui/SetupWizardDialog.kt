@@ -210,7 +210,8 @@ fun SetupWizardScreen(
                         onSelectExistingArchive = onSelectExistingArchive,
                         onCreateNewArchive = onCreateNewArchive,
                         onScanMediaFolders = onScanMediaFolders,
-                        onAddDiscoveredFolder = onAddDiscoveredFolder
+                        onAddDiscoveredFolder = onAddDiscoveredFolder,
+                        onStartOtgRegistration = onStartOtgRegistration
                     )
                 }
             }
@@ -650,9 +651,10 @@ private fun WizardStep3ArchiveSetup(
     onSelectExistingArchive: (ArchiveEntity, Uri) -> Unit,
     onCreateNewArchive: (String, Uri) -> Unit,
     onScanMediaFolders: ((List<DiscoveredFolder>) -> Unit) -> Unit,
-    onAddDiscoveredFolder: (DiscoveredFolder) -> Unit
+    onAddDiscoveredFolder: (DiscoveredFolder) -> Unit,
+    onStartOtgRegistration: () -> Unit = {}
 ) {
-    var isScanning by remember { mutableStateOf(true) }
+    var isScanning by remember(otgUri) { mutableStateOf(otgUri != null) }
     var foundArchives by remember { mutableStateOf<List<ArchiveEntity>>(emptyList()) }
     var newArchiveName by remember { mutableStateOf("") }
     var showCreateForm by remember { mutableStateOf(false) }
@@ -675,6 +677,8 @@ private fun WizardStep3ArchiveSetup(
             } finally {
                 isScanning = false
             }
+        } else {
+            isScanning = false
         }
     }
 
@@ -719,7 +723,50 @@ private fun WizardStep3ArchiveSetup(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (isScanning) {
+        if (otgUri == null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = PurpleCardBackground),
+                border = BorderStroke(1.dp, PurpleCardBorder)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Usb,
+                        contentDescription = null,
+                        tint = Color(0xFFCE93D8),
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.welcome_msg_drive_not_detected),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PurpleAccentText,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onStartOtgRegistration,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PurpleButtonColor,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.wizard_btn_register_otg),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        } else if (isScanning) {
             // Scanning spinner state
             Card(
                 modifier = Modifier.fillMaxWidth(),

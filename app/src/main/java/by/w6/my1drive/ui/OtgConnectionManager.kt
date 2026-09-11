@@ -269,7 +269,7 @@ class OtgConnectionManager(
         val targetUri = _otgDirectoryUri.value ?: getConnectedOtgUri()
         if (targetUri != null) {
             onOtgUriSelected(targetUri, isManualSearch = true)
-        } else if (_physicalConnected.value) {
+        } else {
             onRequestSelectOtgFolder()
         }
     }
@@ -278,6 +278,10 @@ class OtgConnectionManager(
     fun onOtgUriSelected(uri: Uri, isManualSearch: Boolean = false) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}, isManualSearch=$isManualSearch")
         invokeShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
+
+        // IMMEDIATELY publish the selected OTG URI so UI and Wizard Step 3 observe it
+        _otgDirectoryUri.value = uri
+        prefs.edit().putString(PREF_OTG_URI, uri.toString()).apply()
 
         scope.launch(Dispatchers.IO) {
             OtgFolderResolver.ensureOtgNomediaMarker(application, uri)
@@ -304,8 +308,8 @@ class OtgConnectionManager(
             val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
 
             val isWizardCompleted = prefs.getBoolean("setup_wizard_completed", false)
-            if (!isWizardCompleted) {
-                // When in Setup Wizard, Step 3 of the wizard handles archive discovery, selection and creation natively
+            if (!isWizardCompleted && !isManualSearch) {
+                // When in Setup Wizard and not explicit manual search, Step 3 of the wizard handles archive discovery, selection and creation natively
                 return@launch
             }
 
