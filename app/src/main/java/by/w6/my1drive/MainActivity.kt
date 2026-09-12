@@ -307,10 +307,16 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 viewModel.setWaitingOtgMount(true)
                 var resolvedRoot: Uri? = null
+                var wasCancelledByUser = false
                 val startTime = System.currentTimeMillis()
                 try {
-                    while (System.currentTimeMillis() - startTime < 8000L) { // wait up to 8 seconds
+                    while (System.currentTimeMillis() - startTime < 25000L) { // wait up to 25 seconds
                         delay(400)
+                        if (!viewModel.isWaitingOtgMount.value) {
+                            wasCancelledByUser = true
+                            by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: wait cancelled by user")
+                            break
+                        }
                         resolvedRoot = otgStorageRootUri(this@MainActivity)
                         if (resolvedRoot != null && isRemovableStorageUri(resolvedRoot)) {
                             by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: root resolved after delay: $resolvedRoot")
@@ -326,7 +332,7 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         by.w6.my1drive.utils.DebugLogBuffer.log("MainActivity", "selectOtgFolder: launch failed with resolvedRoot: ${e.message}")
                     }
-                } else {
+                } else if (!wasCancelledByUser) {
                     // КРИТИЧЕСКИ ВАЖНО: НИКОГДА НЕ ВЫЗЫВАТЬ launch(null)!
                     // Иначе SAF откроется во внутренней памяти телефона (primary:).
                     Toast.makeText(

@@ -277,7 +277,6 @@ class OtgConnectionManager(
     /** Called from ViewModel when user selects a folder via SAF. */
     fun onOtgUriSelected(uri: Uri, isManualSearch: Boolean = false) {
         by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "onOtgUriSelected: uri=$uri, path=${uri.path}, authority=${uri.authority}, isManualSearch=$isManualSearch")
-        invokeShowFirstLaunchDialog(false)  // закрываем диалог, если он ещё виден
 
         // IMMEDIATELY publish the selected OTG URI so UI and Wizard Step 3 observe it
         _otgDirectoryUri.value = uri

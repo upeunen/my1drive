@@ -211,9 +211,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
             onShowFirstLaunchDialog = { v -> 
-                if (!isSetupWizardCompleted()) {
-                    if (v) _activeDialog.value = AppDialog.SetupWizard(0) 
-                    else if (_activeDialog.value is AppDialog.SetupWizard) _activeDialog.value = null 
+                if (!isSetupWizardCompleted() && v && _activeDialog.value == null) {
+                    _activeDialog.value = AppDialog.SetupWizard(0) 
                 }
             },
             onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else if (_activeDialog.value is AppDialog.UnknownDrive) _activeDialog.value = null },
