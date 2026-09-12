@@ -194,6 +194,7 @@ fun GalleryScreenContent(
     val knownArchives by viewModel.knownArchives.collectAsStateWithLifecycle()
     val isSharingPreparing = uiState.isSharingPreparing
     val isCheckingConnection = uiState.isCheckingConnection
+    val isPhysicalConnected = uiState.isPhysicalConnected
     val isSilentSyncing = uiState.isSilentSyncing
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -487,7 +488,8 @@ fun GalleryScreenContent(
                     physicalArchiveSize = physicalArchiveSize,
                     isArchiving = archiveState.isArchiving,
                     isCheckingConnection = isCheckingConnection,
-                    isSilentSyncing = isSilentSyncing
+                    isSilentSyncing = isSilentSyncing,
+                    isPhysicalConnected = isPhysicalConnected
                 )
             }
 
@@ -547,7 +549,7 @@ fun GalleryScreenContent(
             val driveStatus by viewModel.otgManager.status.collectAsStateWithLifecycle()
             AnimatedVisibility(
                 visible = driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED ||
-                        (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) ||
+                        (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isPhysicalConnected || isSilentSyncing)) ||
                         hasPartialAccess ||
                         (currentScreenRoute == "archive" && otgDirectoryUri == null),
                 enter = expandVertically() + fadeIn(),
@@ -555,7 +557,7 @@ fun GalleryScreenContent(
             ) {
                 Column {
                     if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner(onConfigure = { viewModel.showNewDriveMiniWizard() })
-                    else if (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
+                    else if (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isPhysicalConnected || isSilentSyncing)) DisconnectedDriveBanner()
                     if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
                     if (currentScreenRoute == "archive" && otgDirectoryUri == null) OtgRequiredBanner()
                 }

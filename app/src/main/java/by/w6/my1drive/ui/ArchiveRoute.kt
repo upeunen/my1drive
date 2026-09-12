@@ -101,13 +101,6 @@ fun ArchiveRoute(
         lastOtgConnectedState = isOtgConnected
     }
 
-    // При открытии вкладки «Архив», если диск подключен, но архив не выбран — запускаем поиск
-    LaunchedEffect(Unit) {
-        if (isOtgConnected && (knownArchives.isEmpty() || activeArchiveUuid == null)) {
-            viewModel.searchArchivesOnCurrentDrive()
-        }
-    }
-
     // Карта uuid → Color по физическому накопителю
     val archiveColorMap = remember(knownArchives) {
         knownArchives.associate { archive ->
@@ -397,6 +390,7 @@ fun ArchiveRoute(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = { viewModel.searchArchivesOnCurrentDrive() },
+                                    enabled = !isCheckingConnection,
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(

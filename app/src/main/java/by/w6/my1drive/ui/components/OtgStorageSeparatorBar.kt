@@ -38,6 +38,7 @@ fun OtgStorageSeparatorBar(
     isArchiving: Boolean = false,
     isCheckingConnection: Boolean = false,
     isSilentSyncing: Boolean = false,
+    isPhysicalConnected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -206,8 +207,9 @@ fun OtgStorageSeparatorBar(
     )
 
     val driveTitle = otgDirectoryDisplayName ?: stringResource(R.string.otg_archive_folder)
+    val isConnecting = isCheckingConnection || (isPhysicalConnected && !isOtgConnected)
     val statusText = when {
-        isCheckingConnection -> stringResource(R.string.connecting_usb_msg)
+        isConnecting -> stringResource(R.string.connecting_usb_msg)
         isSilentSyncing -> stringResource(R.string.syncing_archive_msg)
         !isOtgConnected -> stringResource(R.string.drive_known_disconnected)
         realTotalGb > 0 -> stringResource(R.string.phone_storage_free_fmt, realFreeGb, realTotalGb)
@@ -240,7 +242,7 @@ fun OtgStorageSeparatorBar(
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isOtgConnected || isCheckingConnection || isSilentSyncing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                color = if (isOtgConnected || isConnecting || isSilentSyncing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 fontSize = 11.sp
             )
         }
@@ -251,7 +253,7 @@ fun OtgStorageSeparatorBar(
                 .height(2.dp)
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
         ) {
-            if (isCheckingConnection || isSilentSyncing) {
+            if (isConnecting || isSilentSyncing) {
                 val shimmerBrush = Brush.horizontalGradient(
                     colors = listOf(
                         Color(0xFF00E5FF),

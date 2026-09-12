@@ -246,9 +246,11 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
 
     
     <string name="unreadable_otg_title">Dispositivo USB Detectado</string>
-    <string name="unreadable_otg_msg">El dispositivo está físicamente conectado, pero Android no pudo montarlo como almacenamiento.\n\nIntente volver a conectar la unidad o comprobar la fiabilidad de la conexión.</string>
+    <string name="unreadable_otg_msg">El dispositivo está físicamente conectado, pero el sistema operativo Android no pudo montarlo como almacenamiento.\n\nAndroid admite los sistemas de archivos FAT32 y exFAT (NTFS/APFS no son compatibles).\n\nTenga en cuenta: esta es una limitación del sistema Android, no de la aplicación My1drive.</string>
     <string name="unreadable_otg_why_link">¿Por qué el almacenamiento es ilegible?</string>
-    <string name="unreadable_otg_explanation">Razones posibles:\n• Sistema de archivos no compatible (ej. NTFS). Android funciona mejor con FAT32 o exFAT.\n• Fuente de alimentación insuficiente o adaptador OTG de baja calidad.\n\nCómo solucionarlo:\nPuede intentar formatear la unidad USB a un formato compatible (FAT32/exFAT) usando la configuración de almacenamiento de su teléfono.\n\nAdvertencia: formatear borrará todos los datos de la unidad.</string>
+    <string name="unreadable_otg_explanation">Razones posibles:\n• Sistema de archivos no compatible (ej. NTFS/APFS). Android funciona mejor con FAT32 o exFAT.\n• Errores en la estructura de archivos del disco o tabla de particiones dañada.\n• Fuente de alimentación insuficiente o adaptador OTG de baja calidad.\n\nCómo solucionarlo:\nPuede comprobar la unidad en una PC o formatearla a FAT32/exFAT usando los ajustes de almacenamiento del teléfono.\n\nAdvertencia: formatear borrará todos los datos de la unidad.</string>
+    <string name="unreadable_otg_btn_settings">Ajustes de almacenamiento</string>
+    <string name="unreadable_otg_btn_dismiss">Entendido</string>
 
     
     <string name="disconnected_info_title">Detalles del Archivo</string>

@@ -1245,7 +1245,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val displayName: String?,
         val archiveSize: Long,
         val storageLow: Boolean,
-        val activeArchiveName: String? = null
+        val activeArchiveName: String? = null,
+        val physicalConnected: Boolean = false
     )
 
     private data class SyncPart1(
@@ -1303,8 +1304,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         otgManager.isCheckingConnection,
         otgDirectoryDisplayName,
         otgManager.archiveSize,
-        combine(isStorageLow, knownArchives) { low, archives -> Pair(low, archives) }
-    ) { activeArchiveUuid, isChecking, displayName, archiveSize, (storageLow, archives) ->
+        combine(isStorageLow, knownArchives, otgManager.physicalConnected) { low, archives, phys -> Triple(low, archives, phys) }
+    ) { activeArchiveUuid, isChecking, displayName, archiveSize, (storageLow, archives, phys) ->
         val activeName = if (vpsManager.isVpsEnabled()) {
             "VPS"
         } else if (activeArchiveUuid != null) {
@@ -1316,7 +1317,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             displayName
         }
-        OtgSubState(activeArchiveUuid, isChecking, displayName, archiveSize, storageLow, activeName)
+        OtgSubState(activeArchiveUuid, isChecking, displayName, archiveSize, storageLow, activeName, phys)
     }
 
     private val syncOpSubFlow = combine(
@@ -1381,6 +1382,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             activeArchiveUuid = otg.activeArchiveUuid,
             activeArchiveName = otg.activeArchiveName,
             isCheckingConnection = otg.isChecking,
+            isPhysicalConnected = otg.physicalConnected,
             otgDirectoryDisplayName = otg.displayName,
             physicalArchiveSize = otg.archiveSize,
             isStorageLow = otg.storageLow,

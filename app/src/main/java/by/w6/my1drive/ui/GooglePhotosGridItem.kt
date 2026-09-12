@@ -53,6 +53,7 @@ import by.w6.my1drive.R
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.model.getThumbnailModel
+import by.w6.my1drive.utils.PreviewCacheManager
 import coil.ImageLoader
 import coil.compose.AsyncImage
 
@@ -133,9 +134,9 @@ fun GooglePhotosGridItem(
     val checkmarkScale by animateFloatAsState(targetValue = if (isSelected) 1.0f else 0.0f, label = "CheckmarkScale")
     val isArchivedOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
     val context = androidx.compose.ui.platform.LocalContext.current
-    val previewDir = remember { java.io.File(context.filesDir, "my1drive_previews") }
+    val previewDir = remember { java.io.File(context.filesDir, PreviewCacheManager.PREVIEW_DIR) }
     val hasCachedPreview = item.hasCachedPreview ||
-        (item.hash != null && remember(item.hash) { java.io.File(previewDir, "${item.hash}.my1d").exists() })
+        (item.hash != null && java.io.File(previewDir, "${item.hash}.my1d").exists())
     var isImageLoading by remember { mutableStateOf(false) }
     val imageModel = item.getThumbnailModel(isOtgConnected)
 

@@ -187,7 +187,11 @@ fun AppDialogCoordinator(
                 onDismiss = { viewModel.dismissDialog() }
             )
         }
-        is AppDialog.UnreadableOtg -> {}
+        is AppDialog.UnreadableOtg -> {
+            UnreadableOtgDialog(
+                onDismiss = { viewModel.dismissDialog() }
+            )
+        }
         is AppDialog.WriteProtectedRoot -> {
             WriteProtectedRootDialog(
                 onRetry = {

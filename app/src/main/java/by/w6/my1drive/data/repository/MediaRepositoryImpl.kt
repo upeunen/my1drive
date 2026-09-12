@@ -11,6 +11,7 @@ import by.w6.my1drive.data.local.MediaEntity
 import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.repository.MediaRepository
+import by.w6.my1drive.utils.PreviewCacheManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
@@ -94,7 +95,7 @@ class MediaRepositoryImpl(
 
             val filteredEntities = archivedEntities
 
-            val previewDir = File(context.filesDir, "my1drive_previews")
+            val previewDir = File(context.filesDir, PreviewCacheManager.PREVIEW_DIR)
             val archivedItems = filteredEntities.map { entity ->
                 val fallbackFile = File(previewDir, "${entity.id}.my1d")
                 val resolvedThumbPath = if (!entity.thumbnailPath.isNullOrEmpty() && File(entity.thumbnailPath).exists()) {
@@ -200,7 +201,7 @@ class MediaRepositoryImpl(
     override suspend fun clearAllArchivedItems() = withContext(Dispatchers.IO) {
         val thumbDir = File(context.filesDir, "thumbnails")
         thumbDir.listFiles()?.forEach { it.delete() }
-        val previewDir = File(context.filesDir, "my1drive_previews")
+        val previewDir = File(context.filesDir, PreviewCacheManager.PREVIEW_DIR)
         previewDir.listFiles()?.forEach { it.delete() }
         mediaDao.deleteAll()
     }

@@ -246,9 +246,11 @@ The records remain in the database. Connect the correct drive to restore access.
 
     
     <string name="unreadable_otg_title">USB Device Detected</string>
-    <string name="unreadable_otg_msg">The device is physically connected, but the Android operating system failed to mount it as storage.\n\nTry reconnecting the drive or checking the connection reliability.</string>
+    <string name="unreadable_otg_msg">The device is physically connected, but the Android operating system failed to mount it as storage.\n\nAndroid supports FAT32 and exFAT file systems (NTFS/APFS are not supported).\n\nPlease note: this is an Android OS limitation, not an issue with the My1drive app.</string>
     <string name="unreadable_otg_why_link">Why is the storage unreadable?</string>
-    <string name="unreadable_otg_explanation">Possible reasons:\n• Unsupported file system (e.g. NTFS). Android works best with FAT32 or exFAT.\n• Insufficient power supply or a low-quality OTG adapter.\n\nHow to fix it:\nYou can try formatting the USB drive to a supported format (FAT32/exFAT) using your smartphone\'s system storage settings.\n\nWarning: formatting will erase all data on the drive.</string>
+    <string name="unreadable_otg_explanation">Possible reasons:\n• Unsupported file system (e.g. NTFS/APFS). Android works best with FAT32 or exFAT.\n• Disk file system errors or corruption.\n• Insufficient power supply or a low-quality OTG adapter.\n\nHow to fix it:\nYou can check the drive on your PC or format it to FAT32/exFAT in Android system storage settings.\n\nWarning: formatting will erase all data on the drive.</string>
+    <string name="unreadable_otg_btn_settings">Storage settings</string>
+    <string name="unreadable_otg_btn_dismiss">Got it</string>
 
     
     <string name="disconnected_info_title">Archive File Details</string>

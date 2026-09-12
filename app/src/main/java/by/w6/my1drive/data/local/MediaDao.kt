@@ -24,8 +24,8 @@ interface MediaDao {
     @Query("SELECT DISTINCT archiveUuid FROM media_archive WHERE archiveUuid != '' AND archiveUuid IS NOT NULL")
     fun getPopulatedArchiveUuidsFlow(): Flow<List<String>>
 
-    @Query("SELECT COUNT(*) + COUNT(thumbnailPath) FROM media_archive")
-    fun getArchiveVersionFlow(): Flow<Int>
+    @Query("SELECT COUNT(*) + COUNT(CASE WHEN thumbnailPath IS NOT NULL AND thumbnailPath != '' THEN 1 END) + COALESCE(MAX(lastAccessed), 0) FROM media_archive")
+    fun getArchiveVersionFlow(): Flow<Long>
 
     /**
      * Safely reads all archived entities in small chunks (800 rows per query)

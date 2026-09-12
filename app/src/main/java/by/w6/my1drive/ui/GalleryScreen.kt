@@ -102,7 +102,7 @@ fun GalleryScreen(
 
     val context = LocalContext.current
     val previewDir = remember { File(context.filesDir, PreviewCacheManager.PREVIEW_DIR) }
-    val imageLoader = remember(isOtgConnected) {
+    val imageLoader = remember(context) {
         ImageLoader.Builder(context)
             .components {
                 add(VideoFrameDecoder.Factory())

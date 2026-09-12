@@ -22,6 +22,7 @@ data class GalleryUiState(
     val syncState: by.w6.my1drive.utils.UiText? = null,
     val isSharingPreparing: Boolean = false,
     val isCheckingConnection: Boolean = false,
+    val isPhysicalConnected: Boolean = false,
     val gridColumnsCount: Int = 3,
     val physicalArchiveSize: Long = 0L,
     val otgDirectoryDisplayName: String? = null,

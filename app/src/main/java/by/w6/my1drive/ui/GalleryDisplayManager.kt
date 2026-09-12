@@ -173,7 +173,7 @@ class GalleryDisplayManager(
         resultList
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Lazily, emptyList())
 
-    private val bentoCache = java.util.concurrent.ConcurrentHashMap<String, Pair<List<String>, List<by.w6.my1drive.ui.layout.BentoBlock>>>()
+    private val bentoCache = java.util.concurrent.ConcurrentHashMap<String, Pair<List<MediaItem>, List<by.w6.my1drive.ui.layout.BentoBlock>>>()
 
     val archiveYearGroups: StateFlow<List<YearGroup>> = combine(
         mediaItems,
@@ -220,14 +220,13 @@ class GalleryDisplayManager(
             val monthName = rawMonthName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(monthLocale) else it.toString() }
 
             val cacheKey = "${year}_${monthIdx}_${columnsCount}_${sortMode.name}"
-            val monthItemIds = sortedMonthItems.map { it.id }
             val cachedEntry = bentoCache[cacheKey]
 
-            val blocks = if (cachedEntry != null && cachedEntry.first == monthItemIds) {
+            val blocks = if (cachedEntry != null && cachedEntry.first == sortedMonthItems) {
                 cachedEntry.second
             } else {
                 val newBlocks = by.w6.my1drive.ui.layout.BentoLayoutHelper.computeBlocks(sortedMonthItems, columnsCount)
-                bentoCache[cacheKey] = monthItemIds to newBlocks
+                bentoCache[cacheKey] = sortedMonthItems to newBlocks
                 newBlocks
             }
 

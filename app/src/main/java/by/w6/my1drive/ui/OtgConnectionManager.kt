@@ -161,6 +161,7 @@ class OtgConnectionManager(
     /** Флаг: приветственный диалог уже был показан в этой сессии (или был отклонён). */
     private var firstLaunchHandled = false
     private var unknownDriveDialogHandled = false
+    private var unreadableOtgHandled = false
     private val scannedUris = mutableSetOf<String>()
     private var isEjectedButStillPluggedIn = false
     private var isVerifying = false
@@ -204,6 +205,7 @@ class OtgConnectionManager(
                 if (!otgPluggedIn) {
                     unknownDriveDialogHandled = false
                     firstLaunchHandled = false
+                    unreadableOtgHandled = false
                     lastFirstLaunchState = null
                     lastUnknownDriveState = null
                     lastUnreadableOtgState = null
@@ -211,10 +213,14 @@ class OtgConnectionManager(
                     if (isEjectedButStillPluggedIn) {
                         isEjectedButStillPluggedIn = false
                     }
+                    invokeShowUnreadableOtgDialog(false)
                 }
 
                 // Show preloader only when transitioning from physically disconnected to connected, or at startup
                 val isTransitionToConnected = otgPluggedIn && !wasPhysicalConnected
+                if (isTransitionToConnected) {
+                    _isCheckingConnection.value = true
+                }
                 val isVerifyingNeeded = (firstCheck || isTransitionToConnected) && _otgDirectoryUri.value != null
                 if (isVerifyingNeeded) {
                     verifyConnectionAndWait()
@@ -234,6 +240,20 @@ class OtgConnectionManager(
                 }
 
                 val newStatus = _status.value
+
+                // Detection of unmountable / unsupported USB storage
+                if (usbPhysicallyConnected && !isTransitionToConnected && !firstCheck && !_isCheckingConnection.value) {
+                    val isAnyMounted = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
+                    val isUnmountable = withContext(Dispatchers.IO) { isUsbStorageUnmountable() }
+                    if (!isAnyMounted || isUnmountable) {
+                        if (!unreadableOtgHandled) {
+                            unreadableOtgHandled = true
+                            invokeShowUnreadableOtgDialog(true)
+                        }
+                    } else {
+                        invokeShowUnreadableOtgDialog(false)
+                    }
+                }
 
                 // Update archive size and clear error banner only when transitioning TO known connected
                 if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES) {
@@ -309,17 +329,22 @@ class OtgConnectionManager(
             val isPhys = _physicalConnected.value || isUsbStoragePhysicallyConnected() || isAnyOtgDrivePresent()
             if (isPhys) {
                 scope.launch {
-                    val startTime = System.currentTimeMillis()
-                    var resolved: Uri? = null
-                    while (System.currentTimeMillis() - startTime < 15000L) {
-                        delay(400)
-                        resolved = getConnectedOtgUri()
-                        if (resolved != null) break
-                    }
-                    if (resolved != null) {
-                        onOtgUriSelected(resolved, isManualSearch = true)
-                    } else {
-                        onRequestSelectOtgFolder()
+                    _isCheckingConnection.value = true
+                    try {
+                        val startTime = System.currentTimeMillis()
+                        var resolved: Uri? = null
+                        while (System.currentTimeMillis() - startTime < 4000L) {
+                            delay(200)
+                            resolved = getConnectedOtgUri()
+                            if (resolved != null) break
+                        }
+                        if (resolved != null) {
+                            onOtgUriSelected(resolved, isManualSearch = true)
+                        } else {
+                            onRequestSelectOtgFolder()
+                        }
+                    } finally {
+                        _isCheckingConnection.value = false
                     }
                 }
             } else {
@@ -341,65 +366,78 @@ class OtgConnectionManager(
         }
 
         scope.launch {
-            val allRecovered = withContext(Dispatchers.IO) {
-                OtgFolderResolver.scanAndRecoverAllArchives(application, uri, autoInsertToDb = false)
-            }
-
-            val volumeId = OtgFolderResolver.extractVolumeId(uri)
-            val dbArchives = withContext(Dispatchers.IO) {
-                val all = db.archiveDao().getAllSync()
-                if (volumeId != null) {
-                    all.filter { it.driveUuid == volumeId || (it.driveUuid.isEmpty() && it.uuid == volumeId) }
-                } else all
-            }
-
-            val combinedArchives = (allRecovered + dbArchives)
-                .distinctBy { it.uuid }
-                .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
-
-            val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
-            val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
-
-            val isWizardCompleted = prefs.getBoolean("setup_wizard_completed", false)
-            if ((!isWizardCompleted || isMiniWizardActive()) && !isManualSearch) {
-                // When in Setup Wizard or Mini-Wizard and not explicit manual search,
-                // the wizard handles archive discovery, selection and creation natively
-                return@launch
-            }
-
             if (isManualSearch) {
-                // Всегда открываем полноценный диалог управления архивами и папками
-                onShowSelectArchiveDialog(combinedArchives, uri)
-            } else {
-                if (previousArchive != null) {
-                    selectArchiveFromDiscovery(previousArchive, uri)
-                } else if (combinedArchives.size > 1) {
-                    onShowSelectArchiveDialog(combinedArchives, uri)
-                } else if (combinedArchives.size == 1) {
-                    selectArchiveFromDiscovery(combinedArchives.first(), uri)
-                } else {
-                    onShowCreateArchiveGuideDialog(uri)
-                }
+                _isCheckingConnection.value = true
             }
+            try {
+                val allRecovered = withContext(Dispatchers.IO) {
+                    OtgFolderResolver.scanAndRecoverAllArchives(application, uri, autoInsertToDb = false)
+                }
 
-            // Фоновое сканирование корня на глубину 2 (Уровень 3) для архивов вне My1drive
-            val knownPaths = combinedArchives.map { it.folderName }.toSet()
-            scope.launch(Dispatchers.IO) {
-                val extraFound = by.w6.my1drive.utils.OtgFolderScanner.scanRootForJsonArchives(
-                    context = application,
-                    rootUri = uri,
-                    knownPaths = knownPaths,
-                    maxDepth = 2
-                )
-                if (extraFound.isNotEmpty()) {
-                    val updatedList = (combinedArchives + extraFound)
-                        .distinctBy { it.uuid }
-                        .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
-                    if (updatedList.size > 1 && _activeArchiveUuid.value == null) {
-                        withContext(Dispatchers.Main) {
-                            onShowSelectArchiveDialog(updatedList, uri)
+                val volumeId = OtgFolderResolver.extractVolumeId(uri)
+                val dbArchives = withContext(Dispatchers.IO) {
+                    val all = db.archiveDao().getAllSync()
+                    if (volumeId != null) {
+                        all.filter { it.driveUuid == volumeId || (it.driveUuid.isEmpty() && it.uuid == volumeId) }
+                    } else all
+                }
+
+                val combinedArchives = (allRecovered + dbArchives)
+                    .distinctBy { it.uuid }
+                    .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
+
+                val savedActiveUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
+                val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
+
+                val isWizardCompleted = prefs.getBoolean("setup_wizard_completed", false)
+                if ((!isWizardCompleted || isMiniWizardActive()) && !isManualSearch) {
+                    // When in Setup Wizard or Mini-Wizard and not explicit manual search,
+                    // the wizard handles archive discovery, selection and creation natively
+                    return@launch
+                }
+
+                if (isManualSearch) {
+                    // Если найдены архивы — открываем диалог выбора/управления архивами, если 0 — руководство по созданию
+                    if (combinedArchives.isNotEmpty()) {
+                        onShowSelectArchiveDialog(combinedArchives, uri)
+                    } else {
+                        onShowCreateArchiveGuideDialog(uri)
+                    }
+                } else {
+                    if (previousArchive != null) {
+                        selectArchiveFromDiscovery(previousArchive, uri)
+                    } else if (combinedArchives.size > 1) {
+                        onShowSelectArchiveDialog(combinedArchives, uri)
+                    } else if (combinedArchives.size == 1) {
+                        selectArchiveFromDiscovery(combinedArchives.first(), uri)
+                    } else {
+                        onShowCreateArchiveGuideDialog(uri)
+                    }
+                }
+
+                // Фоновое сканирование корня на глубину 2 (Уровень 3) для архивов вне My1drive
+                val knownPaths = combinedArchives.map { it.folderName }.toSet()
+                scope.launch(Dispatchers.IO) {
+                    val extraFound = by.w6.my1drive.utils.OtgFolderScanner.scanRootForJsonArchives(
+                        context = application,
+                        rootUri = uri,
+                        knownPaths = knownPaths,
+                        maxDepth = 2
+                    )
+                    if (extraFound.isNotEmpty()) {
+                        val updatedList = (combinedArchives + extraFound)
+                            .distinctBy { it.uuid }
+                            .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
+                        if (updatedList.size > 1 && _activeArchiveUuid.value == null) {
+                            withContext(Dispatchers.Main) {
+                                onShowSelectArchiveDialog(updatedList, uri)
+                            }
                         }
                     }
+                }
+            } finally {
+                if (isManualSearch) {
+                    _isCheckingConnection.value = false
                 }
             }
         }
@@ -623,15 +661,20 @@ class OtgConnectionManager(
                 _connectedArchiveUuids.value = emptySet()
                 unknownDriveDialogHandled = false
                 firstLaunchHandled = false
+                unreadableOtgHandled = false
                 lastFirstLaunchState = null
                 lastUnknownDriveState = null
                 lastUnreadableOtgState = null
                 if (isEjectedButStillPluggedIn) {
                     isEjectedButStillPluggedIn = false
                 }
+                invokeShowUnreadableOtgDialog(false)
             }
 
             val isTransitionToConnected = otgPluggedIn && !wasConnected
+            if (isTransitionToConnected) {
+                _isCheckingConnection.value = true
+            }
             val hasConfiguredOrPersistedUri = _otgDirectoryUri.value != null ||
                     try { application.contentResolver.persistedUriPermissions.isNotEmpty() } catch (_: Exception) { false }
             val isDriveNotReady = _status.value != DriveStatus.KNOWN_DRIVE_CONNECTED && _status.value != DriveStatus.KNOWN_DRIVE_NO_ARCHIVES
@@ -670,6 +713,10 @@ class OtgConnectionManager(
 
     fun dismissUnknownDriveDialog() {
         invokeShowUnknownDriveDialog(false)
+    }
+
+    fun dismissUnreadableOtgDialog() {
+        invokeShowUnreadableOtgDialog(false)
     }
 
     /**
@@ -1062,6 +1109,30 @@ class OtgConnectionManager(
             }
         } catch (_: Exception) {}
 
+        return false
+    }
+
+    /**
+     * Checks if a USB Mass Storage device is connected but cannot be mounted by Android
+     * (e.g. NTFS, APFS, corrupted partition, or fsck failure).
+     */
+    private fun isUsbStorageUnmountable(): Boolean {
+        try {
+            val storageManager = application.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+            if (storageManager != null) {
+                for (volume in storageManager.storageVolumes) {
+                    if (!volume.isPrimary) {
+                        val state = volume.state
+                        if (state == Environment.MEDIA_UNMOUNTABLE ||
+                            state == Environment.MEDIA_NOFS ||
+                            state == Environment.MEDIA_BAD_REMOVAL
+                        ) {
+                            return true
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
         return false
     }
 
