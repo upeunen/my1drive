@@ -523,4 +523,11 @@ Errores:
     <string name="select_archive_no_new_found">No se encontraron archivos adicionales</string>
     <string name="main_toast_drive_not_mounted">La unidad extraíble aún no está lista o montada. Por favor espere o vuelva a conectarla.</string>
     <string name="toast_copy_from_archive_success">Se copiaron %1$d archivos al teléfono (originales guardados en el archivo)</string>
+    <string name="btn_archives_and_folders">Archivos y carpetas</string>
+    <string name="dialog_archives_and_folders_title">Archivos y carpetas en el disco</string>
+    <string name="dialog_archives_section_title">Archivos de My1drive</string>
+    <string name="dialog_archives_active_badge">Activo</string>
+    <string name="dialog_folders_section_title">Carpetas de fotos en el disco</string>
+    <string name="dialog_btn_choose_saf_drive">Seleccionar disco o carpeta (explorador)</string>
+    <string name="dialog_drive_waiting_mount">Esperando que el disco esté listo...</string>
 </resources>

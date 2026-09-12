@@ -19,7 +19,7 @@ data class DiscoveredFolder(
 
 object OtgFolderScanner {
 
-    private val BLACKLIST_NAMES = setOf(
+    internal val BLACKLIST_NAMES = setOf(
         "android",
         "lost.dir",
         "\$recycle.bin",
@@ -283,87 +283,69 @@ object OtgFolderScanner {
     }
 
     /**
-     * Fast Level 3 scanner: Traverses root subdirectories up to maxDepth (default 2)
-     * looking exclusively for my1drive_db.json / .my1drive_db.json.
+     * Fast Level 3 scanner: Traverses root subdirectories up to maxDepth (default 3)
+     * looking for my1drive_db.json / .my1drive_db.json across all folders.
      * Skips BLACKLIST_NAMES and already known paths.
-     * Prunes branch as soon as an archive is found in that folder.
+     * Does not prune branches, discovering nested archives (e.g. Photo/Album/...).
      */
     suspend fun scanRootForJsonArchives(
         context: Context,
         rootUri: Uri,
         knownPaths: Set<String>,
-        maxDepth: Int = 2
+        maxDepth: Int = 3
     ): List<ArchiveEntity> = withContext(Dispatchers.IO) {
         val discovered = mutableListOf<ArchiveEntity>()
+        val seenUuids = mutableSetOf<String>()
         try {
             val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return@withContext emptyList()
             if (!rootDoc.exists() || !rootDoc.canRead()) return@withContext emptyList()
 
             val store = ArchiveMetadataStore(context)
             val db = AppDatabase.getDatabase(context)
+            val volumeId = OtgFolderResolver.extractVolumeId(rootUri)
 
-            val level1Dirs = OtgFolderResolver.fastListDirectSubdirs(context, rootDoc)
+            fun scanDir(currentDoc: DocumentFile, currentRelPath: String, depth: Int) {
+                if (depth > maxDepth) return
 
-            for (dir1 in level1Dirs) {
-                val dir1Name = dir1.name ?: continue
-                val cleanDir1 = dir1Name.lowercase().trim()
-                if (cleanDir1.startsWith(".") || cleanDir1 in BLACKLIST_NAMES || cleanDir1 == OtgFolderResolver.MAIN_CONTAINER_NAME.lowercase()) continue
+                val subDirs = OtgFolderResolver.fastListDirectSubdirs(context, currentDoc)
+                for (sub in subDirs) {
+                    val subName = sub.name ?: continue
+                    val cleanSub = subName.lowercase().trim()
+                    if (cleanSub.startsWith(".") || cleanSub in BLACKLIST_NAMES) continue
 
-                val relPath1 = dir1Name
-                val metaFile1 = OtgFolderResolver.fastFindChild(context, dir1, "my1drive_db.json")
-                    ?: OtgFolderResolver.fastFindChild(context, dir1, ".my1drive_db.json")
+                    val relPath = if (currentRelPath.isEmpty()) subName else "$currentRelPath/$subName"
+                    val metaFile = OtgFolderResolver.fastFindChild(context, sub, "my1drive_db.json")
+                        ?: OtgFolderResolver.fastFindChild(context, sub, ".my1drive_db.json")
 
-                if (metaFile1 != null && metaFile1.exists()) {
-                    val identity = store.readArchiveIdentity(metaFile1)
-                    if (identity != null) {
-                        val (uuid, name) = identity
-                        val entity = ArchiveEntity(
-                            uuid = uuid,
-                            name = name,
-                            folderName = relPath1,
-                            dateCreated = System.currentTimeMillis(),
-                            lastConnected = System.currentTimeMillis()
-                        )
-                        val existing = db.archiveDao().getById(uuid)
-                        OtgFolderResolver.updateGlobalIndex(context, rootUri, uuid, name, relPath1)
-                        val finalEntity = existing ?: entity
-                        discovered.add(finalEntity)
-                        continue // Prune branch: don't scan deeper
-                    }
-                }
-
-                // If no archive at level 1 and maxDepth >= 2, scan level 2 subdirs
-                if (maxDepth >= 2) {
-                    val level2Dirs = OtgFolderResolver.fastListDirectSubdirs(context, dir1)
-                    for (dir2 in level2Dirs) {
-                        val dir2Name = dir2.name ?: continue
-                        val cleanDir2 = dir2Name.lowercase().trim()
-                        if (cleanDir2.startsWith(".") || cleanDir2 in BLACKLIST_NAMES) continue
-
-                        val relPath2 = "$relPath1/$dir2Name"
-                        val metaFile2 = OtgFolderResolver.fastFindChild(context, dir2, "my1drive_db.json")
-                            ?: OtgFolderResolver.fastFindChild(context, dir2, ".my1drive_db.json")
-
-                        if (metaFile2 != null && metaFile2.exists()) {
-                            val identity2 = store.readArchiveIdentity(metaFile2)
-                            if (identity2 != null) {
-                                val (uuid2, name2) = identity2
-                                val entity2 = ArchiveEntity(
-                                    uuid = uuid2,
-                                    name = name2,
-                                    folderName = relPath2,
+                    if (metaFile != null && metaFile.exists()) {
+                        val identity = store.readArchiveIdentity(metaFile)
+                        if (identity != null) {
+                            val (rawUuid, name) = identity
+                            val finalUuid = OtgFolderResolver.normalizeArchiveUuid(rawUuid, volumeId, relPath)
+                            if (seenUuids.add(finalUuid)) {
+                                val entity = ArchiveEntity(
+                                    uuid = finalUuid,
+                                    name = name,
+                                    folderName = relPath,
                                     dateCreated = System.currentTimeMillis(),
                                     lastConnected = System.currentTimeMillis()
                                 )
-                                val existing2 = db.archiveDao().getById(uuid2)
-                                OtgFolderResolver.updateGlobalIndex(context, rootUri, uuid2, name2, relPath2)
-                                val finalEntity2 = existing2 ?: entity2
-                                discovered.add(finalEntity2)
+                                val existing = db.archiveDao().getById(finalUuid)
+                                OtgFolderResolver.updateGlobalIndex(context, rootUri, finalUuid, name, relPath)
+                                val finalEntity = existing ?: entity
+                                discovered.add(finalEntity)
                             }
                         }
                     }
+
+                    // Scan subdirectories further up to maxDepth
+                    if (depth < maxDepth) {
+                        scanDir(sub, relPath, depth + 1)
+                    }
                 }
             }
+
+            scanDir(rootDoc, "", 1)
         } catch (e: Exception) {
             DebugLogBuffer.log("OtgFolderScanner", "scanRootForJsonArchives error: ${e.message}")
         }

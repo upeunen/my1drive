@@ -344,18 +344,31 @@ fun AppDialogCoordinator(
         }
 
         is AppDialog.SelectArchive -> {
-            SelectArchiveDialog(
+            val activeArchiveUuid by viewModel.otgManager.activeArchiveUuid.collectAsStateWithLifecycle()
+            val isWaitingMount by viewModel.isWaitingOtgMount.collectAsStateWithLifecycle()
+            ArchivesAndFoldersDialog(
                 archives = activeDialog.archives,
+                activeArchiveUuid = activeArchiveUuid,
                 uri = activeDialog.uri,
+                isWaitingMount = isWaitingMount,
                 onSelectArchive = { archive ->
                     viewModel.selectArchive(archive, activeDialog.uri)
                 },
-                onCreateNewArchive = { uri ->
+                onCreateNewArchive = { name, uri ->
+                    viewModel.otgManager.saveOtgArchive(uri, name)
                     viewModel.dismissDialog()
-                    viewModel.showNamingDialog(uri)
                 },
-                onDeepSearch = { knownPaths ->
-                    viewModel.searchDeeperForArchives(activeDialog.uri, knownPaths)
+                onScanMediaFolders = { depth, onResult ->
+                    viewModel.scanForMediaFolders(maxDepth = depth, onResult = onResult)
+                },
+                onAddDiscoveredFolder = { folder ->
+                    viewModel.addDiscoveredFolderAsArchive(folder) {
+                        viewModel.dismissDialog()
+                    }
+                },
+                onSelectOtgDirectory = {
+                    viewModel.dismissDialog()
+                    onSelectOtgDirectory()
                 },
                 onDismiss = { viewModel.dismissDialog() }
             )

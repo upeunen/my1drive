@@ -166,45 +166,27 @@ fun SettingsDashboardTiles(
                 Spacer(Modifier.height(14.dp))
 
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     FilledTonalButton(
-                        onClick = onSelectOtgDirectory,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 40.dp)
-                    ) {
-                        Text(
-                            text = if (otgDirectoryDisplayName != null) stringResource(R.string.btn_change_folder)
-                            else stringResource(R.string.btn_select_folder),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                    }
-
-                    OutlinedButton(
                         onClick = onSearchOtherArchives,
                         enabled = isOtgConnected || isPhysConnected,
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 40.dp)
+                            .heightIn(min = 42.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ManageSearch,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.btn_search_archives),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
+                            text = stringResource(R.string.btn_archives_and_folders),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

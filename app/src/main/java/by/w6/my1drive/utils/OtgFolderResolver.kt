@@ -43,6 +43,18 @@ object OtgFolderResolver {
         return null
     }
 
+    /**
+     * Предотвращает коллизии UUID для архивов, созданных со старым подходом (когда archiveUuid равен volumeId диска).
+     * Для папок генерирует детерминированный стабильный UUID на основе volumeId и пути.
+     */
+    fun normalizeArchiveUuid(rawUuid: String?, volumeId: String?, relPath: String): String {
+        val cleanPath = relPath.trim('/', '\\')
+        if (cleanPath.isNotEmpty() && (rawUuid.isNullOrEmpty() || rawUuid.equals(volumeId, ignoreCase = true))) {
+            return java.util.UUID.nameUUIDFromBytes("${volumeId ?: "otg"}_$cleanPath".toByteArray()).toString()
+        }
+        return if (!rawUuid.isNullOrEmpty()) rawUuid else (volumeId ?: java.util.UUID.randomUUID().toString())
+    }
+
     fun wrapTreeDocument(context: Context, parent: DocumentFile?, uri: Uri): DocumentFile {
         return try {
             val constructor = Class.forName("androidx.documentfile.provider.TreeDocumentFile")
@@ -290,7 +302,7 @@ object OtgFolderResolver {
     /**
      * Scans the drive for My1drive archives via global index file (My1drive/my1drive_index.json) or folder scan.
      * Scans the drive root to recover and register all existing archives into Room.
-     * Uses Level 1 (my1drive_index.json) and Level 2 (My1drive/ subdirectories).
+     * Uses Level 1 (my1drive_index.json), Level 2 (My1drive/ subdirectories), and Level 1 root subdirectories.
      */
     fun scanAndRecoverAllArchives(context: Context, rootUri: Uri): List<by.w6.my1drive.data.local.ArchiveEntity> {
         val recovered = mutableListOf<by.w6.my1drive.data.local.ArchiveEntity>()
@@ -301,6 +313,7 @@ object OtgFolderResolver {
 
             val store = ArchiveMetadataStore(context)
             val db = AppDatabase.getDatabase(context)
+            val volumeId = extractVolumeId(rootUri)
 
             // 1. Try reading global index file first (My1drive/my1drive_index.json) directly without root scanning
             val indexUri = buildDirectChildUri(rootUri, "$MAIN_CONTAINER_NAME/$GLOBAL_INDEX_FILE_NAME")
@@ -317,20 +330,21 @@ object OtgFolderResolver {
                     if (archivesArr != null) {
                         for (i in 0 until archivesArr.length()) {
                             val item = archivesArr.optJSONObject(i) ?: continue
-                            val uuid = item.optString("uuid")
+                            val rawUuid = item.optString("uuid")
                             val name = item.optString("name")
                             val relPath = item.optString("path")
-                            if (uuid.isNotEmpty() && relPath.isNotEmpty()) {
+                            if (relPath.isNotEmpty()) {
+                                val finalUuid = normalizeArchiveUuid(rawUuid, volumeId, relPath)
                                 val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                                    uuid = uuid,
+                                    uuid = finalUuid,
                                     name = name.ifEmpty { "Archive" },
                                     folderName = relPath,
                                     dateCreated = System.currentTimeMillis(),
                                     lastConnected = System.currentTimeMillis()
                                 )
-                                val existing = db.archiveDao().getById(uuid)
+                                val existing = db.archiveDao().getById(finalUuid)
                                 val finalEntity = existing ?: entity
-                                if (seenUuids.add(uuid)) {
+                                if (seenUuids.add(finalUuid)) {
                                     recovered.add(finalEntity)
                                 }
                             }
@@ -354,54 +368,87 @@ object OtgFolderResolver {
                     if (metadataFile != null && metadataFile.exists()) {
                         val identity = store.readArchiveIdentity(metadataFile)
                         if (identity != null) {
-                            val (uuid, name) = identity
+                            val (rawUuid, name) = identity
                             val relativeFolderName = "$MAIN_CONTAINER_NAME/${dir.name}"
+                            val finalUuid = normalizeArchiveUuid(rawUuid, volumeId, relativeFolderName)
                             val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                                uuid = uuid,
+                                uuid = finalUuid,
                                 name = name,
                                 folderName = relativeFolderName,
                                 dateCreated = System.currentTimeMillis(),
                                 lastConnected = System.currentTimeMillis()
                             )
-                            val existing = db.archiveDao().getById(uuid)
-                            updateGlobalIndex(context, rootUri, uuid, name, relativeFolderName)
+                            val existing = db.archiveDao().getById(finalUuid)
+                            updateGlobalIndex(context, rootUri, finalUuid, name, relativeFolderName)
                             val finalEntity = existing ?: entity
-                            if (seenUuids.add(uuid)) {
+                            if (seenUuids.add(finalUuid)) {
                                 recovered.add(finalEntity)
                             }
                         }
                     }
                 }
-            } else {
-                // 3. Fallback: check direct metadata file at root without listing directories
-                for (metaName in listOf("my1drive_db.json", ".my1drive_db.json")) {
-                    val rootMetaUri = buildDirectChildUri(rootUri, metaName)
-                    try {
-                        val hasFile = context.contentResolver.openInputStream(rootMetaUri)?.use { true } ?: false
-                        if (hasFile) {
-                            val directDoc = DocumentFile.fromSingleUri(context, rootMetaUri)
-                            if (directDoc != null && directDoc.exists()) {
-                                val identity = store.readArchiveIdentity(directDoc)
-                                if (identity != null) {
-                                    val (uuid, name) = identity
-                                    val entity = by.w6.my1drive.data.local.ArchiveEntity(
-                                        uuid = uuid,
-                                        name = name,
-                                        folderName = "",
-                                        dateCreated = System.currentTimeMillis(),
-                                        lastConnected = System.currentTimeMillis()
-                                    )
-                                    val existing = db.archiveDao().getById(uuid)
-                                    updateGlobalIndex(context, rootUri, uuid, name, "")
-                                    val finalEntity = existing ?: entity
-                                    if (seenUuids.add(uuid)) {
-                                        recovered.add(finalEntity)
-                                    }
+            }
+
+            // 3. Scan level-1 direct subdirectories of root for archives outside My1drive folder (e.g. "фото К", "старый диск")
+            val rootSubDirs = fastListDirectSubdirs(context, rootDoc)
+            for (dir in rootSubDirs) {
+                val dirName = dir.name ?: continue
+                val cleanName = dirName.lowercase().trim()
+                if (cleanName.startsWith(".") || cleanName in OtgFolderScanner.BLACKLIST_NAMES || cleanName == MAIN_CONTAINER_NAME.lowercase()) continue
+
+                val metadataFile = fastFindChild(context, dir, "my1drive_db.json") ?: fastFindChild(context, dir, ".my1drive_db.json")
+                if (metadataFile != null && metadataFile.exists()) {
+                    val identity = store.readArchiveIdentity(metadataFile)
+                    if (identity != null) {
+                        val (rawUuid, name) = identity
+                        val relativeFolderName = dirName
+                        val finalUuid = normalizeArchiveUuid(rawUuid, volumeId, relativeFolderName)
+                        val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                            uuid = finalUuid,
+                            name = name,
+                            folderName = relativeFolderName,
+                            dateCreated = System.currentTimeMillis(),
+                            lastConnected = System.currentTimeMillis()
+                        )
+                        val existing = db.archiveDao().getById(finalUuid)
+                        updateGlobalIndex(context, rootUri, finalUuid, name, relativeFolderName)
+                        val finalEntity = existing ?: entity
+                        if (seenUuids.add(finalUuid)) {
+                            recovered.add(finalEntity)
+                        }
+                    }
+                }
+            }
+
+            // 4. Fallback: check direct metadata file at root without listing directories
+            for (metaName in listOf("my1drive_db.json", ".my1drive_db.json")) {
+                val rootMetaUri = buildDirectChildUri(rootUri, metaName)
+                try {
+                    val hasFile = context.contentResolver.openInputStream(rootMetaUri)?.use { true } ?: false
+                    if (hasFile) {
+                        val directDoc = DocumentFile.fromSingleUri(context, rootMetaUri)
+                        if (directDoc != null && directDoc.exists()) {
+                            val identity = store.readArchiveIdentity(directDoc)
+                            if (identity != null) {
+                                val (rawUuid, name) = identity
+                                val finalUuid = rawUuid.ifEmpty { volumeId ?: java.util.UUID.randomUUID().toString() }
+                                val entity = by.w6.my1drive.data.local.ArchiveEntity(
+                                    uuid = finalUuid,
+                                    name = name,
+                                    folderName = "",
+                                    dateCreated = System.currentTimeMillis(),
+                                    lastConnected = System.currentTimeMillis()
+                                )
+                                val existing = db.archiveDao().getById(finalUuid)
+                                updateGlobalIndex(context, rootUri, finalUuid, name, "")
+                                val finalEntity = existing ?: entity
+                                if (seenUuids.add(finalUuid)) {
+                                    recovered.add(finalEntity)
                                 }
                             }
                         }
-                    } catch (_: Exception) {}
-                }
+                    }
+                } catch (_: Exception) {}
             }
         } catch (e: Exception) {
             DebugLogBuffer.log("OtgFolderResolver", "scanAndRecoverAllArchives exception: ${e.localizedMessage}")

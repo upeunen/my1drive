@@ -523,4 +523,11 @@
     <string name="select_archive_no_new_found">Дополнительных архивов не обнаружено</string>
     <string name="main_toast_drive_not_mounted">Съемный накопитель еще не готов или не смонтирован. Пожалуйста, подождите или переподключите его.</string>
     <string name="toast_copy_from_archive_success">Скопировано %1$d файлов на телефон (оригиналы сохранены в архиве)</string>
+    <string name="btn_archives_and_folders">Архивы и папки</string>
+    <string name="dialog_archives_and_folders_title">Архивы и папки на диске</string>
+    <string name="dialog_archives_section_title">Архивы My1drive</string>
+    <string name="dialog_archives_active_badge">Активен</string>
+    <string name="dialog_folders_section_title">Папки с фото на диске</string>
+    <string name="dialog_btn_choose_saf_drive">Выбрать накопитель или папку (проводник)</string>
+    <string name="dialog_drive_waiting_mount">Ожидание готовности накопителя...</string>
 </resources>

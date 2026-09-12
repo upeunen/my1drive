@@ -270,7 +270,25 @@ class OtgConnectionManager(
         if (targetUri != null) {
             onOtgUriSelected(targetUri, isManualSearch = true)
         } else {
-            onRequestSelectOtgFolder()
+            val isPhys = _physicalConnected.value || isUsbStoragePhysicallyConnected() || isAnyOtgDrivePresent()
+            if (isPhys) {
+                scope.launch {
+                    val startTime = System.currentTimeMillis()
+                    var resolved: Uri? = null
+                    while (System.currentTimeMillis() - startTime < 15000L) {
+                        delay(400)
+                        resolved = getConnectedOtgUri()
+                        if (resolved != null) break
+                    }
+                    if (resolved != null) {
+                        onOtgUriSelected(resolved, isManualSearch = true)
+                    } else {
+                        onRequestSelectOtgFolder()
+                    }
+                }
+            } else {
+                onRequestSelectOtgFolder()
+            }
         }
     }
 
@@ -313,24 +331,8 @@ class OtgConnectionManager(
             }
 
             if (isManualSearch) {
-                if (combinedArchives.size > 1) {
-                    onShowSelectArchiveDialog(combinedArchives, uri)
-                } else if (combinedArchives.size == 1) {
-                    val archive = combinedArchives.first()
-                    if (archive.uuid == savedActiveUuid) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                application,
-                                application.getString(R.string.search_other_archives_not_found),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } else {
-                        selectArchiveFromDiscovery(archive, uri)
-                    }
-                } else {
-                    onShowCreateArchiveGuideDialog(uri)
-                }
+                // Всегда открываем полноценный диалог управления архивами и папками
+                onShowSelectArchiveDialog(combinedArchives, uri)
             } else {
                 if (previousArchive != null) {
                     selectArchiveFromDiscovery(previousArchive, uri)

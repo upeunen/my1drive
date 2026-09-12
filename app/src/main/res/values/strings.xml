@@ -523,4 +523,11 @@ Errors:
     <string name="select_archive_no_new_found">Дополнительных архивов не обнаружено</string>
     <string name="main_toast_drive_not_mounted">Съемный накопитель еще не готов или не смонтирован. Пожалуйста, подождите или переподключите его.</string>
     <string name="toast_copy_from_archive_success">Copied %1$d files to phone (originals kept in archive)</string>
+    <string name="btn_archives_and_folders">Archives &amp; folders</string>
+    <string name="dialog_archives_and_folders_title">Archives &amp; folders on drive</string>
+    <string name="dialog_archives_section_title">My1drive archives</string>
+    <string name="dialog_archives_active_badge">Active</string>
+    <string name="dialog_folders_section_title">Photo folders on drive</string>
+    <string name="dialog_btn_choose_saf_drive">Select drive or folder (system picker)</string>
+    <string name="dialog_drive_waiting_mount">Waiting for drive to be ready...</string>
 </resources>
