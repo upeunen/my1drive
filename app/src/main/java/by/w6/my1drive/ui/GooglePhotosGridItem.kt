@@ -132,7 +132,10 @@ fun GooglePhotosGridItem(
     val overlayAlpha by animateFloatAsState(targetValue = if (isSelected) 0.25f else 0.0f, label = "OverlayAlpha")
     val checkmarkScale by animateFloatAsState(targetValue = if (isSelected) 1.0f else 0.0f, label = "CheckmarkScale")
     val isArchivedOffline = item.status == MediaStatus.ARCHIVED_OTG && !isOtgConnected
-    val hasCachedPreview = item.hasCachedPreview
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val previewDir = remember { java.io.File(context.filesDir, "my1drive_previews") }
+    val hasCachedPreview = item.hasCachedPreview ||
+        (item.hash != null && remember(item.hash) { java.io.File(previewDir, "${item.hash}.my1d").exists() })
     var isImageLoading by remember { mutableStateOf(false) }
     val imageModel = item.getThumbnailModel(isOtgConnected)
 

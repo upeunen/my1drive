@@ -36,6 +36,8 @@ fun OtgStorageSeparatorBar(
     otgDirectoryUri: Uri? = null,
     physicalArchiveSize: Long = 0L,
     isArchiving: Boolean = false,
+    isCheckingConnection: Boolean = false,
+    isSilentSyncing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -205,6 +207,8 @@ fun OtgStorageSeparatorBar(
 
     val driveTitle = otgDirectoryDisplayName ?: stringResource(R.string.otg_archive_folder)
     val statusText = when {
+        isCheckingConnection -> stringResource(R.string.connecting_usb_msg)
+        isSilentSyncing -> stringResource(R.string.syncing_archive_msg)
         !isOtgConnected -> stringResource(R.string.drive_known_disconnected)
         realTotalGb > 0 -> stringResource(R.string.phone_storage_free_fmt, realFreeGb, realTotalGb)
         else -> stringResource(R.string.drive_known_connected)
@@ -236,18 +240,56 @@ fun OtgStorageSeparatorBar(
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isOtgConnected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                color = if (isOtgConnected || isCheckingConnection || isSilentSyncing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 fontSize = 11.sp
             )
         }
         Spacer(Modifier.height(2.dp))
-        LinearProgressIndicator(
-            progress = { if (isOtgConnected) progress else 0f },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(2.dp),
-            color = if (isOtgConnected) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-        )
+                .height(2.dp)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+        ) {
+            if (isCheckingConnection || isSilentSyncing) {
+                val shimmerBrush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFF00E5FF),
+                        Color(0xFF8A2BE2),
+                        Color(0xFF00E5FF)
+                    ),
+                    startX = shimmerPhase * 1000f - 500f,
+                    endX = shimmerPhase * 1000f + 500f
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth()
+                        .background(shimmerBrush)
+                )
+            } else if (isOtgConnected) {
+                val fillModifier = if (glowAlpha > 0f) {
+                    val shimmerBrush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF00E5FF),
+                            Color(0xFF8A2BE2),
+                            Color(0xFF00E5FF)
+                        ),
+                        startX = shimmerPhase * 1000f - 500f,
+                        endX = shimmerPhase * 1000f + 500f
+                    )
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress)
+                        .background(shimmerBrush)
+                } else {
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                }
+                Box(modifier = fillModifier)
+            }
+        }
     }
 }

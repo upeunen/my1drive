@@ -114,6 +114,7 @@ class MainActivity : AppCompatActivity() {
                 val treeDocId = DocumentsContract.getTreeDocumentId(uri)
                 if (treeDocId.startsWith("primary:", ignoreCase = true)) {
                     Toast.makeText(this, getString(R.string.main_toast_choose_otg), Toast.LENGTH_LONG).show()
+                    viewModel.onNewDriveSafCancelled(getString(R.string.main_toast_choose_otg))
                     return
                 }
                 
@@ -127,14 +128,17 @@ class MainActivity : AppCompatActivity() {
                                 ?: documentFile.createDirectory(containerName)
                             if (containerDir == null) {
                                 viewModel.triggerWriteProtectedRootDialog()
+                                viewModel.onNewDriveSafCancelled()
                                 return
                             }
                         } catch (_: Exception) {
                             viewModel.triggerWriteProtectedRootDialog()
+                            viewModel.onNewDriveSafCancelled()
                             return
                         }
                     } else {
                         viewModel.triggerWriteProtectedRootDialog()
+                        viewModel.onNewDriveSafCancelled()
                         return
                     }
                 }
@@ -149,6 +153,7 @@ class MainActivity : AppCompatActivity() {
                 by.w6.my1drive.utils.OtgFolderResolver.ensureOtgNomediaMarker(this@MainActivity, uri)
             }
             viewModel.setOtgDirectory(uri)
+            viewModel.onNewDriveSafSelected(uri)
         
             if (autoCreatedFolderName != null) {
                 Toast.makeText(this, getString(R.string.main_toast_auto_created_folder, autoCreatedFolderName), Toast.LENGTH_LONG).show()
@@ -156,6 +161,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(R.string.otg_folder_selected_toast), Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
+            viewModel.onNewDriveSafCancelled(e.localizedMessage)
             Toast.makeText(this, getString(R.string.otg_folder_error_toast, e.localizedMessage), Toast.LENGTH_LONG).show()
         }
     }
@@ -165,6 +171,8 @@ class MainActivity : AppCompatActivity() {
         ) { uri ->
             if (uri != null) {
                 handleOtgFolderSelected(uri)
+            } else {
+                viewModel.onNewDriveSafCancelled()
             }
         }
 
@@ -175,7 +183,11 @@ class MainActivity : AppCompatActivity() {
             val uri = result.data?.data
             if (uri != null) {
                 handleOtgFolderSelected(uri)
+            } else {
+                viewModel.onNewDriveSafCancelled()
             }
+        } else {
+            viewModel.onNewDriveSafCancelled()
         }
     }
 

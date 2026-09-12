@@ -199,6 +199,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _activeDialog.value = AppDialog.SetupWizard(step)
     }
 
+    fun showNewDriveMiniWizard(step: Int = 1, error: String? = null, uri: Uri? = null) {
+        _activeDialog.value = AppDialog.NewDriveMiniWizard(step = step, errorMessage = error, driveUri = uri)
+    }
+
+    fun onNewDriveSafSelected(uri: Uri) {
+        if (_activeDialog.value is AppDialog.NewDriveMiniWizard) {
+            _activeDialog.value = AppDialog.NewDriveMiniWizard(step = 2, errorMessage = null, driveUri = uri)
+        }
+    }
+
+    fun onNewDriveSafCancelled(errorMessage: String? = null) {
+        if (_activeDialog.value is AppDialog.NewDriveMiniWizard) {
+            val defaultError = getApplication<android.app.Application>().getString(R.string.mini_wizard_saf_error)
+            _activeDialog.value = AppDialog.NewDriveMiniWizard(step = 1, errorMessage = errorMessage ?: defaultError, driveUri = null)
+        }
+    }
+
     val otgManager: OtgConnectionManager by lazy {
         OtgConnectionManager(
             application = application,
@@ -210,9 +227,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             isBusy = {
                 syncHelper.archiveState.value.isArchiving || restoreState.value.isRestoring
             },
+            isMiniWizardActive = { _activeDialog.value is AppDialog.NewDriveMiniWizard },
             onShowFirstLaunchDialog = { v -> 
                 if (!isSetupWizardCompleted() && v && _activeDialog.value == null) {
                     _activeDialog.value = AppDialog.SetupWizard(0) 
+                }
+            },
+            onShowNewDriveMiniWizard = { v ->
+                if (v && isSetupWizardCompleted() && _activeDialog.value == null) {
+                    showNewDriveMiniWizard()
+                } else if (!v && _activeDialog.value is AppDialog.NewDriveMiniWizard) {
+                    _activeDialog.value = null
                 }
             },
             onShowUnknownDriveDialog = { v -> if (v) _activeDialog.value = AppDialog.UnknownDrive else if (_activeDialog.value is AppDialog.UnknownDrive) _activeDialog.value = null },
@@ -260,7 +285,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectArchive(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
-        _activeDialog.value = null
+        if (_activeDialog.value !is AppDialog.NewDriveMiniWizard) {
+            _activeDialog.value = null
+        }
         otgManager.selectArchiveFromDiscovery(archive, uri)
     }
 
@@ -276,6 +303,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun dismissDialog() { 
         val currentDialog = _activeDialog.value
         _activeDialog.value = null
+        if (currentDialog is AppDialog.NewDriveMiniWizard) {
+            otgManager.onMiniWizardDismissed()
+        }
         if (currentDialog is AppDialog.ManageStoragePermission) {
             mediaOperationInteractor.onManageStorageDialogDismissed(currentDialog.itemsToWait)
         }
@@ -522,7 +552,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         activeArchiveUuidFlow = otgManager.activeArchiveUuid,
         isOtgConnectedFlow = _isOtgConnected,
         isScrollingFlow = _isScrolling,
-        refreshCacheStats = { refreshCacheStats() }
+        refreshCacheStats = { refreshCacheStats() },
+        onRepositoryRefresh = { repository.refresh() }
     )
 
     val isSyncingThumbnails = thumbnailManager.isSyncingThumbnails
@@ -589,7 +620,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 // Subscribe to status changes for isOtgConnected
         viewModelScope.launch {
             otgManager.status.collect { status ->
-                _isOtgConnected.value = status == DriveStatus.KNOWN_DRIVE_CONNECTED
+                val newConnected = status == DriveStatus.KNOWN_DRIVE_CONNECTED
+                val changed = _isOtgConnected.value != newConnected
+                _isOtgConnected.value = newConnected
+                if (changed) {
+                    repository.refresh()
+                }
             }
         }
 
@@ -641,7 +677,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun onPreviewCached(hash: String, path: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            db.mediaDao().updateThumbnailPath(hash, path, System.currentTimeMillis())
+            val existing = db.mediaDao().getById(hash)
+            if (existing != null && (existing.width == 0 || existing.height == 0)) {
+                val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(path, opts)
+                if (opts.outWidth > 0 && opts.outHeight > 0) {
+                    db.mediaDao().insert(existing.copy(
+                        thumbnailPath = path,
+                        lastAccessed = System.currentTimeMillis(),
+                        width = opts.outWidth,
+                        height = opts.outHeight
+                    ))
+                } else {
+                    db.mediaDao().updateThumbnailPath(hash, path, System.currentTimeMillis())
+                }
+            } else {
+                db.mediaDao().updateThumbnailPath(hash, path, System.currentTimeMillis())
+            }
             refreshCacheStatsThrottled()
         }
     }
@@ -659,6 +711,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             lastCacheStatsRefreshTime = now
             _cacheStats.value = Pair(previewCache.getCacheSize(), previewCache.getCacheFileCount())
             _isStorageLow.value = checkIsStorageLow()
+            repository.refresh()
         }
     }
 
@@ -854,12 +907,40 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun syncArchive() { syncHelper.syncArchive(otgManager.otgDirectoryUri.value) }
     fun dismissSync() { syncHelper.dismissSync() }
     fun startArchiving(targetUri: Uri, isCopy: Boolean = false) {
-        var selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
+        val selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
         DebugLogBuffer.log("GalleryViewModel", "startArchiving: targetUri=$targetUri, selectedIds=${selectionManager.selectedIds.value.size}, matchedSelected=${selected.size}, isCopy=$isCopy")
         if (selected.isEmpty()) {
             DebugLogBuffer.log("GalleryViewModel", "startArchiving: selected list is empty, aborting.")
             return
         }
+
+        if (!vpsManager.isVpsEnabled() && archiveFilterUuid.value == null) {
+            val connectedUuids = otgManager.connectedArchiveUuids.value
+            val candidateArchives = knownArchives.value.filter { 
+                connectedUuids.isEmpty() || it.uuid in connectedUuids 
+            }
+            if (candidateArchives.size > 1) {
+                _activeDialog.value = AppDialog.SelectTargetArchive(
+                    archives = candidateArchives,
+                    targetUri = targetUri,
+                    isCopy = isCopy
+                )
+                return
+            }
+        }
+
+        executeArchiving(targetUri, isCopy)
+    }
+
+    fun selectTargetArchiveAndProceed(archive: by.w6.my1drive.data.local.ArchiveEntity, targetUri: Uri, isCopy: Boolean) {
+        _activeDialog.value = null
+        otgManager.setActiveArchiveUuid(archive.uuid)
+        executeArchiving(targetUri, isCopy)
+    }
+
+    private fun executeArchiving(targetUri: Uri, isCopy: Boolean = false) {
+        var selected = mediaItems.value.filter { it.id in selectionManager.selectedIds.value }
+        if (selected.isEmpty()) return
 
         if (vpsManager.isVpsEnabled()) {
             val limitGb = vpsManager.getVpsLimitGb()

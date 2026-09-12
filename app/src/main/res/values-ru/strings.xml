@@ -220,6 +220,7 @@
     
     <string name="otg_required_msg">Для работы требуется внешний накопитель, подключите его к разъему зарядки через OTG адаптер</string>
     <string name="connecting_usb_msg">Подключение USB-накопителя...</string>
+    <string name="syncing_archive_msg">Синхронизация архива...</string>
     <string name="waking_up_drive_msg">Пробуждение диска и считывание архива...</string>
     <string name="step_preparing">Подготовка...</string>
     <string name="step_verifying">Проверка целостности...</string>
@@ -530,4 +531,21 @@
     <string name="dialog_folders_section_title">Папки с фото на диске</string>
     <string name="dialog_btn_choose_saf_drive">Выбрать накопитель или папку (проводник)</string>
     <string name="dialog_drive_waiting_mount">Ожидание готовности накопителя...</string>
+    <string name="select_target_archive_title">Выберите архив для сохранения</string>
+    <string name="select_target_archive_desc">Активен фильтр «Все архивы». Выберите, в какой архив перенести файлы:</string>
+    <string name="mini_wizard_title">Новый накопитель</string>
+    <string name="mini_wizard_saf_desc">Обнаружен внешний накопитель. Для работы предоставьте доступ к его корневой папке. В открывшемся системном окне нажмите кнопку «Использовать эту папку» внизу экрана.</string>
+    <string name="mini_wizard_btn_grant">Предоставить доступ</string>
+    <string name="mini_wizard_btn_retry">Попробовать снова</string>
+    <string name="mini_wizard_saf_error">Доступ не был предоставлен. Пожалуйста, выберите корневую папку накопителя.</string>
+    <string name="mini_wizard_searching">Поиск архивов на накопителе…</string>
+    <string name="mini_wizard_single_found_title">Найден архив на накопителе:</string>
+    <string name="mini_wizard_btn_connect_archive">Подключить архив</string>
+    <string name="mini_wizard_btn_create_other">Создать другой архив</string>
+    <string name="mini_wizard_select_archive_title">Выберите архив</string>
+    <string name="mini_wizard_create_new_archive">Создать новый архив</string>
+    <string name="mini_wizard_no_archives_found">Архивов My1drive на накопителе не найдено</string>
+    <string name="mini_wizard_btn_create">Создать архив</string>
+    <string name="mini_wizard_success">Архив готов к работе!</string>
+    <string name="mini_wizard_btn_configure">Настроить</string>
 </resources>

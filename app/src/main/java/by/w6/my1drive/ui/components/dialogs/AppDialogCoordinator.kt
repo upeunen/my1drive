@@ -19,7 +19,14 @@ import by.w6.my1drive.ui.CreateArchiveGuideDialog
 import by.w6.my1drive.ui.components.UnknownDriveDialog
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.ChevronRight
+import by.w6.my1drive.ui.archiveStripeColor
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -371,6 +378,118 @@ fun AppDialogCoordinator(
                     onSelectOtgDirectory()
                 },
                 onDismiss = { viewModel.dismissDialog() }
+            )
+        }
+
+        is AppDialog.SelectTargetArchive -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissDialog() },
+                title = {
+                    Text(
+                        text = stringResource(by.w6.my1drive.R.string.select_target_archive_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(by.w6.my1drive.R.string.select_target_archive_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(activeDialog.archives) { archive ->
+                                val archiveColor = archiveStripeColor(archive.uuid)
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            viewModel.selectTargetArchiveAndProceed(
+                                                archive,
+                                                activeDialog.targetUri,
+                                                activeDialog.isCopy
+                                            )
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(14.dp)
+                                                .background(archiveColor, CircleShape)
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = archive.name.ifBlank { archive.folderName.ifBlank { archive.uuid.take(8) } },
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            if (archive.folderName.isNotBlank()) {
+                                                Text(
+                                                    text = archive.folderName,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.ChevronRight,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissDialog() }) {
+                        Text(stringResource(by.w6.my1drive.R.string.action_cancel))
+                    }
+                }
+            )
+        }
+
+        is AppDialog.NewDriveMiniWizard -> {
+            NewDriveMiniWizardDialog(
+                initialStep = activeDialog.step,
+                errorMessage = activeDialog.errorMessage,
+                driveUri = activeDialog.driveUri,
+                onRequestSelectOtgFolder = {
+                    onSelectOtgDirectory()
+                },
+                onScanArchives = { uri ->
+                    viewModel.findArchivesOnDrive(uri)
+                },
+                onSelectArchive = { archive, uri ->
+                    viewModel.selectArchive(archive, uri)
+                },
+                onCreateNewArchive = { name, uri ->
+                    viewModel.otgManager.saveOtgArchive(uri, name)
+                },
+                onDismiss = {
+                    viewModel.dismissDialog()
+                }
             )
         }
     }

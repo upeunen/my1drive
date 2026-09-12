@@ -17,7 +17,8 @@ class ThumbnailSyncManager(
     private val activeArchiveUuidFlow: StateFlow<String?>,
     private val isOtgConnectedFlow: StateFlow<Boolean>,
     private val isScrollingFlow: StateFlow<Boolean>,
-    private val refreshCacheStats: () -> Unit
+    private val refreshCacheStats: () -> Unit,
+    private val onRepositoryRefresh: () -> Unit = {}
 ) {
     private var thumbnailSyncJob: Job? = null
     private var silentThumbnailSyncJob: Job? = null
@@ -101,6 +102,7 @@ class ThumbnailSyncManager(
                 _isSyncingThumbnails.value = false
                 updateMissingThumbnailsCount()
                 refreshCacheStats()
+                onRepositoryRefresh()
             }
         }
     }
@@ -135,6 +137,7 @@ class ThumbnailSyncManager(
             } finally {
                 updateMissingThumbnailsCount()
                 refreshCacheStats()
+                onRepositoryRefresh()
             }
         }
     }

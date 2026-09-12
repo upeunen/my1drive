@@ -60,6 +60,7 @@ fun ArchiveRoute(
     val syncState by viewModel.syncState.collectAsState()
     val syncProgressState by viewModel.syncProgressState.collectAsState()
     val knownArchives by viewModel.knownArchives.collectAsState()
+    val connectedArchiveUuids by viewModel.otgManager.connectedArchiveUuids.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
     var showOffline by remember { mutableStateOf(prefs.getBoolean("show_offline_archives", false)) }
@@ -197,7 +198,7 @@ fun ArchiveRoute(
                 knownArchives.forEach { archive ->
                     val baseColor = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
                     val isActive = filterUuid == archive.uuid
-                    val isCurrentConnected = isOtgConnected && activeArchiveUuid == archive.uuid
+                    val isCurrentConnected = isOtgConnected && (connectedArchiveUuids.isEmpty() || archive.uuid in connectedArchiveUuids)
                     
                     val chipScale by animateFloatAsState(targetValue = if (isActive) 1.0f else 0.95f, label = "chipScale")
                     val chipBgColor by animateColorAsState(
@@ -217,7 +218,11 @@ fun ArchiveRoute(
                             .background(chipBgColor, RoundedCornerShape(16.dp))
                             .border(1.dp, chipBorderColor, RoundedCornerShape(16.dp))
                             .clickable {
-                                viewModel.setArchiveFilterUuid(if (isActive) null else archive.uuid)
+                                val targetUuid = if (isActive) null else archive.uuid
+                                viewModel.setArchiveFilterUuid(targetUuid)
+                                if (targetUuid != null) {
+                                    viewModel.otgManager.setActiveArchiveUuid(targetUuid)
+                                }
                             }
                             .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -331,36 +336,52 @@ fun ArchiveRoute(
             }
 
             if (yearGroups.isEmpty()) {
+                val isCheckingConnection = uiState.isCheckingConnection
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.SdStorage,
-                            contentDescription = stringResource(R.string.empty_category),
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.LightGray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.empty_category),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
-                        )
-                        if (knownArchives.isEmpty() || activeArchiveUuid == null) {
+                    if (isCheckingConnection) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = { viewModel.searchArchivesOnCurrentDrive() },
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = stringResource(R.string.btn_search_archives))
+                            Text(
+                                text = stringResource(R.string.connecting_usb_msg),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.SdStorage,
+                                contentDescription = stringResource(R.string.empty_category),
+                                modifier = Modifier.size(64.dp),
+                                tint = Color.LightGray
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = stringResource(R.string.empty_category),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.Gray
+                            )
+                            if (knownArchives.isEmpty() || activeArchiveUuid == null) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { viewModel.searchArchivesOnCurrentDrive() },
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = stringResource(R.string.btn_search_archives))
+                                }
                             }
                         }
                     }

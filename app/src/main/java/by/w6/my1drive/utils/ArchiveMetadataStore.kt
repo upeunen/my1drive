@@ -22,7 +22,9 @@ data class JsonEntry(
     val dateModified: Long,
     val originalRelativePath: String?,
     val duration: Long? = null,
-    val dateArchived: Long = System.currentTimeMillis() / 1000
+    val dateArchived: Long = System.currentTimeMillis() / 1000,
+    val width: Int = 0,
+    val height: Int = 0
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("hash", hash)
@@ -33,6 +35,8 @@ data class JsonEntry(
         put("originalRelativePath", originalRelativePath ?: JSONObject.NULL)
         put("duration", duration?.toDouble() ?: JSONObject.NULL)
         put("dateArchived", dateArchived)
+        put("width", width)
+        put("height", height)
     }
 
     companion object {
@@ -45,7 +49,9 @@ data class JsonEntry(
                 dateModified = json.getLong("dateModified"),
                 originalRelativePath = if (json.isNull("originalRelativePath")) null else json.getString("originalRelativePath"),
                 duration = if (json.isNull("duration")) null else json.getLong("duration"),
-                dateArchived = json.optLong("dateArchived", json.optLong("dateModified", System.currentTimeMillis() / 1000))
+                dateArchived = json.optLong("dateArchived", json.optLong("dateModified", System.currentTimeMillis() / 1000)),
+                width = json.optInt("width", 0),
+                height = json.optInt("height", 0)
             )
         } catch (e: Exception) { null }
     }
@@ -129,6 +135,8 @@ class ArchiveMetadataStore(private val context: Context) {
                                     var originalRelativePath: String? = null
                                     var duration: Long? = null
                                     var dateArchived = 0L
+                                    var width = 0
+                                    var height = 0
 
                                     while (reader.hasNext()) {
                                         when (reader.nextName()) {
@@ -140,6 +148,8 @@ class ArchiveMetadataStore(private val context: Context) {
                                             "originalRelativePath" -> if (reader.peek() == android.util.JsonToken.NULL) { reader.nextNull() } else { originalRelativePath = reader.nextString() }
                                             "duration" -> if (reader.peek() == android.util.JsonToken.NULL) { reader.nextNull() } else { duration = reader.nextLong() }
                                             "dateArchived" -> dateArchived = reader.nextLong()
+                                            "width" -> width = reader.nextInt()
+                                            "height" -> height = reader.nextInt()
                                             else -> reader.skipValue()
                                         }
                                     }
@@ -147,7 +157,7 @@ class ArchiveMetadataStore(private val context: Context) {
                                     
                                     if (dateArchived == 0L) dateArchived = dateModified
                                     if (hash.isNotEmpty() && displayName.isNotEmpty()) {
-                                        entries.add(JsonEntry(hash, displayName, mimeType, size, dateModified, originalRelativePath, duration, dateArchived))
+                                        entries.add(JsonEntry(hash, displayName, mimeType, size, dateModified, originalRelativePath, duration, dateArchived, width, height))
                                     }
                                 }
                                 reader.endArray()
@@ -192,10 +202,12 @@ class ArchiveMetadataStore(private val context: Context) {
             }
             val fileUri = targetFileUri ?: return@withContext
 
-            val uuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
+            val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
+            val activeUuid = prefs.getString("active_archive_uuid", null)
             val db = by.w6.my1drive.data.local.AppDatabase.getDatabase(context)
-            val archive = db.archiveDao().getById(uuid)
-            val archiveName = archive?.name ?: context.getString(by.w6.my1drive.R.string.archive_metadata_default_name)
+            val archive = if (!activeUuid.isNullOrEmpty()) db.archiveDao().getById(activeUuid) else null
+            val uuid = archive?.uuid ?: activeUuid ?: by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
+            val archiveName = archive?.name ?: dir.name ?: context.getString(by.w6.my1drive.R.string.archive_metadata_default_name)
 
             context.contentResolver.openOutputStream(fileUri, "w")?.use { output ->
                 android.util.JsonWriter(output.bufferedWriter()).use { writer ->
@@ -221,6 +233,8 @@ class ArchiveMetadataStore(private val context: Context) {
                         if (entry.duration != null) writer.value(entry.duration) else writer.nullValue()
                         
                         writer.name("dateArchived").value(entry.dateArchived)
+                        writer.name("width").value(entry.width)
+                        writer.name("height").value(entry.height)
                         writer.endObject()
                     }
                     

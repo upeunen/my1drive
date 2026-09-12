@@ -154,18 +154,22 @@ object OtgFolderResolver {
      * Не выполняет I/O операций на диске.
      */
     fun buildDirectChildUri(rootUri: Uri, relativePath: String): Uri {
-        val treeDocId = try {
-            DocumentsContract.getTreeDocumentId(rootUri)
+        val baseDocId = try {
+            DocumentsContract.getDocumentId(rootUri)
         } catch (_: Exception) {
-            ""
+            try {
+                DocumentsContract.getTreeDocumentId(rootUri)
+            } catch (_: Exception) {
+                ""
+            }
         }
         val cleanRelPath = relativePath.trim('/', '\\')
         val childDocId = if (cleanRelPath.isEmpty()) {
-            treeDocId
-        } else if (treeDocId.endsWith(":")) {
-            "$treeDocId$cleanRelPath"
+            baseDocId
+        } else if (baseDocId.endsWith(":")) {
+            "$baseDocId$cleanRelPath"
         } else {
-            "$treeDocId/$cleanRelPath"
+            "$baseDocId/$cleanRelPath"
         }
         return DocumentsContract.buildDocumentUriUsingTree(rootUri, childDocId)
     }
@@ -343,7 +347,14 @@ object OtgFolderResolver {
                                     lastConnected = System.currentTimeMillis()
                                 )
                                 val existing = db.archiveDao().getById(finalUuid)
-                                val finalEntity = existing ?: entity
+                                val finalEntity = if (existing != null) {
+                                    existing.copy(
+                                        name = if (name.isNotEmpty()) name else existing.name,
+                                        folderName = relPath
+                                    )
+                                } else {
+                                    entity
+                                }
                                 if (seenUuids.add(finalUuid)) {
                                     recovered.add(finalEntity)
                                 }
@@ -380,7 +391,14 @@ object OtgFolderResolver {
                             )
                             val existing = db.archiveDao().getById(finalUuid)
                             updateGlobalIndex(context, rootUri, finalUuid, name, relativeFolderName)
-                            val finalEntity = existing ?: entity
+                            val finalEntity = if (existing != null) {
+                                existing.copy(
+                                    name = if (name.isNotEmpty()) name else existing.name,
+                                    folderName = relativeFolderName
+                                )
+                            } else {
+                                entity
+                            }
                             if (seenUuids.add(finalUuid)) {
                                 recovered.add(finalEntity)
                             }
@@ -412,7 +430,14 @@ object OtgFolderResolver {
                         )
                         val existing = db.archiveDao().getById(finalUuid)
                         updateGlobalIndex(context, rootUri, finalUuid, name, relativeFolderName)
-                        val finalEntity = existing ?: entity
+                        val finalEntity = if (existing != null) {
+                            existing.copy(
+                                name = if (name.isNotEmpty()) name else existing.name,
+                                folderName = relativeFolderName
+                            )
+                        } else {
+                            entity
+                        }
                         if (seenUuids.add(finalUuid)) {
                             recovered.add(finalEntity)
                         }

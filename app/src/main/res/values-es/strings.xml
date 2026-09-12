@@ -220,7 +220,8 @@ Los registros permanecen en la base de datos. Conecte la unidad correcta para re
     
     <string name="otg_required_msg">Se requiere una unidad externa para funcionar. Por favor conéctela al puerto de carga mediante un adaptador OTG.</string>
     <string name="connecting_usb_msg">Conectando unidad USB...</string>
-    <string name="waking_up_drive_msg">Reactivando unidad y leyendo archivo...</string>
+    <string name="syncing_archive_msg">Sincronizando archivo...</string>
+    <string name="waking_up_drive_msg">Despertando unidad y leyendo archivo...</string>
     <string name="step_preparing">Preparando...</string>
     <string name="step_verifying">Verificando integridad...</string>
     <string name="step_copying">Transfiriendo a la unidad...</string>
@@ -530,4 +531,21 @@ Errores:
     <string name="dialog_folders_section_title">Carpetas de fotos en el disco</string>
     <string name="dialog_btn_choose_saf_drive">Seleccionar disco o carpeta (explorador)</string>
     <string name="dialog_drive_waiting_mount">Esperando que el disco esté listo...</string>
+    <string name="select_target_archive_title">Seleccionar archivo de destino</string>
+    <string name="select_target_archive_desc">El filtro «Todos» está activo. Seleccione en qué archivo guardar los archivos:</string>
+    <string name="mini_wizard_title">Nueva unidad de almacenamiento</string>
+    <string name="mini_wizard_saf_desc">Se ha detectado una unidad extraíble. Para trabajar con ella, otorgue acceso a su carpeta raíz. En la pantalla del sistema, toque «Usar esta carpeta» en la parte inferior.</string>
+    <string name="mini_wizard_btn_grant">Otorgar acceso</string>
+    <string name="mini_wizard_btn_retry">Intentar de nuevo</string>
+    <string name="mini_wizard_saf_error">No se otorgó acceso. Seleccione la carpeta raíz de su unidad extraíble.</string>
+    <string name="mini_wizard_searching">Buscando archivos en la unidad…</string>
+    <string name="mini_wizard_single_found_title">Archivo encontrado en la unidad:</string>
+    <string name="mini_wizard_btn_connect_archive">Conectar archivo</string>
+    <string name="mini_wizard_btn_create_other">Crear otro archivo</string>
+    <string name="mini_wizard_select_archive_title">Seleccionar archivo</string>
+    <string name="mini_wizard_create_new_archive">Crear nuevo archivo</string>
+    <string name="mini_wizard_no_archives_found">No se encontraron archivos My1drive en la unidad</string>
+    <string name="mini_wizard_btn_create">Crear archivo</string>
+    <string name="mini_wizard_success">¡El archivo está listo para usar!</string>
+    <string name="mini_wizard_btn_configure">Configurar</string>
 </resources>

@@ -220,6 +220,7 @@ The records remain in the database. Connect the correct drive to restore access.
     
     <string name="otg_required_msg">An external drive is required to work. Please connect it to the charging port via an OTG adapter.</string>
     <string name="connecting_usb_msg">Connecting USB drive...</string>
+    <string name="syncing_archive_msg">Syncing archive...</string>
     <string name="waking_up_drive_msg">Waking up drive and reading archive...</string>
     <string name="step_preparing">Preparing...</string>
     <string name="step_verifying">Verifying integrity...</string>
@@ -530,4 +531,21 @@ Errors:
     <string name="dialog_folders_section_title">Photo folders on drive</string>
     <string name="dialog_btn_choose_saf_drive">Select drive or folder (system picker)</string>
     <string name="dialog_drive_waiting_mount">Waiting for drive to be ready...</string>
+    <string name="select_target_archive_title">Select destination archive</string>
+    <string name="select_target_archive_desc">The \"All\" filter is currently active. Select which archive to save files into:</string>
+    <string name="mini_wizard_title">New Storage Device</string>
+    <string name="mini_wizard_saf_desc">A removable drive has been connected. To work with it, please grant access to its root folder. In the system screen that opens, tap \"Use this folder\" at the bottom.</string>
+    <string name="mini_wizard_btn_grant">Grant Access</string>
+    <string name="mini_wizard_btn_retry">Try Again</string>
+    <string name="mini_wizard_saf_error">Access was not granted. Please choose the root of your removable drive.</string>
+    <string name="mini_wizard_searching">Searching for archives on drive…</string>
+    <string name="mini_wizard_single_found_title">Found archive on drive:</string>
+    <string name="mini_wizard_btn_connect_archive">Connect Archive</string>
+    <string name="mini_wizard_btn_create_other">Create another archive</string>
+    <string name="mini_wizard_select_archive_title">Select Archive</string>
+    <string name="mini_wizard_create_new_archive">Create new archive</string>
+    <string name="mini_wizard_no_archives_found">No My1drive archives found on drive</string>
+    <string name="mini_wizard_btn_create">Create Archive</string>
+    <string name="mini_wizard_success">Archive is ready to use!</string>
+    <string name="mini_wizard_btn_configure">Setup</string>
 </resources>

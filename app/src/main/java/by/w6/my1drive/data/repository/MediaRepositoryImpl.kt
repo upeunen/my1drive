@@ -30,6 +30,7 @@ class MediaRepositoryImpl(
 ) : MediaRepository {
 
     private val _localItemsCache = kotlinx.coroutines.flow.MutableStateFlow<List<MediaItem>>(emptyList())
+    private val _refreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0L)
     private val aspectRatioCache = ConcurrentHashMap<String, Float>()
     
     private val mediaContentObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
@@ -80,11 +81,9 @@ class MediaRepositoryImpl(
     }
 
     override fun getMediaItemsFlow(): Flow<List<MediaItem>> {
-        val archivedFlow = mediaDao.getCountFlow()
-            .map {
-                mediaDao.getAllInChunksSync(chunkSize = 800)
-            }
-            .flowOn(Dispatchers.IO)
+        val archivedFlow = combine(mediaDao.getArchiveVersionFlow(), _refreshTrigger) { _, _ ->
+            mediaDao.getAllInChunksSync(chunkSize = 800)
+        }.flowOn(Dispatchers.IO)
         val archivesFlow = by.w6.my1drive.data.local.AppDatabase.getDatabase(context).archiveDao().getAllFlow()
         val prefsFlow = getPrefsFlow()
 
@@ -154,6 +153,7 @@ class MediaRepositoryImpl(
     }
 
     override fun refresh() {
+        _refreshTrigger.value = System.currentTimeMillis()
         GlobalScope.launch(Dispatchers.IO) {
             _localItemsCache.value = queryLocalMediaStore()
         }

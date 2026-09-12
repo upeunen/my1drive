@@ -504,7 +504,9 @@ fun GalleryScreenContent(
                     otgDirectoryDisplayName = otgDirectoryDisplayName,
                     otgDirectoryUri = otgDirectoryUri,
                     physicalArchiveSize = physicalArchiveSize,
-                    isArchiving = archiveState.isArchiving
+                    isArchiving = archiveState.isArchiving,
+                    isCheckingConnection = isCheckingConnection,
+                    isSilentSyncing = isSilentSyncing
                 )
             }
 
@@ -571,7 +573,7 @@ fun GalleryScreenContent(
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column {
-                    if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner()
+                    if (driveStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) UnknownDriveBanner(onConfigure = { viewModel.showNewDriveMiniWizard() })
                     else if (currentScreenRoute == "archive" && driveStatus == DriveStatus.KNOWN_DRIVE_DISCONNECTED && otgDirectoryUri != null && !(isCheckingConnection || isSilentSyncing)) DisconnectedDriveBanner()
                     if (hasPartialAccess) PartialAccessBanner(onGrantFullAccess = onRequestFullAccess, onOpenSettings = onOpenSettings)
                     if (currentScreenRoute == "archive" && otgDirectoryUri == null) OtgRequiredBanner()

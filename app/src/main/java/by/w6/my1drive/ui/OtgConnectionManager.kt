@@ -39,7 +39,9 @@ class OtgConnectionManager(
     private val scope: CoroutineScope,
     private val refreshCacheStats: () -> Unit = {},
     private val isBusy: () -> Boolean = { false },
+    private val isMiniWizardActive: () -> Boolean = { false },
     private val onShowFirstLaunchDialog: (Boolean) -> Unit = {},
+    private val onShowNewDriveMiniWizard: (Boolean) -> Unit = {},
     private val onShowUnknownDriveDialog: (Boolean) -> Unit = {},
     private val onShowUnreadableOtgDialog: (Boolean) -> Unit = {},
     private val onShowWriteProtectedRootDialog: (Boolean) -> Unit = {},
@@ -50,6 +52,14 @@ class OtgConnectionManager(
     private val onRequestSelectOtgFolder: () -> Unit = {},
     private val onArchiveActivated: () -> Unit = {}
 ) {
+    private var miniWizardHandled = false
+    fun onMiniWizardDismissed() {
+        miniWizardHandled = true
+    }
+    fun resetMiniWizardHandled() {
+        miniWizardHandled = false
+    }
+
     private var lastFirstLaunchState: Boolean? = null
     private fun invokeShowFirstLaunchDialog(show: Boolean) {
         if (lastFirstLaunchState != show) {
@@ -109,6 +119,9 @@ class OtgConnectionManager(
 
     private val _activeArchiveUuid = MutableStateFlow<String?>(null)
     val activeArchiveUuid: StateFlow<String?> = _activeArchiveUuid.asStateFlow()
+
+    private val _connectedArchiveUuids = MutableStateFlow<Set<String>>(emptySet())
+    val connectedArchiveUuids: StateFlow<Set<String>> = _connectedArchiveUuids.asStateFlow()
 
     fun resetActiveArchiveUuid() {
         _activeArchiveUuid.value = null
@@ -193,6 +206,7 @@ class OtgConnectionManager(
                     lastFirstLaunchState = null
                     lastUnknownDriveState = null
                     lastUnreadableOtgState = null
+                    miniWizardHandled = false
                     if (isEjectedButStillPluggedIn) {
                         isEjectedButStillPluggedIn = false
                     }
@@ -229,13 +243,20 @@ class OtgConnectionManager(
                 // IMPORTANT: Do NOT reset archive size on disconnect —
                 // keep last known value (as per spec C)
 
-                // First-launch detection: показываем приветствие если URI не выбран,
-                // а OTG-флешка физически подключена. Показывается один раз за сессию
-                // (до dismiss или выбора папки).
-                // Всегда проверяем физическое наличие OTG, даже без сохранённого URI.
-                if (otgPluggedIn && !firstLaunchHandled && _otgDirectoryUri.value == null && !isEjectedButStillPluggedIn) {
-                    invokeShowFirstLaunchDialog(true)
-                    firstLaunchHandled = true
+                // First-launch & Mini-wizard detection
+                val isWizardCompleted = prefs.getBoolean("setup_wizard_completed", false)
+                if (otgPluggedIn && !isEjectedButStillPluggedIn) {
+                    if (!isWizardCompleted) {
+                        if (!firstLaunchHandled && _otgDirectoryUri.value == null) {
+                            invokeShowFirstLaunchDialog(true)
+                            firstLaunchHandled = true
+                        }
+                    } else {
+                        if (!miniWizardHandled && (newStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED || (_otgDirectoryUri.value == null && newStatus != DriveStatus.KNOWN_DRIVE_CONNECTED))) {
+                            miniWizardHandled = true
+                            onShowNewDriveMiniWizard(true)
+                        }
+                    }
                 }
 
                 wasPhysicalConnected = otgPluggedIn
@@ -325,8 +346,9 @@ class OtgConnectionManager(
             val previousArchive = combinedArchives.find { it.uuid == savedActiveUuid }
 
             val isWizardCompleted = prefs.getBoolean("setup_wizard_completed", false)
-            if (!isWizardCompleted && !isManualSearch) {
-                // When in Setup Wizard and not explicit manual search, Step 3 of the wizard handles archive discovery, selection and creation natively
+            if ((!isWizardCompleted || isMiniWizardActive()) && !isManualSearch) {
+                // When in Setup Wizard or Mini-Wizard and not explicit manual search,
+                // the wizard handles archive discovery, selection and creation natively
                 return@launch
             }
 
@@ -396,9 +418,9 @@ class OtgConnectionManager(
                     val newFolderName = if (archive.folderName.contains('/')) {
                         "${archive.folderName.substringBeforeLast('/')}/$folderNameOnly"
                     } else if (archive.folderName.isNotEmpty()) {
-                        "${OtgFolderResolver.MAIN_CONTAINER_NAME}/$folderNameOnly"
+                        folderNameOnly
                     } else {
-                        "${OtgFolderResolver.MAIN_CONTAINER_NAME}/$folderNameOnly"
+                        ""
                     }
                     db.archiveDao().insert(archive.copy(
                         lastConnected = System.currentTimeMillis(),
@@ -415,7 +437,7 @@ class OtgConnectionManager(
             updateArchiveSize()
             _isCheckingConnection.value = false
 
-            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
             }
@@ -536,6 +558,7 @@ class OtgConnectionManager(
                 isEjectedButStillPluggedIn = true
                 _status.value = DriveStatus.KNOWN_DRIVE_DISCONNECTED
                 _archiveSize.value = 0L
+                _connectedArchiveUuids.value = emptySet()
                 _isEjecting.value = false
                 withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(
@@ -561,6 +584,7 @@ class OtgConnectionManager(
             _physicalConnected.value = otgPluggedIn
 
             if (!otgPluggedIn) {
+                _connectedArchiveUuids.value = emptySet()
                 unknownDriveDialogHandled = false
                 firstLaunchHandled = false
                 lastFirstLaunchState = null
@@ -572,7 +596,10 @@ class OtgConnectionManager(
             }
 
             val isTransitionToConnected = otgPluggedIn && !wasConnected
-            val isVerifyingNeeded = (isStartup || isTransitionToConnected) && _otgDirectoryUri.value != null
+            val hasConfiguredOrPersistedUri = _otgDirectoryUri.value != null ||
+                    try { application.contentResolver.persistedUriPermissions.isNotEmpty() } catch (_: Exception) { false }
+            val isDriveNotReady = _status.value != DriveStatus.KNOWN_DRIVE_CONNECTED
+            val isVerifyingNeeded = (isStartup || isTransitionToConnected || (otgPluggedIn && isDriveNotReady)) && hasConfiguredOrPersistedUri
 
             if (isVerifyingNeeded) {
                 verifyConnectionAndWait()
@@ -732,10 +759,10 @@ class OtgConnectionManager(
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
             if (isReadable) {
                 val activeUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
+                val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
                 val knownArchive = if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
                     db.archiveDao().getById(activeUuid)
                 } else {
-                    val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
                     if (volumeUuid != null && !isArchiveUnlinked(volumeUuid)) db.archiveDao().getById(volumeUuid) else null
                 }
                 val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
@@ -747,16 +774,16 @@ class OtgConnectionManager(
                     break
                 }
                 
-                // If not in Room (e.g. app reinstalled), only match if activeUuid is specifically saved and not unlinked
-                if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
-                    val allOnDrive = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, uri)
-                    val matchingRecovered = allOnDrive.find { it.uuid == activeUuid && !isArchiveUnlinked(it.uuid) }
-                    if (matchingRecovered != null) {
-                        connectedUri = uri
-                        connectedUuid = matchingRecovered.uuid
-                        connectedName = matchingRecovered.name
-                        break
-                    }
+                // If not in Room (e.g. app reinstalled), only match if activeUuid is specifically configured and not unlinked
+                val allOnDrive = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, uri)
+                val matchingRecovered = if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
+                    allOnDrive.find { it.uuid == activeUuid && !isArchiveUnlinked(it.uuid) }
+                } else null
+                if (matchingRecovered != null) {
+                    connectedUri = uri
+                    connectedUuid = matchingRecovered.uuid
+                    connectedName = matchingRecovered.name
+                    break
                 }
             }
         }
@@ -857,12 +884,14 @@ class OtgConnectionManager(
                 } else null
                 var uuid = fallbackUuid
                 
-                if (knownArchive == null && !savedActiveUuid.isNullOrEmpty() && !isArchiveUnlinked(savedActiveUuid)) {
+                if (knownArchive == null) {
                     val uriStr = savedUri.toString()
                     if (!scannedUris.contains(uriStr)) {
                         scannedUris.add(uriStr)
                         val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri)
-                        val matching = allRecovered.find { it.uuid == savedActiveUuid && !isArchiveUnlinked(it.uuid) }
+                        val matching = if (!savedActiveUuid.isNullOrEmpty() && !isArchiveUnlinked(savedActiveUuid)) {
+                            allRecovered.find { it.uuid == savedActiveUuid && !isArchiveUnlinked(it.uuid) }
+                        } else null
                         if (matching != null) {
                             knownArchive = matching
                             uuid = matching.uuid
@@ -881,21 +910,30 @@ class OtgConnectionManager(
                         }
                         db.archiveDao().insert(currentKnownArchive.copy(lastConnected = System.currentTimeMillis()))
 
+                        val presentArchives = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri)
+                        val presentUuids = presentArchives.map { it.uuid }.toMutableSet()
+                        if (uuid != null) presentUuids.add(uuid)
+                        _connectedArchiveUuids.value = presentUuids
+
                         driveErrorCount = 0
                         invokeShowUnknownDriveDialog(false)
                         unknownDriveDialogHandled = false
                         DriveStatus.KNOWN_DRIVE_CONNECTED
                     } else {
+                        _connectedArchiveUuids.value = emptySet()
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED
                     }
                 } else {
+                    _connectedArchiveUuids.value = emptySet()
                     DriveStatus.UNKNOWN_DRIVE_CONNECTED
                 }
             } else {
+                _connectedArchiveUuids.value = emptySet()
                 invokeShowUnknownDriveDialog(false)
                 DriveStatus.KNOWN_DRIVE_DISCONNECTED
             }
         } catch (e: Exception) {
+            _connectedArchiveUuids.value = emptySet()
             invokeShowUnknownDriveDialog(false)
             DriveStatus.KNOWN_DRIVE_DISCONNECTED
         }

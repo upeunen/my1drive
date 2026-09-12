@@ -25,6 +25,8 @@ sealed class AppDialog {
     data class PromoSuccess(val days: Int, val customMessage: String?) : AppDialog()
     data class Announcement(val id: String, val title: String, val message: String) : AppDialog()
     data class SelectArchive(val archives: List<by.w6.my1drive.data.local.ArchiveEntity>, val uri: Uri) : AppDialog()
+    data class SelectTargetArchive(val archives: List<by.w6.my1drive.data.local.ArchiveEntity>, val targetUri: Uri, val isCopy: Boolean) : AppDialog()
+    data class NewDriveMiniWizard(val step: Int = 1, val errorMessage: String? = null, val driveUri: Uri? = null) : AppDialog()
 }
 
 data class SyncState(

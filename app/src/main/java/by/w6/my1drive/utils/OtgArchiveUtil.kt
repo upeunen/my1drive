@@ -613,9 +613,12 @@ class OtgArchiveUtil(private val context: Context) {
                 }
                 val sampleSize = calculateSampleSize(boundsOpts.outWidth, boundsOpts.outHeight, 256)
                 val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-                context.contentResolver.openInputStream(item.uri)?.use { input ->
+                val decoded = context.contentResolver.openInputStream(item.uri)?.use { input ->
                     BitmapFactory.decodeStream(input, null, decodeOpts)
                 }
+                if (decoded != null) {
+                    ExifHelper.rotateBitmapIfNeeded(context, item.uri, decoded)
+                } else null
             }
         } catch (e: Exception) {
             DebugLogBuffer.log("OtgArchiveUtil", "Failed to generate thumbnail for precache: ${e.localizedMessage}")

@@ -1,6 +1,7 @@
 package by.w6.my1drive.utils
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.media.ExifInterface
 import java.util.Locale
@@ -80,5 +81,94 @@ object ExifHelper {
             e.printStackTrace()
         }
         return metadata
+    }
+
+    /**
+     * Reads EXIF orientation from the given Uri and returns a rotated Bitmap if needed.
+     * Recycles the input bitmap if a new rotated bitmap is created.
+     */
+    fun rotateBitmapIfNeeded(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
+        val orientation = try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                ExifInterface(inputStream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            } ?: ExifInterface.ORIENTATION_NORMAL
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+        return applyOrientation(bitmap, orientation)
+    }
+
+    /**
+     * Reads EXIF orientation from the given FileDescriptor and returns a rotated Bitmap if needed.
+     * Recycles the input bitmap if a new rotated bitmap is created.
+     */
+    fun rotateBitmapIfNeeded(fd: java.io.FileDescriptor, bitmap: Bitmap): Bitmap {
+        val orientation = try {
+            ExifInterface(fd).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+        return applyOrientation(bitmap, orientation)
+    }
+
+    private fun applyOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+        val degrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        if (degrees == 0f) return bitmap
+        return try {
+            val matrix = android.graphics.Matrix().apply { postRotate(degrees) }
+            val rotated = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotated !== bitmap) bitmap.recycle()
+            rotated
+        } catch (_: Exception) {
+            bitmap
+        }
+    }
+
+    /**
+     * Reads image or video dimensions (swapping width and height if rotated 90/270 degrees)
+     * using inJustDecodeBounds / MediaMetadataRetriever without decoding pixels into memory.
+     */
+    fun getImageDimensions(context: Context, uri: Uri, mimeType: String): Pair<Int, Int> {
+        if (mimeType.startsWith("video/")) {
+            val retriever = android.media.MediaMetadataRetriever()
+            return try {
+                retriever.setDataSource(context, uri)
+                val w = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+                val h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+                val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+                if (rotation == 90 || rotation == 270) Pair(h, w) else Pair(w, h)
+            } catch (_: Exception) {
+                Pair(0, 0)
+            } finally {
+                try { retriever.release() } catch (_: Exception) {}
+            }
+        } else {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    android.graphics.BitmapFactory.decodeStream(input, null, bounds)
+                }
+            } catch (_: Exception) {
+                return Pair(0, 0)
+            }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return Pair(0, 0)
+            val orientation = try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    ExifInterface(input).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                } ?: ExifInterface.ORIENTATION_NORMAL
+            } catch (_: Exception) {
+                ExifInterface.ORIENTATION_NORMAL
+            }
+            return if (orientation == ExifInterface.ORIENTATION_ROTATE_90 || orientation == ExifInterface.ORIENTATION_ROTATE_270) {
+                Pair(bounds.outHeight, bounds.outWidth)
+            } else {
+                Pair(bounds.outWidth, bounds.outHeight)
+            }
+        }
     }
 }

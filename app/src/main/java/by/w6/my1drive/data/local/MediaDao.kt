@@ -21,6 +21,9 @@ interface MediaDao {
     @Query("SELECT COUNT(*) FROM media_archive")
     fun getCountFlow(): Flow<Int>
 
+    @Query("SELECT COUNT(*) + COUNT(thumbnailPath) FROM media_archive")
+    fun getArchiveVersionFlow(): Flow<Int>
+
     /**
      * Safely reads all archived entities in small chunks (800 rows per query)
      * to avoid Android SQLite 2MB CursorWindow overflow on large libraries (1400+ items).

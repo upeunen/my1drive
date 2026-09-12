@@ -287,10 +287,89 @@ class ArchiveSyncHelper private constructor(
                         }
                         DebugLogBuffer.log(logTag, "activeUuid resolved: $activeUuid")
 
-                        // ── Шаг 1: Чтение JSON метаданных ──
+                        // ── Шаг 1: Чтение JSON метаданных (источник истины) ──
                         val jsonEntries = metadataStore.readMetadata(uri)
                         DebugLogBuffer.log(logTag, "Read metadata: ${jsonEntries.size} JSON entries")
 
+                        // ── Фаза 1 (МГНОВЕННАЯ): Показываем файлы из JSON в галерее сразу (до 0.5 сек) ──
+                        if (jsonEntries.isNotEmpty()) {
+                            val initialRoomEntities = db.mediaDao().getByArchiveUuidInChunksSync(activeUuid)
+                            val initialRoomMap = initialRoomEntities.associateBy { it.id }
+                            val initialBatch = mutableListOf<MediaEntity>()
+
+                            for (entry in jsonEntries) {
+                                if (isCancellationRequested || !isActive) break
+                                val existing = initialRoomMap[entry.hash]
+                                val fallbackUri = if (dir != null) {
+                                    by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, entry.displayName).toString()
+                                } else ""
+
+                                val localPreview = previewCache.cacheFileFor(entry.hash)
+                                val resolvedThumb = if (localPreview.exists() && localPreview.length() > 0) localPreview.absolutePath else null
+
+                                if (existing == null) {
+                                    initialBatch.add(MediaEntity(
+                                        id = entry.hash,
+                                        displayName = entry.displayName,
+                                        mimeType = entry.mimeType,
+                                        size = entry.size,
+                                        dateModified = entry.dateModified,
+                                        otgUri = fallbackUri,
+                                        thumbnailPath = resolvedThumb,
+                                        duration = entry.duration,
+                                        originalRelativePath = entry.originalRelativePath,
+                                        dateArchived = entry.dateArchived,
+                                        archiveUuid = activeUuid,
+                                        width = entry.width,
+                                        height = entry.height
+                                    ))
+                                } else {
+                                    val actualThumb = if (!existing.thumbnailPath.isNullOrEmpty() && java.io.File(existing.thumbnailPath).exists()) {
+                                        existing.thumbnailPath
+                                    } else resolvedThumb
+
+                                    if (existing.displayName != entry.displayName || 
+                                        existing.size != entry.size || 
+                                        existing.dateModified != entry.dateModified ||
+                                        existing.archiveUuid != activeUuid ||
+                                        existing.thumbnailPath != actualThumb ||
+                                        (existing.width == 0 && entry.width > 0) ||
+                                        (existing.height == 0 && entry.height > 0)
+                                    ) {
+                                        initialBatch.add(existing.copy(
+                                            displayName = entry.displayName,
+                                            mimeType = entry.mimeType,
+                                            size = entry.size,
+                                            dateModified = entry.dateModified,
+                                            thumbnailPath = actualThumb,
+                                            duration = entry.duration,
+                                            originalRelativePath = entry.originalRelativePath,
+                                            dateArchived = entry.dateArchived,
+                                            archiveUuid = activeUuid,
+                                            width = if (existing.width > 0) existing.width else entry.width,
+                                            height = if (existing.height > 0) existing.height else entry.height
+                                        ))
+                                    }
+                                }
+
+                                if (initialBatch.size >= 500) {
+                                    db.mediaDao().insertAll(initialBatch)
+                                    initialBatch.clear()
+                                }
+                            }
+
+                            if (initialBatch.isNotEmpty()) {
+                                db.mediaDao().insertAll(initialBatch)
+                                initialBatch.clear()
+                            }
+
+                            withContext(Dispatchers.Main) {
+                                repository.refresh()
+                            }
+                            DebugLogBuffer.log(logTag, "Phase 1 instant UI refresh complete with ${jsonEntries.size} items")
+                        }
+
+                        // ── Фаза 2 (ФОНОВАЯ): Сканирование физической папки на флешке, дедупликация и очистка ──
                         val metadataExists = metadataStore.metadataExists(uri)
                         val physicalFiles = if (dir != null && dir.exists()) {
                             fastListFiles(application, dir.uri) { isCancellationRequested }
@@ -303,17 +382,14 @@ class ArchiveSyncHelper private constructor(
                             return@withLock
                         }
 
-                        // ── Шаг 1.5: Сканирование физической папки на флешке ──
                         val validJsonEntries = jsonEntries.toMutableList()
                         var jsonChanged = false
 
                         if (dir != null && dir.exists()) {
-                            val files = physicalFiles
-
                             val knownNamesMap = jsonEntries.associateBy { it.displayName.lowercase() }
                             val knownHashes = jsonEntries.map { it.hash }.toHashSet()
 
-                            for (file in files) {
+                            for (file in physicalFiles) {
                                 if (isCancellationRequested || !isActive) {
                                     DebugLogBuffer.log(logTag, "Silent sync cancelled during scan loop")
                                     break
@@ -329,9 +405,15 @@ class ArchiveSyncHelper private constructor(
                                 val hash = "${name}_${file.length}"
 
                                 if (hash !in knownHashes) {
-                                    val mime = file.mimeType
+                                    val mime = file.mimeType.ifEmpty { "image/jpeg" }
                                     val relSubfolder = file.relativePath.substringBeforeLast('/', "")
                                     val defaultPath = if (relSubfolder.isNotEmpty()) "$relSubfolder/" else if (mime.startsWith("video/")) "Movies/" else "Pictures/"
+                                    val dims = if (mime.startsWith("image/")) {
+                                        try {
+                                            by.w6.my1drive.utils.ExifHelper.getImageDimensions(application, file.uri, mime)
+                                        } catch (_: Exception) { 0 to 0 }
+                                    } else 0 to 0
+
                                     val newEntry = JsonEntry(
                                         hash = hash,
                                         displayName = name,
@@ -340,7 +422,9 @@ class ArchiveSyncHelper private constructor(
                                         dateModified = file.lastModified / 1000,
                                         originalRelativePath = defaultPath,
                                         duration = null,
-                                        dateArchived = System.currentTimeMillis() / 1000
+                                        dateArchived = System.currentTimeMillis() / 1000,
+                                        width = dims.first,
+                                        height = dims.second
                                     )
                                     validJsonEntries.add(newEntry)
                                     knownHashes.add(hash)
@@ -377,13 +461,14 @@ class ArchiveSyncHelper private constructor(
 
                         // ── Шаг 2: Синхронизация Room с JSON данными ──
                         val finalHashes = validJsonEntries.map { it.hash }.toSet()
-                        var roomModified = false
                         var insertedToRoom = 0
 
                         val physicalUrisMap = physicalFiles.associate { 
                             (it.name.lowercase() to it.length) to it.uri.toString() 
                         }
 
+                        val phase2RoomEntities = db.mediaDao().getByArchiveUuidInChunksSync(activeUuid)
+                        val phase2RoomMap = phase2RoomEntities.associateBy { it.id }
                         val batchToInsert = mutableListOf<MediaEntity>()
 
                         for (entry in validJsonEntries) {
@@ -391,7 +476,7 @@ class ArchiveSyncHelper private constructor(
                                 DebugLogBuffer.log(logTag, "Silent sync cancelled during Room update")
                                 break
                             }
-                            val existing = db.mediaDao().getById(entry.hash)
+                            val existing = phase2RoomMap[entry.hash]
                             val fallbackUri = if (dir != null) {
                                 by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, entry.displayName).toString()
                             } else ""
@@ -414,10 +499,11 @@ class ArchiveSyncHelper private constructor(
                                     duration = entry.duration,
                                     originalRelativePath = entry.originalRelativePath,
                                     dateArchived = entry.dateArchived,
-                                    archiveUuid = activeUuid
+                                    archiveUuid = activeUuid,
+                                    width = entry.width,
+                                    height = entry.height
                                 ))
                                 insertedToRoom++
-                                roomModified = true
                             } else {
                                 val key = (entry.displayName.lowercase()) to entry.size
                                 val resolvedUri = physicalUrisMap[key] ?: existing.otgUri?.ifEmpty { null } ?: fallbackUri
@@ -430,7 +516,9 @@ class ArchiveSyncHelper private constructor(
                                     existing.dateModified != entry.dateModified ||
                                     existing.otgUri != resolvedUri ||
                                     existing.archiveUuid != activeUuid ||
-                                    existing.thumbnailPath != actualThumb
+                                    existing.thumbnailPath != actualThumb ||
+                                    (existing.width == 0 && entry.width > 0) ||
+                                    (existing.height == 0 && entry.height > 0)
                                 ) {
                                     batchToInsert.add(existing.copy(
                                         displayName = entry.displayName,
@@ -442,9 +530,10 @@ class ArchiveSyncHelper private constructor(
                                         duration = entry.duration,
                                         originalRelativePath = entry.originalRelativePath,
                                         dateArchived = entry.dateArchived,
-                                        archiveUuid = activeUuid
+                                        archiveUuid = activeUuid,
+                                        width = if (existing.width > 0) existing.width else entry.width,
+                                        height = if (existing.height > 0) existing.height else entry.height
                                     ))
-                                    roomModified = true
                                 }
                             }
                             
@@ -462,9 +551,8 @@ class ArchiveSyncHelper private constructor(
                         }
 
                         // Удаляем из Room записи, которых больше нет в JSON
-                        val allRoomEntities = db.mediaDao().getAllSync().filter { it.archiveUuid == activeUuid }
                         var deletedFromRoom = 0
-                        for (entity in allRoomEntities) {
+                        for (entity in phase2RoomEntities) {
                             if (entity.id !in finalHashes) {
                                 entity.thumbnailPath?.let { path ->
                                     val file = java.io.File(path)
@@ -472,14 +560,13 @@ class ArchiveSyncHelper private constructor(
                                 }
                                 db.mediaDao().delete(entity)
                                 deletedFromRoom++
-                                roomModified = true
                             }
                         }
                         if (deletedFromRoom > 0) {
                             DebugLogBuffer.log(logTag, "Removed $deletedFromRoom dead entries from Room database")
                         }
 
-                        if (roomModified) {
+                        withContext(Dispatchers.Main) {
                             repository.refresh()
                         }
                         DebugLogBuffer.log(logTag, "Silent sync finished successfully")
@@ -588,6 +675,10 @@ class ArchiveSyncHelper private constructor(
                     val knownNamesAndSizesMap = validJsonEntries.associateBy { (it.displayName.lowercase()) to it.size }
                     val newEntries = mutableListOf<JsonEntry>()
 
+                    val existingRoomEntities = db.mediaDao().getByArchiveUuidInChunksSync(activeUuid)
+                    val existingRoomMap = existingRoomEntities.associateBy { it.id }.toMutableMap()
+                    val batchToInsertManual = mutableListOf<MediaEntity>()
+
                     withContext(Dispatchers.IO) {
                         for ((idx, file) in files.withIndex()) {
                             if (isCancellationRequested || !isActive) {
@@ -611,9 +702,9 @@ class ArchiveSyncHelper private constructor(
                             val entry = knownNamesAndSizesMap[key]
                             if (entry != null) {
                                 val otgFileUri = file.uri.toString()
-                                val existing = db.mediaDao().getById(entry.hash)
+                                val existing = existingRoomMap[entry.hash]
                                 if (existing == null) {
-                                    db.mediaDao().insert(MediaEntity(
+                                    val newEntity = MediaEntity(
                                         id = entry.hash,
                                         displayName = entry.displayName,
                                         mimeType = entry.mimeType,
@@ -623,14 +714,29 @@ class ArchiveSyncHelper private constructor(
                                         thumbnailPath = null,
                                         duration = entry.duration,
                                         originalRelativePath = entry.originalRelativePath,
-                                        archiveUuid = activeUuid
-                                    ))
-                                } else if (existing.otgUri != otgFileUri || existing.archiveUuid != activeUuid) {
-                                    // Обновляем кэш, если флешку переподключили и URI изменился
-                                    db.mediaDao().insert(existing.copy(
-                                        otgUri = otgFileUri,
-                                        archiveUuid = activeUuid
-                                    ))
+                                        archiveUuid = activeUuid,
+                                        width = entry.width,
+                                        height = entry.height
+                                    )
+                                    batchToInsertManual.add(newEntity)
+                                    existingRoomMap[entry.hash] = newEntity
+                                } else {
+                                    val needUpdateUri = existing.otgUri != otgFileUri || existing.archiveUuid != activeUuid
+                                    val needUpdateDims = (existing.width == 0 || existing.height == 0) && (entry.width > 0 && entry.height > 0)
+                                    if (needUpdateUri || needUpdateDims) {
+                                        val updatedEntity = existing.copy(
+                                            otgUri = otgFileUri,
+                                            archiveUuid = activeUuid,
+                                            width = if (existing.width > 0) existing.width else entry.width,
+                                            height = if (existing.height > 0) existing.height else entry.height
+                                        )
+                                        batchToInsertManual.add(updatedEntity)
+                                        existingRoomMap[entry.hash] = updatedEntity
+                                    }
+                                }
+                                if (batchToInsertManual.size >= 500) {
+                                    db.mediaDao().insertAll(batchToInsertManual)
+                                    batchToInsertManual.clear()
                                 }
                                 continue
                             }
@@ -639,6 +745,7 @@ class ArchiveSyncHelper private constructor(
                             if (hash !in knownHashes) {
                                 val mime = file.mimeType.ifEmpty { "image/jpeg" }
                                 val defaultPath = if (mime.startsWith("video/")) "Movies/" else "Pictures/"
+                                val dims = by.w6.my1drive.utils.ExifHelper.getImageDimensions(application, file.uri, mime)
                                 val entry = JsonEntry(
                                     hash = hash,
                                     displayName = name,
@@ -647,7 +754,9 @@ class ArchiveSyncHelper private constructor(
                                     dateModified = file.lastModified / 1000,
                                     originalRelativePath = defaultPath,
                                     duration = null,
-                                    dateArchived = System.currentTimeMillis() / 1000
+                                    dateArchived = System.currentTimeMillis() / 1000,
+                                    width = dims.first,
+                                    height = dims.second
                                 )
                                 newEntries.add(entry)
                                 validJsonEntries.add(entry)
@@ -656,6 +765,10 @@ class ArchiveSyncHelper private constructor(
                             } else {
                                 skipped++
                             }
+                        }
+                        if (batchToInsertManual.isNotEmpty()) {
+                            db.mediaDao().insertAll(batchToInsertManual)
+                            batchToInsertManual.clear()
                         }
                     }
 
@@ -678,7 +791,7 @@ class ArchiveSyncHelper private constructor(
                         for (entry in newEntries) {
                             val physicalFile = physicalFilesMap[(entry.displayName.lowercase()) to entry.size]
                             val otgFileUri = physicalFile?.uri?.toString() ?: ""
-                            val existing = db.mediaDao().getById(entry.hash)
+                            val existing = existingRoomMap[entry.hash]
                             if (existing == null) {
                                 batchToInsert.add(MediaEntity(
                                     id = entry.hash,
@@ -708,8 +821,7 @@ class ArchiveSyncHelper private constructor(
                             db.mediaDao().insertAll(batchToInsert)
                         }
                         // 2. Удаляем из Room пропавшие
-                        val allRoomEntities = db.mediaDao().getAllSync().filter { it.archiveUuid == activeUuid }
-                        for (entity in allRoomEntities) {
+                        for (entity in existingRoomEntities) {
                             if (entity.id !in finalHashes) {
                                 entity.thumbnailPath?.let { path ->
                                     val file = java.io.File(path)
@@ -907,6 +1019,8 @@ class ArchiveSyncHelper private constructor(
             DebugLogBuffer.log(logTag, "Processing archived results in database: writing metadata for ${list.size} items")
             val currentTimeSec = System.currentTimeMillis() / 1000
             val jsonEntries = list.map { info ->
+                val w = if (info.item.aspectRatio > 0f) (info.item.aspectRatio * 1000).toInt() else 0
+                val h = if (info.item.aspectRatio > 0f) 1000 else 0
                 JsonEntry(
                     hash = info.hash,
                     displayName = info.item.displayName,
@@ -915,7 +1029,9 @@ class ArchiveSyncHelper private constructor(
                     dateModified = info.item.dateModified,
                     originalRelativePath = info.item.originalRelativePath,
                     duration = info.item.duration,
-                    dateArchived = currentTimeSec
+                    dateArchived = currentTimeSec,
+                    width = w,
+                    height = h
                 )
             }
             if (!vpsManager.isVpsEnabled()) {
@@ -1051,6 +1167,13 @@ class ArchiveSyncHelper private constructor(
             }
         }
 
+        fun resolveDimensions(existing: MediaEntity, file: File): Pair<Int, Int> {
+            if (existing.width > 0 && existing.height > 0) return Pair(existing.width, existing.height)
+            val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath, opts)
+            return if (opts.outWidth > 0 && opts.outHeight > 0) Pair(opts.outWidth, opts.outHeight) else Pair(0, 0)
+        }
+
         try {
             for ((idx, entity) in missingItems.withIndex()) {
                 if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
@@ -1077,7 +1200,13 @@ class ArchiveSyncHelper private constructor(
                         by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
                     } catch (_: Exception) {}
 
-                    val updated = entity.copy(thumbnailPath = cacheFile.absolutePath, lastAccessed = System.currentTimeMillis())
+                    val (w, h) = resolveDimensions(entity, cacheFile)
+                    val updated = entity.copy(
+                        thumbnailPath = cacheFile.absolutePath,
+                        lastAccessed = System.currentTimeMillis(),
+                        width = w,
+                        height = h
+                    )
                     pendingBatch.add(updated)
                     pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
                 } else {
@@ -1088,7 +1217,13 @@ class ArchiveSyncHelper private constructor(
                     try {
                         pDir.mkdirs()
                         if (by.w6.my1drive.utils.OtgFolderResolver.tryCopyPreviewFromOtg(application, uri, entity.id, cacheFile)) {
-                            val updated = entity.copy(thumbnailPath = cacheFile.absolutePath, lastAccessed = System.currentTimeMillis())
+                            val (w, h) = resolveDimensions(entity, cacheFile)
+                            val updated = entity.copy(
+                                thumbnailPath = cacheFile.absolutePath,
+                                lastAccessed = System.currentTimeMillis(),
+                                width = w,
+                                height = h
+                            )
                             pendingBatch.add(updated)
                             pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
                             loaded = true
@@ -1113,7 +1248,13 @@ class ArchiveSyncHelper private constructor(
                                 // Save to OTG drive .previews as well
                                 by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
 
-                                val updated = entity.copy(thumbnailPath = cacheFile.absolutePath, lastAccessed = System.currentTimeMillis())
+                                val (w, h) = resolveDimensions(entity, cacheFile)
+                                val updated = entity.copy(
+                                    thumbnailPath = cacheFile.absolutePath,
+                                    lastAccessed = System.currentTimeMillis(),
+                                    width = w,
+                                    height = h
+                                )
                                 pendingBatch.add(updated)
                                 pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
                             }
@@ -1185,9 +1326,12 @@ class ArchiveSyncHelper private constructor(
                 }
                 val sampleSize = calculateSampleSizeHelper(boundsOpts.outWidth, boundsOpts.outHeight, 256)
                 val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-                application.contentResolver.openInputStream(uri)?.use { input ->
+                val decoded = application.contentResolver.openInputStream(uri)?.use { input ->
                     BitmapFactory.decodeStream(input, null, decodeOpts)
                 }
+                if (decoded != null) {
+                    by.w6.my1drive.utils.ExifHelper.rotateBitmapIfNeeded(application, uri, decoded)
+                } else null
             } catch (e: Exception) {
                 null
             }

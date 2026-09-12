@@ -184,7 +184,7 @@ class OtgThumbnailFetcher(
                     BitmapFactory.decodeFileDescriptor(fd, null, decodeOpts)
                 }
 
-                pfdBitmap ?: run {
+                val rawBitmap = pfdBitmap ?: run {
                     // Fallback to stream if openFileDescriptor fails
                     val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     context.contentResolver.openInputStream(uri)?.use { input ->
@@ -200,6 +200,9 @@ class OtgThumbnailFetcher(
                         BitmapFactory.decodeStream(input, null, decodeOpts)
                     }
                 }
+                if (rawBitmap != null) {
+                    ExifHelper.rotateBitmapIfNeeded(context, uri, rawBitmap)
+                } else null
             } catch (e: Exception) {
                 null
             }
