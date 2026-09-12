@@ -216,6 +216,10 @@ class ArchiveMetadataStore(private val context: Context) {
                     writer.name("version").value(JSON_VERSION)
                     writer.name("archiveUuid").value(uuid)
                     writer.name("archiveName").value(archiveName)
+                    val driveUuid = archive?.driveUuid?.ifEmpty { by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) } ?: (by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: "")
+                    if (driveUuid.isNotEmpty()) {
+                        writer.name("driveUuid").value(driveUuid)
+                    }
                     writer.name("files").beginArray()
                     
                     for (entry in entries) {

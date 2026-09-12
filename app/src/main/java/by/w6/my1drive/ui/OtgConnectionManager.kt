@@ -451,7 +451,8 @@ class OtgConnectionManager(
         onShowNamingDialog(null)
         _isCheckingConnection.value = true
         scope.launch {
-            val uuid = OtgFolderResolver.extractVolumeId(uri) ?: uri.toString().hashCode().toString()
+            val volumeId = OtgFolderResolver.extractVolumeId(uri) ?: ""
+            val uuid = volumeId.ifEmpty { uri.toString().hashCode().toString() }
             val folderName = "${OtgFolderResolver.MAIN_CONTAINER_NAME}/Arhiv-$name"
 
             withContext(Dispatchers.IO) {
@@ -462,7 +463,8 @@ class OtgConnectionManager(
                         name = name,
                         folderName = folderName,
                         dateCreated = System.currentTimeMillis(),
-                        lastConnected = System.currentTimeMillis()
+                        lastConnected = System.currentTimeMillis(),
+                        driveUuid = volumeId
                     )
                 )
             }

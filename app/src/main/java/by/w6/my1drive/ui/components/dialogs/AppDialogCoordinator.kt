@@ -407,7 +407,7 @@ fun AppDialogCoordinator(
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             items(activeDialog.archives) { archive ->
-                                val archiveColor = archiveStripeColor(archive.uuid)
+                                val archiveColor = archiveStripeColor(archive.uuid, activeDialog.archives)
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()

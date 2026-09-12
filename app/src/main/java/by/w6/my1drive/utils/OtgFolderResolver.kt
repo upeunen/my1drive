@@ -344,15 +344,22 @@ object OtgFolderResolver {
                                     name = name.ifEmpty { "Archive" },
                                     folderName = relPath,
                                     dateCreated = System.currentTimeMillis(),
-                                    lastConnected = System.currentTimeMillis()
+                                    lastConnected = System.currentTimeMillis(),
+                                    driveUuid = volumeId ?: ""
                                 )
                                 val existing = db.archiveDao().getById(finalUuid)
                                 val finalEntity = if (existing != null) {
-                                    existing.copy(
+                                    val updated = existing.copy(
                                         name = if (name.isNotEmpty()) name else existing.name,
-                                        folderName = relPath
+                                        folderName = relPath,
+                                        driveUuid = if (existing.driveUuid.isNotEmpty()) existing.driveUuid else (volumeId ?: "")
                                     )
+                                    if (existing.driveUuid.isEmpty() && !volumeId.isNullOrEmpty()) {
+                                        db.archiveDao().insert(updated)
+                                    }
+                                    updated
                                 } else {
+                                    db.archiveDao().insert(entity)
                                     entity
                                 }
                                 if (seenUuids.add(finalUuid)) {
@@ -387,16 +394,23 @@ object OtgFolderResolver {
                                 name = name,
                                 folderName = relativeFolderName,
                                 dateCreated = System.currentTimeMillis(),
-                                lastConnected = System.currentTimeMillis()
+                                lastConnected = System.currentTimeMillis(),
+                                driveUuid = volumeId ?: ""
                             )
                             val existing = db.archiveDao().getById(finalUuid)
                             updateGlobalIndex(context, rootUri, finalUuid, name, relativeFolderName)
                             val finalEntity = if (existing != null) {
-                                existing.copy(
+                                val updated = existing.copy(
                                     name = if (name.isNotEmpty()) name else existing.name,
-                                    folderName = relativeFolderName
+                                    folderName = relativeFolderName,
+                                    driveUuid = if (existing.driveUuid.isNotEmpty()) existing.driveUuid else (volumeId ?: "")
                                 )
+                                if (existing.driveUuid.isEmpty() && !volumeId.isNullOrEmpty()) {
+                                    db.archiveDao().insert(updated)
+                                }
+                                updated
                             } else {
+                                db.archiveDao().insert(entity)
                                 entity
                             }
                             if (seenUuids.add(finalUuid)) {
@@ -426,16 +440,23 @@ object OtgFolderResolver {
                             name = name,
                             folderName = relativeFolderName,
                             dateCreated = System.currentTimeMillis(),
-                            lastConnected = System.currentTimeMillis()
+                            lastConnected = System.currentTimeMillis(),
+                            driveUuid = volumeId ?: ""
                         )
                         val existing = db.archiveDao().getById(finalUuid)
                         updateGlobalIndex(context, rootUri, finalUuid, name, relativeFolderName)
                         val finalEntity = if (existing != null) {
-                            existing.copy(
+                            val updated = existing.copy(
                                 name = if (name.isNotEmpty()) name else existing.name,
-                                folderName = relativeFolderName
+                                folderName = relativeFolderName,
+                                driveUuid = if (existing.driveUuid.isNotEmpty()) existing.driveUuid else (volumeId ?: "")
                             )
+                            if (existing.driveUuid.isEmpty() && !volumeId.isNullOrEmpty()) {
+                                db.archiveDao().insert(updated)
+                            }
+                            updated
                         } else {
+                            db.archiveDao().insert(entity)
                             entity
                         }
                         if (seenUuids.add(finalUuid)) {
@@ -462,11 +483,23 @@ object OtgFolderResolver {
                                     name = name,
                                     folderName = "",
                                     dateCreated = System.currentTimeMillis(),
-                                    lastConnected = System.currentTimeMillis()
+                                    lastConnected = System.currentTimeMillis(),
+                                    driveUuid = volumeId ?: ""
                                 )
                                 val existing = db.archiveDao().getById(finalUuid)
                                 updateGlobalIndex(context, rootUri, finalUuid, name, "")
-                                val finalEntity = existing ?: entity
+                                val finalEntity = if (existing != null) {
+                                    val updated = existing.copy(
+                                        driveUuid = if (existing.driveUuid.isNotEmpty()) existing.driveUuid else (volumeId ?: "")
+                                    )
+                                    if (existing.driveUuid.isEmpty() && !volumeId.isNullOrEmpty()) {
+                                        db.archiveDao().insert(updated)
+                                    }
+                                    updated
+                                } else {
+                                    db.archiveDao().insert(entity)
+                                    entity
+                                }
                                 if (seenUuids.add(finalUuid)) {
                                     recovered.add(finalEntity)
                                 }

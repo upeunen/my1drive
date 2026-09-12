@@ -16,9 +16,9 @@
 *   **`domain.repository`**: Интерфейсы (например, `MediaRepository`).
 
 ### 2. `data` (Слой данных)
-*   **`data.local`**: Room Database (`AppDatabase`).
+*   **`data.local`**: Room Database (`AppDatabase`, версия 10).
     *   `MediaDao`, `ArchiveDao` — интерфейсы для доступа к данным.
-    *   `MediaEntity`, `ArchiveEntity` — сущности БД (сохраняют пути, хэши, ID накопителя и ссылки на кэш миниатюр).
+    *   `MediaEntity`, `ArchiveEntity` — сущности БД (сохраняют пути, хэши, ID накопителя `driveUuid`, UUID архива и ссылки на кэш миниатюр).
     *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Поддерживает автоматическое обновление локального кэша через `ContentObserver` на MediaStore Images/Videos, использует вложенный кэш пропорций кадра (`aspectRatioCache`) для исключения дискового I/O при трансформации потока, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
 *   **`ui` (Пользовательский интерфейс и Состояния)**:
 *   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute`, `NewDriveMiniWizardDialog` (компактный плавающий мастер подключения нового съемного накопителя, выдачи прав SAF на корень диска и автопоиска/создания архива), `ArchivesAndFoldersDialog` (единый полноэкранный диалог управления архивами, поиска папок с фото с настраиваемой глубиной и вызова проводника SAF в стиле Мастера), `SettingsTab` (компоненты `SettingsDashboardTiles`, `FilesAndSyncSection`, `ArchivesSettingsSection`, `LanguageSettingsSection`, `AdvancedSettingsSection`).

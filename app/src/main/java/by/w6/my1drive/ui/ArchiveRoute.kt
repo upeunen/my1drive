@@ -106,11 +106,20 @@ fun ArchiveRoute(
         }
     }
 
-    // Карта uuid → Color по стабильному хэшу UUID
+    // Карта uuid → Color по физическому накопителю
     val archiveColorMap = remember(knownArchives) {
         knownArchives.associate { archive ->
-            archive.uuid to archiveStripeColor(archive.uuid)
+            archive.uuid to archiveStripeColor(archive.uuid, knownArchives)
         }
+    }
+
+    // Сортировка чипов: группируем по физическому носителю, внутри по времени активности
+    val sortedArchives = remember(knownArchives) {
+        knownArchives
+            .groupBy { getDriveKey(it) }
+            .entries
+            .sortedBy { (_, list) -> list.minOfOrNull { it.dateCreated.takeIf { d -> d > 0 } ?: it.lastConnected } ?: 0L }
+            .flatMap { (_, list) -> list.sortedByDescending { maxOf(it.lastConnected, it.dateCreated) } }
     }
 
     val archiveStripeColorProvider: ((MediaItem) -> Color?)? = remember(archiveColorMap, showOffline, knownArchives.size) {
@@ -194,8 +203,8 @@ fun ArchiveRoute(
                     )
                 }
 
-                // Чипы для каждой флешки
-                knownArchives.forEach { archive ->
+                // Чипы для каждой флешки, сгруппированные по физическому накопителю
+                sortedArchives.forEach { archive ->
                     val baseColor = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
                     val isActive = filterUuid == archive.uuid
                     val isCurrentConnected = isOtgConnected && (connectedArchiveUuids.isEmpty() || archive.uuid in connectedArchiveUuids)

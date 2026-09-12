@@ -268,12 +268,14 @@ object OtgFolderScanner {
         }
 
         // 3. Save to Room database
+        val volumeId = OtgFolderResolver.extractVolumeId(rootUri) ?: ""
         val entity = ArchiveEntity(
             uuid = uuid,
             name = archiveName,
             folderName = relPath,
             dateCreated = now,
-            lastConnected = now
+            lastConnected = now,
+            driveUuid = volumeId
         )
         val db = AppDatabase.getDatabase(context)
         db.archiveDao().insert(entity)
@@ -328,11 +330,22 @@ object OtgFolderScanner {
                                     name = name,
                                     folderName = relPath,
                                     dateCreated = System.currentTimeMillis(),
-                                    lastConnected = System.currentTimeMillis()
+                                    lastConnected = System.currentTimeMillis(),
+                                    driveUuid = volumeId ?: ""
                                 )
                                 val existing = db.archiveDao().getById(finalUuid)
                                 OtgFolderResolver.updateGlobalIndex(context, rootUri, finalUuid, name, relPath)
-                                val finalEntity = existing ?: entity
+                                val finalEntity = if (existing != null) {
+                                    val updated = existing.copy(
+                                        driveUuid = if (existing.driveUuid.isNotEmpty()) existing.driveUuid else (volumeId ?: "")
+                                    )
+                                    if (existing.driveUuid.isEmpty() && !volumeId.isNullOrEmpty()) {
+                                        db.archiveDao().insert(updated)
+                                    }
+                                    updated
+                                } else {
+                                    entity
+                                }
                                 discovered.add(finalEntity)
                             }
                         }
