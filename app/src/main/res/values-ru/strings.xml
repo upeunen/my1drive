@@ -548,4 +548,7 @@
     <string name="mini_wizard_btn_create">Создать архив</string>
     <string name="mini_wizard_success">Архив готов к работе!</string>
     <string name="mini_wizard_btn_configure">Настроить</string>
+    <string name="btn_select_all">Выбрать все</string>
+    <string name="btn_deselect_all">Снять выделение</string>
+    <string name="btn_connect_selected">Подключить выбранные (%1$d)</string>
 </resources>

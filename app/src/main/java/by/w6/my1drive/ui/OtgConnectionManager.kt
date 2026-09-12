@@ -50,7 +50,8 @@ class OtgConnectionManager(
     private val onShowCreateArchiveGuideDialog: (Uri) -> Unit = {},
     private val onShowSelectArchiveDialog: (List<by.w6.my1drive.data.local.ArchiveEntity>, Uri) -> Unit = { _, _ -> },
     private val onRequestSelectOtgFolder: () -> Unit = {},
-    private val onArchiveActivated: () -> Unit = {}
+    private val onArchiveActivated: () -> Unit = {},
+    private val onShowMiniWizardForKnownDrive: (Uri) -> Unit = {}
 ) {
     private var miniWizardHandled = false
     fun onMiniWizardDismissed() {
@@ -235,8 +236,8 @@ class OtgConnectionManager(
                 val newStatus = _status.value
 
                 // Update archive size and clear error banner only when transitioning TO known connected
-                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED) {
-                    if (previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED) {
+                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES) {
+                    if (previousStatus != DriveStatus.KNOWN_DRIVE_CONNECTED && previousStatus != DriveStatus.KNOWN_DRIVE_NO_ARCHIVES) {
                         updateArchiveSize()
                     }
                 }
@@ -252,9 +253,23 @@ class OtgConnectionManager(
                             firstLaunchHandled = true
                         }
                     } else {
-                        if (!miniWizardHandled && (newStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED || (_otgDirectoryUri.value == null && newStatus != DriveStatus.KNOWN_DRIVE_CONNECTED))) {
-                            miniWizardHandled = true
-                            onShowNewDriveMiniWizard(true)
+                        if (!miniWizardHandled) {
+                            when (newStatus) {
+                                DriveStatus.UNKNOWN_DRIVE_CONNECTED -> {
+                                    // Совершенно новый диск: показываем мастер с SAF-шагом
+                                    miniWizardHandled = true
+                                    onShowNewDriveMiniWizard(true)
+                                }
+                                DriveStatus.KNOWN_DRIVE_NO_ARCHIVES -> {
+                                    // Известный диск, но архивов нет: пропускаем SAF, сразу поиск
+                                    val uri = _otgDirectoryUri.value
+                                    if (uri != null) {
+                                        miniWizardHandled = true
+                                        onShowMiniWizardForKnownDrive(uri)
+                                    }
+                                }
+                                else -> { /* KNOWN_DRIVE_CONNECTED с архивами — не показываем */ }
+                            }
                         }
                     }
                 }
@@ -327,14 +342,14 @@ class OtgConnectionManager(
 
         scope.launch {
             val allRecovered = withContext(Dispatchers.IO) {
-                OtgFolderResolver.scanAndRecoverAllArchives(application, uri)
+                OtgFolderResolver.scanAndRecoverAllArchives(application, uri, autoInsertToDb = false)
             }
 
             val volumeId = OtgFolderResolver.extractVolumeId(uri)
             val dbArchives = withContext(Dispatchers.IO) {
                 val all = db.archiveDao().getAllSync()
                 if (volumeId != null) {
-                    all.filter { it.uuid == volumeId || it.folderName.isNotEmpty() }
+                    all.filter { it.driveUuid == volumeId || (it.driveUuid.isEmpty() && it.uuid == volumeId) }
                 } else all
             }
 
@@ -390,46 +405,60 @@ class OtgConnectionManager(
         }
     }
 
-    /** Switches active archive to the chosen entity and initiates background sync. */
-    fun selectArchiveFromDiscovery(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
+    /** Connects multiple selected archives from discovery, setting primary as active. */
+    fun selectArchivesFromDiscovery(
+        archives: List<by.w6.my1drive.data.local.ArchiveEntity>,
+        uri: Uri,
+        targetActiveUuid: String? = null
+    ) {
+        if (archives.isEmpty()) return
         scope.launch {
-            val uuid = archive.uuid
-            
-            // 1. Активируем выбранный архив в Room и SharedPreferences
+            val volumeId = OtgFolderResolver.extractVolumeId(uri) ?: ""
+            val primary = archives.find { it.uuid == targetActiveUuid } ?: archives.first()
+            val now = System.currentTimeMillis()
+
             withContext(Dispatchers.IO) {
-                db.archiveDao().insert(archive.copy(
-                    lastConnected = System.currentTimeMillis()
-                ))
+                for (arch in archives) {
+                    db.archiveDao().insert(
+                        arch.copy(
+                            lastConnected = now,
+                            driveUuid = if (arch.driveUuid.isNotEmpty()) arch.driveUuid else volumeId
+                        )
+                    )
+                }
             }
-            _activeArchiveUuid.value = uuid
+
+            _activeArchiveUuid.value = primary.uuid
             prefs.edit()
-                .putString("active_archive_uuid", uuid)
+                .putString("active_archive_uuid", primary.uuid)
                 .putString(PREF_OTG_URI, uri.toString())
                 .apply()
             _otgDirectoryUri.value = uri
 
-            // 2. Проверяем/уточняем физическую директорию на диске (Self-Healing)
+            val selectedUuids = archives.map { it.uuid }.toSet()
+            _connectedArchiveUuids.value = selectedUuids
+
             val dir = withContext(Dispatchers.IO) {
                 OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
             }
             if (dir != null && dir.exists()) {
                 withContext(Dispatchers.IO) {
-                    val folderNameOnly = dir.name ?: archive.folderName.substringAfterLast('/')
-                    val newFolderName = if (archive.folderName.contains('/')) {
-                        "${archive.folderName.substringBeforeLast('/')}/$folderNameOnly"
-                    } else if (archive.folderName.isNotEmpty()) {
+                    val folderNameOnly = dir.name ?: primary.folderName.substringAfterLast('/')
+                    val newFolderName = if (primary.folderName.contains('/')) {
+                        "${primary.folderName.substringBeforeLast('/')}/$folderNameOnly"
+                    } else if (primary.folderName.isNotEmpty()) {
                         folderNameOnly
                     } else {
                         ""
                     }
-                    db.archiveDao().insert(archive.copy(
+                    db.archiveDao().insert(primary.copy(
                         lastConnected = System.currentTimeMillis(),
-                        folderName = newFolderName
+                        folderName = newFolderName,
+                        driveUuid = if (primary.driveUuid.isNotEmpty()) primary.driveUuid else volumeId
                     ))
                 }
             }
 
-            // 3. Обновляем статус подключения диска
             _isCheckingConnection.value = true
             _physicalConnected.value = withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
             val newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
@@ -437,7 +466,7 @@ class OtgConnectionManager(
             updateArchiveSize()
             _isCheckingConnection.value = false
 
-            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving) {
+            if ((newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES) && !syncHelper.archiveState.value.isArchiving) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
             }
@@ -445,6 +474,11 @@ class OtgConnectionManager(
                 onArchiveActivated()
             }
         }
+    }
+
+    /** Switches active archive to the chosen entity and initiates background sync. */
+    fun selectArchiveFromDiscovery(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
+        selectArchivesFromDiscovery(listOf(archive), uri, archive.uuid)
     }
 
     fun saveOtgArchive(uri: Uri, name: String) {
@@ -501,7 +535,7 @@ class OtgConnectionManager(
             _status.value = newStatus
             updateArchiveSize()
             
-            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+            if ((newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES) && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
             }
@@ -600,7 +634,7 @@ class OtgConnectionManager(
             val isTransitionToConnected = otgPluggedIn && !wasConnected
             val hasConfiguredOrPersistedUri = _otgDirectoryUri.value != null ||
                     try { application.contentResolver.persistedUriPermissions.isNotEmpty() } catch (_: Exception) { false }
-            val isDriveNotReady = _status.value != DriveStatus.KNOWN_DRIVE_CONNECTED
+            val isDriveNotReady = _status.value != DriveStatus.KNOWN_DRIVE_CONNECTED && _status.value != DriveStatus.KNOWN_DRIVE_NO_ARCHIVES
             val isVerifyingNeeded = (isStartup || isTransitionToConnected || (otgPluggedIn && isDriveNotReady)) && hasConfiguredOrPersistedUri
 
             if (isVerifyingNeeded) {
@@ -618,7 +652,8 @@ class OtgConnectionManager(
                 firstLaunchHandled = false
             }
 
-            if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
+            val isKnownConnected = newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES
+            if (isKnownConnected && !syncHelper.archiveState.value.isArchiving && !syncHelper.isSilentSyncing) {
                 syncHelper.silentSyncArchive(_otgDirectoryUri.value)
                 refreshCacheStats()
             }
@@ -718,21 +753,32 @@ class OtgConnectionManager(
             
             if (isReadable) {
                 val activeUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
+                val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(currentUri)
                 val knownArchive = if (!activeUuid.isNullOrEmpty()) {
                     db.archiveDao().getById(activeUuid)
                 } else {
-                    val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(currentUri)
-                    if (volumeUuid != null) db.archiveDao().getById(volumeUuid) else null
+                    if (volumeUuid != null) {
+                        db.archiveDao().getById(volumeUuid)
+                            ?: db.archiveDao().getAllSync().find { it.driveUuid == volumeUuid }
+                    } else null
                 }
-                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, currentUri, createIfNotExist = false)
+                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(
+                    application, currentUri, createIfNotExist = false, targetArchiveUuid = knownArchive?.uuid ?: activeUuid
+                )
                 
                 if (knownArchive != null && dir != null && dir.exists()) {
                     val archiveUuid = knownArchive.uuid
-                    if (_activeArchiveUuid.value != archiveUuid) {
+                    if (_activeArchiveUuid.value != archiveUuid && _activeArchiveUuid.value != null) {
                         _activeArchiveUuid.value = archiveUuid
                         prefs.edit().putString("active_archive_uuid", archiveUuid).apply()
                     }
                     db.archiveDao().insert(knownArchive.copy(lastConnected = System.currentTimeMillis()))
+                    
+                    val presentArchives = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, currentUri, autoInsertToDb = false)
+                    val presentUuids = presentArchives.map { it.uuid }.toMutableSet()
+                    presentUuids.add(archiveUuid)
+                    _connectedArchiveUuids.value = presentUuids
+
                     driveErrorCount = 0
                     invokeShowUnknownDriveDialog(false)
                     unknownDriveDialogHandled = false
@@ -765,9 +811,14 @@ class OtgConnectionManager(
                 val knownArchive = if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
                     db.archiveDao().getById(activeUuid)
                 } else {
-                    if (volumeUuid != null && !isArchiveUnlinked(volumeUuid)) db.archiveDao().getById(volumeUuid) else null
+                    if (volumeUuid != null && !isArchiveUnlinked(volumeUuid)) {
+                        db.archiveDao().getById(volumeUuid)
+                            ?: db.archiveDao().getAllSync().find { it.driveUuid == volumeUuid && !isArchiveUnlinked(it.uuid) }
+                    } else null
                 }
-                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(application, uri, createIfNotExist = false)
+                val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(
+                    application, uri, createIfNotExist = false, targetArchiveUuid = knownArchive?.uuid ?: activeUuid
+                )
                 
                 if (knownArchive != null && !isArchiveUnlinked(knownArchive.uuid) && dir != null && dir.exists()) {
                     connectedUri = uri
@@ -809,6 +860,11 @@ class OtgConnectionManager(
             db.archiveDao().getById(cUuid)?.let {
                 db.archiveDao().insert(it.copy(lastConnected = System.currentTimeMillis()))
             }
+
+            val presentArchives = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, cUri, autoInsertToDb = false)
+            val presentUuids = presentArchives.map { it.uuid }.toMutableSet()
+            presentUuids.add(cUuid)
+            _connectedArchiveUuids.value = presentUuids
 
             driveErrorCount = 0
             invokeShowUnknownDriveDialog(false)
@@ -890,7 +946,7 @@ class OtgConnectionManager(
                     val uriStr = savedUri.toString()
                     if (!scannedUris.contains(uriStr)) {
                         scannedUris.add(uriStr)
-                        val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri)
+                        val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri, autoInsertToDb = false)
                         val matching = if (!savedActiveUuid.isNullOrEmpty() && !isArchiveUnlinked(savedActiveUuid)) {
                             allRecovered.find { it.uuid == savedActiveUuid && !isArchiveUnlinked(it.uuid) }
                         } else null
@@ -912,15 +968,25 @@ class OtgConnectionManager(
                         }
                         db.archiveDao().insert(currentKnownArchive.copy(lastConnected = System.currentTimeMillis()))
 
-                        val presentArchives = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri)
-                        val presentUuids = presentArchives.map { it.uuid }.toMutableSet()
-                        if (uuid != null) presentUuids.add(uuid)
+                        val presentArchives = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, savedUri, autoInsertToDb = false)
+                        val volumeId = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(savedUri)
+                        val dbVolumeArchiveUuids = db.archiveDao().getAllSync().filter {
+                            (volumeId != null && it.driveUuid == volumeId) || (volumeId != null && it.driveUuid.isEmpty() && it.uuid == volumeId)
+                        }.map { it.uuid }.toSet()
+                        val presentUuids = presentArchives.map { it.uuid }.filter { it in dbVolumeArchiveUuids }.toMutableSet()
+                        if (uuid != null && (uuid in dbVolumeArchiveUuids || dbVolumeArchiveUuids.isEmpty())) presentUuids.add(uuid)
                         _connectedArchiveUuids.value = presentUuids
 
                         driveErrorCount = 0
                         invokeShowUnknownDriveDialog(false)
                         unknownDriveDialogHandled = false
-                        DriveStatus.KNOWN_DRIVE_CONNECTED
+
+                        // Если архивов для этого тома в Room нет — сигнализируем UI открыть мастер поиска
+                        if (dbVolumeArchiveUuids.isEmpty()) {
+                            DriveStatus.KNOWN_DRIVE_NO_ARCHIVES
+                        } else {
+                            DriveStatus.KNOWN_DRIVE_CONNECTED
+                        }
                     } else {
                         _connectedArchiveUuids.value = emptySet()
                         DriveStatus.UNKNOWN_DRIVE_CONNECTED

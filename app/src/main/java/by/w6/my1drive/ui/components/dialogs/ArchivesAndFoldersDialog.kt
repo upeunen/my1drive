@@ -74,6 +74,9 @@ fun ArchivesAndFoldersDialog(
     uri: Uri? = null,
     isWaitingMount: Boolean = false,
     onSelectArchive: (ArchiveEntity) -> Unit,
+    onSelectArchives: (List<ArchiveEntity>) -> Unit = { list ->
+        list.firstOrNull()?.let { onSelectArchive(it) }
+    },
     onCreateNewArchive: (String, Uri) -> Unit,
     onScanMediaFolders: (depth: Int, onResult: (List<DiscoveredFolder>) -> Unit) -> Unit,
     onAddDiscoveredFolder: (DiscoveredFolder) -> Unit,
@@ -84,6 +87,7 @@ fun ArchivesAndFoldersDialog(
     var showCreateForm by remember { mutableStateOf(false) }
     var newArchiveName by remember { mutableStateOf("") }
     var isOperating by remember { mutableStateOf(false) }
+    var selectedUuids by remember(archives) { mutableStateOf(archives.map { it.uuid }.toSet()) }
 
     // Media folders state
     var searchDepth by remember { mutableStateOf(2) }
@@ -224,13 +228,50 @@ fun ArchivesAndFoldersDialog(
                                     Spacer(Modifier.height(10.dp))
 
                                     if (archives.isNotEmpty()) {
+                                        if (archives.size > 1) {
+                                            // Select All / Deselect All Row
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                val allSelected = selectedUuids.size == archives.size
+                                                TextButton(
+                                                    onClick = {
+                                                        selectedUuids = if (allSelected) {
+                                                            emptySet()
+                                                        } else {
+                                                            archives.map { it.uuid }.toSet()
+                                                        }
+                                                    },
+                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(if (allSelected) R.string.btn_deselect_all else R.string.btn_select_all),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = Color(0xFFCE93D8)
+                                                    )
+                                                }
+
+                                                Text(
+                                                    text = "${selectedUuids.size} / ${archives.size}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = PurpleSecondaryText
+                                                )
+                                            }
+
+                                            Spacer(Modifier.height(6.dp))
+                                        }
+
                                         archives.forEach { archive ->
                                             val isActive = archive.uuid == activeArchiveUuid
+                                            val isChecked = archive.uuid in selectedUuids
                                             Card(
                                                 onClick = {
-                                                    if (!isOperating) {
-                                                        isOperating = true
-                                                        onSelectArchive(archive)
+                                                    selectedUuids = if (isChecked) {
+                                                        selectedUuids - archive.uuid
+                                                    } else {
+                                                        selectedUuids + archive.uuid
                                                     }
                                                 },
                                                 modifier = Modifier
@@ -238,11 +279,11 @@ fun ArchivesAndFoldersDialog(
                                                     .padding(vertical = 4.dp),
                                                 shape = RoundedCornerShape(12.dp),
                                                 colors = CardDefaults.cardColors(
-                                                    containerColor = if (isActive) Color(0xFF3B1E6B) else Color(0xFF331B58)
+                                                    containerColor = if (isChecked) Color(0xFF3B1E6B) else Color(0xFF331B58)
                                                 ),
                                                 border = BorderStroke(
                                                     1.dp,
-                                                    if (isActive) Color(0xFF81C784) else Color(0xFF7E57C2).copy(alpha = 0.35f)
+                                                    if (isChecked) Color(0xFFCE93D8).copy(alpha = 0.7f) else if (isActive) Color(0xFF81C784) else Color(0xFF7E57C2).copy(alpha = 0.35f)
                                                 )
                                             ) {
                                                 Row(
@@ -251,6 +292,23 @@ fun ArchivesAndFoldersDialog(
                                                         .padding(14.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
+                                                    Checkbox(
+                                                        checked = isChecked,
+                                                        onCheckedChange = { checked ->
+                                                            selectedUuids = if (checked) {
+                                                                selectedUuids + archive.uuid
+                                                            } else {
+                                                                selectedUuids - archive.uuid
+                                                            }
+                                                        },
+                                                        colors = CheckboxDefaults.colors(
+                                                            checkedColor = Color(0xFFAB47BC),
+                                                            uncheckedColor = PurpleSecondaryText.copy(alpha = 0.6f),
+                                                            checkmarkColor = Color.White
+                                                        ),
+                                                        modifier = Modifier.size(28.dp)
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
                                                     Box(
                                                         modifier = Modifier
                                                             .size(36.dp)
@@ -310,13 +368,37 @@ fun ArchivesAndFoldersDialog(
                                                             )
                                                         }
                                                     }
-                                                    Icon(
-                                                        imageVector = Icons.Default.ChevronRight,
-                                                        contentDescription = null,
-                                                        tint = Color(0xFFCE93D8)
-                                                    )
                                                 }
                                             }
+                                        }
+
+                                        Spacer(Modifier.height(12.dp))
+
+                                        Button(
+                                            onClick = {
+                                                if (!isOperating && selectedUuids.isNotEmpty()) {
+                                                    isOperating = true
+                                                    val chosen = archives.filter { it.uuid in selectedUuids }
+                                                    onSelectArchives(chosen)
+                                                }
+                                            },
+                                            enabled = !isOperating && selectedUuids.isNotEmpty(),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(48.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = PurpleButtonColor,
+                                                contentColor = Color.White,
+                                                disabledContainerColor = PurpleButtonColor.copy(alpha = 0.4f),
+                                                disabledContentColor = Color.White.copy(alpha = 0.5f)
+                                            ),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.btn_connect_selected, selectedUuids.size),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         }
                                     } else {
                                         Text(

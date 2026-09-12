@@ -21,6 +21,9 @@ interface MediaDao {
     @Query("SELECT COUNT(*) FROM media_archive")
     fun getCountFlow(): Flow<Int>
 
+    @Query("SELECT DISTINCT archiveUuid FROM media_archive WHERE archiveUuid != '' AND archiveUuid IS NOT NULL")
+    fun getPopulatedArchiveUuidsFlow(): Flow<List<String>>
+
     @Query("SELECT COUNT(*) + COUNT(thumbnailPath) FROM media_archive")
     fun getArchiveVersionFlow(): Flow<Int>
 

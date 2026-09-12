@@ -91,6 +91,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val knownArchives = db.archiveDao().getAllFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Список UUID архивов, в которых есть хотя бы один файл в БД */
+    val populatedArchiveUuids = db.mediaDao().getPopulatedArchiveUuidsFlow()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val _activeDialog = kotlinx.coroutines.flow.MutableStateFlow<AppDialog?>(
         if (!prefs.getBoolean("setup_wizard_completed", false)) {
             AppDialog.SetupWizard(0)
@@ -244,6 +248,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             onShowUnreadableOtgDialog = { v -> if (v) _activeDialog.value = AppDialog.UnreadableOtg else if (_activeDialog.value is AppDialog.UnreadableOtg) _activeDialog.value = null },
             onShowWriteProtectedRootDialog = { v -> if (v) _activeDialog.value = AppDialog.WriteProtectedRoot else if (_activeDialog.value is AppDialog.WriteProtectedRoot) _activeDialog.value = null },
             onShowLocalFolderDialog = { v -> if (v) _activeDialog.value = AppDialog.LocalFolder else if (_activeDialog.value is AppDialog.LocalFolder) _activeDialog.value = null },
+            onShowMiniWizardForKnownDrive = { uri ->
+                // Известный диск без архивов: открываем мастер сразу на шаге поиска (без SAF)
+                if (isSetupWizardCompleted() && _activeDialog.value == null) {
+                    showNewDriveMiniWizard(step = 2, uri = uri)
+                }
+            },
             onShowNamingDialog = { v -> 
                 if (_activeDialog.value !is AppDialog.SetupWizard) {
                     if (v != null) _activeDialog.value = AppDialog.Naming(v) else if (_activeDialog.value is AppDialog.Naming) _activeDialog.value = null
@@ -273,22 +283,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     suspend fun findArchivesOnDrive(uri: Uri): List<by.w6.my1drive.data.local.ArchiveEntity> = withContext(Dispatchers.IO) {
-        val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(getApplication(), uri)
+        val allRecovered = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(getApplication(), uri, autoInsertToDb = false)
         val volumeId = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
         val allDb = db.archiveDao().getAllSync()
         val dbArchives = if (volumeId != null) {
-            allDb.filter { it.uuid == volumeId || it.folderName.isNotEmpty() }
+            allDb.filter { it.driveUuid == volumeId || (it.driveUuid.isEmpty() && it.uuid == volumeId) }
         } else allDb
         (allRecovered + dbArchives)
             .distinctBy { it.uuid }
             .sortedByDescending { maxOf(it.lastConnected, it.dateCreated) }
     }
 
-    fun selectArchive(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
+    fun selectArchives(archives: List<by.w6.my1drive.data.local.ArchiveEntity>, uri: Uri, targetActiveUuid: String? = null) {
         if (_activeDialog.value !is AppDialog.NewDriveMiniWizard) {
             _activeDialog.value = null
         }
-        otgManager.selectArchiveFromDiscovery(archive, uri)
+        otgManager.selectArchivesFromDiscovery(archives, uri, targetActiveUuid)
+    }
+
+    fun selectArchive(archive: by.w6.my1drive.data.local.ArchiveEntity, uri: Uri) {
+        selectArchives(listOf(archive), uri, archive.uuid)
     }
 
     suspend fun searchDeeperForArchives(rootUri: Uri, knownPaths: Set<String>): List<by.w6.my1drive.data.local.ArchiveEntity> = withContext(Dispatchers.IO) {
@@ -550,6 +564,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         syncHelper = syncHelper,
         scope = viewModelScope,
         activeArchiveUuidFlow = otgManager.activeArchiveUuid,
+        connectedArchiveUuidsFlow = otgManager.connectedArchiveUuids,
         isOtgConnectedFlow = _isOtgConnected,
         isScrollingFlow = _isScrolling,
         refreshCacheStats = { refreshCacheStats() },
@@ -620,7 +635,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 // Subscribe to status changes for isOtgConnected
         viewModelScope.launch {
             otgManager.status.collect { status ->
-                val newConnected = status == DriveStatus.KNOWN_DRIVE_CONNECTED
+                val newConnected = status == DriveStatus.KNOWN_DRIVE_CONNECTED || status == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES
                 val changed = _isOtgConnected.value != newConnected
                 _isOtgConnected.value = newConnected
                 if (changed) {

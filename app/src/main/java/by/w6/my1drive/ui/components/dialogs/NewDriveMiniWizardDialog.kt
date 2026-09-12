@@ -69,7 +69,10 @@ fun NewDriveMiniWizardDialog(
     driveUri: Uri? = null,
     onRequestSelectOtgFolder: () -> Unit,
     onScanArchives: suspend (Uri) -> List<ArchiveEntity>,
-    onSelectArchive: (ArchiveEntity, Uri) -> Unit,
+    onSelectArchive: (ArchiveEntity, Uri) -> Unit = { _, _ -> },
+    onSelectArchives: (List<ArchiveEntity>, Uri) -> Unit = { list, uri ->
+        list.firstOrNull()?.let { onSelectArchive(it, uri) }
+    },
     onCreateNewArchive: (String, Uri) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -77,6 +80,7 @@ fun NewDriveMiniWizardDialog(
     var isSuccess by remember { mutableStateOf(false) }
     var isScanning by remember { mutableStateOf(false) }
     var foundArchives by remember { mutableStateOf<List<ArchiveEntity>>(emptyList()) }
+    var selectedUuids by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showCreateForm by remember { mutableStateOf(false) }
     var newArchiveName by remember {
         mutableStateOf("Arhiv-${Build.MODEL.replace("\\s+".toRegex(), "_")}")
@@ -88,12 +92,15 @@ fun NewDriveMiniWizardDialog(
             step = 2
             isScanning = true
             try {
-                foundArchives = onScanArchives(driveUri)
+                val list = onScanArchives(driveUri)
+                foundArchives = list
+                selectedUuids = list.map { it.uuid }.toSet()
                 if (foundArchives.isEmpty()) {
                     showCreateForm = true
                 }
             } catch (_: Exception) {
                 foundArchives = emptyList()
+                selectedUuids = emptySet()
                 showCreateForm = true
             } finally {
                 isScanning = false
@@ -400,7 +407,40 @@ fun NewDriveMiniWizardDialog(
                                             textAlign = TextAlign.Center
                                         )
 
-                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        // Select All / Deselect All Row
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            val allSelected = selectedUuids.size == foundArchives.size
+                                            TextButton(
+                                                onClick = {
+                                                    selectedUuids = if (allSelected) {
+                                                        emptySet()
+                                                    } else {
+                                                        foundArchives.map { it.uuid }.toSet()
+                                                    }
+                                                },
+                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = stringResource(if (allSelected) R.string.btn_deselect_all else R.string.btn_select_all),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = Color(0xFFCE93D8)
+                                                )
+                                            }
+
+                                            Text(
+                                                text = "${selectedUuids.size} / ${foundArchives.size}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = PurpleSecondaryText
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
 
                                         Column(
                                             modifier = Modifier
@@ -410,23 +450,44 @@ fun NewDriveMiniWizardDialog(
                                             verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             foundArchives.forEach { arch ->
+                                                val isChecked = arch.uuid in selectedUuids
                                                 Card(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .clickable {
-                                                            driveUri?.let { uri ->
-                                                                onSelectArchive(arch, uri)
-                                                                isSuccess = true
+                                                            selectedUuids = if (isChecked) {
+                                                                selectedUuids - arch.uuid
+                                                            } else {
+                                                                selectedUuids + arch.uuid
                                                             }
                                                         },
                                                     shape = RoundedCornerShape(12.dp),
-                                                    colors = CardDefaults.cardColors(containerColor = PurpleCardBackground),
-                                                    border = BorderStroke(1.dp, PurpleCardBorder)
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = if (isChecked) Color(0xFF331B58) else PurpleCardBackground
+                                                    ),
+                                                    border = BorderStroke(1.dp, if (isChecked) Color(0xFFCE93D8).copy(alpha = 0.6f) else PurpleCardBorder)
                                                 ) {
                                                     Row(
                                                         modifier = Modifier.padding(12.dp),
                                                         verticalAlignment = Alignment.CenterVertically
                                                     ) {
+                                                        Checkbox(
+                                                            checked = isChecked,
+                                                            onCheckedChange = { checked ->
+                                                                selectedUuids = if (checked) {
+                                                                    selectedUuids + arch.uuid
+                                                                } else {
+                                                                    selectedUuids - arch.uuid
+                                                                }
+                                                            },
+                                                            colors = CheckboxDefaults.colors(
+                                                                checkedColor = Color(0xFFAB47BC),
+                                                                uncheckedColor = PurpleSecondaryText.copy(alpha = 0.6f),
+                                                                checkmarkColor = Color.White
+                                                            ),
+                                                            modifier = Modifier.size(28.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
                                                         Box(
                                                             modifier = Modifier
                                                                 .size(36.dp)
@@ -457,18 +518,41 @@ fun NewDriveMiniWizardDialog(
                                                                 color = PurpleSecondaryText
                                                             )
                                                         }
-                                                        Icon(
-                                                            imageVector = Icons.Default.ChevronRight,
-                                                            contentDescription = null,
-                                                            tint = PurpleSecondaryText,
-                                                            modifier = Modifier.size(20.dp)
-                                                        )
                                                     }
                                                 }
                                             }
                                         }
 
                                         Spacer(modifier = Modifier.height(14.dp))
+
+                                        Button(
+                                            onClick = {
+                                                val chosen = foundArchives.filter { it.uuid in selectedUuids }
+                                                driveUri?.let { uri ->
+                                                    onSelectArchives(chosen, uri)
+                                                    isSuccess = true
+                                                }
+                                            },
+                                            enabled = selectedUuids.isNotEmpty(),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(48.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = PurpleButtonColor,
+                                                contentColor = Color.White,
+                                                disabledContainerColor = PurpleButtonColor.copy(alpha = 0.4f),
+                                                disabledContentColor = Color.White.copy(alpha = 0.5f)
+                                            ),
+                                            shape = RoundedCornerShape(14.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.btn_connect_selected, selectedUuids.size),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
 
                                         OutlinedButton(
                                             onClick = { showCreateForm = true },

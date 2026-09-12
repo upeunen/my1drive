@@ -26,6 +26,7 @@ private fun BentoItemRenderer(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean,
     activeArchiveUuid: String?,
+    connectedArchiveUuids: Set<String>,
     archivingItemIds: Set<String>,
     copiedItemIds: Set<String>,
     archiveStripeColorProvider: ((MediaItem) -> Color?)?,
@@ -36,7 +37,13 @@ private fun BentoItemRenderer(
     val isSelected = selectedIds.contains(item.id)
     val isArchiving = archivingItemIds.contains(item.id)
     val isCopied = copiedItemIds.contains(item.id)
-    val connected = isOtgConnected
+    // Диск считается подключённым для конкретного айтема только если UUID его архива
+    // входит в набор физически подключённых архивов текущего диска.
+    val connected = isOtgConnected && (
+        item.archiveUuid.isNullOrEmpty() ||
+        item.archiveUuid == activeArchiveUuid ||
+        item.archiveUuid in connectedArchiveUuids
+    )
 
     GooglePhotosGridItem(
         item = item,
@@ -61,6 +68,7 @@ fun BentoBlockView(
     imageLoader: ImageLoader,
     isOtgConnected: Boolean = true,
     activeArchiveUuid: String? = null,
+    connectedArchiveUuids: Set<String> = emptySet(),
     archivingItemIds: Set<String> = emptySet(),
     copiedItemIds: Set<String> = emptySet(),
     archiveStripeColorProvider: ((MediaItem) -> Color?)? = null,
@@ -75,6 +83,7 @@ fun BentoBlockView(
             imageLoader = imageLoader,
             isOtgConnected = isOtgConnected,
             activeArchiveUuid = activeArchiveUuid,
+            connectedArchiveUuids = connectedArchiveUuids,
             archivingItemIds = archivingItemIds,
             copiedItemIds = copiedItemIds,
             archiveStripeColorProvider = archiveStripeColorProvider,

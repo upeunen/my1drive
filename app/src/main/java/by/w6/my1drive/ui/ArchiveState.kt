@@ -8,6 +8,7 @@ import by.w6.my1drive.domain.model.MediaItem
 enum class DriveStatus {
     NO_URI_CONFIGURED,
     KNOWN_DRIVE_CONNECTED,
+    KNOWN_DRIVE_NO_ARCHIVES,   // SAF-доступ есть, но ни один архив для этого тома не добавлен
     KNOWN_DRIVE_DISCONNECTED,
     UNKNOWN_DRIVE_CONNECTED
 }

@@ -92,11 +92,7 @@ class MediaRepositoryImpl(
             val showOffline = prefsPair.first
             val activeUuid = prefsPair.second
 
-            val filteredEntities = if (showOffline) {
-                archivedEntities
-            } else {
-                archivedEntities.filter { it.archiveUuid == activeUuid }
-            }
+            val filteredEntities = archivedEntities
 
             val previewDir = File(context.filesDir, "my1drive_previews")
             val archivedItems = filteredEntities.map { entity ->

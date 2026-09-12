@@ -60,6 +60,7 @@ fun ArchiveRoute(
     val syncState by viewModel.syncState.collectAsState()
     val syncProgressState by viewModel.syncProgressState.collectAsState()
     val knownArchives by viewModel.knownArchives.collectAsState()
+    val populatedArchiveUuids by viewModel.populatedArchiveUuids.collectAsStateWithLifecycle()
     val connectedArchiveUuids by viewModel.otgManager.connectedArchiveUuids.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("my1drive_prefs", android.content.Context.MODE_PRIVATE)
@@ -92,11 +93,12 @@ fun ArchiveRoute(
 
     val filterUuid by viewModel.archiveFilterUuid.collectAsState()
 
-    // Автоматически переключаем фильтр на подключенную флешку при её подключении
-    LaunchedEffect(isOtgConnected, activeArchiveUuid) {
-        if (isOtgConnected && activeArchiveUuid != null) {
+    var lastOtgConnectedState by remember { mutableStateOf(false) }
+    LaunchedEffect(isOtgConnected) {
+        if (isOtgConnected && !lastOtgConnectedState && activeArchiveUuid != null) {
             viewModel.setArchiveFilterUuid(activeArchiveUuid)
         }
+        lastOtgConnectedState = isOtgConnected
     }
 
     // При открытии вкладки «Архив», если диск подключен, но архив не выбран — запускаем поиск
@@ -120,6 +122,15 @@ fun ArchiveRoute(
             .entries
             .sortedBy { (_, list) -> list.minOfOrNull { it.dateCreated.takeIf { d -> d > 0 } ?: it.lastConnected } ?: 0L }
             .flatMap { (_, list) -> list.sortedByDescending { maxOf(it.lastConnected, it.dateCreated) } }
+    }
+
+    // Фильтруем чипы: исключаем пустые неподключенные архивы
+    val visibleArchives = remember(sortedArchives, isOtgConnected, connectedArchiveUuids, populatedArchiveUuids, activeArchiveUuid) {
+        sortedArchives.filter { archive ->
+            archive.uuid == activeArchiveUuid ||
+            (isOtgConnected && archive.uuid in connectedArchiveUuids) ||
+            archive.uuid in populatedArchiveUuids
+        }
     }
 
     val archiveStripeColorProvider: ((MediaItem) -> Color?)? = remember(archiveColorMap, showOffline, knownArchives.size) {
@@ -156,7 +167,8 @@ fun ArchiveRoute(
         val isOperationRunning = isSilentSyncing || archiveState.isArchiving || restoreState.isRestoring || isManualSyncing
 
         // Строка фильтра по флешкам с горизонтальной прокруткой и современными чипами
-        if (showOffline && knownArchives.size > 1) {
+        val shouldShowChips = visibleArchives.size > 1
+        if (shouldShowChips) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -204,7 +216,7 @@ fun ArchiveRoute(
                 }
 
                 // Чипы для каждой флешки, сгруппированные по физическому накопителю
-                sortedArchives.forEach { archive ->
+                visibleArchives.forEach { archive ->
                     val baseColor = archiveColorMap[archive.uuid] ?: ARCHIVE_STRIPE_COLORS[0]
                     val isActive = filterUuid == archive.uuid
                     val isCurrentConnected = isOtgConnected && (connectedArchiveUuids.isEmpty() || archive.uuid in connectedArchiveUuids)
@@ -229,7 +241,11 @@ fun ArchiveRoute(
                             .clickable {
                                 val targetUuid = if (isActive) null else archive.uuid
                                 viewModel.setArchiveFilterUuid(targetUuid)
-                                if (targetUuid != null) {
+                                // Для подключённых архивов переключаем и активный UUID,
+                                // чтобы репозиторий загрузил их элементы.
+                                // Для офлайн-архивов — только визуальный фильтр,
+                                // чтобы не перезаписывать activeArchiveUuid реального диска.
+                                if (targetUuid != null && isCurrentConnected) {
                                     viewModel.otgManager.setActiveArchiveUuid(targetUuid)
                                 }
                             }
@@ -496,6 +512,7 @@ fun ArchiveRoute(
                                         imageLoader = imageLoader,
                                         isOtgConnected = isOtgConnected,
                                         activeArchiveUuid = activeArchiveUuid,
+                                        connectedArchiveUuids = connectedArchiveUuids,
                                         archivingItemIds = archivingItemIds,
                                         copiedItemIds = copiedItemIds,
                                         archiveStripeColorProvider = archiveStripeColorProvider,

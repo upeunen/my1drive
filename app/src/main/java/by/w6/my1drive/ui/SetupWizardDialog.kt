@@ -44,6 +44,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,19 +62,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import by.w6.my1drive.data.local.ArchiveEntity
-import by.w6.my1drive.utils.DiscoveredFolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -80,10 +81,14 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import by.w6.my1drive.R
+import by.w6.my1drive.data.local.ArchiveEntity
+import by.w6.my1drive.utils.DiscoveredFolder
 import kotlinx.coroutines.launch
 
-// Elegant rich purple theme palette
+// Unified rich purple theme matching SetupWizard
 private val PurpleBackgroundGradient = Brush.verticalGradient(
     colors = listOf(
         Color(0xFF21103C),
@@ -103,14 +108,17 @@ private val PurpleIconBox = Color(0xFF3B1E6B)
 fun SetupWizardScreen(
     initialStep: Int = 0,
     uiState: GalleryUiState,
-    isPhysConnected: Boolean = false,
-    hasStoragePermission: Boolean = false,
+    isPhysConnected: Boolean,
+    hasStoragePermission: Boolean,
     otgUri: Uri? = null,
     onDismiss: () -> Unit,
     onStartOtgRegistration: () -> Unit,
     onRequestFullAccess: () -> Unit,
     onScanArchives: suspend (Uri) -> List<ArchiveEntity> = { emptyList() },
     onSelectExistingArchive: (ArchiveEntity, Uri) -> Unit = { _, _ -> },
+    onSelectExistingArchives: (List<ArchiveEntity>, Uri) -> Unit = { list, uri ->
+        list.firstOrNull()?.let { onSelectExistingArchive(it, uri) }
+    },
     onCreateNewArchive: (String, Uri) -> Unit = { _, _ -> },
     onScanMediaFolders: ((List<DiscoveredFolder>) -> Unit) -> Unit = {},
     onAddDiscoveredFolder: (DiscoveredFolder) -> Unit = {},
@@ -208,6 +216,7 @@ fun SetupWizardScreen(
                         otgUri = otgUri,
                         onScanArchives = onScanArchives,
                         onSelectExistingArchive = onSelectExistingArchive,
+                        onSelectExistingArchives = onSelectExistingArchives,
                         onCreateNewArchive = onCreateNewArchive,
                         onScanMediaFolders = onScanMediaFolders,
                         onAddDiscoveredFolder = onAddDiscoveredFolder,
@@ -234,6 +243,9 @@ fun SetupWizardDialog(
     onRequestFullAccess: () -> Unit,
     onScanArchives: suspend (Uri) -> List<ArchiveEntity> = { emptyList() },
     onSelectExistingArchive: (ArchiveEntity, Uri) -> Unit = { _, _ -> },
+    onSelectExistingArchives: (List<ArchiveEntity>, Uri) -> Unit = { list, uri ->
+        list.firstOrNull()?.let { onSelectExistingArchive(it, uri) }
+    },
     onCreateNewArchive: (String, Uri) -> Unit = { _, _ -> },
     onScanMediaFolders: ((List<DiscoveredFolder>) -> Unit) -> Unit = {},
     onAddDiscoveredFolder: (DiscoveredFolder) -> Unit = {},
@@ -649,6 +661,9 @@ private fun WizardStep3ArchiveSetup(
     otgUri: Uri?,
     onScanArchives: suspend (Uri) -> List<ArchiveEntity>,
     onSelectExistingArchive: (ArchiveEntity, Uri) -> Unit,
+    onSelectExistingArchives: (List<ArchiveEntity>, Uri) -> Unit = { list, uri ->
+        list.firstOrNull()?.let { onSelectExistingArchive(it, uri) }
+    },
     onCreateNewArchive: (String, Uri) -> Unit,
     onScanMediaFolders: ((List<DiscoveredFolder>) -> Unit) -> Unit,
     onAddDiscoveredFolder: (DiscoveredFolder) -> Unit,
@@ -656,6 +671,7 @@ private fun WizardStep3ArchiveSetup(
 ) {
     var isScanning by remember(otgUri) { mutableStateOf(otgUri != null) }
     var foundArchives by remember { mutableStateOf<List<ArchiveEntity>>(emptyList()) }
+    var selectedUuids by remember { mutableStateOf<Set<String>>(emptySet()) }
     var newArchiveName by remember { mutableStateOf("") }
     var showCreateForm by remember { mutableStateOf(false) }
     var isScanningMediaFolders by remember { mutableStateOf(false) }
@@ -668,11 +684,13 @@ private fun WizardStep3ArchiveSetup(
             try {
                 val archives = onScanArchives(otgUri)
                 foundArchives = archives
+                selectedUuids = archives.map { it.uuid }.toSet()
                 if (archives.isEmpty()) {
                     showCreateForm = true
                 }
             } catch (_: Exception) {
                 foundArchives = emptyList()
+                selectedUuids = emptySet()
                 showCreateForm = true
             } finally {
                 isScanning = false
@@ -946,14 +964,49 @@ private fun WizardStep3ArchiveSetup(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Select All / Deselect All Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val allSelected = selectedUuids.size == foundArchives.size
+                            TextButton(
+                                onClick = {
+                                    selectedUuids = if (allSelected) {
+                                        emptySet()
+                                    } else {
+                                        foundArchives.map { it.uuid }.toSet()
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(if (allSelected) R.string.btn_deselect_all else R.string.btn_select_all),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFFCE93D8)
+                                )
+                            }
+
+                            Text(
+                                text = "${selectedUuids.size} / ${foundArchives.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = PurpleSecondaryText
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         foundArchives.forEach { archive ->
+                            val isChecked = archive.uuid in selectedUuids
                             Card(
                                 onClick = {
-                                    if (otgUri != null && !isOperating) {
-                                        isOperating = true
-                                        onSelectExistingArchive(archive, otgUri)
+                                    selectedUuids = if (isChecked) {
+                                        selectedUuids - archive.uuid
+                                    } else {
+                                        selectedUuids + archive.uuid
                                     }
                                 },
                                 modifier = Modifier
@@ -961,16 +1014,33 @@ private fun WizardStep3ArchiveSetup(
                                     .padding(vertical = 4.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFF331B58)
+                                    containerColor = if (isChecked) Color(0xFF331B58) else PurpleCardBackground
                                 ),
-                                border = BorderStroke(1.dp, Color(0xFF7E57C2).copy(alpha = 0.35f))
+                                border = BorderStroke(1.dp, if (isChecked) Color(0xFFCE93D8).copy(alpha = 0.6f) else Color(0xFF7E57C2).copy(alpha = 0.35f))
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(14.dp),
+                                        .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = { checked ->
+                                            selectedUuids = if (checked) {
+                                                selectedUuids + archive.uuid
+                                            } else {
+                                                selectedUuids - archive.uuid
+                                            }
+                                        },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = Color(0xFFAB47BC),
+                                            uncheckedColor = PurpleSecondaryText.copy(alpha = 0.6f),
+                                            checkmarkColor = Color.White
+                                        ),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Box(
                                         modifier = Modifier
                                             .size(36.dp)
@@ -999,13 +1069,37 @@ private fun WizardStep3ArchiveSetup(
                                             color = PurpleSecondaryText
                                         )
                                     }
-                                    Icon(
-                                        imageVector = Icons.Default.ChevronRight,
-                                        contentDescription = null,
-                                        tint = Color(0xFFCE93D8)
-                                    )
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Button(
+                            onClick = {
+                                if (otgUri != null && !isOperating && selectedUuids.isNotEmpty()) {
+                                    isOperating = true
+                                    val chosen = foundArchives.filter { it.uuid in selectedUuids }
+                                    onSelectExistingArchives(chosen, otgUri)
+                                }
+                            },
+                            enabled = !isOperating && selectedUuids.isNotEmpty() && otgUri != null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PurpleButtonColor,
+                                contentColor = Color.White,
+                                disabledContainerColor = PurpleButtonColor.copy(alpha = 0.4f),
+                                disabledContentColor = Color.White.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.btn_connect_selected, selectedUuids.size),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
                         if (!showCreateForm) {

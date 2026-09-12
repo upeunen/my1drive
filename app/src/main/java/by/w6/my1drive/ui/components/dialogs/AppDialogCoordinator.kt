@@ -140,6 +140,10 @@ fun AppDialogCoordinator(
                     viewModel.selectArchive(archive, uri)
                     viewModel.completeSetupWizard()
                 },
+                onSelectExistingArchives = { archives, uri ->
+                    viewModel.selectArchives(archives, uri)
+                    viewModel.completeSetupWizard()
+                },
                 onCreateNewArchive = { name, uri ->
                     viewModel.otgManager.saveOtgArchive(uri, name)
                     viewModel.completeSetupWizard()
@@ -361,6 +365,9 @@ fun AppDialogCoordinator(
                 onSelectArchive = { archive ->
                     viewModel.selectArchive(archive, activeDialog.uri)
                 },
+                onSelectArchives = { archives ->
+                    viewModel.selectArchives(archives, activeDialog.uri)
+                },
                 onCreateNewArchive = { name, uri ->
                     viewModel.otgManager.saveOtgArchive(uri, name)
                     viewModel.dismissDialog()
@@ -481,8 +488,8 @@ fun AppDialogCoordinator(
                 onScanArchives = { uri ->
                     viewModel.findArchivesOnDrive(uri)
                 },
-                onSelectArchive = { archive, uri ->
-                    viewModel.selectArchive(archive, uri)
+                onSelectArchives = { archives, uri ->
+                    viewModel.selectArchives(archives, uri)
                 },
                 onCreateNewArchive = { name, uri ->
                     viewModel.otgManager.saveOtgArchive(uri, name)

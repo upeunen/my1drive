@@ -548,4 +548,7 @@ Errors:
     <string name="mini_wizard_btn_create">Create Archive</string>
     <string name="mini_wizard_success">Archive is ready to use!</string>
     <string name="mini_wizard_btn_configure">Setup</string>
+    <string name="btn_select_all">Select all</string>
+    <string name="btn_deselect_all">Deselect all</string>
+    <string name="btn_connect_selected">Connect selected (%1$d)</string>
 </resources>

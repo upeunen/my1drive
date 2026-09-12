@@ -113,7 +113,7 @@ class PreviewCacheManager(
     /** Removes cache files that have no corresponding DB entry */
     suspend fun cleanupOrphanedPreviews(validHashes: Set<String>? = null): CleanupResult = withContext(Dispatchers.IO) {
         val cacheFiles = previewDir.listFiles() ?: return@withContext CleanupResult(0, 0L)
-        val dbIds = validHashes ?: mediaDao.getAllSync().map { it.id }.toSet()
+        val dbIds = validHashes ?: mediaDao.getAllInChunksSync().map { it.id }.toSet()
         var deletedCount = 0
         var freedBytes = 0L
         for (file in cacheFiles) {

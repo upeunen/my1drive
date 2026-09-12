@@ -98,9 +98,9 @@ class ArchiveMetadataStore(private val context: Context) {
      * Read all entries from the metadata file on the OTG drive.
      * Returns empty list if file doesn't exist, and null if it fails to read/parse.
      */
-    suspend fun readMetadata(otgUri: Uri): List<JsonEntry> = withContext(Dispatchers.IO) {
+    suspend fun readMetadata(otgUri: Uri, targetArchiveUuid: String? = null): List<JsonEntry> = withContext(Dispatchers.IO) {
         try {
-            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext emptyList()
+            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false, targetArchiveUuid = targetArchiveUuid) ?: return@withContext emptyList()
             var fileStream: java.io.InputStream? = null
             for (metaName in listOf(METADATA_FILE_NAME, LEGACY_METADATA_FILE_NAME)) {
                 val metaUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, metaName)
@@ -180,9 +180,9 @@ class ArchiveMetadataStore(private val context: Context) {
     /**
      * Overwrite the entire metadata file on the OTG drive with given entries.
      */
-    suspend fun writeMetadata(otgUri: Uri, entries: List<JsonEntry>) = withContext(Dispatchers.IO) {
+    suspend fun writeMetadata(otgUri: Uri, entries: List<JsonEntry>, targetArchiveUuid: String? = null) = withContext(Dispatchers.IO) {
         try {
-            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = true) ?: return@withContext
+            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = true, targetArchiveUuid = targetArchiveUuid) ?: return@withContext
 
             var targetFileUri: Uri? = null
             for (metaName in listOf(METADATA_FILE_NAME, LEGACY_METADATA_FILE_NAME)) {
@@ -203,7 +203,7 @@ class ArchiveMetadataStore(private val context: Context) {
             val fileUri = targetFileUri ?: return@withContext
 
             val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
-            val activeUuid = prefs.getString("active_archive_uuid", null)
+            val activeUuid = targetArchiveUuid ?: prefs.getString("active_archive_uuid", null)
             val db = by.w6.my1drive.data.local.AppDatabase.getDatabase(context)
             val archive = if (!activeUuid.isNullOrEmpty()) db.archiveDao().getById(activeUuid) else null
             val uuid = archive?.uuid ?: activeUuid ?: by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(otgUri) ?: otgUri.toString().hashCode().toString()
@@ -298,9 +298,9 @@ class ArchiveMetadataStore(private val context: Context) {
     /**
      * Check if metadata file exists on the OTG drive.
      */
-    suspend fun metadataExists(otgUri: Uri): Boolean = withContext(Dispatchers.IO) {
+    suspend fun metadataExists(otgUri: Uri, targetArchiveUuid: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
-            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false) ?: return@withContext false
+            val dir = by.w6.my1drive.utils.OtgFolderResolver.getArchiveDir(context, otgUri, createIfNotExist = false, targetArchiveUuid = targetArchiveUuid) ?: return@withContext false
             for (metaName in listOf(METADATA_FILE_NAME, LEGACY_METADATA_FILE_NAME)) {
                 val metaUri = by.w6.my1drive.utils.OtgFolderResolver.buildDirectChildUri(dir.uri, metaName)
                 val exists = try {

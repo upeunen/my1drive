@@ -305,10 +305,15 @@ object OtgFolderResolver {
 
     /**
      * Scans the drive for My1drive archives via global index file (My1drive/my1drive_index.json) or folder scan.
-     * Scans the drive root to recover and register all existing archives into Room.
+     * Discovers all existing archives on the drive.
      * Uses Level 1 (my1drive_index.json), Level 2 (My1drive/ subdirectories), and Level 1 root subdirectories.
+     * Only auto-inserts into Room if autoInsertToDb is true; otherwise only updates already registered archives.
      */
-    fun scanAndRecoverAllArchives(context: Context, rootUri: Uri): List<by.w6.my1drive.data.local.ArchiveEntity> {
+    fun scanAndRecoverAllArchives(
+        context: Context,
+        rootUri: Uri,
+        autoInsertToDb: Boolean = false
+    ): List<by.w6.my1drive.data.local.ArchiveEntity> {
         val recovered = mutableListOf<by.w6.my1drive.data.local.ArchiveEntity>()
         val seenUuids = mutableSetOf<String>()
         try {
@@ -359,7 +364,9 @@ object OtgFolderResolver {
                                     }
                                     updated
                                 } else {
-                                    db.archiveDao().insert(entity)
+                                    if (autoInsertToDb) {
+                                        db.archiveDao().insert(entity)
+                                    }
                                     entity
                                 }
                                 if (seenUuids.add(finalUuid)) {
@@ -410,7 +417,9 @@ object OtgFolderResolver {
                                 }
                                 updated
                             } else {
-                                db.archiveDao().insert(entity)
+                                if (autoInsertToDb) {
+                                    db.archiveDao().insert(entity)
+                                }
                                 entity
                             }
                             if (seenUuids.add(finalUuid)) {
@@ -456,7 +465,9 @@ object OtgFolderResolver {
                             }
                             updated
                         } else {
-                            db.archiveDao().insert(entity)
+                            if (autoInsertToDb) {
+                                db.archiveDao().insert(entity)
+                            }
                             entity
                         }
                         if (seenUuids.add(finalUuid)) {
@@ -497,7 +508,9 @@ object OtgFolderResolver {
                                     }
                                     updated
                                 } else {
-                                    db.archiveDao().insert(entity)
+                                    if (autoInsertToDb) {
+                                        db.archiveDao().insert(entity)
+                                    }
                                     entity
                                 }
                                 if (seenUuids.add(finalUuid)) {
@@ -522,7 +535,12 @@ object OtgFolderResolver {
      * Resolves the actual archive directory DocumentFile from the saved root/folder tree URI.
      * Uses the standardized My1drive/<Device Name>/ structure.
      */
-    fun getArchiveDir(context: Context, rootUri: Uri, createIfNotExist: Boolean = true): DocumentFile? {
+    fun getArchiveDir(
+        context: Context,
+        rootUri: Uri,
+        createIfNotExist: Boolean = true,
+        targetArchiveUuid: String? = null
+    ): DocumentFile? {
         try {
             val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: return null
             if (!rootDoc.exists()) return null
@@ -534,7 +552,7 @@ object OtgFolderResolver {
             }
 
             val prefs = context.getSharedPreferences("my1drive_prefs", Context.MODE_PRIVATE)
-            val activeUuid = prefs.getString("active_archive_uuid", null)
+            val activeUuid = targetArchiveUuid ?: prefs.getString("active_archive_uuid", null)
             val volumeUuid = extractVolumeId(rootUri)
             val db = AppDatabase.getDatabase(context)
             val archive = if (!activeUuid.isNullOrEmpty()) {

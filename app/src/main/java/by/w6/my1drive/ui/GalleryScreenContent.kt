@@ -405,25 +405,7 @@ fun GalleryScreenContent(
         }
     }
 
-    val isSyncingActive = archiveState.isArchiving || syncProgressState.isSyncing
-    val syncProgressLabel = when {
-        archiveState.isArchiving -> {
-            val total = archiveState.totalFiles
-            val current = archiveState.currentFileIndex
-            val baseTitle = if (archiveState.targetArchiveName.isNotBlank()) {
-                stringResource(R.string.title_archiving_target, archiveState.targetArchiveName)
-            } else {
-                stringResource(R.string.title_archiving)
-            }
-            if (total > 0) "$baseTitle $current/$total" else baseTitle
-        }
-        syncProgressState.isSyncing -> {
-            val total = syncProgressState.totalFiles
-            val current = syncProgressState.currentFileIndex
-            if (total > 0) "${stringResource(R.string.title_syncing)} $current/$total" else stringResource(R.string.title_syncing)
-        }
-        else -> null
-    }
+
 
     BackHandler(enabled = selectedIds.isNotEmpty(), onBack = onClearSelection)
 
@@ -467,8 +449,7 @@ fun GalleryScreenContent(
                 gridColumnsCount = gridColumnsCount,
                 onToggleGridColumns = { viewModel.setGridColumnsCount(if (gridColumnsCount == 3) 4 else 3) },
                 showGridToggle = currentScreenRoute != "settings",
-                isSyncing = isSyncingActive,
-                syncProgressText = syncProgressLabel
+
             )
 
             AnimatedVisibility(

@@ -46,7 +46,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import by.w6.my1drive.R
 
-import androidx.compose.material3.CircularProgressIndicator
 import by.w6.my1drive.utils.FormatterUtils
 
 import androidx.compose.animation.AnimatedContent
@@ -83,8 +82,7 @@ fun GooglePhotosTopBar(
     gridColumnsCount: Int = 3,
     onToggleGridColumns: () -> Unit = {},
     showGridToggle: Boolean = true,
-    isSyncing: Boolean = false,
-    syncProgressText: String? = null
+
 ) {
     val title = when {
         selectedCount > 0 -> {
@@ -200,32 +198,7 @@ fun GooglePhotosTopBar(
 
             Spacer(Modifier.weight(1f))
 
-            // Live Syncing / Archiving indicator pill
-            if (isSyncing && syncProgressText != null) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(12.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = syncProgressText,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-            }
+
 
             // Laconic Smart Chip for Trial / Free Limit
             if (!isPremium) {

@@ -548,4 +548,7 @@ Errores:
     <string name="mini_wizard_btn_create">Crear archivo</string>
     <string name="mini_wizard_success">¡El archivo está listo para usar!</string>
     <string name="mini_wizard_btn_configure">Configurar</string>
+    <string name="btn_select_all">Seleccionar todo</string>
+    <string name="btn_deselect_all">Deseleccionar todo</string>
+    <string name="btn_connect_selected">Conectar seleccionados (%1$d)</string>
 </resources>
