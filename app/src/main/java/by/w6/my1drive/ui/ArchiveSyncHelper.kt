@@ -569,19 +569,19 @@ class ArchiveSyncHelper private constructor(
         }
 
         // Удаляем из Room записи, которых больше нет в JSON
-        var deletedFromRoom = 0
+        val deadEntities = mutableListOf<by.w6.my1drive.data.local.MediaEntity>()
         for (entity in phase2RoomEntities) {
             if (entity.id !in finalHashes) {
                 entity.thumbnailPath?.let { path ->
                     val file = java.io.File(path)
                     if (file.exists()) file.delete()
                 }
-                db.mediaDao().delete(entity)
-                deletedFromRoom++
+                deadEntities.add(entity)
             }
         }
-        if (deletedFromRoom > 0) {
-            DebugLogBuffer.log(logTag, "Removed $deletedFromRoom dead entries from Room database for $activeUuid")
+        if (deadEntities.isNotEmpty()) {
+            db.mediaDao().deleteEntities(deadEntities)
+            DebugLogBuffer.log(logTag, "Removed ${deadEntities.size} dead entries from Room database for $activeUuid")
         }
     }
 
@@ -818,14 +818,18 @@ class ArchiveSyncHelper private constructor(
                             db.mediaDao().insertAll(batchToInsert)
                         }
                         // 2. Удаляем из Room пропавшие
+                        val deadEntities = mutableListOf<by.w6.my1drive.data.local.MediaEntity>()
                         for (entity in existingRoomEntities) {
                             if (entity.id !in finalHashes) {
                                 entity.thumbnailPath?.let { path ->
                                     val file = java.io.File(path)
                                     if (file.exists()) file.delete()
                                 }
-                                db.mediaDao().delete(entity)
+                                deadEntities.add(entity)
                             }
+                        }
+                        if (deadEntities.isNotEmpty()) {
+                            db.mediaDao().deleteEntities(deadEntities)
                         }
                     }
 

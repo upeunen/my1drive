@@ -95,6 +95,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val populatedArchiveUuids = db.mediaDao().getPopulatedArchiveUuidsFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Картотека всех хэшей скопированных файлов в БД — для быстрой дедупликации */
+    val allArchivedHashes: StateFlow<Set<String>> = db.mediaDao().getAllArchivedHashesFlow()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     private val _activeDialog = kotlinx.coroutines.flow.MutableStateFlow<AppDialog?>(
         if (!prefs.getBoolean("setup_wizard_completed", false)) {
             AppDialog.SetupWizard(0)

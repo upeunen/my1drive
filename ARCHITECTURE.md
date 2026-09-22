@@ -16,10 +16,10 @@
 *   **`domain.repository`**: Интерфейсы (например, `MediaRepository`).
 
 ### 2. `data` (Слой данных)
-*   **`data.local`**: Room Database (`AppDatabase`, версия 10).
-    *   `MediaDao`, `ArchiveDao` — интерфейсы для доступа к данным.
+*   **`data.local`**: Room Database (`AppDatabase`, версия 11 с составными индексами `(archiveUuid, dateModified)` и `(dateModified)`).
+    *   `MediaDao`, `ArchiveDao` — интерфейсы для доступа к данным (включая пакетное удаление `deleteEntities` и Flow картотеки хэшей).
     *   `MediaEntity`, `ArchiveEntity` — сущности БД (сохраняют пути, хэши, ID накопителя `driveUuid`, UUID архива и ссылки на кэш миниатюр). Метод `MediaDao.getPopulatedArchiveUuidsFlow()` позволяет выявлять только те архивы, для которых есть проиндексированные медиафайлы.
-    *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Поддерживает автоматическое обновление локального кэша через `ContentObserver` на MediaStore Images/Videos, использует вложенный кэш пропорций кадра (`aspectRatioCache`) для исключения дискового I/O при трансформации потока, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
+    *   **`data.repository`**: `MediaRepositoryImpl` — реализация репозитория, комбинирующая данные из MediaStore (локальные файлы) и Room (архив). Поддерживает автоматическое обновление локального кэша через `ContentObserver` на MediaStore Images/Videos, использует `SupervisorJob() + Dispatchers.IO`, in-memory кэш `hasCachedPreview` и пропорций кадра (`aspectRatioCache`) без дискового I/O в потоке маппинга, а также `.distinctUntilChanged()` для пресечения паразитных UI-эмитов.
 *   **`ui` (Пользовательский интерфейс и Состояния)**:
 *   **UI Components (Jetpack Compose)**: `GalleryScreenContent`, `FullscreenPreview`, `InfoDialog`, `DisconnectedOtgInfoDialog`, `PhotosGridTab`, `ArchiveRoute` (с умной фильтрацией чипов `visibleArchives`, скрывающей пустые неподключенные архивы), `NewDriveMiniWizardDialog` (компактный мастер подключения нового накопителя с поддержкой множественного выбора найденных архивов чекбоксами и кнопкой «Подключить выбранные»), `SetupWizardDialog` (мастер первоначальной настройки с мульти-выбором архивов), `ArchivesAndFoldersDialog` (единый полноэкранный диалог управления архивами с мульти-выбором, поиском папок с фото с настраиваемой глубиной и вызовом проводника SAF), `SettingsTab` (компоненты `SettingsDashboardTiles`, `FilesAndSyncSection`, `ArchivesSettingsSection`, `LanguageSettingsSection`, `AdvancedSettingsSection`).
 *   **`ui.layout` (Геометрия и мозаика)**:

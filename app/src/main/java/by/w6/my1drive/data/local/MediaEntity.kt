@@ -6,7 +6,11 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "media_archive",
-    indices = [androidx.room.Index(value = ["archiveUuid"])]
+    indices = [
+        androidx.room.Index(value = ["archiveUuid"]),
+        androidx.room.Index(value = ["archiveUuid", "dateModified"]),
+        androidx.room.Index(value = ["dateModified"])
+    ]
 )
 data class MediaEntity(
     @PrimaryKey

@@ -24,6 +24,9 @@ interface MediaDao {
     @Query("SELECT DISTINCT archiveUuid FROM media_archive WHERE archiveUuid != '' AND archiveUuid IS NOT NULL")
     fun getPopulatedArchiveUuidsFlow(): Flow<List<String>>
 
+    @Query("SELECT id FROM media_archive")
+    fun getAllArchivedHashesFlow(): Flow<List<String>>
+
     @Query("SELECT COUNT(*) + COUNT(CASE WHEN thumbnailPath IS NOT NULL AND thumbnailPath != '' THEN 1 END) + COALESCE(MAX(lastAccessed), 0) FROM media_archive")
     fun getArchiveVersionFlow(): Flow<Long>
 
@@ -69,6 +72,9 @@ interface MediaDao {
 
     @Delete
     fun delete(entity: MediaEntity)
+
+    @Delete
+    fun deleteEntities(entities: List<MediaEntity>)
 
     @Query("SELECT * FROM media_archive WHERE id = :id LIMIT 1")
     fun getById(id: String): MediaEntity?

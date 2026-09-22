@@ -2,7 +2,6 @@ package by.w6.my1drive.data.repository
 
 import android.content.ContentUris
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -12,8 +11,9 @@ import by.w6.my1drive.domain.model.MediaItem
 import by.w6.my1drive.domain.model.MediaStatus
 import by.w6.my1drive.domain.repository.MediaRepository
 import by.w6.my1drive.utils.PreviewCacheManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -41,8 +41,10 @@ class MediaRepositoryImpl(
         }
     }
 
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     init {
-        GlobalScope.launch(Dispatchers.IO) {
+        repoScope.launch {
             _localItemsCache.value = queryLocalMediaStore()
         }
         try {
@@ -95,33 +97,13 @@ class MediaRepositoryImpl(
 
             val filteredEntities = archivedEntities
 
-            val previewDir = File(context.filesDir, PreviewCacheManager.PREVIEW_DIR)
             val archivedItems = filteredEntities.map { entity ->
-                val fallbackFile = File(previewDir, "${entity.id}.my1d")
-                val resolvedThumbPath = if (!entity.thumbnailPath.isNullOrEmpty() && File(entity.thumbnailPath).exists()) {
-                    entity.thumbnailPath
-                } else if (fallbackFile.exists() && fallbackFile.length() > 0) {
-                    // Самоисцеление: превью есть на диске, обновляем путь в БД
-                    mediaDao.updateThumbnailPath(entity.id, fallbackFile.absolutePath, System.currentTimeMillis())
-                    fallbackFile.absolutePath
-                } else null
+                val resolvedThumbPath = entity.thumbnailPath.takeIf { !it.isNullOrEmpty() }
 
-                var effectiveRatio = if (entity.width > 0 && entity.height > 0) {
+                val effectiveRatio = if (entity.width > 0 && entity.height > 0) {
                     entity.width.toFloat() / entity.height.toFloat()
                 } else {
                     aspectRatioCache[entity.id] ?: 0f
-                }
-
-                if (effectiveRatio <= 0f && resolvedThumbPath != null) {
-                    val previewFile = File(resolvedThumbPath)
-                    if (previewFile.exists()) {
-                        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        BitmapFactory.decodeFile(resolvedThumbPath, opts)
-                        if (opts.outWidth > 0 && opts.outHeight > 0) {
-                            effectiveRatio = opts.outWidth.toFloat() / opts.outHeight.toFloat()
-                            aspectRatioCache[entity.id] = effectiveRatio
-                        }
-                    }
                 }
 
                 MediaItem(
@@ -141,7 +123,8 @@ class MediaRepositoryImpl(
                     dateAdded = null,
                     archiveUuid = entity.archiveUuid,
                     archiveName = archiveNamesMap[entity.archiveUuid] ?: context.getString(by.w6.my1drive.R.string.repository_unknown_drive),
-                    aspectRatio = effectiveRatio
+                    aspectRatio = effectiveRatio,
+                    hasCachedPreview = !resolvedThumbPath.isNullOrEmpty()
                 )
             }
 
@@ -151,7 +134,7 @@ class MediaRepositoryImpl(
 
     override fun refresh() {
         _refreshTrigger.value = System.currentTimeMillis()
-        GlobalScope.launch(Dispatchers.IO) {
+        repoScope.launch {
             _localItemsCache.value = queryLocalMediaStore()
         }
     }
