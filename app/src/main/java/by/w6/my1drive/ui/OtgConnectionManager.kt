@@ -216,12 +216,9 @@ class OtgConnectionManager(
                     invokeShowUnreadableOtgDialog(false)
                 }
 
-                // Show preloader only when transitioning from physically disconnected to connected, or at startup
+                // Show preloader only when transitioning from physically disconnected to connected, or at startup with physical drive present
                 val isTransitionToConnected = otgPluggedIn && !wasPhysicalConnected
-                if (isTransitionToConnected) {
-                    _isCheckingConnection.value = true
-                }
-                val isVerifyingNeeded = (firstCheck || isTransitionToConnected) && _otgDirectoryUri.value != null
+                val isVerifyingNeeded = (firstCheck && otgPluggedIn) || isTransitionToConnected
                 if (isVerifyingNeeded) {
                     verifyConnectionAndWait()
                 } else {
@@ -751,12 +748,11 @@ class OtgConnectionManager(
         _isCheckingConnection.value = true
         try {
             val startTime = System.currentTimeMillis()
-            val timeoutMs = 20000L // 20 seconds timeout for slow OS mounts (e.g. Android 12)
+            val timeoutMs = 3000L // 3 seconds timeout for OS mount & SAF availability
             var newStatus = DriveStatus.KNOWN_DRIVE_DISCONNECTED
-            var usbPhysicallyConnected = false
             
             while (System.currentTimeMillis() - startTime < timeoutMs) {
-                usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
+                val usbPhysicallyConnected = withContext(Dispatchers.IO) { isUsbStoragePhysicallyConnected() }
                 val otgPluggedIn = usbPhysicallyConnected || withContext(Dispatchers.IO) { isAnyOtgDrivePresent() }
                 _physicalConnected.value = otgPluggedIn
                 
@@ -766,11 +762,11 @@ class OtgConnectionManager(
                 }
                 
                 newStatus = withContext(Dispatchers.IO) { computeDriveStatus() }
-                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.UNKNOWN_DRIVE_CONNECTED) {
+                if (newStatus == DriveStatus.KNOWN_DRIVE_CONNECTED || newStatus == DriveStatus.KNOWN_DRIVE_NO_ARCHIVES) {
                     break
                 }
                 
-                delay(500)
+                delay(300)
             }
             
             if (newStatus != _status.value) {
@@ -844,6 +840,7 @@ class OtgConnectionManager(
         var connectedUri: Uri? = null
         var connectedUuid: String? = null
         var connectedName: String? = null
+        var firstReadablePermUri: Uri? = null
 
         for (perm in persistedPermissions) {
             val uri = perm.uri
@@ -853,6 +850,9 @@ class OtgConnectionManager(
             } catch (_: Exception) { false }
             by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "Perm URI: $uri, isReadable=$isReadable")
             if (isReadable) {
+                if (firstReadablePermUri == null) {
+                    firstReadablePermUri = uri
+                }
                 val activeUuid = _activeArchiveUuid.value ?: prefs.getString("active_archive_uuid", null)
                 val volumeUuid = by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(uri)
                 val knownArchive = if (!activeUuid.isNullOrEmpty() && !isArchiveUnlinked(activeUuid)) {
@@ -917,6 +917,30 @@ class OtgConnectionManager(
             invokeShowUnknownDriveDialog(false)
             unknownDriveDialogHandled = false
             return DriveStatus.KNOWN_DRIVE_CONNECTED
+        } else if (firstReadablePermUri != null) {
+            // Accessible drive with SAF permissions already granted, but without active archive configured
+            val currentOtgUri = _otgDirectoryUri.value
+            if (currentOtgUri != firstReadablePermUri) {
+                _otgDirectoryUri.value = firstReadablePermUri
+                prefs.edit().putString(PREF_OTG_URI, firstReadablePermUri.toString()).apply()
+            }
+            val presentArchives = by.w6.my1drive.utils.OtgFolderResolver.scanAndRecoverAllArchives(application, firstReadablePermUri, autoInsertToDb = false)
+            if (presentArchives.isNotEmpty()) {
+                val firstArchive = presentArchives.first()
+                _activeArchiveUuid.value = firstArchive.uuid
+                prefs.edit().putString("active_archive_uuid", firstArchive.uuid).apply()
+                _connectedArchiveUuids.value = presentArchives.map { it.uuid }.toSet()
+                driveErrorCount = 0
+                invokeShowUnknownDriveDialog(false)
+                unknownDriveDialogHandled = false
+                return DriveStatus.KNOWN_DRIVE_CONNECTED
+            } else {
+                _connectedArchiveUuids.value = emptySet()
+                driveErrorCount = 0
+                invokeShowUnknownDriveDialog(false)
+                unknownDriveDialogHandled = false
+                return DriveStatus.KNOWN_DRIVE_NO_ARCHIVES
+            }
         }
 
         val savedUri = _otgDirectoryUri.value ?: return DriveStatus.NO_URI_CONFIGURED
@@ -935,7 +959,7 @@ class OtgConnectionManager(
                 by.w6.my1drive.utils.DebugLogBuffer.log("OtgConnMgr", "UUID check failed but DocumentFile fallback succeeded for $savedUri")
             } else {
                 return if (isAnyOtgDrivePresent()) {
-                    // Check if any currently mounted volume is known in Room DB
+                    // Check if any currently mounted volume is known in Room DB or has persisted SAF permissions
                     val mountedVolumes = try {
                         val sm = application.getSystemService(Context.STORAGE_SERVICE) as android.os.storage.StorageManager
                         sm.storageVolumes
@@ -944,21 +968,21 @@ class OtgConnectionManager(
                     var isActuallyKnownButNotReady = false
                     for (volume in mountedVolumes) {
                         val uuid = volume.uuid
-                        if (!volume.isPrimary && volume.state == Environment.MEDIA_MOUNTED && uuid != null) {
-                            if (db.archiveDao().getById(uuid) != null) {
-                                // Флешка есть в БД. А есть ли для неё разрешение?
-                                val persisted = application.contentResolver.persistedUriPermissions
-                                val hasPermission = persisted.any { it.uri.toString().contains(uuid, ignoreCase = true) }
-                                if (hasPermission) {
-                                    isActuallyKnownButNotReady = true
-                                    break
-                                }
+                        if (!volume.isPrimary && uuid != null) {
+                            val persisted = application.contentResolver.persistedUriPermissions
+                            val hasPermission = persisted.any { 
+                                it.uri.toString().contains(uuid, ignoreCase = true) ||
+                                by.w6.my1drive.utils.OtgFolderResolver.extractVolumeId(it.uri)?.equals(uuid, ignoreCase = true) == true
+                            }
+                            if (hasPermission || db.archiveDao().getById(uuid) != null) {
+                                isActuallyKnownButNotReady = true
+                                break
                             }
                         }
                     }
                     
                     if (isActuallyKnownButNotReady) {
-                        // It's a known drive, SAF just hasn't made it readable yet. Keep waiting.
+                        // It's a known drive or authorized drive, SAF just hasn't made it readable yet. Keep waiting.
                         DriveStatus.KNOWN_DRIVE_DISCONNECTED
                     } else {
                         if (!firstLaunchHandled) {
@@ -1055,7 +1079,7 @@ class OtgConnectionManager(
     }
 
     /** Finds the first readable OTG URI from configured URI or persisted permissions. */
-    private fun getConnectedOtgUri(): Uri? {
+    fun getConnectedOtgUri(): Uri? {
         val currentUri = _otgDirectoryUri.value
         if (currentUri != null) {
             val isReadable = try {

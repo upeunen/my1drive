@@ -1244,39 +1244,85 @@ private fun VideoPage(
                 alpha = if (swipeOffsetY.value > 0f) (1f - (swipeOffsetY.value / 1200f)).coerceIn(0.1f, 1f) else 1f
             )
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        onTap()
-                    },
-                    onLongPress = {
+                awaitEachGesture {
+                    val firstDown = awaitFirstDown()
+                    val tapPosition = firstDown.position
+
+                    var longPressTriggered = false
+                    val longPressJob = scope.launch {
+                        delay(500)
+                        longPressTriggered = true
                         onLongPress()
                     }
-                )
-            }
-            .draggable(
-                state = rememberDraggableState { delta ->
-                    scope.launch {
-                        swipeOffsetY.snapTo(swipeOffsetY.value + delta)
-                    }
-                },
-                orientation = Orientation.Vertical,
-                onDragStarted = { },
-                onDragStopped = { velocity ->
-                    val threshold = 350f
-                    if (swipeOffsetY.value < -threshold) {
-                        onShowInfo(item)
+
+                    var swipeDirectionDetected = false
+                    var isVerticalSwipe = false
+                    var accumulatedDragY = 0f
+                    var accumulatedDragX = 0f
+                    val touchSlop = viewConfiguration.touchSlop
+
+                    do {
+                        val event = awaitPointerEvent()
+                        val canceled = event.changes.any { it.isConsumed }
+                        if (!canceled) {
+                            val totalDragX = event.changes.firstOrNull()?.let { abs(it.position.x - tapPosition.x) } ?: 0f
+                            val totalDragY = event.changes.firstOrNull()?.let { abs(it.position.y - tapPosition.y) } ?: 0f
+                            if (totalDragX > touchSlop || totalDragY > touchSlop) {
+                                longPressJob.cancel()
+                            }
+
+                            val change = event.changes.firstOrNull()
+                            if (change != null && change.pressed) {
+                                val positionChange = change.position - change.previousPosition
+                                accumulatedDragY += positionChange.y
+                                accumulatedDragX += positionChange.x
+
+                                if (!swipeDirectionDetected) {
+                                    if (abs(accumulatedDragY) > touchSlop || abs(accumulatedDragX) > touchSlop) {
+                                        swipeDirectionDetected = true
+                                        if (abs(accumulatedDragY) > abs(accumulatedDragX)) {
+                                            isVerticalSwipe = true
+                                        }
+                                    }
+                                }
+
+                                if (isVerticalSwipe) {
+                                    change.consume()
+                                    scope.launch {
+                                        val delta = if (positionChange.y < 0) positionChange.y * 0.7f else positionChange.y
+                                        swipeOffsetY.snapTo(swipeOffsetY.value + delta)
+                                    }
+                                }
+                            }
+                        }
+                    } while (!canceled && event.changes.any { it.pressed })
+
+                    longPressJob.cancel()
+                    if (isVerticalSwipe) {
+                        val threshold = 350f
+                        if (swipeOffsetY.value < -threshold) {
+                            onShowInfo(item)
+                            scope.launch { swipeOffsetY.animateTo(0f) }
+                        } else if (swipeOffsetY.value > threshold) {
+                            onClose()
+                        } else {
+                            scope.launch { swipeOffsetY.animateTo(0f) }
+                        }
+                    } else if (!longPressTriggered) {
                         scope.launch { swipeOffsetY.animateTo(0f) }
-                    } else if (swipeOffsetY.value > threshold) {
-                        onClose()
+                        if (!swipeDirectionDetected) {
+                            onTap()
+                        }
                     } else {
                         scope.launch { swipeOffsetY.animateTo(0f) }
                     }
                 }
-            )
+            }
     ) {
         AndroidView(
             factory = { ctx ->
                 TouchInterceptingFrameLayout(ctx).apply {
+                    this.showOverlays = showOverlays
                     val playerView = PlayerView(ctx).apply {
                         player = exoPlayer
                         useController = true
@@ -1284,6 +1330,7 @@ private fun VideoPage(
                         controllerHideOnTouch = false
                         controllerShowTimeoutMs = 0
                         hideController()
+                        setOnClickListener { onTap() }
                     }
                     playerView.layoutParams = FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,
@@ -1293,6 +1340,7 @@ private fun VideoPage(
                 }
             },
             update = { frameLayout ->
+                (frameLayout as? TouchInterceptingFrameLayout)?.showOverlays = showOverlays
                 val playerView = frameLayout.getChildAt(0) as PlayerView
                 if (playerView.player != exoPlayer) {
                     playerView.player = exoPlayer
@@ -1311,15 +1359,20 @@ private fun VideoPage(
 }
 
 private class TouchInterceptingFrameLayout(context: Context) : FrameLayout(context) {
+    var showOverlays: Boolean = false
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        val playerView = getChildAt(0) as? PlayerView
-        if (playerView != null && playerView.isControllerFullyVisible) {
+        if (!showOverlays) {
+            return false
+        }
+        val isBottomControlsArea = ev.y >= height * 0.78f
+        val isCenterPlayArea = abs(ev.x - width / 2f) < width * 0.2f && abs(ev.y - height / 2f) < height * 0.2f
+
+        if (isBottomControlsArea || isCenterPlayArea) {
             return super.dispatchTouchEvent(ev)
         }
-        if (ev.y <= height * 0.8f) {
-            return false // Let Compose handle it
-        }
-        return super.dispatchTouchEvent(ev)
+        return false
     }
 }
+
 

@@ -209,7 +209,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun showNewDriveMiniWizard(step: Int = 1, error: String? = null, uri: Uri? = null) {
-        _activeDialog.value = AppDialog.NewDriveMiniWizard(step = step, errorMessage = error, driveUri = uri)
+        val targetUri = uri ?: if (step == 1) otgManager.getConnectedOtgUri() else null
+        val targetStep = if (step == 1 && targetUri != null) 2 else step
+        _activeDialog.value = AppDialog.NewDriveMiniWizard(step = targetStep, errorMessage = error, driveUri = targetUri)
     }
 
     fun onNewDriveSafSelected(uri: Uri) {
