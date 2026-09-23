@@ -602,7 +602,7 @@ class OtgArchiveUtil(private val context: Context) {
                 val retriever = MediaMetadataRetriever()
                 try {
                     retriever.setDataSource(context, item.uri)
-                    retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 512, 512)
                 } finally {
                     retriever.release()
                 }

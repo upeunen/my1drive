@@ -141,6 +141,10 @@ fun GalleryScreen(
         }
     }
 
+    LaunchedEffect(activePreviewState) {
+        viewModel.setIsPreviewActive(activePreviewState != null)
+    }
+
     val view = androidx.compose.ui.platform.LocalView.current
     val isWorking = archiveState.isArchiving || restoreState.isRestoring || syncProgressState.isSyncing
     androidx.compose.runtime.DisposableEffect(isWorking) {

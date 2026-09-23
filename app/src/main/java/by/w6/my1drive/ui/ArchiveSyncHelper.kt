@@ -417,8 +417,9 @@ class ArchiveSyncHelper private constructor(
         var jsonChanged = false
 
         if (dir != null && dir.exists()) {
-            val knownNamesMap = jsonEntries.associateBy { it.displayName.lowercase() }
-            val knownHashes = jsonEntries.map { it.hash }.toHashSet()
+            // HashMap/HashSet с заданной ёмкостью — один проход вместо трёх отдельных копий
+            val knownNamesMap = jsonEntries.associateByTo(HashMap(jsonEntries.size * 2)) { it.displayName.lowercase() }
+            val knownHashes = jsonEntries.mapTo(HashSet(jsonEntries.size * 2)) { it.hash }
 
             for (file in physicalFiles) {
                 if (isCancellationRequested) {
@@ -1149,8 +1150,8 @@ class ArchiveSyncHelper private constructor(
         batchSize: Int = 25,
         onProgress: (current: Int, total: Int) -> Unit
     ) = withContext(Dispatchers.IO) {
-        val missingItems = db.mediaDao().getWithoutPreview(activeUuid, limit = 50_000)
-        val total = missingItems.size
+        // Общее кол-во для прогресса — запрашиваем COUNT, не весь список
+        val total = db.mediaDao().getWithoutPreviewCount(activeUuid)
         if (total == 0) return@withContext
 
         val pDir = previewCache.previewDir
@@ -1175,80 +1176,67 @@ class ArchiveSyncHelper private constructor(
             return if (opts.outWidth > 0 && opts.outHeight > 0) Pair(opts.outWidth, opts.outHeight) else Pair(0, 0)
         }
 
+        // Постраничная обработка вместо загрузки 50k записей в одну List — fix для OOM
+        val pageSize = 100
+        var offset = 0
+        var idx = 0
         try {
-            for ((idx, entity) in missingItems.withIndex()) {
-                if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
-                    DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery/cancelled)")
-                    break
-                }
-
-                // Respect pause (e.g. while user is actively scrolling the gallery)
-                while (isPaused()) {
-                    if (isCancelled()) break
-                    delay(250)
-                }
-                if (isCancelled()) break
-
-                val uriStr = entity.otgUri ?: ""
-                if (uriStr.isEmpty()) continue
-
-                val cacheFile = previewCache.cacheFileFor(entity.id)
-
-                if (cacheFile.exists() && cacheFile.length() > 0) {
-                    // Already cached locally, ensure it is also saved to OTG previews if missing
-                    try {
-                        val uri = Uri.parse(uriStr)
-                        by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
-                    } catch (_: Exception) {}
-
-                    val (w, h) = resolveDimensions(entity, cacheFile)
-                    val updated = entity.copy(
-                        thumbnailPath = cacheFile.absolutePath,
-                        lastAccessed = System.currentTimeMillis(),
-                        width = w,
-                        height = h
-                    )
-                    pendingBatch.add(updated)
-                    pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
-                } else {
-                    val uri = Uri.parse(uriStr)
-                    var loaded = false
-
-                    // 1. Fast-path: Check if small preview already exists in .previews on OTG
-                    try {
-                        pDir.mkdirs()
-                        if (by.w6.my1drive.utils.OtgFolderResolver.tryCopyPreviewFromOtg(application, uri, entity.id, cacheFile)) {
-                            val (w, h) = resolveDimensions(entity, cacheFile)
-                            val updated = entity.copy(
-                                thumbnailPath = cacheFile.absolutePath,
-                                lastAccessed = System.currentTimeMillis(),
-                                width = w,
-                                height = h
-                            )
-                            pendingBatch.add(updated)
-                            pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
-                            loaded = true
-                        }
-                    } catch (e: Exception) {
-                        DebugLogBuffer.log("ArchiveSyncHelper", "Failed fast copy from OTG: ${e.message}")
+            outer@ while (true) {
+                val page = db.mediaDao().getWithoutPreviewPage(activeUuid, limit = pageSize, offset = offset)
+                if (page.isEmpty()) break
+                for (entity in page) {
+                    if (isCancelled() || isFreeSpaceLow() || isBatteryLow()) {
+                        DebugLogBuffer.log("ArchiveSyncHelper", "Thumbnail sync cancelled (low space/battery/cancelled)")
+                        break@outer
                     }
 
-                    // 2. Slow-path: Decode original file, scale, and save to BOTH local cache and OTG .previews
-                    if (!loaded) {
+                    // Heap safeguard: if memory usage is critical, give GC time or break loop to avoid OOM
+                    if (isHeapLow()) {
+                        DebugLogBuffer.log("ArchiveSyncHelper", "Heap usage high (>75%), pausing thumbnail sync and requesting GC")
+                        System.gc()
+                        delay(1000)
+                        if (isHeapLow()) {
+                            DebugLogBuffer.log("ArchiveSyncHelper", "Heap usage remains critical (>75%), halting thumbnail sync to prevent OOM")
+                            break@outer
+                        }
+                    }
+
+                    // Respect pause (e.g. while user is actively scrolling the gallery)
+                    while (isPaused()) {
+                        if (isCancelled()) break
+                        delay(250)
+                    }
+                    if (isCancelled()) break@outer
+
+                    val uriStr = entity.otgUri ?: ""
+                    if (uriStr.isEmpty()) continue
+
+                    val cacheFile = previewCache.cacheFileFor(entity.id)
+
+                    if (cacheFile.exists() && cacheFile.length() > 0) {
+                        // Already cached locally, ensure it is also saved to OTG previews if missing
                         try {
-                            val bitmap = generateThumbnailHelper(uri, entity.mimeType)
-                            if (bitmap != null) {
-                                pDir.mkdirs()
-                                cacheFile.outputStream().buffered().use { out ->
-                                    val scaled = scaleBitmapHelper(bitmap, 256)
-                                    scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
-                                    if (scaled !== bitmap) scaled.recycle()
-                                }
-                                bitmap.recycle()
+                            val uri = Uri.parse(uriStr)
+                            by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
+                        } catch (_: Exception) {}
 
-                                // Save to OTG drive .previews as well
-                                by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
+                        val (w, h) = resolveDimensions(entity, cacheFile)
+                        val updated = entity.copy(
+                            thumbnailPath = cacheFile.absolutePath,
+                            lastAccessed = System.currentTimeMillis(),
+                            width = w,
+                            height = h
+                        )
+                        pendingBatch.add(updated)
+                        pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
+                    } else {
+                        val uri = Uri.parse(uriStr)
+                        var loaded = false
 
+                        // 1. Fast-path: Check if small preview already exists in .previews on OTG
+                        try {
+                            pDir.mkdirs()
+                            if (by.w6.my1drive.utils.OtgFolderResolver.tryCopyPreviewFromOtg(application, uri, entity.id, cacheFile)) {
                                 val (w, h) = resolveDimensions(entity, cacheFile)
                                 val updated = entity.copy(
                                     thumbnailPath = cacheFile.absolutePath,
@@ -1258,24 +1246,61 @@ class ArchiveSyncHelper private constructor(
                                 )
                                 pendingBatch.add(updated)
                                 pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
+                                loaded = true
                             }
                         } catch (e: Exception) {
-                            DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
+                            DebugLogBuffer.log("ArchiveSyncHelper", "Failed fast copy from OTG: ${e.message}")
+                        }
+
+                        // 2. Slow-path: Decode original file, scale, and save to BOTH local cache and OTG .previews
+                        if (!loaded) {
+                            try {
+                                val bitmap = generateThumbnailHelper(uri, entity.mimeType)
+                                if (bitmap != null) {
+                                    pDir.mkdirs()
+                                    cacheFile.outputStream().buffered().use { out ->
+                                        val scaled = scaleBitmapHelper(bitmap, 256)
+                                        scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 65, out)
+                                        if (scaled !== bitmap) scaled.recycle()
+                                    }
+                                    bitmap.recycle()
+
+                                    // Save to OTG drive .previews as well
+                                    by.w6.my1drive.utils.OtgFolderResolver.trySavePreviewToOtg(application, uri, entity.id, cacheFile)
+
+                                    val (w, h) = resolveDimensions(entity, cacheFile)
+                                    val updated = entity.copy(
+                                        thumbnailPath = cacheFile.absolutePath,
+                                        lastAccessed = System.currentTimeMillis(),
+                                        width = w,
+                                        height = h
+                                    )
+                                    pendingBatch.add(updated)
+                                    pendingEvents.add(Pair(entity.id, cacheFile.absolutePath))
+                                }
+                            } catch (e: Exception) {
+                                DebugLogBuffer.log("ArchiveSyncHelper", "Failed thumbnail sync for ${entity.id}: ${e.message}")
+                            }
                         }
                     }
-                }
 
-                val now = System.currentTimeMillis()
-                if (pendingBatch.size >= batchSize || (now - lastFlushTime >= 15_000L && pendingBatch.isNotEmpty())) {
-                    flushBatch()
+                    val now = System.currentTimeMillis()
+                    if (pendingBatch.size >= batchSize || (now - lastFlushTime >= 15_000L && pendingBatch.isNotEmpty())) {
+                        flushBatch()
+                    }
+
+                    // throttle to keep CPU and bus completely cool
+                    delay(throttleMs)
+
+                    idx++
+                    withContext(Dispatchers.Main) {
+                        onProgress(idx, total)
+                    }
                 }
-                
-                // throttle to keep CPU and bus completely cool
-                delay(throttleMs)
-                
-                withContext(Dispatchers.Main) {
-                    onProgress(idx + 1, total)
-                }
+                // Если страница не полная — все записи без превью обработаны
+                flushBatch()
+                if (page.size < pageSize) break
+                offset += pageSize
             }
         } finally {
             flushBatch()
@@ -1308,12 +1333,25 @@ class ArchiveSyncHelper private constructor(
         }
     }
 
+    private fun isHeapLow(): Boolean {
+        return try {
+            val runtime = Runtime.getRuntime()
+            val usedBytes = runtime.totalMemory() - runtime.freeMemory()
+            val maxBytes = runtime.maxMemory()
+            (usedBytes.toDouble() / maxBytes.toDouble()) > 0.75
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun generateThumbnailHelper(uri: Uri, mimeType: String): Bitmap? {
         return if (mimeType.startsWith("video")) {
             val retriever = MediaMetadataRetriever()
             try {
                 retriever.setDataSource(application, uri)
-                retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                // getScaledFrameAtTime (API 27+) декодирует кадр сразу в нужный размер,
+                // не загружая полный 4K/8K bitmap в heap — fix для OOM
+                retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 512, 512)
             } catch (e: Exception) {
                 null
             } finally {

@@ -487,6 +487,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _isScrolling.value = scrolling
     }
 
+    private val _isPreviewActive = MutableStateFlow(false)
+    val isPreviewActive = _isPreviewActive.asStateFlow()
+    fun setIsPreviewActive(active: Boolean) {
+        _isPreviewActive.value = active
+    }
+
     private val _askRestorePath = MutableStateFlow(prefs.getBoolean(PREF_ASK_RESTORE_PATH, false))
     val askRestorePath = _askRestorePath.asStateFlow()
 
@@ -572,6 +578,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         connectedArchiveUuidsFlow = otgManager.connectedArchiveUuids,
         isOtgConnectedFlow = _isOtgConnected,
         isScrollingFlow = _isScrolling,
+        isPreviewActiveFlow = _isPreviewActive,
         refreshCacheStats = { refreshCacheStats() },
         onRepositoryRefresh = { repository.refresh() }
     )

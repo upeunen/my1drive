@@ -122,6 +122,10 @@ interface MediaDao {
     @Query("SELECT * FROM media_archive WHERE archiveUuid = :archiveUuid AND (thumbnailPath IS NULL OR thumbnailPath = '') AND otgUri != '' AND otgUri IS NOT NULL ORDER BY dateModified DESC LIMIT :limit")
     fun getWithoutPreview(archiveUuid: String, limit: Int): List<MediaEntity>
 
+    /** Страничная версия getWithoutPreview с offset — для постраничной обработки без OOM */
+    @Query("SELECT * FROM media_archive WHERE archiveUuid = :archiveUuid AND (thumbnailPath IS NULL OR thumbnailPath = '') AND otgUri != '' AND otgUri IS NOT NULL ORDER BY dateModified DESC LIMIT :limit OFFSET :offset")
+    fun getWithoutPreviewPage(archiveUuid: String, limit: Int, offset: Int): List<MediaEntity>
+
     @Query("SELECT COUNT(*) FROM media_archive WHERE archiveUuid = :archiveUuid AND (thumbnailPath IS NULL OR thumbnailPath = '') AND otgUri != '' AND otgUri IS NOT NULL")
     fun getWithoutPreviewCount(archiveUuid: String): Int
 }

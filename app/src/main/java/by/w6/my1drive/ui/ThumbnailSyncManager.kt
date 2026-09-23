@@ -18,6 +18,7 @@ class ThumbnailSyncManager(
     private val connectedArchiveUuidsFlow: StateFlow<Set<String>> = MutableStateFlow(emptySet()),
     private val isOtgConnectedFlow: StateFlow<Boolean>,
     private val isScrollingFlow: StateFlow<Boolean>,
+    private val isPreviewActiveFlow: StateFlow<Boolean> = MutableStateFlow(false),
     private val refreshCacheStats: () -> Unit,
     private val onRepositoryRefresh: () -> Unit = {}
 ) {
@@ -107,7 +108,7 @@ class ThumbnailSyncManager(
                     syncHelper.syncAllThumbnails(
                         activeUuid = uuid,
                         isCancelled = { job?.isActive == false || !isOtgConnectedFlow.value || syncHelper.archiveState.value.isArchiving },
-                        isPaused = { isScrollingFlow.value },
+                        isPaused = { isScrollingFlow.value || isPreviewActiveFlow.value },
                         throttleMs = 40L,
                         batchSize = 25,
                         onProgress = { current, total ->
@@ -153,7 +154,7 @@ class ThumbnailSyncManager(
                     syncHelper.syncAllThumbnails(
                         activeUuid = uuid,
                         isCancelled = { job?.isActive == false || !isOtgConnectedFlow.value || syncHelper.archiveState.value.isArchiving },
-                        isPaused = { isScrollingFlow.value },
+                        isPaused = { isScrollingFlow.value || isPreviewActiveFlow.value },
                         throttleMs = 150L,
                         batchSize = 25,
                         onProgress = { _, _ -> }

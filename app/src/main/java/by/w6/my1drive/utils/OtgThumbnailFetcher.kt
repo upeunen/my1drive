@@ -154,11 +154,11 @@ class OtgThumbnailFetcher(
                 if (pfd != null) {
                     pfd.use {
                         retriever.setDataSource(it.fileDescriptor)
-                        retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 512, 512)
                     }
                 } else {
                     retriever.setDataSource(context, uri)
-                    retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 512, 512)
                 }
             } catch (e: Exception) {
                 null

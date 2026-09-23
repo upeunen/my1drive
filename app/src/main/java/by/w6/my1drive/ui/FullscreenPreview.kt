@@ -177,12 +177,6 @@ fun FullscreenPreview(
         }
     }
 
-    // Reset overlays on swipe (only if not pinned)
-    androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
-        if (!isPinned) {
-            showOverlays = false
-        }
-    }
 
     // Immersive Mode (System UI toggling)
     androidx.compose.runtime.LaunchedEffect(showOverlays) {
@@ -1185,16 +1179,31 @@ private fun VideoPage(
     }
 
     val exoPlayer = remember(videoUri) {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = androidx.media3.common.MediaItem.fromUri(videoUri)
-            setMediaItem(mediaItem)
-            prepare()
-            playWhenReady = isActive
-        }
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(15_000, 30_000, 1_500, 2_500)
+            .setTargetBufferBytes(15 * 1024 * 1024)
+            .build()
+        ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
+            .build().apply {
+                val mediaItem = androidx.media3.common.MediaItem.fromUri(videoUri)
+                setMediaItem(mediaItem)
+                if (isActive) {
+                    prepare()
+                    playWhenReady = true
+                }
+            }
     }
 
     androidx.compose.runtime.LaunchedEffect(isActive, videoUri) {
-        exoPlayer.playWhenReady = isActive
+        if (isActive) {
+            exoPlayer.prepare()
+            exoPlayer.playWhenReady = true
+        } else {
+            exoPlayer.playWhenReady = false
+            exoPlayer.pause()
+            exoPlayer.stop()
+        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
